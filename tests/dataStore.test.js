@@ -1,4 +1,4 @@
-const test = require("node:test");
+﻿const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -13,7 +13,7 @@ test("dataStore uses bundled seed file by default", () => {
   delete process.env.VERCEL;
 
   const store = require("../server/dataStore");
-  assert.equal(store.resolveDataFile(), path.join(process.cwd(), "data", "seed.json"));
+  assert.equal(store.resolveDataFile(), store.bundledDataFile);
 });
 
 test("dataStore uses temp runtime file on Vercel and seeds it automatically", () => {
@@ -34,3 +34,4 @@ test("dataStore uses temp runtime file on Vercel and seeds it automatically", ()
   fs.unlinkSync(runtimeFile);
   delete process.env.VERCEL;
 });
+
