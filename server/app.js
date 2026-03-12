@@ -141,7 +141,7 @@ function normalizeHotelDetails(hotelDetails, index, baseCurrency) {
       throw new Error(`ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Æ¡ï¿½`);
     }
     if (roomCount <= 0 || nights <= 0) {
-      throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½`);
+      throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä·ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?0ï¿½ï¿½`);
     }
     if (costNightlyRate < 0 || priceNightlyRate < 0) {
       throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Æµï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½Ã¿ï¿½ï¿½ï¿½É±ï¿½ï¿½ï¿½ï¿½Ûºï¿½ï¿½ï¿½ï¿½Ûµï¿½ï¿½Û²ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`);
@@ -176,7 +176,7 @@ function normalizeVehicleDetails(vehicleDetails, index, baseCurrency) {
       throw new Error(`ï¿½ï¿½ï¿½ï¿½Ð´ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä³ï¿½ï¿½Í¡ï¿½`);
     }
     if (vehicleCount <= 0) {
-      throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½`);
+      throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä³ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?0ï¿½ï¿½`);
     }
     if (costUnitPrice < 0 || priceUnitPrice < 0) {
       throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½Ã³ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä³É±ï¿½ï¿½ï¿½ï¿½Ûºï¿½ï¿½ï¿½ï¿½Ûµï¿½ï¿½Û²ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`);
@@ -209,7 +209,7 @@ function normalizeServiceDetails(serviceDetails, index, baseCurrency) {
     const currency = assertSupportedCurrency(detail.currency || baseCurrency, `ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä±ï¿½ï¿½ï¿½`);
 
     if (quantity <= 0) {
-      throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½`);
+      throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?0ï¿½ï¿½`);
     }
     if (costUnitPrice < 0 || priceUnitPrice < 0) {
       throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½/ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ ${detailIndex + 1} ï¿½ï¿½ï¿½ï¿½Ï¸ï¿½Ä³É±ï¿½ï¿½ï¿½ï¿½Ûºï¿½ï¿½ï¿½ï¿½Ûµï¿½ï¿½Û²ï¿½ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`);
@@ -248,7 +248,7 @@ function normalizeQuoteItems(items, baseCurrency) {
 
     if (!hasHotelDetails && !hasVehicleDetails && !hasServiceDetails) {
       if (quantity <= 0) {
-        throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ 0ï¿½ï¿½`);
+        throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿?0ï¿½ï¿½`);
       }
       if (cost < 0 || price < 0) {
         throw new Error(`ï¿½ï¿½ ${index + 1} ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ä¿ï¿½Ä½ï¿½î²»ï¿½ï¿½Îªï¿½ï¿½ï¿½ï¿½ï¿½ï¿½`);
@@ -273,22 +273,22 @@ function normalizeQuoteItems(items, baseCurrency) {
 }
 
 function normalizeQuotePayload(payload, existingId) {
-  const currency = assertSupportedCurrency(payload.currency || "EUR", "ï¿½ï¿½ï¿½Û±ï¿½ï¿½ï¿½");
-  const language = assertOneOf(payload.language || "zh-CN", supportedLanguages, "ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½");
-  const startDate = formatDate(notEmpty(payload.startDate || payload.tripDate, "ï¿½Ð³Ì¿ï¿½Ê¼ï¿½ï¿½ï¿½ï¿½"));
-  const endDate = formatDate(notEmpty(payload.endDate || payload.tripDate, "ï¿½Ð³Ì½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"));
+  const currency = assertSupportedCurrency(payload.currency || "EUR", "±¨¼Û±ÒÖÖ");
+  const language = assertOneOf(payload.language || "zh-CN", supportedLanguages, "ÎÄµµÊä³öÓïÑÔ");
+  const startDate = formatDate(notEmpty(payload.startDate || payload.tripDate, "ÐÐ³Ì¿ªÊ¼ÈÕÆÚ"));
+  const endDate = formatDate(notEmpty(payload.endDate || payload.tripDate, "ÐÐ³Ì½áÊøÈÕÆÚ"));
 
   if (endDate < startDate) {
-    throw new Error("ï¿½Ð³Ì½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ð³Ì¿ï¿½Ê¼ï¿½ï¿½ï¿½Ú¡ï¿½");
+    throw new Error("ÐÐ³Ì½áÊøÈÕÆÚ²»ÄÜÔçÓÚÐÐ³Ì¿ªÊ¼ÈÕÆÚ¡£");
   }
 
   return {
     id: existingId || payload.id || createId("Q"),
     quoteNumber: payload.quoteNumber ? String(payload.quoteNumber).trim() : generateQuoteNumber(),
     projectId: payload.projectId ? String(payload.projectId).trim() : "",
-    clientName: notEmpty(payload.clientName, "ï¿½Í»ï¿½ï¿½ï¿½ï¿½ï¿½"),
-    projectName: notEmpty(payload.projectName, "ï¿½ï¿½Ä¿ï¿½ï¿½ï¿½ï¿½"),
-    contactName: notEmpty(payload.contactName, "ï¿½ï¿½Ïµï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"),
+    clientName: notEmpty(payload.clientName, "¿Í»§Ãû³Æ"),
+    projectName: notEmpty(payload.projectName, "ÏîÄ¿Ãû³Æ"),
+    contactName: notEmpty(payload.contactName, "ÁªÏµÈËÐÕÃû"),
     contactPhone: String(payload.contactPhone || "").trim(),
     language,
     currency,
@@ -296,7 +296,7 @@ function normalizeQuotePayload(payload, existingId) {
     endDate,
     tripDate: startDate,
     travelDays: calculateInclusiveDays(startDate, endDate),
-    destination: notEmpty(payload.destination || "Belgrade", "ï¿½ï¿½ÒªÄ¿ï¿½Äµï¿½"),
+    destination: notEmpty(payload.destination || "Belgrade", "Ö÷ÒªÄ¿µÄµØ"),
     paxCount: Number(payload.paxCount || 0),
     notes: String(payload.notes || "").trim(),
     items: normalizeQuoteItems(payload.items, currency),
@@ -332,12 +332,12 @@ function normalizeReceptionPayload(payload, existingId) {
   return {
     id: existingId || payload.id || createId("R"),
     projectId: payload.projectId ? String(payload.projectId).trim() : "",
-    taskType: assertOneOf(payload.taskType || "airport_pickup", supportedReceptionTaskTypes, "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"),
-    title: notEmpty(payload.title, "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"),
-    assignee: notEmpty(payload.assignee, "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½"),
-    dueTime: notEmpty(payload.dueTime, "ï¿½ï¿½Ö¹Ê±ï¿½ï¿½"),
-    status: assertOneOf(payload.status || "pending", supportedReceptionStatuses, "ï¿½ï¿½ï¿½ï¿½×´Ì¬"),
-    location: notEmpty(payload.location, "ï¿½Øµï¿½"),
+    taskType: assertOneOf(payload.taskType || "airport_pickup", supportedReceptionTaskTypes, "ÈÎÎñÀàÐÍ"),
+    title: notEmpty(payload.title, "ÈÎÎñ±êÌâ"),
+    assignee: notEmpty(payload.assignee, "¸ºÔðÈË"),
+    dueTime: notEmpty(payload.dueTime, "½ØÖ¹Ê±¼ä"),
+    status: assertOneOf(payload.status || "pending", supportedReceptionStatuses, "ÈÎÎñ×´Ì¬"),
+    location: notEmpty(payload.location, "µØµã"),
     notes: String(payload.notes || "").trim(),
   };
 }
@@ -345,10 +345,10 @@ function normalizeReceptionPayload(payload, existingId) {
 function normalizeDocumentPayload(payload, existingId) {
   return {
     id: existingId || payload.id || createId("D"),
-    title: notEmpty(payload.title, "ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½"),
-    category: notEmpty(payload.category, "ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½"),
-    language: assertOneOf(payload.language || "zh-CN", supportedLanguages, "ï¿½Äµï¿½ï¿½ï¿½ï¿½ï¿½"),
-    updatedAt: notEmpty(payload.updatedAt, "ï¿½ï¿½ï¿½ï¿½Ê±ï¿½ï¿½"),
+    title: notEmpty(payload.title, "ÎÄµµ±êÌâ"),
+    category: notEmpty(payload.category, "ÎÄµµ·ÖÀà"),
+    language: assertOneOf(payload.language || "zh-CN", supportedLanguages, "ÎÄµµÓïÑÔ"),
+    updatedAt: notEmpty(payload.updatedAt, "¸üÐÂÊ±¼ä"),
   };
 }
 
@@ -718,40 +718,35 @@ async function handleApi(request, response, url) {
   return false;
 }
 
-function createServer() {
-  return http.createServer(async (request, response) => {
-    const url = new URL(request.url, "http://localhost");
+async function handleRequest(request, response) {
+  const baseUrl = request.headers?.host ? `http://${request.headers.host}` : "http://localhost";
+  const url = new URL(request.url, baseUrl);
 
-    try {
-      const handled = await handleApi(request, response, url);
-      if (handled) {
-        return;
-      }
-
-      const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
-      const safePath = path.normalize(requestedPath).replace(/^([.][.][/\\])+/, "");
-      const filePath = path.join(publicDir, safePath);
-      sendFile(response, filePath);
-    } catch (error) {
-      sendJson(response, 500, {
-        error: "ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ê§ï¿½Ü£ï¿½ï¿½ï¿½ï¿½Ôºï¿½ï¿½ï¿½ï¿½Ô¡ï¿½",
-        message: error.message,
-      });
+  try {
+    const handled = await handleApi(request, response, url);
+    if (handled) {
+      return;
     }
-  });
+
+    const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
+    const safePath = path.normalize(requestedPath).replace(/^([.][.][/\\])+/, "");
+    const filePath = path.join(publicDir, safePath);
+    sendFile(response, filePath);
+  } catch (error) {
+    sendJson(response, 500, {
+      error: "·þÎñÆ÷´¦ÀíÊ§°Ü£¬ÇëÉÔºóÖØÊÔ¡£",
+      message: error.message,
+    });
+  }
+}
+
+function createServer() {
+  return http.createServer(handleRequest);
 }
 
 module.exports = {
   createServer,
   generateQuoteNumber,
+  handleRequest,
 };
-
-
-
-
-
-
-
-
-
 

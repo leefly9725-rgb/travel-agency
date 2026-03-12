@@ -50,7 +50,7 @@ A lightweight full-stack starter for the internal operations system of LongDings
 - `npm test`: run tests
 
 ## Environment variables
-Copy `.env.example` if you want custom values.
+Use a local `.env` file if you want custom values.
 - `PORT`: server port, default `3000`
 - `DATA_FILE`: seed data path, default `./data/seed.json`
 - `SUPABASE_URL`: Supabase project URL
@@ -72,7 +72,7 @@ Copy `.env.example` if you want custom values.
 ## Supabase preparation
 The app still runs on local JSON by default. Supabase is prepared as the next deployment step and is not forced yet.
 
-1. Create a local `.env` file from `.env.example`
+1. Create or update the local `.env` file
 2. Fill in your Supabase project URL and keys
 3. In Supabase SQL Editor, run `scripts/supabase-schema.sql`
 4. Keep `.env` local only. The repository already ignores it via `.gitignore`
@@ -81,3 +81,4 @@ Current behavior:
 - Local development still reads and writes `data/seed.json`
 - Supabase config is loaded from `.env`
 - `/api/meta` now exposes whether Supabase keys are configured, so we can verify readiness before migration
+
