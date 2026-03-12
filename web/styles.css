@@ -336,9 +336,12 @@ button {
 input,
 select,
 textarea {
+  min-width: 0;
+  min-height: 56px;
   border: 1px solid var(--line);
-  padding: 12px 14px;
-  background: rgba(255, 255, 255, 0.85);
+  padding: 12px 16px;
+  line-height: 1.45;
+  background: rgba(255, 255, 255, 0.92);
 }
 
 input[readonly] {
@@ -352,6 +355,7 @@ textarea:invalid {
 }
 
 textarea {
+  min-height: 132px;
   resize: vertical;
 }
 
@@ -481,18 +485,18 @@ button.ghost,
 }
 
 .template-selector {
-  min-width: 320px;
+  min-width: 0;
   flex: 1;
 }
 
 .quote-item-grid {
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
   gap: 14px 16px;
   margin-top: 14px;
 }
 
 .quote-item-grid-wide {
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  grid-template-columns: repeat(12, minmax(0, 1fr));
 }
 
 .hotel-detail-box,
@@ -515,7 +519,7 @@ button.ghost,
 .vehicle-detail-row,
 .service-detail-row {
   display: grid;
-  grid-template-columns: repeat(10, minmax(110px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   gap: 12px;
   padding: 14px;
   border-radius: 14px;
@@ -524,8 +528,9 @@ button.ghost,
 }
 
 .hotel-detail-note,
-.vehicle-detail-note {
-  grid-column: span 2;
+.vehicle-detail-note,
+.service-detail-note {
+  grid-column: 1 / -1;
 }
 
 .hotel-detail-row label,
@@ -541,7 +546,7 @@ button.ghost,
   gap: 10px;
   align-items: end;
   justify-content: flex-end;
-  grid-column: span 2;
+  grid-column: 1 / -1;
   flex-wrap: wrap;
 }
 
@@ -584,12 +589,24 @@ button.ghost,
   grid-column: span 1;
 }
 
+.quote-item-grid .field-span-1 {
+  grid-column: span 3;
+}
+
 .field-span-2 {
   grid-column: span 2;
 }
 
+.quote-item-grid .field-span-2 {
+  grid-column: span 6;
+}
+
 .field-span-3 {
   grid-column: span 3;
+}
+
+.quote-item-grid .field-span-3 {
+  grid-column: 1 / -1;
 }
 
 .preview-summary-grid,
@@ -683,14 +700,21 @@ button.ghost,
   .inline-form,
   .form-grid-wide,
   .section-grid-wide,
-  .quote-item-grid,
   .preview-summary-grid,
   .preview-metrics-grid {
     grid-template-columns: 1fr;
   }
 
+  .quote-item-grid,
+  .quote-item-grid-wide {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+
   .field-span-2,
-  .field-span-3 {
+  .field-span-3,
+  .quote-item-grid .field-span-1,
+  .quote-item-grid .field-span-2,
+  .quote-item-grid .field-span-3 {
     grid-column: span 1;
   }
 
