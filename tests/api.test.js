@@ -1,4 +1,4 @@
-ï»¿const test = require("node:test");
+const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -94,7 +94,7 @@ test("GET /api/templates returns default templates when local data has none", as
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.ok(payload.length >= 5);
-    assert.equal(payload.some((item) => item.name === "å•†åŠ¡æ¥å¾…åŸºç¡€æ¨¡æ¿"), true);
+    assert.equal(payload.some((item) => item.id === "TPL-business-reception"), true);
   });
 });
 
@@ -104,22 +104,22 @@ test("POST /api/templates creates a custom template", async () => {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: "æµ‹è¯•æ¨¡æ¿",
-        description: "ç”¨äºæµ‹è¯•",
+        name: "²âÊÔÄ£°å",
+        description: "ÓÃÓÚ²âÊÔ",
         items: [
-          { type: "vehicle", name: "æœºåœºæ¥æœº", unit: "è¶Ÿ", currency: "EUR", quantity: 1, notes: "æµ‹è¯•å¤‡æ³¨" }
+          { type: "vehicle", name: "»ú³¡½Ó»ú", unit: "ÌË", currency: "EUR", quantity: 1, notes: "²âÊÔ±¸×¢" }
         ],
       }),
     });
 
     assert.equal(response.status, 201);
     const payload = await response.json();
-    assert.equal(payload.name, "æµ‹è¯•æ¨¡æ¿");
+    assert.equal(payload.name, "²âÊÔÄ£°å");
     assert.equal(payload.items[0].type, "vehicle");
 
     const saved = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
     assert.equal(Array.isArray(saved.templates), true);
-    assert.equal(saved.templates.some((item) => item.name === "æµ‹è¯•æ¨¡æ¿"), true);
+    assert.equal(saved.templates.some((item) => item.name === "²âÊÔÄ£°å"), true);
   });
 });
 
@@ -236,3 +236,5 @@ test("GET /api/projects/:id returns project archive detail with linked flagged q
     assert.equal(payload.linkedDocumentPreviews.length, 5);
   });
 });
+
+
