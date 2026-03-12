@@ -13,13 +13,13 @@ function renderVehicleDetailBlock(item, quoteCurrency) {
         <div class="table-row table-row-wide table-row-split">
           <div>
             <strong>${window.AppUi.getLabel("vehicleDetailTypeLabels", detail.detailType)} / ${detail.vehicleModel}</strong>
-            <p class="meta preview-subline">${detail.vehicleCount} ? / ?? ${detail.billingQuantity} ${window.AppUi.getLabel("vehiclePricingUnitLabels", detail.pricingUnit)} / ?? ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
-            <p class="meta preview-subline">?? ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}??? ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}?/ ?? ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}??? ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}?</p>
-            <p class="meta preview-subline">${detail.notes || "???"}</p>
+            <p class="meta preview-subline">${detail.vehicleCount} 车 / 计费 ${detail.billingQuantity} ${window.AppUi.getLabel("vehiclePricingUnitLabels", detail.pricingUnit)} / 币种 ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
+            <p class="meta preview-subline">成本 ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}）/ 销售 ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}）</p>
+            <p class="meta preview-subline">${detail.notes || "无备注"}</p>
           </div>
           <div class="table-row-values">
-            <span>?? ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}</span>
-            <strong>?? ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}</strong>
+            <span>成本 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}</span>
+            <strong>销售 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}</strong>
           </div>
         </div>
       `).join("")}
@@ -38,13 +38,13 @@ function renderServiceDetailBlock(item, quoteCurrency) {
         <div class="table-row table-row-wide table-row-split">
           <div>
             <strong>${window.AppUi.getLabel("serviceRoleLabels", detail.serviceRole)} / ${window.AppUi.getLabel("serviceLanguageLabels", detail.serviceLanguage)}</strong>
-            <p class="meta preview-subline">${window.AppUi.getLabel("serviceDurationLabels", detail.serviceDuration)} / ?? ${detail.quantity} / ?? ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
-            <p class="meta preview-subline">?? ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}??? ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}?/ ?? ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}??? ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}?</p>
-            <p class="meta preview-subline">${detail.notes || "???"}</p>
+            <p class="meta preview-subline">${window.AppUi.getLabel("serviceDurationLabels", detail.serviceDuration)} / 数量 ${detail.quantity} / 币种 ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
+            <p class="meta preview-subline">成本 ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}）/ 销售 ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}）</p>
+            <p class="meta preview-subline">${detail.notes || "无备注"}</p>
           </div>
           <div class="table-row-values">
-            <span>?? ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}</span>
-            <strong>?? ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}</strong>
+            <span>成本 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}</span>
+            <strong>销售 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}</strong>
           </div>
         </div>
       `).join("")}

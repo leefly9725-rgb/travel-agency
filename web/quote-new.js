@@ -132,14 +132,14 @@ function createItemRow(types, currencies, defaultCurrency) {
       </div>
       <div class="item-card-grid quote-item-grid quote-item-grid-wide">
         <label class="field-block field-span-1"><span>\u670d\u52a1\u7c7b\u578b</span><select name="type">${createOptionList(types, "hotel", "quoteItemTypeLabels")}</select></label>
-        <label class="field-block field-span-2"><span>????</span><input name="name" placeholder="???????????? / ????? / ???? / ????" /></label>
+        <label class="field-block field-span-2"><span>服务名称</span><input name="name" placeholder="例如：贝尔格莱德商务酒店 / 商务车服务 / 商务午餐 / 商务晚餐" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u9879\u76ee\u5e01\u79cd</span><select name="currency">${createOptionList(currencies, defaultCurrency, "currencyLabels")}</select></label>
         <label class="field-block field-span-1"><span>\u5355\u4f4d</span><input name="unit" placeholder="\u4f8b\u5982\uff1a\u9879 / \u8d9f / \u4eba / \u5929" value="\u9879" /></label>
         <label class="field-block field-span-2"><span>\u4f9b\u5e94\u5546</span><input name="supplier" placeholder="\u4f8b\u5982\uff1a\u5f53\u5730\u9152\u5e97\u3001\u8f66\u961f\u3001\u5730\u63a5\u4f9b\u5e94\u5546" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u6570\u91cf</span><input name="quantity" type="number" step="1" placeholder="1" value="1" min="1" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u6210\u672c\u5355\u4ef7</span><input name="cost" type="number" step="0.01" placeholder="0.00" min="0" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u9500\u552e\u5355\u4ef7</span><input name="price" type="number" step="0.01" placeholder="0.00" min="0" /></label>
-        <label class="field-block field-span-3"><span>????</span><input name="notes" placeholder="????????????????????????" /></label>
+        <label class="field-block field-span-3"><span>备注说明</span><input name="notes" placeholder="例如：安排午餐和晚餐、司机会中文、按实际人数结算" /></label>
       </div>
       <section class="hotel-detail-box hidden">
         <div class="panel-head form-section-head-row hotel-detail-head">
@@ -790,18 +790,18 @@ async function bootstrap() {
       detailDefaults.forEach((detail) => addServiceDetailRow(row, detail));
     };
 
-    const genericNamePlaceholder = "???????????? / ????? / ???? / ????";
-    const genericNotesPlaceholder = "????????????????????????";
+    const genericNamePlaceholder = "例如：贝尔格莱德商务酒店 / 商务车服务 / 商务午餐 / 商务晚餐";
+    const genericNotesPlaceholder = "例如：安排午餐和晚餐、司机会中文、按实际人数结算";
 
     const applyTypeFieldHints = () => {
       nameField.placeholder = genericNamePlaceholder;
       notesField.placeholder = genericNotesPlaceholder;
 
       if (typeField.value === "dining") {
-        nameField.placeholder = "??????? / ???? / ????";
-        notesField.placeholder = "???????????????????????????";
+        nameField.placeholder = "例如：商务午餐 / 商务晚餐 / 欢迎晚宴";
+        notesField.placeholder = "例如：默认安排午餐和晚餐，不含早餐；可按人数和天数调整";
         if (!nameField.value.trim()) {
-          nameField.value = "???? / ????";
+          nameField.value = "商务午餐 / 晚餐安排";
         }
         if (!unitField.value.trim() || unitField.value.trim() === "?") {
           unitField.value = "?";
@@ -810,17 +810,17 @@ async function bootstrap() {
           quantityField.value = 2;
         }
         if (!notesField.value.trim()) {
-          notesField.value = "???????????????????????????";
+          notesField.value = "默认安排午餐和晚餐，不含早餐，可按实际人数与天数调整。";
         }
         return;
       }
 
       if (typeField.value === "hotel") {
-        nameField.placeholder = "???????????? / ??????";
+        nameField.placeholder = "例如：贝尔格莱德商务酒店 / 诺维萨德酒店";
       } else if (typeField.value === "vehicle") {
-        nameField.placeholder = "???????? / ???? / ????";
+        nameField.placeholder = "例如：商务车服务 / 机场接送 / 全天用车";
       } else if (["guide", "interpreter"].includes(typeField.value)) {
-        nameField.placeholder = "????????? / ??????";
+        nameField.placeholder = "例如：中文导游服务 / 商务翻译服务";
       }
     };
 
@@ -836,7 +836,7 @@ async function bootstrap() {
         unitField.value = "服务";
         ensureServiceDetails();
       } else if (typeField.value === "dining") {
-        if (!unitField.value.trim() || ["??", "??", "??", "?"].includes(unitField.value.trim())) {
+        if (!unitField.value.trim() || ["酒店", "用车", "服务", "项"].includes(unitField.value.trim())) {
           unitField.value = "?";
         }
       } else if (!unitField.value.trim() || ["酒店", "用车", "服务"].includes(unitField.value.trim())) {
