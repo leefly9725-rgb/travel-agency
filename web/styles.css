@@ -840,3 +840,8 @@ button.ghost,
     grid-template-columns: 1fr;
   }
 }
+.hotel-summary-tip {
+  margin-top: 14px;
+  margin-bottom: 0;
+  color: var(--accent);
+}

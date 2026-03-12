@@ -134,13 +134,16 @@ function createItemRow(types, currencies, defaultCurrency) {
         <label class="field-block field-span-1"><span>服务类型</span><select name="type">${createOptionList(types, "hotel", "quoteItemTypeLabels")}</select></label>
         <label class="field-block field-span-2"><span>服务名称</span><input name="name" placeholder="例如：贝尔格莱德商务酒店 / 商务车服务 / 商务午餐 / 商务晚餐" /></label>
         <label class="field-block field-span-1"><span>项目币种</span><select name="currency">${createOptionList(currencies, defaultCurrency, "currencyLabels")}</select></label>
-        <label class="field-block field-span-1 meal-generic-field"><span>单位</span><input name="unit" placeholder="例如：项 / 趟 / 人 / 天" value="项" /></label>
+        <label class="field-block field-span-1 common-unit-field meal-generic-field"><span>单位</span><input name="unit" placeholder="例如：项 / 趟 / 人 / 天" value="项" /></label>
         <label class="field-block field-span-2"><span>供应商</span><input name="supplier" placeholder="例如：当地酒店、车队、餐厅、地接供应商" /></label>
         <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>数量</span><input name="quantity" type="number" step="1" placeholder="1" value="1" min="1" /></label>
         <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>成本单价</span><input name="cost" type="number" step="0.01" placeholder="0.00" min="0" /></label>
         <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>销售单价</span><input name="price" type="number" step="0.01" placeholder="0.00" min="0" /></label>
+        <label class="field-block field-span-1 hotel-summary-field hidden"><span>成本合计</span><input name="hotelCostTotal" readonly /></label>
+        <label class="field-block field-span-1 hotel-summary-field hidden"><span>销售合计</span><input name="hotelPriceTotal" readonly /></label>
         <label class="field-block field-span-3"><span>备注说明</span><input name="notes" placeholder="例如：安排午餐和晚餐、司机会中文、按实际人数结算" /></label>
       </div>
+      <p class="meta hotel-summary-tip hotel-summary-field hidden">金额由酒店明细自动汇总，如需修改请编辑酒店明细。</p>
       <section class="hotel-detail-box hidden">
         <div class="panel-head form-section-head-row hotel-detail-head">
           <div>
@@ -442,7 +445,12 @@ function refreshDetailSummary(row, detailRows, calculator, totalSelector, unitVa
 }
 
 function refreshHotelItemSummary(row, quoteCurrency) {
-  refreshDetailSummary(row, getHotelDetailRows(row), calculateHotelSubtotals, '.hotel-total-value', '酒店', quoteCurrency);
+  const detailRows = getHotelDetailRows(row);
+  refreshDetailSummary(row, detailRows, calculateHotelSubtotals, '.hotel-total-value', '酒店', quoteCurrency);
+  const totalCostOriginal = detailRows.reduce((sum, detail) => sum + calculateHotelSubtotals(detail).costSubtotal, 0);
+  const totalPriceOriginal = detailRows.reduce((sum, detail) => sum + calculateHotelSubtotals(detail).priceSubtotal, 0);
+  row.querySelector('[name="hotelCostTotal"]').value = window.AppUtils.formatCurrency(totalCostOriginal, quoteCurrency || 'EUR');
+  row.querySelector('[name="hotelPriceTotal"]').value = window.AppUtils.formatCurrency(totalPriceOriginal, quoteCurrency || 'EUR');
 }
 
 function refreshVehicleItemSummary(row, quoteCurrency) {
@@ -478,6 +486,8 @@ function toggleDetailFields(row) {
   const mealBox = row.querySelector('.meal-detail-box');
   const simpleFields = row.querySelectorAll('.simple-pricing-field');
   const mealGenericFields = row.querySelectorAll('.meal-generic-field');
+  const hotelSummaryFields = row.querySelectorAll('.hotel-summary-field');
+  const commonUnitFields = row.querySelectorAll('.common-unit-field');
 
   if (type === "hotel") {
     hotelBox.classList.remove("hidden");
@@ -486,6 +496,8 @@ function toggleDetailFields(row) {
     mealBox.classList.add("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
     mealGenericFields.forEach((field) => field.classList.remove("hidden"));
+    commonUnitFields.forEach((field) => field.classList.add("hidden"));
+    hotelSummaryFields.forEach((field) => field.classList.remove("hidden"));
     return;
   }
 
@@ -496,6 +508,8 @@ function toggleDetailFields(row) {
     mealBox.classList.add("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
     mealGenericFields.forEach((field) => field.classList.remove("hidden"));
+    commonUnitFields.forEach((field) => field.classList.remove("hidden"));
+    hotelSummaryFields.forEach((field) => field.classList.add("hidden"));
     return;
   }
 
@@ -506,6 +520,8 @@ function toggleDetailFields(row) {
     mealBox.classList.add("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
     mealGenericFields.forEach((field) => field.classList.remove("hidden"));
+    commonUnitFields.forEach((field) => field.classList.remove("hidden"));
+    hotelSummaryFields.forEach((field) => field.classList.add("hidden"));
     return;
   }
 
@@ -516,6 +532,7 @@ function toggleDetailFields(row) {
     mealBox.classList.remove("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
     mealGenericFields.forEach((field) => field.classList.add("hidden"));
+    hotelSummaryFields.forEach((field) => field.classList.add("hidden"));
     return;
   }
 
@@ -525,6 +542,8 @@ function toggleDetailFields(row) {
   mealBox.classList.add("hidden");
   simpleFields.forEach((field) => field.classList.remove("hidden"));
   mealGenericFields.forEach((field) => field.classList.remove("hidden"));
+  commonUnitFields.forEach((field) => field.classList.remove("hidden"));
+  hotelSummaryFields.forEach((field) => field.classList.add("hidden"));
 }
 
 function validateQuoteForm(form) {
