@@ -77,6 +77,31 @@ function renderHotelDetailBlock(item, quoteCurrency) {
   `;
 }
 
+function renderMealDetailBlock(item, quoteCurrency) {
+  if (!item.mealDetails) {
+    return "";
+  }
+
+  const detail = item.mealDetails;
+  return `
+    <div class="meal-detail-preview section-spacing-sm">
+      <div class="table-row table-row-wide">
+        <div>
+          <strong>计价方式：人数 × 餐次 × 餐标</strong>
+          <p class="meta preview-subline">用餐人数 ${detail.mealPeople} 人 / 行程天数 ${detail.tripDays} 天 / 币种 ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
+          <p class="meta preview-subline">午餐 ${detail.includeLunch ? "计算" : "不计算"}，次数 ${detail.lunchCount}，总额 ${window.AppUtils.formatCurrency(detail.lunchTotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.lunchTotal, quoteCurrency)}）</p>
+          <p class="meta preview-subline">晚餐 ${detail.includeDinner ? "计算" : "不计算"}，次数 ${detail.dinnerCount}，总额 ${window.AppUtils.formatCurrency(detail.dinnerTotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.dinnerTotal, quoteCurrency)}）</p>
+          <p class="meta preview-subline">首日午餐：${detail.firstDayLunch ? "包含" : "不含"} / 首日晚餐：${detail.firstDayDinner ? "包含" : "不含"} / 末日午餐：${detail.lastDayLunch ? "包含" : "不含"} / 末日晚餐：${detail.lastDayDinner ? "包含" : "不含"}</p>
+        </div>
+        <div class="table-row-values">
+          <span>用餐合计</span>
+          <strong>${window.AppUtils.formatCurrency(detail.totalAmount, quoteCurrency)}</strong>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
 async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
   const params = new URLSearchParams(window.location.search);
@@ -133,8 +158,15 @@ async function bootstrap() {
             <div class="table-row table-row-wide table-row-split">
               <div>
                 <strong>${window.AppUi.getLabel("quoteItemTypeLabels", item.type)} / ${item.name}</strong>
-                <p class="meta preview-subline">${item.type === "hotel" ? `酒店成本合计 ${window.AppUtils.formatCurrency(item.totalCost, quote.currency)} / 酒店售价合计 ${window.AppUtils.formatCurrency(item.totalPrice, quote.currency)}` : `${item.quantity} ${item.unit}，原币种 ${window.AppUtils.formatCurrency(item.totalPriceOriginal, item.currency)}，折算后 ${window.AppUtils.formatCurrency(item.totalPrice, quote.currency)}`}</p>
-                ${item.type === "hotel" ? renderHotelDetailBlock(item, quote.currency) : ""}${item.type === "vehicle" ? renderVehicleDetailBlock(item, quote.currency) : ""}${["guide", "interpreter"].includes(item.type) ? renderServiceDetailBlock(item, quote.currency) : ""}
+                <p class="meta preview-subline">${item.type === "hotel"
+                  ? `酒店成本合计 ${window.AppUtils.formatCurrency(item.totalCost, quote.currency)} / 酒店售价合计 ${window.AppUtils.formatCurrency(item.totalPrice, quote.currency)}`
+                  : item.type === "dining" && item.mealDetails
+                    ? `用餐合计 ${window.AppUtils.formatCurrency(item.mealDetails.totalAmountOriginal, item.mealDetails.currency)}，折算后 ${window.AppUtils.formatCurrency(item.totalPrice, quote.currency)}`
+                    : `${item.quantity} ${item.unit}，原币种 ${window.AppUtils.formatCurrency(item.totalPriceOriginal, item.currency)}，折算后 ${window.AppUtils.formatCurrency(item.totalPrice, quote.currency)}`}</p>
+                ${item.type === "hotel" ? renderHotelDetailBlock(item, quote.currency) : ""}
+                ${item.type === "vehicle" ? renderVehicleDetailBlock(item, quote.currency) : ""}
+                ${["guide", "interpreter"].includes(item.type) ? renderServiceDetailBlock(item, quote.currency) : ""}
+                ${item.type === "dining" ? renderMealDetailBlock(item, quote.currency) : ""}
               </div>
               <div class="table-row-values">
                 <span>成本 ${window.AppUtils.formatCurrency(item.totalCost, quote.currency)}</span>

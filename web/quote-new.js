@@ -125,63 +125,110 @@ function createItemRow(types, currencies, defaultCurrency) {
     <section class="item-card quote-item-row">
       <div class="item-card-head">
         <div>
-          <strong>\u62a5\u4ef7\u9879\u76ee</strong>
-          <p class="meta">\u9009\u62e9\u670d\u52a1\u7c7b\u578b\u540e\uff0c\u53ef\u7ee7\u7eed\u7f16\u8f91\u540d\u79f0\u3001\u5e01\u79cd\u3001\u6570\u91cf\u3001\u6210\u672c\u4e0e\u552e\u4ef7\uff1b\u9152\u5e97\u3001\u7528\u8f66\u3001\u5bfc\u6e38\u548c\u7ffb\u8bd1\u7c7b\u578b\u652f\u6301\u660e\u7ec6\u5f55\u5165\u3002</p>
+          <strong>报价项目</strong>
+          <p class="meta">选择服务类型后，可继续编辑名称、币种、供应商和备注；酒店、用车、导游翻译与用餐类型支持专用录入模型。</p>
         </div>
-        <button type="button" class="ghost mini-button delete-item">\u5220\u9664\u6b64\u9879</button>
+        <button type="button" class="ghost mini-button delete-item">删除此项</button>
       </div>
       <div class="item-card-grid quote-item-grid quote-item-grid-wide">
-        <label class="field-block field-span-1"><span>\u670d\u52a1\u7c7b\u578b</span><select name="type">${createOptionList(types, "hotel", "quoteItemTypeLabels")}</select></label>
+        <label class="field-block field-span-1"><span>服务类型</span><select name="type">${createOptionList(types, "hotel", "quoteItemTypeLabels")}</select></label>
         <label class="field-block field-span-2"><span>服务名称</span><input name="name" placeholder="例如：贝尔格莱德商务酒店 / 商务车服务 / 商务午餐 / 商务晚餐" /></label>
-        <label class="field-block field-span-1 simple-pricing-field"><span>\u9879\u76ee\u5e01\u79cd</span><select name="currency">${createOptionList(currencies, defaultCurrency, "currencyLabels")}</select></label>
-        <label class="field-block field-span-1"><span>\u5355\u4f4d</span><input name="unit" placeholder="\u4f8b\u5982\uff1a\u9879 / \u8d9f / \u4eba / \u5929" value="\u9879" /></label>
-        <label class="field-block field-span-2"><span>\u4f9b\u5e94\u5546</span><input name="supplier" placeholder="\u4f8b\u5982\uff1a\u5f53\u5730\u9152\u5e97\u3001\u8f66\u961f\u3001\u5730\u63a5\u4f9b\u5e94\u5546" /></label>
-        <label class="field-block field-span-1 simple-pricing-field"><span>\u6570\u91cf</span><input name="quantity" type="number" step="1" placeholder="1" value="1" min="1" /></label>
-        <label class="field-block field-span-1 simple-pricing-field"><span>\u6210\u672c\u5355\u4ef7</span><input name="cost" type="number" step="0.01" placeholder="0.00" min="0" /></label>
-        <label class="field-block field-span-1 simple-pricing-field"><span>\u9500\u552e\u5355\u4ef7</span><input name="price" type="number" step="0.01" placeholder="0.00" min="0" /></label>
+        <label class="field-block field-span-1"><span>项目币种</span><select name="currency">${createOptionList(currencies, defaultCurrency, "currencyLabels")}</select></label>
+        <label class="field-block field-span-1 meal-generic-field"><span>单位</span><input name="unit" placeholder="例如：项 / 趟 / 人 / 天" value="项" /></label>
+        <label class="field-block field-span-2"><span>供应商</span><input name="supplier" placeholder="例如：当地酒店、车队、餐厅、地接供应商" /></label>
+        <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>数量</span><input name="quantity" type="number" step="1" placeholder="1" value="1" min="1" /></label>
+        <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>成本单价</span><input name="cost" type="number" step="0.01" placeholder="0.00" min="0" /></label>
+        <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>销售单价</span><input name="price" type="number" step="0.01" placeholder="0.00" min="0" /></label>
         <label class="field-block field-span-3"><span>备注说明</span><input name="notes" placeholder="例如：安排午餐和晚餐、司机会中文、按实际人数结算" /></label>
       </div>
       <section class="hotel-detail-box hidden">
         <div class="panel-head form-section-head-row hotel-detail-head">
           <div>
-            <h3>\u9152\u5e97\u660e\u7ec6</h3>
-            <p class="meta">\u652f\u6301\u540c\u4e00\u5bb6\u9152\u5e97\u4e0b\u5f55\u5165\u591a\u4e2a\u623f\u578b\u3001\u623f\u95f4\u6570\u3001\u665a\u6570\u3001\u6bcf\u665a\u6210\u672c\u4ef7\u548c\u6bcf\u665a\u9500\u552e\u4ef7\u3002</p>
-            <p class="hotel-detail-tip">\u9ed8\u8ba4\u6309\u5f53\u524d\u884c\u7a0b\u5929\u6570\u5e26\u51fa\u665a\u6570\uff0c\u540e\u7eed\u53ef\u6309\u623f\u578b\u5355\u72ec\u8c03\u6574\u3002</p>
+            <h3>酒店明细</h3>
+            <p class="meta">支持同一家酒店下录入多个房型、房间数、晚数、每晚成本价和每晚销售价。</p>
+            <p class="hotel-detail-tip">默认按当前行程天数带出晚数，后续可按房型单独调整。</p>
           </div>
-          <button type="button" class="ghost add-hotel-detail">\u65b0\u589e\u623f\u578b\u660e\u7ec6</button>
+          <button type="button" class="ghost add-hotel-detail">新增房型明细</button>
         </div>
         <div class="hotel-detail-list stack"></div>
         <div class="hotel-detail-summary">
-          <span>\u9152\u5e97\u5408\u8ba1</span>
-          <strong class="hotel-total-value">\u6210\u672c ${window.AppUtils.formatCurrency(0, defaultCurrency)} / \u9500\u552e ${window.AppUtils.formatCurrency(0, defaultCurrency)}</strong>
+          <span>酒店合计</span>
+          <strong class="hotel-total-value">成本 ${window.AppUtils.formatCurrency(0, defaultCurrency)} / 销售 ${window.AppUtils.formatCurrency(0, defaultCurrency)}</strong>
         </div>
       </section>
       <section class="vehicle-detail-box hidden">
         <div class="panel-head form-section-head-row vehicle-detail-head">
           <div>
-            <h3>\u7528\u8f66\u660e\u7ec6</h3>
-            <p class="meta">\u652f\u6301\u540c\u4e00\u6761\u7528\u8f66\u9879\u76ee\u4e0b\u5f55\u5165\u63a5\u673a\u3001\u9001\u673a\u3001\u5168\u5929\u7b49\u591a\u6761\u660e\u7ec6\uff0c\u5e76\u81ea\u52a8\u6c47\u603b\u6210\u672c\u4e0e\u9500\u552e\u91d1\u989d\u3002</p>
+            <h3>用车明细</h3>
+            <p class="meta">支持同一条用车项目下录入接机、送机、全天等多条明细，并自动汇总成本与销售金额。</p>
           </div>
-          <button type="button" class="ghost add-vehicle-detail">\u65b0\u589e\u7528\u8f66\u660e\u7ec6</button>
+          <button type="button" class="ghost add-vehicle-detail">新增用车明细</button>
         </div>
         <div class="vehicle-detail-list stack"></div>
         <div class="vehicle-detail-summary">
-          <span>\u7528\u8f66\u5408\u8ba1</span>
-          <strong class="vehicle-total-value">\u6210\u672c ${window.AppUtils.formatCurrency(0, defaultCurrency)} / \u9500\u552e ${window.AppUtils.formatCurrency(0, defaultCurrency)}</strong>
+          <span>用车合计</span>
+          <strong class="vehicle-total-value">成本 ${window.AppUtils.formatCurrency(0, defaultCurrency)} / 销售 ${window.AppUtils.formatCurrency(0, defaultCurrency)}</strong>
         </div>
       </section>
       <section class="service-detail-box hidden">
         <div class="panel-head form-section-head-row service-detail-head">
           <div>
-            <h3>\u670d\u52a1\u660e\u7ec6</h3>
-            <p class="meta">\u5bfc\u6e38\u548c\u7ffb\u8bd1\u9879\u76ee\u53ef\u6309\u89d2\u8272\u3001\u8bed\u8a00\u3001\u670d\u52a1\u65f6\u957f\u62c6\u5206\u591a\u6761\u660e\u7ec6\uff0c\u5e76\u81ea\u52a8\u6c47\u603b\u6210\u672c\u4e0e\u9500\u552e\u91d1\u989d\u3002</p>
+            <h3>服务明细</h3>
+            <p class="meta">导游和翻译项目可按角色、语言、服务时长拆分多条明细，并自动汇总成本与销售金额。</p>
           </div>
-          <button type="button" class="ghost add-service-detail">\u65b0\u589e\u670d\u52a1\u660e\u7ec6</button>
+          <button type="button" class="ghost add-service-detail">新增服务明细</button>
         </div>
         <div class="service-detail-list stack"></div>
         <div class="service-detail-summary">
-          <span>\u670d\u52a1\u5408\u8ba1</span>
-          <strong class="service-total-value">\u6210\u672c ${window.AppUtils.formatCurrency(0, defaultCurrency)} / \u9500\u552e ${window.AppUtils.formatCurrency(0, defaultCurrency)}</strong>
+          <span>服务合计</span>
+          <strong class="service-total-value">成本 ${window.AppUtils.formatCurrency(0, defaultCurrency)} / 销售 ${window.AppUtils.formatCurrency(0, defaultCurrency)}</strong>
+        </div>
+      </section>
+      <section class="meal-detail-box hidden">
+        <div class="panel-head">
+          <div>
+            <h3>用餐专用录入区</h3>
+            <p class="meta">用餐不含早餐，仅按午餐与晚餐自动计算。项目币种、供应商和备注说明请在上方基础字段填写。</p>
+            <p class="meal-formula-note">计价方式：人数 × 餐次 × 餐标</p>
+          </div>
+        </div>
+        <div class="review-note meal-legacy-note hidden"></div>
+        <div class="meal-detail-panels">
+          <section class="meal-detail-panel">
+            <h4>基础信息</h4>
+            <div class="meal-detail-grid">
+              <label><span>用餐人数</span><input name="mealPeople" type="number" min="0" step="1" value="0" /></label>
+              <label><span>行程天数</span><input name="mealTripDays" type="number" min="0" step="1" value="0" /></label>
+            </div>
+          </section>
+          <section class="meal-detail-panel">
+            <h4>餐次设置</h4>
+            <div class="meal-toggle-grid">
+              <label class="meal-toggle"><input name="includeLunch" type="checkbox" checked /><span>是否计算午餐</span></label>
+              <label><span>午餐餐标</span><input name="lunchPrice" type="number" min="0" step="0.01" value="0" /></label>
+              <label class="meal-toggle"><input name="includeDinner" type="checkbox" checked /><span>是否计算晚餐</span></label>
+              <label><span>晚餐餐标</span><input name="dinnerPrice" type="number" min="0" step="0.01" value="0" /></label>
+            </div>
+          </section>
+          <section class="meal-detail-panel">
+            <h4>首尾天规则</h4>
+            <div class="meal-toggle-grid">
+              <label class="meal-toggle"><input name="firstDayLunch" type="checkbox" checked /><span>首日是否包含午餐</span></label>
+              <label class="meal-toggle"><input name="firstDayDinner" type="checkbox" checked /><span>首日是否包含晚餐</span></label>
+              <label class="meal-toggle"><input name="lastDayLunch" type="checkbox" checked /><span>末日是否包含午餐</span></label>
+              <label class="meal-toggle"><input name="lastDayDinner" type="checkbox" checked /><span>末日是否包含晚餐</span></label>
+            </div>
+          </section>
+          <section class="meal-detail-panel meal-result-panel">
+            <h4>自动计算结果</h4>
+            <div class="meal-result-grid">
+              <label><span>午餐次数</span><input name="lunchCount" readonly /></label>
+              <label><span>晚餐次数</span><input name="dinnerCount" readonly /></label>
+              <label><span>午餐总额</span><input name="lunchTotal" readonly /></label>
+              <label><span>晚餐总额</span><input name="dinnerTotal" readonly /></label>
+              <label><span>用餐合计</span><input name="mealTotal" readonly /></label>
+            </div>
+          </section>
         </div>
       </section>
     </section>
@@ -227,21 +274,108 @@ function getServiceDetailRows(row) {
   })).filter((detail) => detail.notes || detail.serviceRole !== "guide" || detail.serviceLanguage !== "zh" || detail.serviceDuration !== "full_day" || detail.quantity !== 1 || detail.costUnitPrice !== 0 || detail.priceUnitPrice !== 0);
 }
 
+function calculateMealSummary(detail) {
+  const mealPeople = Math.max(Number(detail.mealPeople || 0), 0);
+  const tripDays = Math.max(Number(detail.tripDays || 0), 0);
+  const includeLunch = Boolean(detail.includeLunch);
+  const lunchPrice = Math.max(Number(detail.lunchPrice || 0), 0);
+  const includeDinner = Boolean(detail.includeDinner);
+  const dinnerPrice = Math.max(Number(detail.dinnerPrice || 0), 0);
+  const firstDayLunch = Boolean(detail.firstDayLunch);
+  const firstDayDinner = Boolean(detail.firstDayDinner);
+  const lastDayLunch = Boolean(detail.lastDayLunch);
+  const lastDayDinner = Boolean(detail.lastDayDinner);
+
+  let lunchCount = 0;
+  if (includeLunch) {
+    lunchCount = tripDays;
+    if (!firstDayLunch) {
+      lunchCount -= 1;
+    }
+    if (!lastDayLunch) {
+      lunchCount -= 1;
+    }
+    lunchCount = Math.max(lunchCount, 0);
+  }
+
+  let dinnerCount = 0;
+  if (includeDinner) {
+    dinnerCount = tripDays;
+    if (!firstDayDinner) {
+      dinnerCount -= 1;
+    }
+    if (!lastDayDinner) {
+      dinnerCount -= 1;
+    }
+    dinnerCount = Math.max(dinnerCount, 0);
+  }
+
+  const lunchTotal = mealPeople * lunchCount * lunchPrice;
+  const dinnerTotal = mealPeople * dinnerCount * dinnerPrice;
+  const totalAmount = lunchTotal + dinnerTotal;
+
+  return {
+    mealPeople,
+    tripDays,
+    includeLunch,
+    lunchPrice,
+    includeDinner,
+    dinnerPrice,
+    firstDayLunch,
+    firstDayDinner,
+    lastDayLunch,
+    lastDayDinner,
+    lunchCount,
+    dinnerCount,
+    lunchTotal,
+    dinnerTotal,
+    totalAmount,
+  };
+}
+
+function getMealDetails(row) {
+  const currency = row.querySelector('[name="currency"]').value || "EUR";
+  const detail = {
+    mealPeople: Number(row.querySelector('[name="mealPeople"]').value || 0),
+    tripDays: Number(row.querySelector('[name="mealTripDays"]').value || 0),
+    includeLunch: row.querySelector('[name="includeLunch"]').checked,
+    lunchPrice: Number(row.querySelector('[name="lunchPrice"]').value || 0),
+    includeDinner: row.querySelector('[name="includeDinner"]').checked,
+    dinnerPrice: Number(row.querySelector('[name="dinnerPrice"]').value || 0),
+    firstDayLunch: row.querySelector('[name="firstDayLunch"]').checked,
+    firstDayDinner: row.querySelector('[name="firstDayDinner"]').checked,
+    lastDayLunch: row.querySelector('[name="lastDayLunch"]').checked,
+    lastDayDinner: row.querySelector('[name="lastDayDinner"]').checked,
+    currency,
+  };
+
+  return {
+    ...detail,
+    ...calculateMealSummary(detail),
+  };
+}
+
 function getItemRows() {
-  return Array.from(document.querySelectorAll(".item-card")).map((row) => ({
-    type: row.querySelector('[name="type"]').value,
-    name: row.querySelector('[name="name"]').value.trim(),
-    unit: row.querySelector('[name="unit"]').value.trim(),
-    supplier: row.querySelector('[name="supplier"]').value.trim(),
-    currency: row.querySelector('[name="currency"]').value,
-    cost: Number(row.querySelector('[name="cost"]').value || 0),
-    price: Number(row.querySelector('[name="price"]').value || 0),
-    quantity: Number(row.querySelector('[name="quantity"]').value || 0),
-    notes: row.querySelector('[name="notes"]').value.trim(),
-    hotelDetails: getHotelDetailRows(row),
-    vehicleDetails: getVehicleDetailRows(row),
-    serviceDetails: getServiceDetailRows(row),
-  })).filter((item) => item.name || item.supplier || item.cost || item.price || item.quantity !== 1 || item.notes || item.hotelDetails.length > 0 || item.vehicleDetails.length > 0 || item.serviceDetails.length > 0);
+  return Array.from(document.querySelectorAll(".item-card")).map((row) => {
+    const type = row.querySelector('[name="type"]').value;
+    const isLegacyDining = type === "dining" && row.dataset.legacyDining === "true" && row.dataset.mealTouched !== "true";
+    const mealDetails = type === "dining" && !isLegacyDining ? getMealDetails(row) : null;
+    return {
+      type,
+      name: row.querySelector('[name="name"]').value.trim(),
+      unit: row.querySelector('[name="unit"]').value.trim(),
+      supplier: row.querySelector('[name="supplier"]').value.trim(),
+      currency: row.querySelector('[name="currency"]').value,
+      cost: mealDetails ? 0 : Number(row.querySelector('[name="cost"]').value || 0),
+      price: mealDetails ? 0 : Number(row.querySelector('[name="price"]').value || 0),
+      quantity: mealDetails ? 1 : Number(row.querySelector('[name="quantity"]').value || 0),
+      notes: row.querySelector('[name="notes"]').value.trim(),
+      hotelDetails: getHotelDetailRows(row),
+      vehicleDetails: getVehicleDetailRows(row),
+      serviceDetails: getServiceDetailRows(row),
+      mealDetails,
+    };
+  }).filter((item) => item.name || item.supplier || item.cost || item.price || item.quantity !== 1 || item.notes || item.hotelDetails.length > 0 || item.vehicleDetails.length > 0 || item.serviceDetails.length > 0 || item.mealDetails);
 }
 function calculateHotelSubtotals(detail) {
   return {
@@ -304,19 +438,36 @@ function refreshDetailSummary(row, detailRows, calculator, totalSelector, unitVa
   row.querySelector('[name="price"]').value = totalPriceOriginal ? totalPriceOriginal.toFixed(2) : "";
   row.querySelector('[name="quantity"]').value = 1;
   row.querySelector('[name="unit"]').value = unitValue;
-  row.querySelector(totalSelector).textContent = `\u6210\u672c ${window.AppUtils.formatCurrency(totalCostOriginal, quoteCurrency || "EUR")} / \u9500\u552e ${window.AppUtils.formatCurrency(totalPriceOriginal, quoteCurrency || "EUR")}`;
+  row.querySelector(totalSelector).textContent = `成本 ${window.AppUtils.formatCurrency(totalCostOriginal, quoteCurrency || "EUR")} / 销售 ${window.AppUtils.formatCurrency(totalPriceOriginal, quoteCurrency || "EUR")}`;
 }
 
 function refreshHotelItemSummary(row, quoteCurrency) {
-  refreshDetailSummary(row, getHotelDetailRows(row), calculateHotelSubtotals, '.hotel-total-value', '\u9152\u5e97', quoteCurrency);
+  refreshDetailSummary(row, getHotelDetailRows(row), calculateHotelSubtotals, '.hotel-total-value', '酒店', quoteCurrency);
 }
 
 function refreshVehicleItemSummary(row, quoteCurrency) {
-  refreshDetailSummary(row, getVehicleDetailRows(row), calculateVehicleSubtotals, '.vehicle-total-value', '\u7528\u8f66', quoteCurrency);
+  refreshDetailSummary(row, getVehicleDetailRows(row), calculateVehicleSubtotals, '.vehicle-total-value', '用车', quoteCurrency);
 }
 
 function refreshServiceItemSummary(row, quoteCurrency) {
-  refreshDetailSummary(row, getServiceDetailRows(row), calculateServiceSubtotals, '.service-total-value', '\u670d\u52a1', quoteCurrency);
+  refreshDetailSummary(row, getServiceDetailRows(row), calculateServiceSubtotals, '.service-total-value', '服务', quoteCurrency);
+}
+
+function refreshMealItemSummary(row, quoteCurrency) {
+  if (row.querySelector('[name="type"]').value !== "dining") {
+    return;
+  }
+  const detail = getMealDetails(row);
+  const currency = row.querySelector('[name="currency"]').value || quoteCurrency || "EUR";
+  row.querySelector('[name="unit"]').value = '用餐';
+  row.querySelector('[name="quantity"]').value = 1;
+  row.querySelector('[name="cost"]').value = detail.totalAmount ? detail.totalAmount.toFixed(2) : '';
+  row.querySelector('[name="price"]').value = detail.totalAmount ? detail.totalAmount.toFixed(2) : '';
+  row.querySelector('[name="lunchCount"]').value = `${detail.lunchCount} 次`;
+  row.querySelector('[name="dinnerCount"]').value = `${detail.dinnerCount} 次`;
+  row.querySelector('[name="lunchTotal"]').value = window.AppUtils.formatCurrency(detail.lunchTotal, currency);
+  row.querySelector('[name="dinnerTotal"]').value = window.AppUtils.formatCurrency(detail.dinnerTotal, currency);
+  row.querySelector('[name="mealTotal"]').value = window.AppUtils.formatCurrency(detail.totalAmount, currency);
 }
 
 function toggleDetailFields(row) {
@@ -324,13 +475,17 @@ function toggleDetailFields(row) {
   const hotelBox = row.querySelector('.hotel-detail-box');
   const vehicleBox = row.querySelector('.vehicle-detail-box');
   const serviceBox = row.querySelector('.service-detail-box');
+  const mealBox = row.querySelector('.meal-detail-box');
   const simpleFields = row.querySelectorAll('.simple-pricing-field');
+  const mealGenericFields = row.querySelectorAll('.meal-generic-field');
 
   if (type === "hotel") {
     hotelBox.classList.remove("hidden");
     vehicleBox.classList.add("hidden");
     serviceBox.classList.add("hidden");
+    mealBox.classList.add("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
+    mealGenericFields.forEach((field) => field.classList.remove("hidden"));
     return;
   }
 
@@ -338,7 +493,9 @@ function toggleDetailFields(row) {
     hotelBox.classList.add("hidden");
     vehicleBox.classList.remove("hidden");
     serviceBox.classList.add("hidden");
+    mealBox.classList.add("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
+    mealGenericFields.forEach((field) => field.classList.remove("hidden"));
     return;
   }
 
@@ -346,14 +503,28 @@ function toggleDetailFields(row) {
     hotelBox.classList.add("hidden");
     vehicleBox.classList.add("hidden");
     serviceBox.classList.remove("hidden");
+    mealBox.classList.add("hidden");
     simpleFields.forEach((field) => field.classList.add("hidden"));
+    mealGenericFields.forEach((field) => field.classList.remove("hidden"));
+    return;
+  }
+
+  if (type === "dining") {
+    hotelBox.classList.add("hidden");
+    vehicleBox.classList.add("hidden");
+    serviceBox.classList.add("hidden");
+    mealBox.classList.remove("hidden");
+    simpleFields.forEach((field) => field.classList.add("hidden"));
+    mealGenericFields.forEach((field) => field.classList.add("hidden"));
     return;
   }
 
   hotelBox.classList.add("hidden");
   vehicleBox.classList.add("hidden");
   serviceBox.classList.add("hidden");
+  mealBox.classList.add("hidden");
   simpleFields.forEach((field) => field.classList.remove("hidden"));
+  mealGenericFields.forEach((field) => field.classList.remove("hidden"));
 }
 
 function validateQuoteForm(form) {
@@ -362,41 +533,41 @@ function validateQuoteForm(form) {
   }
 
   if (Number(form.travelDays.value || 0) <= 0) {
-    window.AppUtils.showMessage("quote-message", "\u8bf7\u5148\u586b\u5199\u6b63\u786e\u7684\u884c\u7a0b\u5f00\u59cb\u65e5\u671f\u548c\u7ed3\u675f\u65e5\u671f\u3002", "error");
+    window.AppUtils.showMessage("quote-message", "请先填写正确的行程开始日期和结束日期。", "error");
     return false;
   }
 
   if (Number(form.paxCount.value || 0) <= 0) {
-    window.AppUtils.showMessage("quote-message", "\u8bf7\u586b\u5199\u6b63\u786e\u7684\u51fa\u884c\u4eba\u6570\uff08PAX\uff09\u3002", "error");
+    window.AppUtils.showMessage("quote-message", "请填写正确的出行人数（PAX）。", "error");
     return false;
   }
 
   const items = getItemRows();
   if (items.length === 0) {
-    window.AppUtils.showMessage("quote-message", "\u8bf7\u81f3\u5c11\u5f55\u5165\u4e00\u6761\u62a5\u4ef7\u9879\u76ee\u3002", "error");
+    window.AppUtils.showMessage("quote-message", "请至少录入一条报价项目。", "error");
     return false;
   }
 
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index];
     if (!item.name) {
-      window.AppUtils.showMessage("quote-message", `\u8bf7\u586b\u5199\u7b2c ${index + 1} \u6761\u62a5\u4ef7\u9879\u76ee\u7684\u670d\u52a1\u540d\u79f0\u3002`, "error");
+      window.AppUtils.showMessage("quote-message", `请填写第 ${index + 1} 条报价项目的服务名称。`, "error");
       return false;
     }
 
     if (item.type === "hotel") {
       if (item.hotelDetails.length === 0) {
-        window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u9152\u5e97\u9879\u76ee\u8bf7\u81f3\u5c11\u5f55\u5165\u4e00\u6761\u623f\u578b\u660e\u7ec6\u3002`, "error");
+        window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条酒店项目请至少录入一条房型明细。`, "error");
         return false;
       }
       for (let detailIndex = 0; detailIndex < item.hotelDetails.length; detailIndex += 1) {
         const detail = item.hotelDetails[detailIndex];
         if (!detail.roomType) {
-          window.AppUtils.showMessage("quote-message", `\u8bf7\u586b\u5199\u7b2c ${index + 1} \u6761\u9152\u5e97\u9879\u76ee\u7b2c ${detailIndex + 1} \u6761\u623f\u578b\u660e\u7ec6\u7684\u623f\u578b\u540d\u79f0\u3002`, "error");
+          window.AppUtils.showMessage("quote-message", `请填写第 ${index + 1} 条酒店项目第 ${detailIndex + 1} 条房型明细的房型名称。`, "error");
           return false;
         }
         if (detail.roomCount <= 0 || detail.nights <= 0) {
-          window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u9152\u5e97\u9879\u76ee\u7b2c ${detailIndex + 1} \u6761\u623f\u578b\u660e\u7ec6\u7684\u623f\u95f4\u6570\u548c\u665a\u6570\u5fc5\u987b\u5927\u4e8e 0\u3002`, "error");
+          window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条酒店项目第 ${detailIndex + 1} 条房型明细的房间数和晚数必须大于 0。`, "error");
           return false;
         }
       }
@@ -428,29 +599,38 @@ function validateQuoteForm(form) {
 
     if (["guide", "interpreter"].includes(item.type)) {
       if (item.serviceDetails.length === 0) {
-        window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u670d\u52a1\u9879\u76ee\u8bf7\u81f3\u5c11\u5f55\u5165\u4e00\u6761\u670d\u52a1\u660e\u7ec6\u3002`, "error");
+        window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条服务项目请至少录入一条服务明细。`, "error");
         return false;
       }
       for (let detailIndex = 0; detailIndex < item.serviceDetails.length; detailIndex += 1) {
         const detail = item.serviceDetails[detailIndex];
         if (detail.quantity <= 0) {
-          window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u670d\u52a1\u9879\u76ee\u7b2c ${detailIndex + 1} \u6761\u660e\u7ec6\u7684\u6570\u91cf\u5fc5\u987b\u5927\u4e8e 0\u3002`, "error");
+          window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条服务项目第 ${detailIndex + 1} 条明细的数量必须大于 0。`, "error");
           return false;
         }
       }
       continue;
     }
 
+    if (item.type === "dining" && item.mealDetails) {
+      const detail = item.mealDetails;
+      if (detail.mealPeople < 0 || detail.tripDays < 0 || detail.lunchPrice < 0 || detail.dinnerPrice < 0) {
+        window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条用餐项目的专用录入数据不能为负数。`, "error");
+        return false;
+      }
+      continue;
+    }
+
     if (!item.unit) {
-      window.AppUtils.showMessage("quote-message", `\u8bf7\u586b\u5199\u7b2c ${index + 1} \u6761\u62a5\u4ef7\u9879\u76ee\u7684\u5355\u4f4d\u3002`, "error");
+      window.AppUtils.showMessage("quote-message", `请填写第 ${index + 1} 条报价项目的单位。`, "error");
       return false;
     }
     if (item.quantity <= 0) {
-      window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u62a5\u4ef7\u9879\u76ee\u7684\u6570\u91cf\u5fc5\u987b\u5927\u4e8e 0\u3002`, "error");
+      window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条报价项目的数量必须大于 0。`, "error");
       return false;
     }
     if (item.cost < 0 || item.price < 0) {
-      window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u62a5\u4ef7\u9879\u76ee\u7684\u91d1\u989d\u4e0d\u80fd\u4e3a\u8d1f\u6570\u3002`, "error");
+      window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条报价项目的金额不能为负数。`, "error");
       return false;
     }
   }
@@ -500,7 +680,15 @@ function renderServicePreview(item, quoteCurrency) {
   if (!item.serviceDetails || item.serviceDetails.length === 0) {
     return "";
   }
-  return `<div class="service-preview-lines">${item.serviceDetails.map((detail) => `<p class="meta preview-subline">${getServiceRoleLabel(detail.serviceRole)} / ${getServiceLanguageLabel(detail.serviceLanguage)} / ${getServiceDurationLabel(detail.serviceDuration)} / \u6570\u91cf ${detail.quantity} / \u6210\u672c ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}\uff08\u6298\u7b97 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}\uff09/ \u9500\u552e ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}\uff08\u6298\u7b97 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}\uff09</p>`).join("")}</div>`;
+  return `<div class="service-preview-lines">${item.serviceDetails.map((detail) => `<p class="meta preview-subline">${getServiceRoleLabel(detail.serviceRole)} / ${getServiceLanguageLabel(detail.serviceLanguage)} / ${getServiceDurationLabel(detail.serviceDuration)} / 数量 ${detail.quantity} / 成本 ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}）/ 销售 ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}）</p>`).join("")}</div>`;
+}
+
+function renderMealPreview(item, quoteCurrency) {
+  if (!item.mealDetails) {
+    return "";
+  }
+  const detail = item.mealDetails;
+  return `<div class="meal-preview-lines"><p class="meta preview-subline">计价方式：人数 × 餐次 × 餐标</p><p class="meta preview-subline">用餐人数 ${detail.mealPeople} 人 / 行程天数 ${detail.tripDays} 天 / 午餐 ${detail.lunchCount} 次 / 晚餐 ${detail.dinnerCount} 次</p><p class="meta preview-subline">午餐 ${window.AppUtils.formatCurrency(detail.lunchTotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.lunchTotal, quoteCurrency)}）/ 晚餐 ${window.AppUtils.formatCurrency(detail.dinnerTotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.dinnerTotal, quoteCurrency)}）</p></div>`;
 }
 
 async function renderPreview(form) {
@@ -549,10 +737,11 @@ async function renderPreview(form) {
           <div class="simple-row preview-row-stack">
             <div>
               <span>${window.AppUi.getLabel("quoteItemTypeLabels", item.type)} / ${item.name}</span>
-              <p class="meta preview-subline">${["hotel", "vehicle", "guide", "interpreter"].includes(item.type) ? `\u6210\u672c\u5408\u8ba1\uff1a${window.AppUtils.formatCurrency(item.totalCost, quoteCurrency)} / \u9500\u552e\u5408\u8ba1\uff1a${window.AppUtils.formatCurrency(item.totalPrice, quoteCurrency)}` : `\u539f\u5e01\u79cd\uff1a${window.AppUtils.formatCurrency(item.totalPriceOriginal, item.currency)}\uff0c\u6298\u7b97\u540e\uff1a${window.AppUtils.formatCurrency(item.totalPrice, quoteCurrency)}`}</p>
+              <p class="meta preview-subline">${["hotel", "vehicle", "guide", "interpreter"].includes(item.type) ? `成本合计：${window.AppUtils.formatCurrency(item.totalCost, quoteCurrency)} / 销售合计：${window.AppUtils.formatCurrency(item.totalPrice, quoteCurrency)}` : item.type === "dining" && item.mealDetails ? `用餐合计：${window.AppUtils.formatCurrency(item.mealDetails.totalAmountOriginal, item.mealDetails.currency)}，折算后：${window.AppUtils.formatCurrency(item.totalPrice, quoteCurrency)}` : `原币种：${window.AppUtils.formatCurrency(item.totalPriceOriginal, item.currency)}，折算后：${window.AppUtils.formatCurrency(item.totalPrice, quoteCurrency)}`}</p>
               ${item.type === "hotel" ? renderHotelPreview(item, quoteCurrency) : ""}
               ${item.type === "vehicle" ? renderVehiclePreview(item, quoteCurrency) : ""}
               ${["guide", "interpreter"].includes(item.type) ? renderServicePreview(item, quoteCurrency) : ""}
+              ${item.type === "dining" ? renderMealPreview(item, quoteCurrency) : ""}
             </div>
             <strong>${window.AppUtils.formatCurrency(item.totalPrice, quoteCurrency)}</strong>
           </div>
@@ -619,6 +808,38 @@ function buildServiceDetailDefaults(detail, form, meta, fallbackRole) {
 
 function buildLegacyServiceDetailDefaults(item, form, meta) {
   return { serviceRole: item?.type === "interpreter" ? "interpreter" : "guide", serviceLanguage: "zh", serviceDuration: "full_day", quantity: Number(item?.quantity || 1) || 1, costUnitPrice: item?.cost ?? "", priceUnitPrice: item?.price ?? "", currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: item?.notes || "" };
+}
+
+function buildMealDetailDefaults(detail, form, meta) {
+  return {
+    mealPeople: Number(detail?.mealPeople ?? form.paxCount.value ?? 0) || 0,
+    tripDays: Number(detail?.tripDays ?? form.travelDays.value ?? 0) || 0,
+    includeLunch: detail?.includeLunch ?? true,
+    lunchPrice: Number(detail?.lunchPrice ?? 0) || 0,
+    includeDinner: detail?.includeDinner ?? true,
+    dinnerPrice: Number(detail?.dinnerPrice ?? 0) || 0,
+    firstDayLunch: detail?.firstDayLunch ?? true,
+    firstDayDinner: detail?.firstDayDinner ?? true,
+    lastDayLunch: detail?.lastDayLunch ?? true,
+    lastDayDinner: detail?.lastDayDinner ?? true,
+    currency: detail?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR",
+  };
+}
+
+function buildLegacyMealDetailDefaults(item, form, meta) {
+  return {
+    mealPeople: Number(form.paxCount.value || 0) || 0,
+    tripDays: Number(form.travelDays.value || 0) || 0,
+    includeLunch: true,
+    lunchPrice: 0,
+    includeDinner: true,
+    dinnerPrice: 0,
+    firstDayLunch: true,
+    firstDayDinner: true,
+    lastDayLunch: true,
+    lastDayDinner: true,
+    currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR",
+  };
 }
 
 async function bootstrap() {
@@ -718,6 +939,60 @@ async function bootstrap() {
     refreshServiceItemSummary(row, form.currency.value);
   }
 
+  function setMealFieldValues(row, defaults) {
+    row.querySelector('[name="mealPeople"]').value = defaults.mealPeople ?? 0;
+    row.querySelector('[name="mealTripDays"]').value = defaults.tripDays ?? 0;
+    row.querySelector('[name="includeLunch"]').checked = defaults.includeLunch ?? true;
+    row.querySelector('[name="lunchPrice"]').value = defaults.lunchPrice ?? 0;
+    row.querySelector('[name="includeDinner"]').checked = defaults.includeDinner ?? true;
+    row.querySelector('[name="dinnerPrice"]').value = defaults.dinnerPrice ?? 0;
+    row.querySelector('[name="firstDayLunch"]').checked = defaults.firstDayLunch ?? true;
+    row.querySelector('[name="firstDayDinner"]').checked = defaults.firstDayDinner ?? true;
+    row.querySelector('[name="lastDayLunch"]').checked = defaults.lastDayLunch ?? true;
+    row.querySelector('[name="lastDayDinner"]').checked = defaults.lastDayDinner ?? true;
+  }
+
+  function refreshMealLegacyNote(row) {
+    const note = row.querySelector('.meal-legacy-note');
+    if (row.dataset.legacyDining === 'true' && row.dataset.mealTouched !== 'true' && row._legacyDiningData) {
+      const legacy = row._legacyDiningData;
+      note.classList.remove('hidden');
+      note.innerHTML = `<strong>旧版用餐结构</strong><p>该用餐项目仍按旧版字段读取：${legacy.quantity} ${legacy.unit || '项'}，原金额 ${window.AppUtils.formatCurrency((Number(legacy.price || 0) || 0) * (Number(legacy.quantity || 0) || 0), legacy.currency || row.querySelector('[name="currency"]').value || 'EUR')}。当前页面可正常查看和保存；如需升级，请在下方用餐专用录入区调整后再保存。</p>`;
+      return;
+    }
+    note.classList.add('hidden');
+    note.innerHTML = '';
+  }
+
+  function bindMealInputs(row) {
+    if (row.dataset.mealBound === "true") {
+      return;
+    }
+    row.dataset.mealBound = "true";
+    row.querySelectorAll('.meal-detail-box input').forEach((input) => {
+      const markTouched = () => {
+        if (row.dataset.legacyDining === 'true') {
+          row.dataset.mealTouched = 'true';
+        }
+        if (input.name === 'mealTripDays') {
+          input.dataset.userChanged = 'true';
+        }
+        refreshMealItemSummary(row, form.currency.value);
+        refreshMealLegacyNote(row);
+        renderPreview(form).catch((error) => window.AppUtils.showMessage('quote-message', error.message, 'error'));
+      };
+      input.addEventListener('input', markTouched);
+      input.addEventListener('change', markTouched);
+    });
+  }
+
+  function initializeMealDetails(row, defaults) {
+    setMealFieldValues(row, defaults);
+    bindMealInputs(row);
+    refreshMealItemSummary(row, form.currency.value);
+    refreshMealLegacyNote(row);
+  }
+
   function bindPreviewRefresh(row) {
     row.querySelectorAll('input, select').forEach((input) => {
       input.addEventListener('input', () => renderPreview(form).catch((error) => window.AppUtils.showMessage('quote-message', error.message, 'error')));
@@ -749,6 +1024,12 @@ async function bootstrap() {
     costField.value = defaults.cost ?? "";
     priceField.value = defaults.price ?? "";
     notesField.value = defaults.notes || "";
+
+    row.dataset.legacyDining = defaults.type === 'dining' && !defaults.mealDetails && (Number(defaults.quantity || 0) > 0 || Number(defaults.price || 0) > 0 || Number(defaults.cost || 0) > 0 || Boolean(defaults.unit)) ? 'true' : 'false';
+    row.dataset.mealTouched = 'false';
+    row._legacyDiningData = row.dataset.legacyDining === 'true'
+      ? { unit: defaults.unit || '项', quantity: Number(defaults.quantity || 0), cost: Number(defaults.cost || 0), price: Number(defaults.price || 0), currency: defaults.currency || form.currency.value || meta.defaultItemCurrency || 'EUR' }
+      : null;
 
     const ensureHotelDetails = () => {
       if (row.querySelectorAll(".hotel-detail-row").length > 0) {
@@ -790,6 +1071,15 @@ async function bootstrap() {
       detailDefaults.forEach((detail) => addServiceDetailRow(row, detail));
     };
 
+    const ensureMealDetails = () => {
+      const detailDefaults = defaults.mealDetails
+        ? buildMealDetailDefaults(defaults.mealDetails, form, meta)
+        : defaults.type === 'dining' && row.dataset.legacyDining === 'true'
+          ? buildLegacyMealDetailDefaults(defaults, form, meta)
+          : buildMealDetailDefaults(null, form, meta);
+      initializeMealDetails(row, detailDefaults);
+    };
+
     const genericNamePlaceholder = "例如：贝尔格莱德商务酒店 / 商务车服务 / 商务午餐 / 商务晚餐";
     const genericNotesPlaceholder = "例如：安排午餐和晚餐、司机会中文、按实际人数结算";
 
@@ -798,19 +1088,16 @@ async function bootstrap() {
       notesField.placeholder = genericNotesPlaceholder;
 
       if (typeField.value === "dining") {
-        nameField.placeholder = "例如：商务午餐 / 商务晚餐 / 欢迎晚宴";
-        notesField.placeholder = "例如：默认安排午餐和晚餐，不含早餐；可按人数和天数调整";
+        nameField.placeholder = "例如：商务午餐 / 晚餐安排 / 欢迎晚宴";
+        notesField.placeholder = "例如：不含早餐；可按首尾天实际餐次调整";
         if (!nameField.value.trim()) {
           nameField.value = "商务午餐 / 晚餐安排";
         }
-        if (!unitField.value.trim() || unitField.value.trim() === "?") {
-          unitField.value = "?";
-        }
-        if (!Number(quantityField.value) || Number(quantityField.value) === 1) {
-          quantityField.value = 2;
+        if (!unitField.value.trim() || ["酒店", "用车", "服务", "项"].includes(unitField.value.trim())) {
+          unitField.value = "用餐";
         }
         if (!notesField.value.trim()) {
-          notesField.value = "默认安排午餐和晚餐，不含早餐，可按实际人数与天数调整。";
+          notesField.value = "默认不含早餐，可按首尾天实际餐次和人数调整。";
         }
         return;
       }
@@ -836,14 +1123,14 @@ async function bootstrap() {
         unitField.value = "服务";
         ensureServiceDetails();
       } else if (typeField.value === "dining") {
-        if (!unitField.value.trim() || ["酒店", "用车", "服务", "项"].includes(unitField.value.trim())) {
-          unitField.value = "?";
-        }
-      } else if (!unitField.value.trim() || ["酒店", "用车", "服务"].includes(unitField.value.trim())) {
+        unitField.value = "用餐";
+        ensureMealDetails();
+      } else if (!unitField.value.trim() || ["酒店", "用车", "服务", "用餐"].includes(unitField.value.trim())) {
         unitField.value = "项";
       }
 
       applyTypeFieldHints();
+      refreshMealLegacyNote(row);
       renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
     };
 
@@ -890,6 +1177,10 @@ async function bootstrap() {
       refreshHotelItemSummary(row, form.currency.value);
       refreshVehicleItemSummary(row, form.currency.value);
       refreshServiceItemSummary(row, form.currency.value);
+      refreshMealItemSummary(row, form.currency.value);
+      if (row._legacyDiningData) {
+        row._legacyDiningData.currency = currencyField.value;
+      }
     });
 
     bindPreviewRefresh(row);
@@ -1012,9 +1303,15 @@ async function bootstrap() {
     });
     document.querySelectorAll('.hotel-detail-row').forEach((detailRow) => refreshHotelDetailRow(detailRow));
     document.querySelectorAll('.vehicle-detail-row').forEach((detailRow) => refreshVehicleDetailRow(detailRow));
+    document.querySelectorAll('.meal-detail-box [name="mealTripDays"]').forEach((input) => {
+      if (!input.dataset.userChanged) {
+        input.value = Number(form.travelDays.value || 0) || 0;
+      }
+    });
     document.querySelectorAll('.item-card').forEach((row) => {
       refreshHotelItemSummary(row, form.currency.value);
       refreshVehicleItemSummary(row, form.currency.value);
+      refreshMealItemSummary(row, form.currency.value);
     });
     renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
   });
@@ -1036,9 +1333,15 @@ async function bootstrap() {
     });
     document.querySelectorAll('.hotel-detail-row').forEach((detailRow) => refreshHotelDetailRow(detailRow));
     document.querySelectorAll('.vehicle-detail-row').forEach((detailRow) => refreshVehicleDetailRow(detailRow));
+    document.querySelectorAll('.meal-detail-box [name="mealTripDays"]').forEach((input) => {
+      if (!input.dataset.userChanged) {
+        input.value = Number(form.travelDays.value || 0) || 0;
+      }
+    });
     document.querySelectorAll('.item-card').forEach((row) => {
       refreshHotelItemSummary(row, form.currency.value);
       refreshVehicleItemSummary(row, form.currency.value);
+      refreshMealItemSummary(row, form.currency.value);
     });
     renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
   });
@@ -1048,6 +1351,7 @@ async function bootstrap() {
       refreshHotelItemSummary(row, form.currency.value);
       refreshVehicleItemSummary(row, form.currency.value);
       refreshServiceItemSummary(row, form.currency.value);
+      refreshMealItemSummary(row, form.currency.value);
     });
     renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
   });
@@ -1127,4 +1431,13 @@ async function bootstrap() {
 bootstrap().catch((error) => {
   window.AppUtils.showMessage("quote-message", error.message || "报价页面初始化失败，请稍后重试。", "error");
 });
+
+
+
+
+
+
+
+
+
 

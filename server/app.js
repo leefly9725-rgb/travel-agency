@@ -233,6 +233,89 @@ function normalizeServiceDetails(serviceDetails, index, baseCurrency) {
   });
 }
 
+function normalizeBoolean(value, fallback = false) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    if (value === "true") {
+      return true;
+    }
+    if (value === "false") {
+      return false;
+    }
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  return fallback;
+}
+
+function normalizeMealDetails(mealDetails, index, itemCurrency) {
+  if (!mealDetails || typeof mealDetails !== "object") {
+    throw new Error(`第 ${index + 1} 条用餐项目的专用数据格式不正确。`);
+  }
+
+  const mealPeople = Math.max(Number(mealDetails.mealPeople || 0), 0);
+  const tripDays = Math.max(Number(mealDetails.tripDays || 0), 0);
+  const includeLunch = normalizeBoolean(mealDetails.includeLunch, true);
+  const lunchPrice = Math.max(Number(mealDetails.lunchPrice || 0), 0);
+  const includeDinner = normalizeBoolean(mealDetails.includeDinner, true);
+  const dinnerPrice = Math.max(Number(mealDetails.dinnerPrice || 0), 0);
+  const firstDayLunch = normalizeBoolean(mealDetails.firstDayLunch, true);
+  const firstDayDinner = normalizeBoolean(mealDetails.firstDayDinner, true);
+  const lastDayLunch = normalizeBoolean(mealDetails.lastDayLunch, true);
+  const lastDayDinner = normalizeBoolean(mealDetails.lastDayDinner, true);
+  const currency = assertSupportedCurrency(mealDetails.currency || itemCurrency, `第 ${index + 1} 条用餐项目的币种`);
+
+  let lunchCount = 0;
+  if (includeLunch) {
+    lunchCount = tripDays;
+    if (!firstDayLunch) {
+      lunchCount -= 1;
+    }
+    if (!lastDayLunch) {
+      lunchCount -= 1;
+    }
+    lunchCount = Math.max(lunchCount, 0);
+  }
+
+  let dinnerCount = 0;
+  if (includeDinner) {
+    dinnerCount = tripDays;
+    if (!firstDayDinner) {
+      dinnerCount -= 1;
+    }
+    if (!lastDayDinner) {
+      dinnerCount -= 1;
+    }
+    dinnerCount = Math.max(dinnerCount, 0);
+  }
+
+  const lunchTotal = Math.round(mealPeople * lunchCount * lunchPrice * 100) / 100;
+  const dinnerTotal = Math.round(mealPeople * dinnerCount * dinnerPrice * 100) / 100;
+  const totalAmount = Math.round((lunchTotal + dinnerTotal) * 100) / 100;
+
+  return {
+    mealPeople,
+    tripDays,
+    includeLunch,
+    lunchPrice,
+    includeDinner,
+    dinnerPrice,
+    firstDayLunch,
+    firstDayDinner,
+    lastDayLunch,
+    lastDayDinner,
+    lunchCount,
+    dinnerCount,
+    lunchTotal,
+    dinnerTotal,
+    totalAmount,
+    currency,
+  };
+}
+
 function normalizeQuoteItems(items, baseCurrency) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("请至少录入一条报价项目。");
@@ -240,18 +323,20 @@ function normalizeQuoteItems(items, baseCurrency) {
 
   return items.map((item, index) => {
     const itemType = assertOneOf(item.type, supportedQuoteItemTypes, `第 ${index + 1} 条报价项目的服务类型`);
+    const currency = assertSupportedCurrency(item.currency || baseCurrency, `第 ${index + 1} 条报价项目的币种`);
     const hasHotelDetails = itemType === "hotel" && Array.isArray(item.hotelDetails) && item.hotelDetails.length > 0;
     const hasVehicleDetails = itemType === "vehicle" && Array.isArray(item.vehicleDetails) && item.vehicleDetails.length > 0;
     const hasServiceDetails = ["guide", "interpreter"].includes(itemType) && Array.isArray(item.serviceDetails) && item.serviceDetails.length > 0;
+    const hasMealDetails = itemType === "dining" && item.mealDetails && typeof item.mealDetails === "object";
     const hotelDetails = hasHotelDetails ? normalizeHotelDetails(item.hotelDetails, index, baseCurrency) : [];
     const vehicleDetails = hasVehicleDetails ? normalizeVehicleDetails(item.vehicleDetails, index, baseCurrency) : [];
     const serviceDetails = hasServiceDetails ? normalizeServiceDetails(item.serviceDetails, index, baseCurrency) : [];
-    const quantity = hasHotelDetails || hasVehicleDetails || hasServiceDetails ? 1 : Number(item.quantity || 0);
-    const cost = hasHotelDetails || hasVehicleDetails || hasServiceDetails ? 0 : Number(item.cost || 0);
-    const price = hasHotelDetails || hasVehicleDetails || hasServiceDetails ? 0 : Number(item.price || 0);
-    const currency = assertSupportedCurrency(item.currency || baseCurrency, `第 ${index + 1} 条报价项目的币种`);
+    const mealDetails = hasMealDetails ? normalizeMealDetails(item.mealDetails, index, currency) : null;
+    const quantity = hasHotelDetails || hasVehicleDetails || hasServiceDetails || hasMealDetails ? 1 : Number(item.quantity || 0);
+    const cost = hasHotelDetails || hasVehicleDetails || hasServiceDetails || hasMealDetails ? 0 : Number(item.cost || 0);
+    const price = hasHotelDetails || hasVehicleDetails || hasServiceDetails || hasMealDetails ? 0 : Number(item.price || 0);
 
-    if (!hasHotelDetails && !hasVehicleDetails && !hasServiceDetails) {
+    if (!hasHotelDetails && !hasVehicleDetails && !hasServiceDetails && !hasMealDetails) {
       if (quantity <= 0) {
         throw new Error(`第 ${index + 1} 条报价项目的数量必须大于 0。`);
       }
@@ -263,7 +348,7 @@ function normalizeQuoteItems(items, baseCurrency) {
     return {
       type: itemType,
       name: notEmpty(item.name, `第 ${index + 1} 条报价项目的服务名称`),
-      unit: hasHotelDetails ? "酒店" : hasVehicleDetails ? "用车" : notEmpty(item.unit || "项", `第 ${index + 1} 条报价项目的单位`),
+      unit: hasHotelDetails ? "酒店" : hasVehicleDetails ? "用车" : hasMealDetails ? "用餐" : notEmpty(item.unit || "项", `第 ${index + 1} 条报价项目的单位`),
       supplier: String(item.supplier || "").trim(),
       currency,
       cost,
@@ -273,6 +358,7 @@ function normalizeQuoteItems(items, baseCurrency) {
       hotelDetails,
       vehicleDetails,
       serviceDetails,
+      mealDetails,
     };
   });
 }
@@ -754,5 +840,6 @@ module.exports = {
   generateQuoteNumber,
   handleRequest,
 };
+
 
 

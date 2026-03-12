@@ -103,3 +103,33 @@ test("calculateQuoteTotals protects against divide-by-zero margin", () => {
   assert.equal(result.grossProfit, -10);
   assert.equal(result.grossMargin, 0);
 });
+
+test("calculateQuoteTotals supports dining meal details with first and last day rules", () => {
+  const result = calculateQuoteTotals([
+    {
+      type: "dining",
+      name: "商务午晚餐安排",
+      currency: "EUR",
+      mealDetails: {
+        mealPeople: 10,
+        tripDays: 3,
+        includeLunch: true,
+        lunchPrice: 15,
+        includeDinner: true,
+        dinnerPrice: 20,
+        firstDayLunch: false,
+        firstDayDinner: true,
+        lastDayLunch: true,
+        lastDayDinner: false,
+      },
+    },
+  ], "EUR");
+
+  assert.equal(result.items[0].mealDetails.lunchCount, 2);
+  assert.equal(result.items[0].mealDetails.dinnerCount, 2);
+  assert.equal(result.items[0].mealDetails.lunchTotalOriginal, 300);
+  assert.equal(result.items[0].mealDetails.dinnerTotalOriginal, 400);
+  assert.equal(result.items[0].mealDetails.totalAmountOriginal, 700);
+  assert.equal(result.items[0].totalCost, 700);
+  assert.equal(result.items[0].totalPrice, 700);
+});

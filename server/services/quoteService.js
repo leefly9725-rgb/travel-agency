@@ -52,6 +52,83 @@ function calculateInclusiveDays(startDate, endDate) {
   return Math.max(days, 1);
 }
 
+function toBoolean(value, fallback = false) {
+  if (typeof value === "boolean") {
+    return value;
+  }
+  if (typeof value === "string") {
+    if (value === "true") {
+      return true;
+    }
+    if (value === "false") {
+      return false;
+    }
+  }
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+  return fallback;
+}
+
+function calculateMealCounts(detail) {
+  const mealPeople = Math.max(Number(detail.mealPeople || 0), 0);
+  const tripDays = Math.max(Number(detail.tripDays || 0), 0);
+  const includeLunch = toBoolean(detail.includeLunch, true);
+  const includeDinner = toBoolean(detail.includeDinner, true);
+  const lunchPrice = Math.max(Number(detail.lunchPrice || 0), 0);
+  const dinnerPrice = Math.max(Number(detail.dinnerPrice || 0), 0);
+  const firstDayLunch = toBoolean(detail.firstDayLunch, true);
+  const firstDayDinner = toBoolean(detail.firstDayDinner, true);
+  const lastDayLunch = toBoolean(detail.lastDayLunch, true);
+  const lastDayDinner = toBoolean(detail.lastDayDinner, true);
+
+  let lunchCount = 0;
+  if (includeLunch) {
+    lunchCount = tripDays;
+    if (!firstDayLunch) {
+      lunchCount -= 1;
+    }
+    if (!lastDayLunch) {
+      lunchCount -= 1;
+    }
+    lunchCount = Math.max(lunchCount, 0);
+  }
+
+  let dinnerCount = 0;
+  if (includeDinner) {
+    dinnerCount = tripDays;
+    if (!firstDayDinner) {
+      dinnerCount -= 1;
+    }
+    if (!lastDayDinner) {
+      dinnerCount -= 1;
+    }
+    dinnerCount = Math.max(dinnerCount, 0);
+  }
+
+  const lunchTotal = roundToTwo(mealPeople * lunchCount * lunchPrice);
+  const dinnerTotal = roundToTwo(mealPeople * dinnerCount * dinnerPrice);
+  const totalAmount = roundToTwo(lunchTotal + dinnerTotal);
+
+  return {
+    mealPeople,
+    tripDays,
+    includeLunch,
+    lunchPrice,
+    includeDinner,
+    dinnerPrice,
+    firstDayLunch,
+    firstDayDinner,
+    lastDayLunch,
+    lastDayDinner,
+    lunchCount,
+    dinnerCount,
+    lunchTotal,
+    dinnerTotal,
+    totalAmount,
+  };
+}
+
 function normalizeHotelDetails(hotelDetails, baseCurrency) {
   return (hotelDetails || []).map((detail) => {
     const roomCount = Number(detail.roomCount || 0);
@@ -146,6 +223,31 @@ function normalizeServiceDetails(serviceDetails, baseCurrency) {
   });
 }
 
+function normalizeMealDetails(mealDetails, itemCurrency, baseCurrency) {
+  if (!mealDetails || typeof mealDetails !== "object") {
+    return null;
+  }
+
+  const currency = normalizeCurrency(mealDetails.currency || itemCurrency || baseCurrency);
+  const normalized = calculateMealCounts(mealDetails);
+  const lunchTotal = convertCurrency(normalized.lunchTotal, currency, baseCurrency);
+  const dinnerTotal = convertCurrency(normalized.dinnerTotal, currency, baseCurrency);
+  const totalAmount = convertCurrency(normalized.totalAmount, currency, baseCurrency);
+
+  return {
+    ...mealDetails,
+    ...normalized,
+    currency,
+    lunchTotalOriginal: normalized.lunchTotal,
+    dinnerTotalOriginal: normalized.dinnerTotal,
+    totalAmountOriginal: normalized.totalAmount,
+    lunchTotal: roundToTwo(lunchTotal),
+    dinnerTotal: roundToTwo(dinnerTotal),
+    totalAmount: roundToTwo(totalAmount),
+    convertedCurrency: baseCurrency,
+  };
+}
+
 function calculateQuoteTotals(items, baseCurrency = "EUR") {
   const normalizedBaseCurrency = assertSupportedCurrency(baseCurrency, "报价币种");
   const normalizedItems = (items || []).map((item) => {
@@ -156,6 +258,7 @@ function calculateQuoteTotals(items, baseCurrency = "EUR") {
     const hotelDetails = item.type === "hotel" ? normalizeHotelDetails(item.hotelDetails, normalizedBaseCurrency) : [];
     const vehicleDetails = item.type === "vehicle" ? normalizeVehicleDetails(item.vehicleDetails, normalizedBaseCurrency) : [];
     const serviceDetails = ["guide", "interpreter"].includes(item.type) ? normalizeServiceDetails(item.serviceDetails, normalizedBaseCurrency) : [];
+    const mealDetails = item.type === "dining" ? normalizeMealDetails(item.mealDetails, itemCurrency, normalizedBaseCurrency) : null;
 
     if (hotelDetails.length > 0) {
       const hotelTotalCost = roundToTwo(hotelDetails.reduce((sum, detail) => sum + detail.costSubtotal, 0));
@@ -179,6 +282,7 @@ function calculateQuoteTotals(items, baseCurrency = "EUR") {
         hotelDetails,
         vehicleDetails: [],
         serviceDetails: [],
+        mealDetails: null,
       };
     }
 
@@ -204,6 +308,7 @@ function calculateQuoteTotals(items, baseCurrency = "EUR") {
         hotelDetails: [],
         vehicleDetails,
         serviceDetails: [],
+        mealDetails: null,
       };
     }
 
@@ -229,6 +334,29 @@ function calculateQuoteTotals(items, baseCurrency = "EUR") {
         hotelDetails: [],
         vehicleDetails: [],
         serviceDetails,
+        mealDetails: null,
+      };
+    }
+
+    if (mealDetails) {
+      return {
+        ...item,
+        currency: mealDetails.currency,
+        quantity: 1,
+        unit: item.unit || "用餐",
+        cost: mealDetails.totalAmountOriginal,
+        price: mealDetails.totalAmountOriginal,
+        convertedCost: mealDetails.totalAmount,
+        convertedPrice: mealDetails.totalAmount,
+        totalCostOriginal: mealDetails.totalAmountOriginal,
+        totalPriceOriginal: mealDetails.totalAmountOriginal,
+        totalCost: mealDetails.totalAmount,
+        totalPrice: mealDetails.totalAmount,
+        convertedCurrency: normalizedBaseCurrency,
+        hotelDetails: [],
+        vehicleDetails: [],
+        serviceDetails: [],
+        mealDetails,
       };
     }
 
@@ -241,6 +369,7 @@ function calculateQuoteTotals(items, baseCurrency = "EUR") {
       hotelDetails,
       vehicleDetails,
       serviceDetails,
+      mealDetails: null,
       quantity,
       cost,
       price,

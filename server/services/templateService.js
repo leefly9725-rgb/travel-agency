@@ -8,7 +8,7 @@
       { type: "hotel", name: "商务酒店标准间", unit: "间夜", currency: "EUR", quantity: 2, notes: "含早餐，可按实际入住晚数调整" },
       { type: "vehicle", name: "市内商务用车", unit: "天", currency: "EUR", quantity: 1, notes: "含司机与基础油费" },
       { type: "guide", name: "中文接待协助", unit: "天", currency: "EUR", quantity: 1, notes: "协助现场沟通与陪同" },
-      { type: "dining", name: "商务工作餐", unit: "人", currency: "RSD", quantity: 2, notes: "可根据人数调整标准" },
+      { type: "dining", name: "商务午餐 / 晚餐安排", unit: "用餐", currency: "EUR", quantity: 1, notes: "不含早餐，建议按用餐专用录入区调整人数、餐次和餐标。" },
       { type: "meeting", name: "会议接待安排", unit: "场", currency: "EUR", quantity: 1, notes: "含会议现场协调" },
     ],
   },
@@ -22,7 +22,7 @@
       { type: "vehicle", name: "专属包车服务", unit: "天", currency: "EUR", quantity: 3, notes: "含司机与中文客服协调" },
       { type: "guide", name: "中文导游服务", unit: "天", currency: "EUR", quantity: 2, notes: "可升级为私人定制导览" },
       { type: "tickets", name: "核心景点门票", unit: "人", currency: "RSD", quantity: 2, notes: "按实际景点组合调整" },
-      { type: "dining", name: "特色餐饮安排", unit: "餐", currency: "RSD", quantity: 2, notes: "可加入欢迎晚宴或特色餐厅" },
+      { type: "dining", name: "特色午餐 / 晚宴安排", unit: "用餐", currency: "EUR", quantity: 1, notes: "不含早餐，可加入欢迎晚宴或特色餐厅安排。" },
       { type: "misc", name: "定制服务费", unit: "项", currency: "EUR", quantity: 1, notes: "用于礼宾、行程设计等综合服务" },
     ],
   },
@@ -36,7 +36,7 @@
       { type: "vehicle", name: "展会接送用车", unit: "趟", currency: "EUR", quantity: 4, notes: "含酒店与展馆往返" },
       { type: "interpreter", name: "商务翻译支持", unit: "天", currency: "EUR", quantity: 2, notes: "可根据语种增加人数" },
       { type: "meeting", name: "展会会议协助", unit: "场", currency: "EUR", quantity: 1, notes: "含现场签到与联络协助" },
-      { type: "dining", name: "参展工作餐", unit: "人", currency: "RSD", quantity: 4, notes: "可拆分午餐与晚餐" },
+      { type: "dining", name: "参展午餐 / 晚餐", unit: "用餐", currency: "EUR", quantity: 1, notes: "不含早餐，建议在用餐模型中拆分午餐与晚餐。" },
       { type: "parking", name: "展馆停车安排", unit: "天", currency: "RSD", quantity: 2, notes: "按实际车辆数量调整" },
     ],
   },
@@ -64,3 +64,4 @@
 module.exports = {
   defaultQuoteTemplates,
 };
+
