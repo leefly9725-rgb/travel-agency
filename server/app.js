@@ -1,7 +1,8 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
-const { loadSeedData, saveSeedData } = require("./dataStore");
+const { loadSeedData, saveSeedData } = require('./dataStore');
+const { getSupabaseConfig } = require('./supabaseConfig');
 const {
   addDays,
   calculateInclusiveDays,
@@ -440,6 +441,8 @@ function getProjectDetail(data, projectId) {
 }
 
 function getMetaPayload(data) {
+  const supabase = getSupabaseConfig();
+
   return {
     supportedLanguages,
     supportedCurrencies,
@@ -453,6 +456,14 @@ function getMetaPayload(data) {
     defaultQuoteCurrency: "EUR",
     defaultItemCurrency: "EUR",
     templateCount: ensureTemplateData(data).length,
+    storageMode: "local_json",
+    supabase: {
+      enabled: supabase.enabled,
+      urlConfigured: Boolean(supabase.url),
+      publishableKeyConfigured: Boolean(supabase.publishableKey),
+      anonKeyConfigured: Boolean(supabase.anonKey),
+      serviceRoleKeyConfigured: supabase.hasServiceRoleKey,
+    },
   };
 }
 
@@ -733,6 +744,8 @@ module.exports = {
   createServer,
   generateQuoteNumber,
 };
+
+
 
 
 
