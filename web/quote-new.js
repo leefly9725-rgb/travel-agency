@@ -139,6 +139,7 @@ function createItemRow(types, currencies, defaultCurrency) {
         <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>数量</span><input name="quantity" type="number" step="1" placeholder="1" value="1" min="1" /></label>
         <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>成本单价</span><input name="cost" type="number" step="0.01" placeholder="0.00" min="0" /></label>
         <label class="field-block field-span-1 simple-pricing-field meal-generic-field"><span>销售单价</span><input name="price" type="number" step="0.01" placeholder="0.00" min="0" /></label>
+        <label class="field-block field-span-1 hotel-summary-field hidden"><span>总房间数</span><input name="hotelRoomTotal" readonly /></label>
         <label class="field-block field-span-1 hotel-summary-field hidden"><span>成本合计</span><input name="hotelCostTotal" readonly /></label>
         <label class="field-block field-span-1 hotel-summary-field hidden"><span>销售合计</span><input name="hotelPriceTotal" readonly /></label>
         <label class="field-block field-span-1 vehicle-summary-field hidden"><span>成本合计</span><input name="vehicleCostTotal" readonly /></label>
@@ -450,8 +451,10 @@ function refreshDetailSummary(row, detailRows, calculator, totalSelector, unitVa
 function refreshHotelItemSummary(row, quoteCurrency) {
   const detailRows = getHotelDetailRows(row);
   refreshDetailSummary(row, detailRows, calculateHotelSubtotals, '.hotel-total-value', '酒店', quoteCurrency);
+  const totalRoomCount = detailRows.reduce((sum, detail) => sum + Number(detail.roomCount || 0), 0);
   const totalCostOriginal = detailRows.reduce((sum, detail) => sum + calculateHotelSubtotals(detail).costSubtotal, 0);
   const totalPriceOriginal = detailRows.reduce((sum, detail) => sum + calculateHotelSubtotals(detail).priceSubtotal, 0);
+  row.querySelector('[name="hotelRoomTotal"]').value = `${totalRoomCount} 间`;
   row.querySelector('[name="hotelCostTotal"]').value = window.AppUtils.formatCurrency(totalCostOriginal, quoteCurrency || 'EUR');
   row.querySelector('[name="hotelPriceTotal"]').value = window.AppUtils.formatCurrency(totalPriceOriginal, quoteCurrency || 'EUR');
 }
@@ -818,7 +821,8 @@ function buildHotelDetailDefaults(detail, form, meta) {
 }
 
 function buildLegacyHotelDetailDefaults(item, form, meta) {
-  return { roomType: item?.name || "", roomCount: 1, nights: Number(item?.quantity || form.travelDays.value || 1) || 1, costNightlyRate: item?.cost ?? "", priceNightlyRate: item?.price ?? "", currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: item?.notes || "" };
+  const hasLegacyAmounts = Number(item?.cost || 0) > 0 || Number(item?.price || 0) > 0 || Number(item?.quantity || 0) > 0;
+  return { roomType: item?.name || "", roomCount: Number(item?.quantity || 0) || 0, nights: Number(item?.quantity || form.travelDays.value || 1) || 1, costNightlyRate: hasLegacyAmounts ? item?.cost ?? "" : "", priceNightlyRate: hasLegacyAmounts ? item?.price ?? "" : "", currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: item?.notes || "" };
 }
 
 function getDefaultVehicleBillingQuantity(pricingUnit, form) {
@@ -1464,6 +1468,7 @@ async function bootstrap() {
 bootstrap().catch((error) => {
   window.AppUtils.showMessage("quote-message", error.message || "报价页面初始化失败，请稍后重试。", "error");
 });
+
 
 
 
