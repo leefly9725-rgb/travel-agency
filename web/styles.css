@@ -845,3 +845,8 @@ button.ghost,
   margin-bottom: 0;
   color: var(--accent);
 }
+.vehicle-summary-tip {
+  margin-top: 14px;
+  margin-bottom: 0;
+  color: var(--accent);
+}
