@@ -166,6 +166,7 @@ function normalizeVehicleDetails(vehicleDetails, index, baseCurrency) {
 
   return vehicleDetails.map((detail, detailIndex) => {
     const vehicleCount = Number(detail.vehicleCount || 0);
+    const billingQuantity = Number(detail.billingQuantity || 1);
     const costUnitPrice = Number(detail.costUnitPrice || 0);
     const priceUnitPrice = Number(detail.priceUnitPrice || 0);
     const detailType = assertOneOf(detail.detailType || "pickup", supportedVehicleDetailTypes, `第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的用车类型`);
@@ -178,6 +179,9 @@ function normalizeVehicleDetails(vehicleDetails, index, baseCurrency) {
     if (vehicleCount <= 0) {
       throw new Error(`第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的车辆数必须大于 0。`);
     }
+    if (billingQuantity <= 0) {
+      throw new Error(`第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的计费数量必须大于 0。`);
+    }
     if (costUnitPrice < 0 || priceUnitPrice < 0) {
       throw new Error(`第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的成本单价和销售单价不能为负数。`);
     }
@@ -187,6 +191,7 @@ function normalizeVehicleDetails(vehicleDetails, index, baseCurrency) {
       vehicleModel: String(detail.vehicleModel).trim(),
       vehicleCount,
       pricingUnit,
+      billingQuantity,
       costUnitPrice,
       priceUnitPrice,
       currency,

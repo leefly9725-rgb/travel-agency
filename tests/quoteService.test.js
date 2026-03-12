@@ -41,8 +41,8 @@ test("calculateQuoteTotals supports vehicle detail rows with separate cost and s
       type: "vehicle",
       name: "商务用车",
       vehicleDetails: [
-        { detailType: "pickup", vehicleModel: "奔驰 V 级", vehicleCount: 2, pricingUnit: "trip", costUnitPrice: 60, priceUnitPrice: 90, currency: "EUR", notes: "" },
-        { detailType: "full_day", vehicleModel: "别克 GL8", vehicleCount: 1, pricingUnit: "full_day", costUnitPrice: 150, priceUnitPrice: 220, currency: "EUR", notes: "" },
+        { detailType: "pickup", vehicleModel: "奔驰 V 级", vehicleCount: 2, pricingUnit: "trip", billingQuantity: 1, costUnitPrice: 60, priceUnitPrice: 90, currency: "EUR", notes: "" },
+        { detailType: "full_day", vehicleModel: "别克 GL8", vehicleCount: 1, pricingUnit: "full_day", billingQuantity: 3, costUnitPrice: 150, priceUnitPrice: 220, currency: "EUR", notes: "" },
       ],
     },
   ], "EUR");
@@ -50,10 +50,12 @@ test("calculateQuoteTotals supports vehicle detail rows with separate cost and s
   assert.equal(result.items[0].vehicleDetails.length, 2);
   assert.equal(result.items[0].vehicleDetails[0].costSubtotalOriginal, 120);
   assert.equal(result.items[0].vehicleDetails[0].priceSubtotalOriginal, 180);
-  assert.equal(result.items[0].totalCost, 270);
-  assert.equal(result.items[0].totalPrice, 400);
-  assert.equal(result.totalCost, 270);
-  assert.equal(result.totalPrice, 400);
+  assert.equal(result.items[0].vehicleDetails[1].costSubtotalOriginal, 450);
+  assert.equal(result.items[0].vehicleDetails[1].priceSubtotalOriginal, 660);
+  assert.equal(result.items[0].totalCost, 570);
+  assert.equal(result.items[0].totalPrice, 840);
+  assert.equal(result.totalCost, 570);
+  assert.equal(result.totalPrice, 840);
 });
 
 test("calculateQuoteTotals supports guide and interpreter service detail rows", () => {

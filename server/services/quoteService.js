@@ -87,20 +87,22 @@ function normalizeHotelDetails(hotelDetails, baseCurrency) {
 function normalizeVehicleDetails(vehicleDetails, baseCurrency) {
   return (vehicleDetails || []).map((detail) => {
     const vehicleCount = Number(detail.vehicleCount || 0);
+    const billingQuantity = Number(detail.billingQuantity || 1);
     const costUnitPrice = Number(detail.costUnitPrice || 0);
     const priceUnitPrice = Number(detail.priceUnitPrice || 0);
     const currency = normalizeCurrency(detail.currency || baseCurrency);
     const costUnitPriceConverted = convertCurrency(costUnitPrice, currency, baseCurrency);
     const priceUnitPriceConverted = convertCurrency(priceUnitPrice, currency, baseCurrency);
-    const costSubtotalOriginal = roundToTwo(vehicleCount * costUnitPrice);
-    const priceSubtotalOriginal = roundToTwo(vehicleCount * priceUnitPrice);
-    const costSubtotal = roundToTwo(vehicleCount * costUnitPriceConverted);
-    const priceSubtotal = roundToTwo(vehicleCount * priceUnitPriceConverted);
+    const costSubtotalOriginal = roundToTwo(vehicleCount * billingQuantity * costUnitPrice);
+    const priceSubtotalOriginal = roundToTwo(vehicleCount * billingQuantity * priceUnitPrice);
+    const costSubtotal = roundToTwo(vehicleCount * billingQuantity * costUnitPriceConverted);
+    const priceSubtotal = roundToTwo(vehicleCount * billingQuantity * priceUnitPriceConverted);
 
     return {
       ...detail,
       currency,
       vehicleCount,
+      billingQuantity,
       costUnitPrice,
       priceUnitPrice,
       costUnitPriceConverted,

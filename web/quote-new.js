@@ -83,18 +83,19 @@ function createHotelDetailRow(currencies, defaults, quoteCurrency) {
 function createVehicleDetailRow(currencies, defaults, quoteCurrency) {
   return `
     <div class="vehicle-detail-row">
-      <label><span>\u7528\u8f66\u7c7b\u578b</span><select name="detailType">${createOptionList(vehicleDetailTypeOptions, defaults?.detailType || "pickup", "vehicleDetailTypeLabels")}</select></label>
-      <label><span>\u8f66\u578b</span><input name="vehicleModel" value="${defaults?.vehicleModel || ""}" placeholder="\u4f8b\u5982\uff1a\u5954\u9a70 V \u7ea7" /></label>
-      <label><span>\u8f66\u8f86\u6570</span><input name="vehicleCount" type="number" min="1" step="1" value="${defaults?.vehicleCount || 1}" /></label>
-      <label><span>\u8ba1\u4ef7\u5355\u4f4d</span><select name="pricingUnit">${createOptionList(vehiclePricingUnitOptions, defaults?.pricingUnit || "trip", "vehiclePricingUnitLabels")}</select></label>
-      <label><span>\u6210\u672c\u5355\u4ef7</span><input name="costUnitPrice" type="number" min="0" step="0.01" value="${defaults?.costUnitPrice ?? ""}" placeholder="0.00" /></label>
-      <label><span>\u9500\u552e\u5355\u4ef7</span><input name="priceUnitPrice" type="number" min="0" step="0.01" value="${defaults?.priceUnitPrice ?? ""}" placeholder="0.00" /></label>
-      <label><span>\u5e01\u79cd</span><select name="currency">${createOptionList(currencies, defaults?.currency || quoteCurrency || "EUR", "currencyLabels")}</select></label>
-      <label><span>\u6210\u672c\u5c0f\u8ba1</span><input name="costSubtotal" value="${window.AppUtils.formatCurrency(0, defaults?.currency || quoteCurrency || "EUR")}" readonly /></label>
-      <label><span>\u9500\u552e\u5c0f\u8ba1</span><input name="priceSubtotal" value="${window.AppUtils.formatCurrency(0, defaults?.currency || quoteCurrency || "EUR")}" readonly /></label>
-      <label class="vehicle-detail-note"><span>\u5907\u6ce8</span><input name="notes" value="${defaults?.notes || ""}" placeholder="\u4f8b\u5982\uff1a\u542b\u9ad8\u901f\u3001\u53f8\u673a\u61c2\u4e2d\u6587" /></label>
+      <label><span>用车类型</span><select name="detailType">${createOptionList(vehicleDetailTypeOptions, defaults?.detailType || "pickup", "vehicleDetailTypeLabels")}</select></label>
+      <label><span>车型</span><input name="vehicleModel" value="${defaults?.vehicleModel || ""}" placeholder="例如：奔驰 V 级" /></label>
+      <label><span>车辆数</span><input name="vehicleCount" type="number" min="1" step="1" value="${defaults?.vehicleCount || 1}" /></label>
+      <label><span>计价单位</span><select name="pricingUnit">${createOptionList(vehiclePricingUnitOptions, defaults?.pricingUnit || "trip", "vehiclePricingUnitLabels")}</select></label>
+      <label><span>计费数量（趟/天）</span><input name="billingQuantity" type="number" min="1" step="1" value="${defaults?.billingQuantity || 1}" /></label>
+      <label><span>成本单价</span><input name="costUnitPrice" type="number" min="0" step="0.01" value="${defaults?.costUnitPrice ?? ""}" placeholder="0.00" /></label>
+      <label><span>销售单价</span><input name="priceUnitPrice" type="number" min="0" step="0.01" value="${defaults?.priceUnitPrice ?? ""}" placeholder="0.00" /></label>
+      <label><span>币种</span><select name="currency">${createOptionList(currencies, defaults?.currency || quoteCurrency || "EUR", "currencyLabels")}</select></label>
+      <label><span>成本小计</span><input name="costSubtotal" value="${window.AppUtils.formatCurrency(0, defaults?.currency || quoteCurrency || "EUR")}" readonly /></label>
+      <label><span>销售小计</span><input name="priceSubtotal" value="${window.AppUtils.formatCurrency(0, defaults?.currency || quoteCurrency || "EUR")}" readonly /></label>
+      <label class="vehicle-detail-note"><span>备注</span><input name="notes" value="${defaults?.notes || ""}" placeholder="例如：含高速、司机懂中文" /></label>
       <div class="vehicle-detail-actions">
-        <button type="button" class="ghost mini-button delete-vehicle-detail">\u5220\u9664\u7528\u8f66\u660e\u7ec6</button>
+        <button type="button" class="ghost mini-button delete-vehicle-detail">删除用车明细</button>
       </div>
     </div>
   `;
@@ -131,14 +132,14 @@ function createItemRow(types, currencies, defaultCurrency) {
       </div>
       <div class="item-card-grid quote-item-grid quote-item-grid-wide">
         <label class="field-block field-span-1"><span>\u670d\u52a1\u7c7b\u578b</span><select name="type">${createOptionList(types, "hotel", "quoteItemTypeLabels")}</select></label>
-        <label class="field-block field-span-2"><span>\u670d\u52a1\u540d\u79f0</span><input name="name" placeholder="\u4f8b\u5982\uff1a\u8d1d\u5c14\u683c\u83b1\u5fb7\u5546\u52a1\u9152\u5e97 / \u5546\u52a1\u8f66\u670d\u52a1 / \u5bfc\u6e38\u670d\u52a1" /></label>
+        <label class="field-block field-span-2"><span>????</span><input name="name" placeholder="???????????? / ????? / ???? / ????" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u9879\u76ee\u5e01\u79cd</span><select name="currency">${createOptionList(currencies, defaultCurrency, "currencyLabels")}</select></label>
         <label class="field-block field-span-1"><span>\u5355\u4f4d</span><input name="unit" placeholder="\u4f8b\u5982\uff1a\u9879 / \u8d9f / \u4eba / \u5929" value="\u9879" /></label>
         <label class="field-block field-span-2"><span>\u4f9b\u5e94\u5546</span><input name="supplier" placeholder="\u4f8b\u5982\uff1a\u5f53\u5730\u9152\u5e97\u3001\u8f66\u961f\u3001\u5730\u63a5\u4f9b\u5e94\u5546" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u6570\u91cf</span><input name="quantity" type="number" step="1" placeholder="1" value="1" min="1" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u6210\u672c\u5355\u4ef7</span><input name="cost" type="number" step="0.01" placeholder="0.00" min="0" /></label>
         <label class="field-block field-span-1 simple-pricing-field"><span>\u9500\u552e\u5355\u4ef7</span><input name="price" type="number" step="0.01" placeholder="0.00" min="0" /></label>
-        <label class="field-block field-span-3"><span>\u5907\u6ce8\u8bf4\u660e</span><input name="notes" placeholder="\u4f8b\u5982\uff1a\u542b\u65e9\u9910\u3001\u53f8\u673a\u4f1a\u4e2d\u6587\u3001\u6309\u5b9e\u9645\u4eba\u6570\u7ed3\u7b97" /></label>
+        <label class="field-block field-span-3"><span>????</span><input name="notes" placeholder="????????????????????????" /></label>
       </div>
       <section class="hotel-detail-box hidden">
         <div class="panel-head form-section-head-row hotel-detail-head">
@@ -205,11 +206,12 @@ function getVehicleDetailRows(row) {
     vehicleModel: detailRow.querySelector('[name="vehicleModel"]').value.trim(),
     vehicleCount: Number(detailRow.querySelector('[name="vehicleCount"]').value || 0),
     pricingUnit: detailRow.querySelector('[name="pricingUnit"]').value,
+    billingQuantity: Number(detailRow.querySelector('[name="billingQuantity"]').value || 0),
     costUnitPrice: Number(detailRow.querySelector('[name="costUnitPrice"]').value || 0),
     priceUnitPrice: Number(detailRow.querySelector('[name="priceUnitPrice"]').value || 0),
     currency: detailRow.querySelector('[name="currency"]').value,
     notes: detailRow.querySelector('[name="notes"]').value.trim(),
-  })).filter((detail) => detail.vehicleModel || detail.notes || detail.detailType !== "pickup" || detail.pricingUnit !== "trip" || detail.vehicleCount !== 1 || detail.costUnitPrice !== 0 || detail.priceUnitPrice !== 0);
+  })).filter((detail) => detail.vehicleModel || detail.notes || detail.detailType !== "pickup" || detail.pricingUnit !== "trip" || detail.vehicleCount !== 1 || detail.billingQuantity !== 1 || detail.costUnitPrice !== 0 || detail.priceUnitPrice !== 0);
 }
 
 function getServiceDetailRows(row) {
@@ -250,8 +252,8 @@ function calculateHotelSubtotals(detail) {
 
 function calculateVehicleSubtotals(detail) {
   return {
-    costSubtotal: Number(detail.vehicleCount || 0) * Number(detail.costUnitPrice || 0),
-    priceSubtotal: Number(detail.vehicleCount || 0) * Number(detail.priceUnitPrice || 0),
+    costSubtotal: Number(detail.vehicleCount || 0) * Number(detail.billingQuantity || 0) * Number(detail.costUnitPrice || 0),
+    priceSubtotal: Number(detail.vehicleCount || 0) * Number(detail.billingQuantity || 0) * Number(detail.priceUnitPrice || 0),
   };
 }
 
@@ -281,6 +283,7 @@ function refreshHotelDetailRow(detailRow) {
 function refreshVehicleDetailRow(detailRow) {
   refreshMoneyInputs(detailRow, () => calculateVehicleSubtotals({
     vehicleCount: detailRow.querySelector('[name="vehicleCount"]').value,
+    billingQuantity: detailRow.querySelector('[name="billingQuantity"]').value,
     costUnitPrice: detailRow.querySelector('[name="costUnitPrice"]').value,
     priceUnitPrice: detailRow.querySelector('[name="priceUnitPrice"]').value,
   }));
@@ -402,17 +405,21 @@ function validateQuoteForm(form) {
 
     if (item.type === "vehicle") {
       if (item.vehicleDetails.length === 0) {
-        window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u7528\u8f66\u9879\u76ee\u8bf7\u81f3\u5c11\u5f55\u5165\u4e00\u6761\u7528\u8f66\u660e\u7ec6\u3002`, "error");
+        window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条用车项目请至少录入一条用车明细。`, "error");
         return false;
       }
       for (let detailIndex = 0; detailIndex < item.vehicleDetails.length; detailIndex += 1) {
         const detail = item.vehicleDetails[detailIndex];
         if (!detail.vehicleModel) {
-          window.AppUtils.showMessage("quote-message", `\u8bf7\u586b\u5199\u7b2c ${index + 1} \u6761\u7528\u8f66\u9879\u76ee\u7b2c ${detailIndex + 1} \u6761\u660e\u7ec6\u7684\u8f66\u578b\u3002`, "error");
+          window.AppUtils.showMessage("quote-message", `请填写第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的车型。`, "error");
           return false;
         }
         if (detail.vehicleCount <= 0) {
-          window.AppUtils.showMessage("quote-message", `\u7b2c ${index + 1} \u6761\u7528\u8f66\u9879\u76ee\u7b2c ${detailIndex + 1} \u6761\u660e\u7ec6\u7684\u8f66\u8f86\u6570\u5fc5\u987b\u5927\u4e8e 0\u3002`, "error");
+          window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的车辆数必须大于 0。`, "error");
+          return false;
+        }
+        if (detail.billingQuantity <= 0) {
+          window.AppUtils.showMessage("quote-message", `第 ${index + 1} 条用车项目第 ${detailIndex + 1} 条明细的计费数量必须大于 0。`, "error");
           return false;
         }
       }
@@ -486,7 +493,7 @@ function renderVehiclePreview(item, quoteCurrency) {
   if (!item.vehicleDetails || item.vehicleDetails.length === 0) {
     return "";
   }
-  return `<div class="vehicle-preview-lines">${item.vehicleDetails.map((detail) => `<p class="meta preview-subline">${getVehicleDetailTypeLabel(detail.detailType)} / ${detail.vehicleModel} / ${detail.vehicleCount} \u8f66 / ${getVehiclePricingUnitLabel(detail.pricingUnit)} / \u6210\u672c ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}\uff08\u6298\u7b97 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}\uff09/ \u9500\u552e ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}\uff08\u6298\u7b97 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}\uff09</p>`).join("")}</div>`;
+  return `<div class="vehicle-preview-lines">${item.vehicleDetails.map((detail) => `<p class="meta preview-subline">${getVehicleDetailTypeLabel(detail.detailType)} / ${detail.vehicleModel} / ${detail.vehicleCount} 车 / 计费 ${detail.billingQuantity} ${getVehiclePricingUnitLabel(detail.pricingUnit)} / 成本 ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}）/ 销售 ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}（折算 ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}）</p>`).join("")}</div>`;
 }
 
 function renderServicePreview(item, quoteCurrency) {
@@ -592,12 +599,18 @@ function buildLegacyHotelDetailDefaults(item, form, meta) {
   return { roomType: item?.name || "", roomCount: 1, nights: Number(item?.quantity || form.travelDays.value || 1) || 1, costNightlyRate: item?.cost ?? "", priceNightlyRate: item?.price ?? "", currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: item?.notes || "" };
 }
 
+function getDefaultVehicleBillingQuantity(pricingUnit, form) {
+  return pricingUnit === "full_day" ? Math.max(Number(form.travelDays.value || 1), 1) : 1;
+}
+
 function buildVehicleDetailDefaults(detail, form, meta) {
-  return { detailType: detail?.detailType || "pickup", vehicleModel: detail?.vehicleModel || "", vehicleCount: detail?.vehicleCount || 1, pricingUnit: detail?.pricingUnit || "trip", costUnitPrice: detail?.costUnitPrice ?? "", priceUnitPrice: detail?.priceUnitPrice ?? "", currency: detail?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: detail?.notes || "" };
+  const pricingUnit = detail?.pricingUnit || "trip";
+  return { detailType: detail?.detailType || "pickup", vehicleModel: detail?.vehicleModel || "", vehicleCount: detail?.vehicleCount || 1, pricingUnit, billingQuantity: Number(detail?.billingQuantity || getDefaultVehicleBillingQuantity(pricingUnit, form)) || 1, costUnitPrice: detail?.costUnitPrice ?? "", priceUnitPrice: detail?.priceUnitPrice ?? "", currency: detail?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: detail?.notes || "" };
 }
 
 function buildLegacyVehicleDetailDefaults(item, form, meta) {
-  return { detailType: "pickup", vehicleModel: item?.name || "", vehicleCount: Number(item?.quantity || 1) || 1, pricingUnit: item?.unit === "\u5168\u5929" ? "full_day" : "trip", costUnitPrice: item?.cost ?? "", priceUnitPrice: item?.price ?? "", currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: item?.notes || "" };
+  const pricingUnit = item?.unit === "全天" ? "full_day" : "trip";
+  return { detailType: "pickup", vehicleModel: item?.name || "", vehicleCount: Number(item?.quantity || 1) || 1, pricingUnit, billingQuantity: getDefaultVehicleBillingQuantity(pricingUnit, form), costUnitPrice: item?.cost ?? "", priceUnitPrice: item?.price ?? "", currency: item?.currency || form.currency.value || meta.defaultQuoteCurrency || "EUR", notes: item?.notes || "" };
 }
 
 function buildServiceDetailDefaults(detail, form, meta, fallbackRole) {
@@ -665,6 +678,22 @@ async function bootstrap() {
     const detailRow = wrapper.firstElementChild;
     row.querySelector('.vehicle-detail-list').appendChild(detailRow);
     bindDetailInputs(detailRow, row, refreshVehicleDetailRow, refreshVehicleItemSummary);
+    const billingQuantityInput = detailRow.querySelector('[name="billingQuantity"]');
+    const pricingUnitInput = detailRow.querySelector('[name="pricingUnit"]');
+    billingQuantityInput.addEventListener('input', () => {
+      billingQuantityInput.dataset.userChanged = 'true';
+    });
+    billingQuantityInput.addEventListener('change', () => {
+      billingQuantityInput.dataset.userChanged = 'true';
+    });
+    pricingUnitInput.addEventListener('change', () => {
+      if (!billingQuantityInput.dataset.userChanged) {
+        billingQuantityInput.value = getDefaultVehicleBillingQuantity(pricingUnitInput.value, form);
+      }
+      refreshVehicleDetailRow(detailRow);
+      refreshVehicleItemSummary(row, form.currency.value);
+      renderPreview(form).catch((error) => window.AppUtils.showMessage('quote-message', error.message, 'error'));
+    });
     detailRow.querySelector('.delete-vehicle-detail').addEventListener('click', () => {
       detailRow.remove();
       refreshVehicleItemSummary(row, form.currency.value);
@@ -761,6 +790,40 @@ async function bootstrap() {
       detailDefaults.forEach((detail) => addServiceDetailRow(row, detail));
     };
 
+    const genericNamePlaceholder = "???????????? / ????? / ???? / ????";
+    const genericNotesPlaceholder = "????????????????????????";
+
+    const applyTypeFieldHints = () => {
+      nameField.placeholder = genericNamePlaceholder;
+      notesField.placeholder = genericNotesPlaceholder;
+
+      if (typeField.value === "dining") {
+        nameField.placeholder = "??????? / ???? / ????";
+        notesField.placeholder = "???????????????????????????";
+        if (!nameField.value.trim()) {
+          nameField.value = "???? / ????";
+        }
+        if (!unitField.value.trim() || unitField.value.trim() === "?") {
+          unitField.value = "?";
+        }
+        if (!Number(quantityField.value) || Number(quantityField.value) === 1) {
+          quantityField.value = 2;
+        }
+        if (!notesField.value.trim()) {
+          notesField.value = "???????????????????????????";
+        }
+        return;
+      }
+
+      if (typeField.value === "hotel") {
+        nameField.placeholder = "???????????? / ??????";
+      } else if (typeField.value === "vehicle") {
+        nameField.placeholder = "???????? / ???? / ????";
+      } else if (["guide", "interpreter"].includes(typeField.value)) {
+        nameField.placeholder = "????????? / ??????";
+      }
+    };
+
     const syncTypeUI = () => {
       toggleDetailFields(row);
       if (typeField.value === "hotel") {
@@ -772,10 +835,15 @@ async function bootstrap() {
       } else if (["guide", "interpreter"].includes(typeField.value)) {
         unitField.value = "服务";
         ensureServiceDetails();
+      } else if (typeField.value === "dining") {
+        if (!unitField.value.trim() || ["??", "??", "??", "?"].includes(unitField.value.trim())) {
+          unitField.value = "?";
+        }
       } else if (!unitField.value.trim() || ["酒店", "用车", "服务"].includes(unitField.value.trim())) {
         unitField.value = "项";
       }
 
+      applyTypeFieldHints();
       renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
     };
 
@@ -935,10 +1003,22 @@ async function bootstrap() {
         input.value = Number(form.travelDays.value || 1) || 1;
       }
     });
+    document.querySelectorAll('.vehicle-detail-row').forEach((detailRow) => {
+      const pricingUnitInput = detailRow.querySelector('[name="pricingUnit"]');
+      const billingQuantityInput = detailRow.querySelector('[name="billingQuantity"]');
+      if (pricingUnitInput && billingQuantityInput && pricingUnitInput.value === "full_day" && !billingQuantityInput.dataset.userChanged) {
+        billingQuantityInput.value = getDefaultVehicleBillingQuantity(pricingUnitInput.value, form);
+      }
+    });
     document.querySelectorAll('.hotel-detail-row').forEach((detailRow) => refreshHotelDetailRow(detailRow));
-    document.querySelectorAll('.item-card').forEach((row) => refreshHotelItemSummary(row, form.currency.value));
+    document.querySelectorAll('.vehicle-detail-row').forEach((detailRow) => refreshVehicleDetailRow(detailRow));
+    document.querySelectorAll('.item-card').forEach((row) => {
+      refreshHotelItemSummary(row, form.currency.value);
+      refreshVehicleItemSummary(row, form.currency.value);
+    });
     renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
   });
+
 
   form.endDate.addEventListener("change", () => {
     updateTravelDays(form);
@@ -947,8 +1027,19 @@ async function bootstrap() {
         input.value = Number(form.travelDays.value || 1) || 1;
       }
     });
+    document.querySelectorAll('.vehicle-detail-row').forEach((detailRow) => {
+      const pricingUnitInput = detailRow.querySelector('[name="pricingUnit"]');
+      const billingQuantityInput = detailRow.querySelector('[name="billingQuantity"]');
+      if (pricingUnitInput && billingQuantityInput && pricingUnitInput.value === "full_day" && !billingQuantityInput.dataset.userChanged) {
+        billingQuantityInput.value = getDefaultVehicleBillingQuantity(pricingUnitInput.value, form);
+      }
+    });
     document.querySelectorAll('.hotel-detail-row').forEach((detailRow) => refreshHotelDetailRow(detailRow));
-    document.querySelectorAll('.item-card').forEach((row) => refreshHotelItemSummary(row, form.currency.value));
+    document.querySelectorAll('.vehicle-detail-row').forEach((detailRow) => refreshVehicleDetailRow(detailRow));
+    document.querySelectorAll('.item-card').forEach((row) => {
+      refreshHotelItemSummary(row, form.currency.value);
+      refreshVehicleItemSummary(row, form.currency.value);
+    });
     renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
   });
 

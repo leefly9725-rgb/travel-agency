@@ -13,7 +13,7 @@ function renderVehicleDetailBlock(item, quoteCurrency) {
         <div class="table-row table-row-wide table-row-split">
           <div>
             <strong>${window.AppUi.getLabel("vehicleDetailTypeLabels", detail.detailType)} / ${detail.vehicleModel}</strong>
-            <p class="meta preview-subline">${detail.vehicleCount} ? / ${window.AppUi.getLabel("vehiclePricingUnitLabels", detail.pricingUnit)} / ?? ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
+            <p class="meta preview-subline">${detail.vehicleCount} ? / ?? ${detail.billingQuantity} ${window.AppUi.getLabel("vehiclePricingUnitLabels", detail.pricingUnit)} / ?? ${window.AppUi.getLabel("currencyLabels", detail.currency)}</p>
             <p class="meta preview-subline">?? ${window.AppUtils.formatCurrency(detail.costSubtotalOriginal, detail.currency)}??? ${window.AppUtils.formatCurrency(detail.costSubtotal, quoteCurrency)}?/ ?? ${window.AppUtils.formatCurrency(detail.priceSubtotalOriginal, detail.currency)}??? ${window.AppUtils.formatCurrency(detail.priceSubtotal, quoteCurrency)}?</p>
             <p class="meta preview-subline">${detail.notes || "???"}</p>
           </div>
