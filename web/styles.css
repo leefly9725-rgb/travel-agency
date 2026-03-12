@@ -1,4 +1,4 @@
-:root {
+﻿:root {
   --bg: #f4efe7;
   --ink: #1e2430;
   --muted: #5f6b7a;
@@ -73,14 +73,14 @@ textarea {
 }
 
 .quote-editor-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 380px);
+  gap: 22px;
   align-items: start;
 }
-
 .nav-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-bottom: 24px;
 }
-
 .nav-grid-3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
@@ -451,8 +451,8 @@ button.ghost,
   min-width: 0;
   width: 100%;
   padding: 18px;
-  position: sticky;
-  top: 18px;
+  position: static;
+  top: auto;
   align-self: start;
 }
 
@@ -715,4 +715,23 @@ button.ghost,
 
 
 
+
+
+.quote-items-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.secondary-add-button {
+  flex: 0 0 auto;
+}
+
+.quote-items-footer .meta {
+  margin: 0;
+}
 
