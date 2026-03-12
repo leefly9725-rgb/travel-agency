@@ -1,0 +1,61 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>泷鼎晟国际旅行社运营系统 V1.0</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="hero compact-hero">
+      <div>
+        <p class="eyebrow">LDS International Travel</p>
+        <h1>泷鼎晟国际旅行社运营系统 V1.0</h1>
+        <p class="hero-copy">在当前轻量 Node 架构上持续实现报价、接待运营、文档中心、项目主档和模板管理功能。</p>
+      </div>
+      <div class="hero-card">
+        <div id="runtime-info" class="runtime-box"></div>
+        <div id="metrics"></div>
+      </div>
+    </header>
+
+    <section class="panel section-spacing-sm">
+      <div class="panel-head panel-head-wrap">
+        <div>
+          <h2>前端打开方式</h2>
+          <p class="meta">如果服务自动切换到 3001、3002 等端口，请按下面显示的当前地址打开。</p>
+        </div>
+      </div>
+      <div id="frontend-entry" class="table-like"></div>
+    </section>
+
+    <nav class="nav-grid section-spacing-sm nav-grid-3">
+      <a class="nav-card" href="/quotes.html">
+        <strong>报价管理</strong>
+        <span>查看报价列表、新建报价、编辑与删除报价</span>
+      </a>
+      <a class="nav-card" href="/templates.html">
+        <strong>报价模板</strong>
+        <span>维护常用报价项目模板，支持新建、编辑与删除</span>
+      </a>
+      <a class="nav-card" href="/receptions.html">
+        <strong>接待任务</strong>
+        <span>新建、编辑、筛选与删除接待任务</span>
+      </a>
+      <a class="nav-card" href="/documents.html">
+        <strong>文档源数据</strong>
+        <span>预览报价单、行程单、接待确认单</span>
+      </a>
+      <a class="nav-card" href="/projects.html">
+        <strong>项目主档中心</strong>
+        <span>查看项目概览、档案信息及关联业务</span>
+      </a>
+    </nav>
+  </div>
+
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/home.js"></script>
+</body>
+</html>

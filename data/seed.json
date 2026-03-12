@@ -1,0 +1,555 @@
+{
+  "quotes": [
+    {
+      "id": "Q-1773260013492",
+      "quoteNumber": "QT-20260311-4503",
+      "projectId": "",
+      "clientName": "AA企业代表团",
+      "projectName": "商务考察接待6天",
+      "contactName": "张飞",
+      "contactPhone": "17767899922",
+      "language": "zh-CN",
+      "currency": "EUR",
+      "startDate": "2026-03-31",
+      "endDate": "2026-04-05",
+      "tripDate": "2026-03-31",
+      "travelDays": 6,
+      "destination": "Belgrade",
+      "paxCount": 5,
+      "notes": "",
+      "items": [
+        {
+          "type": "hotel",
+          "name": "四星级酒店",
+          "unit": "酒店",
+          "supplier": "皇冠假日酒店",
+          "currency": "EUR",
+          "cost": 0,
+          "price": 0,
+          "quantity": 1,
+          "notes": "含早餐，可按实际入住晚数调整",
+          "hotelDetails": [
+            {
+              "roomType": "标准间",
+              "roomCount": 2,
+              "nights": 5,
+              "nightlyRate": 120,
+              "currency": "EUR",
+              "notes": "含早餐"
+            },
+            {
+              "roomType": "大床房",
+              "roomCount": 2,
+              "nights": 5,
+              "nightlyRate": 180,
+              "currency": "EUR",
+              "notes": "含早餐"
+            }
+          ]
+        },
+        {
+          "type": "vehicle",
+          "name": "奔驰商务用车6+1",
+          "unit": "天",
+          "supplier": "LDS自有车辆",
+          "currency": "EUR",
+          "cost": 50,
+          "price": 80,
+          "quantity": 6,
+          "notes": "",
+          "hotelDetails": []
+        },
+        {
+          "type": "guide",
+          "name": "中文接待协助",
+          "unit": "人",
+          "supplier": "LDS导游",
+          "currency": "EUR",
+          "cost": 200,
+          "price": 250,
+          "quantity": 1,
+          "notes": "协助现场沟通与导游",
+          "hotelDetails": []
+        },
+        {
+          "type": "dining",
+          "name": "商务工作餐",
+          "unit": "餐",
+          "supplier": "LDS酒店餐厅",
+          "currency": "RSD",
+          "cost": 2000,
+          "price": 3000,
+          "quantity": 5,
+          "notes": "可根据人数调整标准",
+          "hotelDetails": []
+        },
+        {
+          "type": "meeting",
+          "name": "会议室接待安排",
+          "unit": "间",
+          "supplier": "LDS酒店",
+          "currency": "EUR",
+          "cost": 1500,
+          "price": 2500,
+          "quantity": 1,
+          "notes": "含会议现场协调",
+          "hotelDetails": []
+        },
+        {
+          "type": "misc",
+          "name": "现场工人",
+          "unit": "人",
+          "supplier": "地接社",
+          "currency": "EUR",
+          "cost": 500,
+          "price": 800,
+          "quantity": 10,
+          "notes": "",
+          "hotelDetails": []
+        }
+      ]
+    },
+    {
+      "id": "Q-1773248749960",
+      "quoteNumber": "QT-20260311-9960",
+      "projectId": "",
+      "clientName": "浙江家庭",
+      "projectName": "塞波黑10日游家庭团",
+      "contactName": "小明",
+      "contactPhone": "17688990065",
+      "language": "zh-CN",
+      "currency": "EUR",
+      "tripDate": "2026-03-28",
+      "travelDays": 10,
+      "destination": "Belgrade",
+      "paxCount": 5,
+      "notes": "",
+      "items": [
+        {
+          "type": "hotel",
+          "name": "高端4星酒店豪华房",
+          "unit": "间夜",
+          "supplier": "贝尔格莱德酒店",
+          "cost": 80,
+          "price": 100,
+          "quantity": 3,
+          "notes": "可按星级和房型调整"
+        },
+        {
+          "type": "vehicle",
+          "name": "奔驰商务车7+1",
+          "unit": "天",
+          "supplier": "LDS自用车",
+          "cost": 80,
+          "price": 100,
+          "quantity": 10,
+          "notes": "含司机与中文客服协调"
+        },
+        {
+          "type": "guide",
+          "name": "中文导游服务",
+          "unit": "天",
+          "supplier": "小张",
+          "cost": 180,
+          "price": 250,
+          "quantity": 10,
+          "notes": "可升级为私人定制导览"
+        },
+        {
+          "type": "tickets",
+          "name": "金色缆车",
+          "unit": "人",
+          "supplier": "兹拉蒂博尔缆车",
+          "cost": 25,
+          "price": 30,
+          "quantity": 5,
+          "notes": "按实际景点组合调整"
+        },
+        {
+          "type": "dining",
+          "name": "特色餐饮安排",
+          "unit": "餐",
+          "supplier": "",
+          "cost": 0,
+          "price": 0,
+          "quantity": 2,
+          "notes": "可加入欢迎晚宴或特色餐厅"
+        },
+        {
+          "type": "misc",
+          "name": "定制服务费",
+          "unit": "项",
+          "supplier": "",
+          "cost": 0,
+          "price": 0,
+          "quantity": 1,
+          "notes": "用于礼宾、行程设计等综合服务"
+        }
+      ]
+    },
+    {
+      "id": "Q-1773234338401",
+      "quoteNumber": "QT-20260311-8401",
+      "projectId": "",
+      "clientName": "国际事业部",
+      "projectName": "塞尔维亚商务接待5天",
+      "contactName": "小小",
+      "contactPhone": "888678909",
+      "language": "zh-CN",
+      "currency": "EUR",
+      "tripDate": "2026-03-14",
+      "travelDays": 5,
+      "destination": "Belgrade",
+      "paxCount": 6,
+      "notes": "",
+      "items": [
+        {
+          "type": "hotel",
+          "name": "四星酒店标准间",
+          "unit": "间夜",
+          "supplier": "酒店",
+          "cost": 40,
+          "price": 80,
+          "quantity": 3,
+          "notes": "含早餐"
+        },
+        {
+          "type": "vehicle",
+          "name": "奔驰商务车",
+          "unit": "天",
+          "supplier": "地接",
+          "cost": 80,
+          "price": 100,
+          "quantity": 5,
+          "notes": ""
+        },
+        {
+          "type": "guide",
+          "name": "Ricky",
+          "unit": "天",
+          "supplier": "地接",
+          "cost": 200,
+          "price": 250,
+          "quantity": 5,
+          "notes": ""
+        },
+        {
+          "type": "interpreter",
+          "name": "安娜",
+          "unit": "天",
+          "supplier": "翻译社",
+          "cost": 300,
+          "price": 400,
+          "quantity": 5,
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "Q-1773228897750",
+      "quoteNumber": "QT-20260311-7750",
+      "clientName": "中青旅",
+      "projectName": "塞波黑8日游",
+      "contactName": "夏天",
+      "contactPhone": "12345678",
+      "language": "zh-CN",
+      "currency": "EUR",
+      "tripDate": "2026-03-15",
+      "travelDays": 8,
+      "destination": "Belgrade",
+      "notes": "",
+      "items": [
+        {
+          "type": "hotel",
+          "name": "HITNA prodaja! Luksuzni kristalni luster 15 glava 85cm",
+          "unit": "2",
+          "supplier": "",
+          "cost": 100,
+          "price": 5000.04,
+          "quantity": 1,
+          "notes": ""
+        },
+        {
+          "type": "vehicle",
+          "name": "2x evropske retro fotelje – braon kožna, potpuno nove",
+          "unit": "unit",
+          "supplier": "",
+          "cost": 8,
+          "price": 350,
+          "quantity": 1,
+          "notes": ""
+        }
+      ],
+      "projectId": "",
+      "paxCount": 0,
+      "dataQuality": {
+        "reviewStatus": "flagged_review",
+        "issues": [
+          "包含明显非旅游服务名称的报价项：HITNA prodaja! Luksuzni kristalni luster 15 glava 85cm；2x evropske retro fotelje – braon kožna, potpuno nove",
+          "存在不适合旅游报价的单位值：2、unit"
+        ],
+        "note": "此记录已标记，未自动猜测修复，请人工复核后再用于正式业务。"
+      }
+    }
+  ],
+  "receptions": [
+    {
+      "id": "R-1773229182328",
+      "projectId": "",
+      "taskType": "business_meeting",
+      "title": "AA商务厅",
+      "assignee": "笑笑",
+      "dueTime": "2026-03-20T10:00",
+      "status": "in_progress",
+      "location": "特斯拉机场",
+      "notes": ""
+    },
+    {
+      "id": "R-001",
+      "taskType": "airport_pickup",
+      "title": "贝尔格莱德机场 VIP 接待",
+      "assignee": "Mila",
+      "dueTime": "2026-04-15T08:30",
+      "status": "in_progress",
+      "location": "Belgrade Nikola Tesla Airport T2",
+      "notes": "提前 30 分钟到场，举 VIP 姓名牌",
+      "projectId": ""
+    },
+    {
+      "id": "R-002",
+      "taskType": "hotel_checkin",
+      "title": "诺维萨德酒店入住协调",
+      "assignee": "Zhang Wei",
+      "dueTime": "2026-05-02T15:00",
+      "status": "pending",
+      "location": "Novi Sad Downtown Hotel",
+      "notes": "Prepare welcome fruits and kids amenities.",
+      "projectId": ""
+    }
+  ],
+  "documents": [
+    {
+      "id": "D-001",
+      "title": "商务接待确认函",
+      "category": "business_reception",
+      "language": "zh-CN",
+      "updatedAt": "2026-03-10"
+    },
+    {
+      "id": "D-002",
+      "title": "Luxury Travel Welcome Brief",
+      "category": "luxury_custom",
+      "language": "en",
+      "updatedAt": "2026-03-08"
+    }
+  ],
+  "templates": [
+    {
+      "id": "TPL-business-reception",
+      "name": "商务接待基础模板",
+      "description": "适合商务拜访、客户接待、短期差旅行程。",
+      "isBuiltIn": true,
+      "items": [
+        {
+          "type": "hotel",
+          "name": "商务酒店标准间",
+          "unit": "间夜",
+          "currency": "EUR",
+          "quantity": 2,
+          "notes": "含早餐，可按实际入住晚数调整"
+        },
+        {
+          "type": "vehicle",
+          "name": "市内商务用车",
+          "unit": "天",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "含司机与基础油费"
+        },
+        {
+          "type": "guide",
+          "name": "中文接待协助",
+          "unit": "天",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "协助现场沟通与陪同"
+        },
+        {
+          "type": "dining",
+          "name": "商务工作餐",
+          "unit": "人",
+          "currency": "RSD",
+          "quantity": 2,
+          "notes": "可根据人数调整标准"
+        },
+        {
+          "type": "meeting",
+          "name": "会议接待安排",
+          "unit": "场",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "含会议现场协调"
+        }
+      ]
+    },
+    {
+      "id": "TPL-premium-custom",
+      "name": "高端定制游基础模板",
+      "description": "适合高端自由行、VIP 接待和定制路线。",
+      "isBuiltIn": true,
+      "items": [
+        {
+          "type": "hotel",
+          "name": "高端酒店豪华房",
+          "unit": "间夜",
+          "currency": "EUR",
+          "quantity": 3,
+          "notes": "可按星级和房型调整"
+        },
+        {
+          "type": "vehicle",
+          "name": "专属包车服务",
+          "unit": "天",
+          "currency": "EUR",
+          "quantity": 3,
+          "notes": "含司机与中文客服协调"
+        },
+        {
+          "type": "guide",
+          "name": "中文导游服务",
+          "unit": "天",
+          "currency": "EUR",
+          "quantity": 2,
+          "notes": "可升级为私人定制导览"
+        },
+        {
+          "type": "tickets",
+          "name": "核心景点门票",
+          "unit": "人",
+          "currency": "RSD",
+          "quantity": 2,
+          "notes": "按实际景点组合调整"
+        },
+        {
+          "type": "dining",
+          "name": "特色餐饮安排",
+          "unit": "餐",
+          "currency": "RSD",
+          "quantity": 2,
+          "notes": "可加入欢迎晚宴或特色餐厅"
+        },
+        {
+          "type": "misc",
+          "name": "定制服务费",
+          "unit": "项",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "用于礼宾、行程设计等综合服务"
+        }
+      ]
+    },
+    {
+      "id": "TPL-exhibition-reception",
+      "name": "会展接待基础模板",
+      "description": "适合展会、论坛、商务活动接待场景。",
+      "isBuiltIn": true,
+      "items": [
+        {
+          "type": "hotel",
+          "name": "会展期间酒店住宿",
+          "unit": "间夜",
+          "currency": "EUR",
+          "quantity": 3,
+          "notes": "建议靠近展馆或会场"
+        },
+        {
+          "type": "vehicle",
+          "name": "展会接送用车",
+          "unit": "趟",
+          "currency": "EUR",
+          "quantity": 4,
+          "notes": "含酒店与展馆往返"
+        },
+        {
+          "type": "interpreter",
+          "name": "商务翻译支持",
+          "unit": "天",
+          "currency": "EUR",
+          "quantity": 2,
+          "notes": "可根据语种增加人数"
+        },
+        {
+          "type": "meeting",
+          "name": "展会会议协助",
+          "unit": "场",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "含现场签到与联络协助"
+        },
+        {
+          "type": "dining",
+          "name": "参展工作餐",
+          "unit": "人",
+          "currency": "RSD",
+          "quantity": 4,
+          "notes": "可拆分午餐与晚餐"
+        },
+        {
+          "type": "parking",
+          "name": "展馆停车安排",
+          "unit": "天",
+          "currency": "RSD",
+          "quantity": 2,
+          "notes": "按实际车辆数量调整"
+        }
+      ]
+    },
+    {
+      "id": "TPL-airport-transfer",
+      "name": "接送机基础模板",
+      "description": "适合单次或往返机场接送安排。",
+      "isBuiltIn": true,
+      "items": [
+        {
+          "type": "vehicle",
+          "name": "机场接机",
+          "unit": "趟",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "含航班落地等待"
+        },
+        {
+          "type": "vehicle",
+          "name": "机场送机",
+          "unit": "趟",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "可按返程时间调整"
+        },
+        {
+          "type": "guide",
+          "name": "接机举牌协助",
+          "unit": "趟",
+          "currency": "EUR",
+          "quantity": 1,
+          "notes": "适合团队或 VIP 客户"
+        },
+        {
+          "type": "parking",
+          "name": "机场停车费",
+          "unit": "次",
+          "currency": "RSD",
+          "quantity": 1,
+          "notes": "按实际停车时长结算"
+        }
+      ]
+    },
+    {
+      "id": "TPL-blank",
+      "name": "空白模板",
+      "description": "不预填任何报价项目，适合完全手动录入。",
+      "isBuiltIn": true,
+      "items": []
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "dataFile": "D:\\LDS-OPS-v1\\data\\seed.json",
+  "backupFile": "D:\\LDS-OPS-v1\\backups\\seed-20260311-144338.json",
+  "generatedAt": "2026-03-11T13:47:30.000Z",
+  "cleanedRecords": [
+    {
+      "id": "Q-1773228897750",
+      "changes": [
+        "补齐缺失的 projectId 字段为空字符串",
+        "补齐缺失的 paxCount 为 0"
+      ]
+    },
+    {
+      "id": "R-1773229182328",
+      "changes": [
+        "补齐缺失的 projectId 字段为空字符串"
+      ]
+    },
+    {
+      "id": "R-001",
+      "changes": [
+        "补齐缺失的 projectId 字段为空字符串",
+        "移除旧版未使用的 type 字段"
+      ]
+    },
+    {
+      "id": "R-002",
+      "changes": [
+        "补齐缺失的 projectId 字段为空字符串",
+        "移除旧版未使用的 type 字段"
+      ]
+    }
+  ],
+  "markedRecords": [
+    {
+      "id": "Q-1773228897750",
+      "issues": [
+        "包含明显非旅游服务名称的报价项：HITNA prodaja! Luksuzni kristalni luster 15 glava 85cm；2x evropske retro fotelje – braon kožna, potpuno nove",
+        "存在不适合旅游报价的单位值：2、unit"
+      ],
+      "note": "该记录已标记为待人工复核，未自动猜测修复。"
+    }
+  ],
+  "notChangedButReviewed": [
+    {
+      "id": "Q-1773234338401",
+      "result": "字段结构、日期格式、报价项类型均可用，未改动"
+    },
+    {
+      "id": "D-001",
+      "result": "中文标题正常，未改动"
+    },
+    {
+      "id": "D-002",
+      "result": "英文标题和语言值与业务场景一致，未改动"
+    }
+  ]
+}

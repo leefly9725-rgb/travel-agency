@@ -1,0 +1,16 @@
+{
+  "name": "lds-ops-v1",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LongDingsheng Ops V1 internal operations system",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node server/index.js",
+    "start": "node server/index.js",
+    "test": "node --test --test-isolation=none"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
+

@@ -1,0 +1,35 @@
+# AGENTS.md
+
+## Project
+LongDingsheng Ops V1
+
+## Goal
+Build an internal operations system for Long Dingsheng International Travel in Serbia.
+The V1 scope includes:
+1. Sales Quote
+2. Reception Ops
+3. Document Center
+
+## Business rules
+- Primary UI language: Chinese
+- Support output languages: Chinese, English, Serbian
+- Default currency: EUR
+- Optional currencies: CNY, RSD
+- Date format: YYYY-MM-DD
+- Time format: 24-hour
+- Focus on operational efficiency, not fancy design
+- All quotes must show cost, price, gross profit, gross margin
+- All reception tasks must have assignee and status
+- Documents must support business reception and luxury custom travel scenarios
+
+## V1 out of scope
+- No third-party API integration
+- No mobile app
+- No advanced dispatch algorithm
+- No accounting system integration
+
+## Tech preference
+- Use a simple, maintainable full-stack architecture
+- Prioritize clarity and extensibility
+- Add seed data for demo
+- Add basic tests for core quote calculations

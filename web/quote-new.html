@@ -1,0 +1,44 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报价单维护</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/quotes.html">← 返回报价列表</a>
+    </header>
+
+    <div class="page-grid quote-editor-grid">
+      <section class="panel form-main-panel">
+        <div class="admin-page-head">
+          <div>
+            <p class="eyebrow">报价管理</p>
+            <h1 id="quote-form-title" class="page-title-sm">新建报价单</h1>
+            <p id="quote-form-subtitle" class="page-subtitle">用于录入客户信息、行程日期和报价项目，右侧会同步显示汇总结果。</p>
+          </div>
+          <span id="quote-form-mode" class="status-text subtle-status">新建模式</span>
+        </div>
+        <div id="quote-message" class="message-box hidden"></div>
+        <form id="quote-form" class="form-stack"></form>
+      </section>
+
+      <aside class="panel preview-side-panel preview-panel-static-safe">
+        <div class="panel-head panel-head-wrap">
+          <div>
+            <h2>报价预览</h2>
+            <p class="meta">按报价币种自动汇总，并显示原币种与折算结果。</p>
+          </div>
+        </div>
+        <div id="quote-preview" class="stack"></div>
+      </aside>
+    </div>
+  </div>
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/quote-new.js"></script>
+</body>
+</html>

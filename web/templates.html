@@ -1,0 +1,33 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报价模板管理</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/">← 首页</a>
+      <div class="topbar-actions">
+        <a class="button-link" href="/template-edit.html">新建模板</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head panel-head-wrap">
+        <div>
+          <h1>报价模板列表</h1>
+          <p class="meta">维护日常常用的报价项目模板，方便业务团队快速插入。</p>
+        </div>
+      </div>
+      <div id="template-message" class="message-box hidden"></div>
+      <div id="template-list" class="stack"></div>
+    </section>
+  </div>
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/templates.js"></script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>模板编辑</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/templates.html">← 返回模板列表</a>
+    </header>
+
+    <section class="panel form-main-panel">
+      <div class="admin-page-head">
+        <div>
+          <p class="eyebrow">报价模板</p>
+          <h1 id="template-form-title" class="page-title-sm">新建模板</h1>
+          <p class="page-subtitle">模板只保存常用报价项目结构，插入报价后仍可继续修改服务名称、币种、数量和备注。</p>
+        </div>
+        <span id="template-form-mode" class="status-text subtle-status">新建模式</span>
+      </div>
+      <div id="template-message" class="message-box hidden"></div>
+      <form id="template-form" class="form-stack"></form>
+    </section>
+  </div>
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/template-edit.js"></script>
+</body>
+</html>

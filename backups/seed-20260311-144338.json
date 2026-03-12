@@ -1,0 +1,148 @@
+{
+  "quotes": [
+    {
+      "id": "Q-1773234338401",
+      "quoteNumber": "QT-20260311-8401",
+      "projectId": "",
+      "clientName": "国际事业部",
+      "projectName": "塞尔维亚商务接待5天",
+      "contactName": "小小",
+      "contactPhone": "888678909",
+      "language": "zh-CN",
+      "currency": "EUR",
+      "tripDate": "2026-03-14",
+      "travelDays": 5,
+      "destination": "Belgrade",
+      "paxCount": 6,
+      "notes": "",
+      "items": [
+        {
+          "type": "hotel",
+          "name": "四星酒店标准间",
+          "unit": "间夜",
+          "supplier": "酒店",
+          "cost": 40,
+          "price": 80,
+          "quantity": 3,
+          "notes": "含早餐"
+        },
+        {
+          "type": "vehicle",
+          "name": "奔驰商务车",
+          "unit": "天",
+          "supplier": "地接",
+          "cost": 80,
+          "price": 100,
+          "quantity": 5,
+          "notes": ""
+        },
+        {
+          "type": "guide",
+          "name": "Ricky",
+          "unit": "天",
+          "supplier": "地接",
+          "cost": 200,
+          "price": 250,
+          "quantity": 5,
+          "notes": ""
+        },
+        {
+          "type": "interpreter",
+          "name": "安娜",
+          "unit": "天",
+          "supplier": "翻译社",
+          "cost": 300,
+          "price": 400,
+          "quantity": 5,
+          "notes": ""
+        }
+      ]
+    },
+    {
+      "id": "Q-1773228897750",
+      "quoteNumber": "QT-20260311-7750",
+      "clientName": "中青旅",
+      "projectName": "塞波黑8日游",
+      "contactName": "夏天",
+      "contactPhone": "12345678",
+      "language": "zh-CN",
+      "currency": "EUR",
+      "tripDate": "2026-03-15",
+      "travelDays": 8,
+      "destination": "Belgrade",
+      "notes": "",
+      "items": [
+        {
+          "type": "hotel",
+          "name": "HITNA prodaja! Luksuzni kristalni luster 15 glava 85cm",
+          "unit": "2",
+          "supplier": "",
+          "cost": 100,
+          "price": 5000.04,
+          "quantity": 1,
+          "notes": ""
+        },
+        {
+          "type": "vehicle",
+          "name": "2x evropske retro fotelje – braon kožna, potpuno nove",
+          "unit": "unit",
+          "supplier": "",
+          "cost": 8,
+          "price": 350,
+          "quantity": 1,
+          "notes": ""
+        }
+      ]
+    }
+  ],
+  "receptions": [
+    {
+      "id": "R-1773229182328",
+      "taskType": "business_meeting",
+      "title": "AA商务厅",
+      "assignee": "笑笑",
+      "dueTime": "2026-03-20T10:00",
+      "status": "pending",
+      "location": "特斯拉机场",
+      "notes": ""
+    },
+    {
+      "id": "R-001",
+      "taskType": "airport_pickup",
+      "title": "贝尔格莱德机场 VIP 接待",
+      "assignee": "Mila",
+      "dueTime": "2026-04-15T08:30",
+      "status": "in_progress",
+      "location": "Belgrade Nikola Tesla Airport T2",
+      "notes": "提前 30 分钟到场，举 VIP 姓名牌",
+      "type": "business"
+    },
+    {
+      "id": "R-002",
+      "taskType": "hotel_checkin",
+      "title": "诺维萨德酒店入住协调",
+      "assignee": "Zhang Wei",
+      "dueTime": "2026-05-02T15:00",
+      "status": "pending",
+      "location": "Novi Sad Downtown Hotel",
+      "notes": "Prepare welcome fruits and kids amenities.",
+      "type": "luxury"
+    }
+  ],
+  "documents": [
+    {
+      "id": "D-001",
+      "title": "商务接待确认函",
+      "category": "business_reception",
+      "language": "zh-CN",
+      "updatedAt": "2026-03-10"
+    },
+    {
+      "id": "D-002",
+      "title": "Luxury Travel Welcome Brief",
+      "category": "luxury_custom",
+      "language": "en",
+      "updatedAt": "2026-03-08"
+    }
+  ]
+}

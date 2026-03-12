@@ -1,0 +1,2 @@
+cd DLDS-OPS-v1
+npm start

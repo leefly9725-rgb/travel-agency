@@ -1,0 +1,39 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>接待任务管理</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/">← 首页</a>
+    </header>
+
+    <div class="page-grid page-grid-wide">
+      <section class="panel">
+        <div class="panel-head">
+          <h1>接待任务</h1>
+          <span>筛选、编辑、删除同屏完成</span>
+        </div>
+        <form id="reception-filter-form" class="inline-form filter-form"></form>
+        <div id="reception-message" class="message-box hidden"></div>
+        <div id="reception-list" class="stack section-spacing"></div>
+      </section>
+
+      <aside class="panel sticky-panel wide-preview-panel">
+        <div class="panel-head">
+          <h2>任务编辑器</h2>
+          <span id="reception-mode">新建</span>
+        </div>
+        <form id="reception-form" class="form-stack"></form>
+      </aside>
+    </div>
+  </div>
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/receptions.js"></script>
+</body>
+</html>

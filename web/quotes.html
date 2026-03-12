@@ -1,0 +1,31 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>报价管理</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/">← 首页</a>
+      <div class="topbar-actions">
+        <a class="button-link" href="/quote-new.html">新建报价</a>
+      </div>
+    </header>
+
+    <section class="panel">
+      <div class="panel-head">
+        <h1>报价列表</h1>
+        <span>支持查看、编辑与删除操作</span>
+      </div>
+      <div id="quote-message" class="message-box hidden"></div>
+      <div id="quote-list" class="stack"></div>
+    </section>
+  </div>
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/quotes.js"></script>
+</body>
+</html>
