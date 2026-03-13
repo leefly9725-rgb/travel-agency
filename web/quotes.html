@@ -11,17 +11,27 @@
     <header class="topbar">
       <a class="topbar-link" href="/">← 首页</a>
       <div class="topbar-actions">
-        <a class="button-link" href="/quote-new.html">新建报价</a>
+        <a class="button-link" href="/quote-new.html">新建标准报价</a>
+        <a class="button-link" href="/quote-project.html">新建项目型报价</a>
       </div>
     </header>
 
     <section class="panel">
       <div class="panel-head">
-        <h1>报价列表</h1>
-        <span>支持查看、编辑与删除操作</span>
+        <h1>标准报价列表</h1>
+        <span>差旅接待报价，支持查看、编辑与删除操作</span>
       </div>
       <div id="quote-message" class="message-box hidden"></div>
       <div id="quote-list" class="stack"></div>
+    </section>
+
+    <section class="panel section-spacing">
+      <div class="panel-head">
+        <h1>项目型报价列表</h1>
+        <span>大型活动、会议、展会报价，支持查看、编辑与删除操作</span>
+      </div>
+      <div id="project-quote-message" class="message-box hidden"></div>
+      <div id="project-quote-list" class="stack"></div>
     </section>
   </div>
   <script src="/ui-labels.js"></script>

@@ -124,3 +124,62 @@ create index if not exists idx_hotel_details_quote_item_id on public.hotel_detai
 create index if not exists idx_vehicle_details_quote_item_id on public.vehicle_details (quote_item_id);
 create index if not exists idx_service_details_quote_item_id on public.service_details (quote_item_id);
 create index if not exists idx_template_items_template_id on public.template_items (template_id);
+
+-- Supplier price library
+create table if not exists public.suppliers (
+  id text primary key,
+  name text not null,
+  contact text not null default '',
+  notes text not null default '',
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.supplier_items (
+  id bigserial primary key,
+  supplier_id text not null references public.suppliers(id) on delete cascade,
+  category text not null,
+  name_zh text not null,
+  name_en text not null default '',
+  unit text not null,
+  cost_price numeric(14, 2) not null default 0,
+  spec text not null default '',
+  notes text not null default '',
+  is_active boolean not null default true,
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_supplier_items_supplier_id on public.supplier_items (supplier_id);
+create index if not exists idx_supplier_items_category on public.supplier_items (category);
+
+-- Project-based quotation tables
+create table if not exists public.quotation_projects (
+  id text primary key,
+  name text not null,
+  client text not null default '',
+  event_date date,
+  venue text not null default '',
+  pax_count integer not null default 0,
+  currency text not null default 'EUR',
+  status text not null default 'draft',
+  notes text not null default '',
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.quotation_project_items (
+  id bigserial primary key,
+  project_id text not null references public.quotation_projects(id) on delete cascade,
+  group_name text not null default '',
+  name_zh text not null,
+  name_en text not null default '',
+  unit text not null,
+  quantity numeric(12, 2) not null default 1,
+  cost_price numeric(14, 2) not null default 0,
+  sell_price numeric(14, 2) not null default 0,
+  supplier text not null default '',
+  notes text not null default '',
+  is_active boolean not null default true,
+  sort_order integer not null default 0
+);
+
+create index if not exists idx_quotation_project_items_project_id on public.quotation_project_items (project_id);

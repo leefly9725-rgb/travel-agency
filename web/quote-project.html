@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>项目型报价</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/quotes.html">← 报价列表</a>
+      <div class="topbar-actions">
+        <button id="btn-toggle-view" class="ghost mini-button">切换客户视图</button>
+        <button id="btn-delete" class="ghost mini-button hidden" data-confirm="确定删除此项目型报价吗？">删除报价</button>
+      </div>
+    </header>
+
+    <div class="page-grid page-grid-wide">
+      <!-- Main editor panel -->
+      <section class="panel">
+        <div class="panel-head">
+          <h1 id="page-title">新建项目型报价</h1>
+          <span id="page-subtitle">大型活动 / 会议 / 展会报价</span>
+        </div>
+        <div id="pq-message" class="message-box hidden"></div>
+
+        <!-- Project header form -->
+        <form id="project-header-form" class="form-stack section-spacing-sm">
+          <div class="inline-form">
+            <label><span>项目名称</span><input name="name" placeholder="例如：2024年开业庆典活动" required /></label>
+            <label><span>客户名称</span><input name="client" placeholder="例如：泷鼎晟科技公司" /></label>
+          </div>
+          <div class="inline-form">
+            <label><span>活动日期</span><input name="eventDate" type="date" /></label>
+            <label><span>活动地点</span><input name="venue" placeholder="例如：贝尔格莱德商务中心" /></label>
+            <label><span>参与人数</span><input name="paxCount" type="number" min="0" step="1" placeholder="0" value="0" /></label>
+            <label><span>报价币种</span>
+              <select name="currency">
+                <option value="EUR">EUR 欧元</option>
+                <option value="RSD">RSD 第纳尔</option>
+                <option value="RMB">RMB 人民币</option>
+              </select>
+            </label>
+            <label><span>状态</span>
+              <select name="status">
+                <option value="draft">草稿</option>
+                <option value="sent">已发送</option>
+                <option value="confirmed">已确认</option>
+                <option value="cancelled">已取消</option>
+              </select>
+            </label>
+          </div>
+          <label><span>备注说明</span><textarea name="notes" rows="2" placeholder="活动特殊要求、注意事项等"></textarea></label>
+        </form>
+
+        <!-- Items section -->
+        <div class="section-spacing-sm">
+          <div class="list-row">
+            <h2 class="section-title">报价物料明细</h2>
+            <div class="action-row">
+              <select id="template-select" class="mini-select">
+                <option value="">— 加载活动模板 —</option>
+                <option value="opening_ceremony">开业庆典</option>
+                <option value="large_conference">大型会议</option>
+                <option value="product_launch">发布会</option>
+                <option value="exhibition_reception">展会接待</option>
+              </select>
+              <button id="btn-apply-template" class="mini-button">应用模板</button>
+              <button id="btn-add-row" class="mini-button">+ 添加物料行</button>
+            </div>
+          </div>
+
+          <div class="pq-table-wrap">
+            <table class="pq-table" id="items-table">
+              <thead>
+                <tr>
+                  <th class="col-group">组别</th>
+                  <th class="col-name">中文名称</th>
+                  <th class="col-name-en view-internal">英文名称</th>
+                  <th class="col-unit">单位</th>
+                  <th class="col-qty">数量</th>
+                  <th class="col-price view-internal">成本单价</th>
+                  <th class="col-price">销售单价</th>
+                  <th class="col-subtotal view-internal">成本小计</th>
+                  <th class="col-subtotal">销售小计</th>
+                  <th class="col-margin view-internal">毛利率</th>
+                  <th class="col-supplier view-internal">供应商</th>
+                  <th class="col-notes">备注</th>
+                  <th class="col-actions"></th>
+                </tr>
+              </thead>
+              <tbody id="items-tbody">
+                <tr class="empty-row">
+                  <td colspan="13" class="empty">暂无物料，点击「添加物料行」或选择活动模板开始录入。</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right sticky panel: summary + save -->
+      <aside class="panel sticky-panel wide-preview-panel">
+        <div class="panel-head">
+          <h2>报价汇总</h2>
+          <span id="view-label">内部视图</span>
+        </div>
+
+        <div class="pq-summary">
+          <div class="metric"><span>物料行数</span><strong id="sum-count">0 条</strong></div>
+          <div class="metric view-internal"><span>成本合计</span><strong id="sum-cost">—</strong></div>
+          <div class="metric"><span>报价合计</span><strong id="sum-sell">—</strong></div>
+          <div class="metric view-internal"><span>毛利润</span><strong id="sum-profit">—</strong></div>
+          <div class="metric view-internal"><span>综合毛利率</span><strong id="sum-margin">—</strong></div>
+        </div>
+
+        <!-- Group breakdown -->
+        <div id="group-breakdown" class="pq-group-breakdown section-spacing-sm"></div>
+
+        <div class="button-row section-spacing-sm">
+          <button id="btn-save" type="button">保存报价</button>
+          <a class="ghost button-link" href="/quotes.html">取消</a>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/quote-project.js"></script>
+</body>
+</html>

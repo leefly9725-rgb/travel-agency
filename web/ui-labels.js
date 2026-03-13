@@ -71,6 +71,38 @@
     ALL: "列克",
     RMB: "人民币",
   },
+  supplierItemCategoryLabels: {
+    av_equipment: "音视频设备",
+    stage_structure: "舞台结构",
+    print_display: "印刷展示",
+    decoration: "装饰物料",
+    furniture: "家具桌椅",
+    personnel: "人员服务",
+    logistics: "物流设备",
+    management: "管理服务",
+  },
+  projectQuoteStatusLabels: {
+    draft: "草稿",
+    sent: "已发送",
+    confirmed: "已确认",
+    cancelled: "已取消",
+  },
+  projectQuoteStatusColors: {
+    draft: "status-draft",
+    sent: "status-sent",
+    confirmed: "status-confirmed",
+    cancelled: "status-cancelled",
+  },
+  supplierItemCategoryIcons: {
+    av_equipment: "🔊",
+    stage_structure: "🏗️",
+    print_display: "🖼️",
+    decoration: "🌿",
+    furniture: "🪑",
+    personnel: "👥",
+    logistics: "🚛",
+    management: "📋",
+  },
   getLabel(groupName, value) {
     const group = this[groupName] || {};
     return group[value] || value;

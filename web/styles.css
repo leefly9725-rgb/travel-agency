@@ -863,3 +863,215 @@ button.ghost,
   margin-bottom: 0;
   color: var(--accent);
 }
+
+/* ── Supplier page ─────────────────────────────────────────── */
+.card-selectable {
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.card-selectable:hover {
+  border-color: var(--accent);
+}
+.card-selectable.selected-card {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-soft);
+}
+.section-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0;
+}
+.item-group {
+  margin-bottom: 12px;
+}
+.item-group-title {
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  padding: 6px 0 4px;
+  border-bottom: 1px solid var(--line);
+  margin: 0 0 4px;
+}
+.item-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 4px;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.88rem;
+}
+.item-row:last-child {
+  border-bottom: none;
+}
+.item-inactive {
+  opacity: 0.45;
+}
+.item-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+.item-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+.item-name-en {
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+.item-spec {
+  color: var(--muted);
+  font-size: 0.8rem;
+  font-style: italic;
+}
+.item-unit {
+  color: var(--muted);
+  font-size: 0.8rem;
+}
+.item-price-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.item-price {
+  font-weight: 600;
+  color: var(--accent);
+  font-size: 0.88rem;
+  min-width: 80px;
+  text-align: right;
+}
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-direction: row;
+}
+.checkbox-label input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+}
+
+/* ── Project Quote Editor ──────────────────────────────────────────────────── */
+
+.pq-table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.pq-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  min-width: 900px;
+}
+
+.pq-table th {
+  background: var(--surface);
+  border-bottom: 2px solid var(--border);
+  padding: 8px 6px;
+  text-align: left;
+  white-space: nowrap;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.pq-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 4px 4px;
+  vertical-align: middle;
+}
+
+.pq-table tr:hover td {
+  background: var(--surface);
+}
+
+.cell-input {
+  width: 100%;
+  min-width: 60px;
+  padding: 4px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  font-size: 0.85rem;
+  color: var(--text);
+  font-family: inherit;
+  transition: border-color 0.15s;
+}
+
+.cell-input:hover {
+  border-color: var(--border);
+}
+
+.cell-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: #fff;
+}
+
+.col-group-input { min-width: 90px; }
+.col-name-input { min-width: 120px; }
+.col-unit-input { min-width: 50px; max-width: 60px; }
+.col-qty-input { min-width: 60px; max-width: 70px; }
+.col-price-input { min-width: 80px; max-width: 100px; }
+
+.computed-cell {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  padding: 4px 8px;
+}
+
+.pq-table .empty-row td {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+}
+
+.pq-summary {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.pq-summary .metric {
+  background: var(--surface);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.pq-group-breakdown {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.status-badge {
+  display: inline-block;
+  font-size: 0.75rem;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-weight: 500;
+  vertical-align: middle;
+  margin-left: 6px;
+}
+
+.mini-select {
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--surface);
+  color: var(--text);
+}

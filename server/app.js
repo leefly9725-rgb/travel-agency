@@ -22,12 +22,15 @@ const { createTemplateStore } = require("./services/templateStore");
 const { createQuoteStore } = require("./services/quoteStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
+const { createSupplierStore } = require("./services/supplierStore");
+const { createProjectQuoteStore } = require("./services/projectQuoteStore");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
 const supportedReceptionStatuses = ["pending", "in_progress", "done"];
 const supportedReceptionTaskTypes = ["airport_pickup", "hotel_checkin", "vehicle_service", "guide_support", "business_meeting", "document_delivery", "misc"];
 const supportedProjectStatuses = ["planning", "confirmed", "running", "completed"];
+const supportedItemCategories = ["av_equipment", "stage_structure", "print_display", "decoration", "furniture", "personnel", "logistics", "management"];
 const supportedVehicleDetailTypes = ["pickup", "dropoff", "full_day"];
 const supportedVehiclePricingUnits = ["trip", "full_day"];
 const supportedServiceRoles = ["guide", "interpreter"];
@@ -446,6 +449,64 @@ function normalizeDocumentPayload(payload, existingId) {
   };
 }
 
+function normalizeSupplierPayload(payload, existingId) {
+  return {
+    id: existingId || payload.id || createId("SUP"),
+    name: notEmpty(payload.name, "供应商名称"),
+    contact: String(payload.contact || "").trim(),
+    notes: String(payload.notes || "").trim(),
+  };
+}
+
+function normalizeSupplierItemPayload(payload, existingId) {
+  return {
+    id: existingId || payload.id || undefined,
+    supplierId: notEmpty(payload.supplierId || payload.supplier_id, "供应商"),
+    category: assertOneOf(payload.category, supportedItemCategories, "物料类别"),
+    nameZh: notEmpty(payload.nameZh || payload.name_zh, "中文名称"),
+    nameEn: String(payload.nameEn || payload.name_en || "").trim(),
+    unit: notEmpty(payload.unit, "单位"),
+    costPrice: Math.max(Number(payload.costPrice ?? payload.cost_price ?? 0), 0),
+    spec: String(payload.spec || "").trim(),
+    notes: String(payload.notes || "").trim(),
+    isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : true,
+  };
+}
+
+const supportedProjectQuoteStatuses = ["draft", "sent", "confirmed", "cancelled"];
+
+function normalizeProjectQuoteItems(items) {
+  if (!Array.isArray(items)) return [];
+  return items.map((item, index) => ({
+    groupName: String(item.groupName || "").trim(),
+    nameZh: notEmpty(item.nameZh || item.name_zh, `第 ${index + 1} 条物料的中文名称`),
+    nameEn: String(item.nameEn || item.name_en || "").trim(),
+    unit: notEmpty(item.unit, `第 ${index + 1} 条物料的单位`),
+    quantity: Math.max(Number(item.quantity || 1), 0),
+    costPrice: Math.max(Number(item.costPrice ?? item.cost_price ?? 0), 0),
+    sellPrice: Math.max(Number(item.sellPrice ?? item.sell_price ?? 0), 0),
+    supplier: String(item.supplier || "").trim(),
+    notes: String(item.notes || "").trim(),
+    isActive: item.isActive !== false && item.is_active !== false,
+    sortOrder: Number(item.sortOrder ?? item.sort_order ?? index),
+  }));
+}
+
+function normalizeProjectQuotePayload(payload, existingId) {
+  return {
+    id: existingId || payload.id || createId("PQ"),
+    name: notEmpty(payload.name, "项目名称"),
+    client: String(payload.client || "").trim(),
+    eventDate: formatDate(payload.eventDate || payload.event_date || ""),
+    venue: String(payload.venue || "").trim(),
+    paxCount: Math.max(Number(payload.paxCount ?? payload.pax_count ?? 0), 0),
+    currency: assertSupportedCurrency(payload.currency || "EUR", "报价币种"),
+    status: assertOneOf(payload.status || "draft", supportedProjectQuoteStatuses, "报价状态"),
+    notes: String(payload.notes || "").trim(),
+    items: normalizeProjectQuoteItems(payload.items || []),
+  };
+}
+
 function matchIdRoute(pathname, collection) {
   const match = pathname.match(new RegExp(`^/api/${collection}/([^/]+)$`));
   return match ? decodeURIComponent(match[1]) : null;
@@ -543,6 +604,8 @@ async function handleApi(request, response, url) {
   const receptionStore = createReceptionStore({ data, saveData: saveSeedData });
   const documentStore = createDocumentStore({ data, saveData: saveSeedData });
   const templateStore = createTemplateStore({ data, saveData: saveSeedData });
+  const supplierStore = createSupplierStore({ data, saveData: saveSeedData });
+  const projectQuoteStore = createProjectQuoteStore({ data, saveData: saveSeedData });
   const templateResult = await templateStore.listTemplates();
   const templates = templateResult.templates;
 
@@ -802,6 +865,147 @@ async function handleApi(request, response, url) {
       const document = normalizeDocumentPayload(parseJsonBody(await readRequestBody(request)), documentId);
       const result = await documentStore.saveDocument(document);
       sendJson(response, 200, result.document);
+      return true;
+    }
+  }
+
+  // ── Suppliers ──────────────────────────────────────────────────────────────
+
+  if (request.method === "GET" && url.pathname === "/api/suppliers") {
+    const { suppliers } = await supplierStore.listSuppliers();
+    sendJson(response, 200, suppliers);
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/suppliers") {
+    const supplier = normalizeSupplierPayload(parseJsonBody(await readRequestBody(request)));
+    const result = await supplierStore.saveSupplier(supplier);
+    sendJson(response, 201, result.supplier);
+    return true;
+  }
+
+  if (request.method === "PUT") {
+    const supplierId = matchIdRoute(url.pathname, "suppliers");
+    if (supplierId) {
+      const supplier = normalizeSupplierPayload(parseJsonBody(await readRequestBody(request)), supplierId);
+      const result = await supplierStore.saveSupplier(supplier);
+      sendJson(response, 200, result.supplier);
+      return true;
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const supplierId = matchIdRoute(url.pathname, "suppliers");
+    if (supplierId) {
+      const result = await supplierStore.deleteSupplier(supplierId);
+      if (!result.deleted) {
+        sendJson(response, 404, { error: "供应商不存在。" });
+        return true;
+      }
+      sendJson(response, 200, { message: "供应商已删除。" });
+      return true;
+    }
+  }
+
+  // ── Supplier Items ─────────────────────────────────────────────────────────
+
+  if (request.method === "GET" && url.pathname === "/api/supplier-items/best-price") {
+    const { items } = await supplierStore.getBestPriceItems();
+    sendJson(response, 200, items);
+    return true;
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/supplier-items") {
+    const category = url.searchParams.get("category") || "";
+    const supplierId = url.searchParams.get("supplier_id") || "";
+    const { items } = await supplierStore.listSupplierItems({ category, supplierId });
+    sendJson(response, 200, items);
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/supplier-items") {
+    const item = normalizeSupplierItemPayload(parseJsonBody(await readRequestBody(request)));
+    const result = await supplierStore.saveSupplierItem(item);
+    sendJson(response, 201, result.item);
+    return true;
+  }
+
+  if (request.method === "PUT") {
+    const itemId = matchIdRoute(url.pathname, "supplier-items");
+    if (itemId) {
+      const item = normalizeSupplierItemPayload(parseJsonBody(await readRequestBody(request)), itemId);
+      const result = await supplierStore.saveSupplierItem(item);
+      sendJson(response, 200, result.item);
+      return true;
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const itemId = matchIdRoute(url.pathname, "supplier-items");
+    if (itemId) {
+      const result = await supplierStore.deleteSupplierItem(itemId);
+      if (!result.deleted) {
+        sendJson(response, 404, { error: "物料不存在。" });
+        return true;
+      }
+      sendJson(response, 200, { message: "物料已删除。" });
+      return true;
+    }
+  }
+
+  // ── Project Quotes ─────────────────────────────────────────────────────────
+
+  if (request.method === "GET" && url.pathname === "/api/project-quotes") {
+    const { projects } = await projectQuoteStore.listProjectQuotes();
+    sendJson(response, 200, projects);
+    return true;
+  }
+
+  if (request.method === "GET") {
+    const projectQuoteId = matchIdRoute(url.pathname, "project-quotes");
+    if (projectQuoteId) {
+      try {
+        const { project } = await projectQuoteStore.getProjectQuoteById(projectQuoteId);
+        sendJson(response, 200, project);
+      } catch (error) {
+        sendJson(response, 404, { error: error.message });
+      }
+      return true;
+    }
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/project-quotes") {
+    const project = normalizeProjectQuotePayload(parseJsonBody(await readRequestBody(request)));
+    const result = await projectQuoteStore.saveProjectQuote(project);
+    sendJson(response, 201, result.project);
+    return true;
+  }
+
+  if (request.method === "PUT") {
+    const projectQuoteId = matchIdRoute(url.pathname, "project-quotes");
+    if (projectQuoteId) {
+      try {
+        await projectQuoteStore.getProjectQuoteById(projectQuoteId);
+      } catch {
+        sendJson(response, 404, { error: "项目型报价不存在。" });
+        return true;
+      }
+      const project = normalizeProjectQuotePayload(parseJsonBody(await readRequestBody(request)), projectQuoteId);
+      const result = await projectQuoteStore.saveProjectQuote(project);
+      sendJson(response, 200, result.project);
+      return true;
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const projectQuoteId = matchIdRoute(url.pathname, "project-quotes");
+    if (projectQuoteId) {
+      const result = await projectQuoteStore.deleteProjectQuote(projectQuoteId);
+      if (!result.deleted) {
+        sendJson(response, 404, { error: "项目型报价不存在。" });
+        return true;
+      }
+      sendJson(response, 200, { message: "项目型报价已删除。" });
       return true;
     }
   }
