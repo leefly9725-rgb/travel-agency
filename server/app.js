@@ -1,4 +1,4 @@
-﻿const http = require("node:http");
+const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
 const { loadSeedData, saveSeedData } = require('./dataStore');
@@ -19,6 +19,9 @@ const {
 } = require("./services/exchangeRateService");
 const { defaultQuoteTemplates } = require("./services/templateService");
 const { createTemplateStore } = require("./services/templateStore");
+const { createQuoteStore } = require("./services/quoteStore");
+const { createReceptionStore } = require("./services/receptionStore");
+const { createDocumentStore } = require("./services/documentStore");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
@@ -443,35 +446,9 @@ function normalizeDocumentPayload(payload, existingId) {
   };
 }
 
-function upsertById(list, id, item) {
-  const index = list.findIndex((entry) => entry.id === id);
-  if (index === -1) {
-    list.unshift(item);
-  } else {
-    list[index] = item;
-  }
-}
-
-function removeById(list, id) {
-  const index = list.findIndex((entry) => entry.id === id);
-  if (index === -1) {
-    return false;
-  }
-  list.splice(index, 1);
-  return true;
-}
-
 function matchIdRoute(pathname, collection) {
   const match = pathname.match(new RegExp(`^/api/${collection}/([^/]+)$`));
   return match ? decodeURIComponent(match[1]) : null;
-}
-
-function findById(list, id, label) {
-  const item = list.find((entry) => entry.id === id);
-  if (!item) {
-    throw new Error(`${label}不存在。`);
-  }
-  return item;
 }
 
 function deriveProjectStatus(quote, linkedReceptions) {
@@ -518,7 +495,8 @@ function deriveProjects(data) {
 
 function getProjectDetail(data, projectId) {
   const projects = deriveProjects(data);
-  const project = findById(projects, projectId, "项目主档");
+  const project = projects.find((item) => item.id === projectId);
+  if (!project) throw new Error("项目主档不存在。");
   const linkedQuotes = data.quotes.map(enrichQuote).filter((item) => project.linkedQuoteIds.includes(item.id));
   const linkedReceptions = data.receptions.filter((item) => project.linkedReceptionIds.includes(item.id));
   const primaryQuote = linkedQuotes[0] || null;
@@ -532,7 +510,7 @@ function getProjectDetail(data, projectId) {
   };
 }
 
-function getMetaPayload(data) {
+function getMetaPayload(data, templates, storageMode) {
   const supabase = getSupabaseConfig();
 
   return {
@@ -547,8 +525,8 @@ function getMetaPayload(data) {
     nextQuoteNumber: generateQuoteNumber(),
     defaultQuoteCurrency: "EUR",
     defaultItemCurrency: "EUR",
-    templateCount: ensureTemplateData(data).length,
-    storageMode: "local_json",
+    templateCount: templates.length,
+    storageMode: storageMode || "local_json",
     supabase: {
       enabled: supabase.enabled,
       urlConfigured: Boolean(supabase.url),
@@ -558,8 +536,12 @@ function getMetaPayload(data) {
     },
   };
 }
+
 async function handleApi(request, response, url) {
   const data = loadSeedData();
+  const quoteStore = createQuoteStore({ data, saveData: saveSeedData });
+  const receptionStore = createReceptionStore({ data, saveData: saveSeedData });
+  const documentStore = createDocumentStore({ data, saveData: saveSeedData });
   const templateStore = createTemplateStore({ data, saveData: saveSeedData });
   const templateResult = await templateStore.listTemplates();
   const templates = templateResult.templates;
@@ -570,12 +552,22 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/meta") {
-    sendJson(response, 200, getMetaPayload(data));
+    sendJson(response, 200, getMetaPayload(data, templates, templateResult.source));
     return true;
   }
 
   if (request.method === "GET" && url.pathname === "/api/dashboard") {
-    sendJson(response, 200, getDashboard(data));
+    const [qr, rr, dr] = await Promise.all([
+      quoteStore.listQuotes(),
+      receptionStore.listReceptions(),
+      documentStore.listDocuments(),
+    ]);
+    sendJson(response, 200, getDashboard({
+      quotes: qr.quotes,
+      receptions: rr.receptions,
+      documents: dr.documents,
+      templates,
+    }));
     return true;
   }
 
@@ -609,7 +601,7 @@ async function handleApi(request, response, url) {
     if (templateId) {
       const existing = templates.find((item) => item.id === templateId);
       if (!existing) {
-        sendJson(response, 404, { error: "\u6a21\u677f\u4e0d\u5b58\u5728\u3002" });
+        sendJson(response, 404, { error: "模板不存在。" });
         return true;
       }
       const template = normalizeTemplatePayload(parseJsonBody(await readRequestBody(request)), existing);
@@ -624,16 +616,17 @@ async function handleApi(request, response, url) {
     if (templateId) {
       const result = await templateStore.deleteTemplate(templateId);
       if (!result.deleted) {
-        sendJson(response, 404, { error: "\u6a21\u677f\u4e0d\u5b58\u5728\u3002" });
+        sendJson(response, 404, { error: "模板不存在。" });
         return true;
       }
-      sendJson(response, 200, { message: "\u6a21\u677f\u5df2\u5220\u9664\u3002" });
+      sendJson(response, 200, { message: "模板已删除。" });
       return true;
     }
   }
 
   if (request.method === "GET" && url.pathname === "/api/quotes") {
-    sendJson(response, 200, data.quotes.map(enrichQuote));
+    const { quotes } = await quoteStore.listQuotes();
+    sendJson(response, 200, quotes.map(enrichQuote));
     return true;
   }
 
@@ -641,7 +634,8 @@ async function handleApi(request, response, url) {
     const quoteId = matchIdRoute(url.pathname, "quotes");
     if (quoteId) {
       try {
-        sendJson(response, 200, enrichQuote(findById(data.quotes, quoteId, "报价")));
+        const { quote } = await quoteStore.getQuoteById(quoteId);
+        sendJson(response, 200, enrichQuote(quote));
       } catch (error) {
         sendJson(response, 404, { error: error.message });
       }
@@ -652,18 +646,19 @@ async function handleApi(request, response, url) {
   if (request.method === "DELETE") {
     const quoteId = matchIdRoute(url.pathname, "quotes");
     if (quoteId) {
-      if (!removeById(data.quotes, quoteId)) {
+      const result = await quoteStore.deleteQuote(quoteId);
+      if (!result.deleted) {
         sendJson(response, 404, { error: "报价不存在。" });
         return true;
       }
-      saveSeedData(data);
       sendJson(response, 200, { message: "报价已删除。" });
       return true;
     }
   }
 
   if (request.method === "GET" && url.pathname === "/api/receptions") {
-    sendJson(response, 200, data.receptions);
+    const { receptions } = await receptionStore.listReceptions();
+    sendJson(response, 200, receptions);
     return true;
   }
 
@@ -671,7 +666,8 @@ async function handleApi(request, response, url) {
     const receptionId = matchIdRoute(url.pathname, "receptions");
     if (receptionId) {
       try {
-        sendJson(response, 200, findById(data.receptions, receptionId, "接待任务"));
+        const { reception } = await receptionStore.getReceptionById(receptionId);
+        sendJson(response, 200, reception);
       } catch (error) {
         sendJson(response, 404, { error: error.message });
       }
@@ -682,28 +678,33 @@ async function handleApi(request, response, url) {
   if (request.method === "DELETE") {
     const receptionId = matchIdRoute(url.pathname, "receptions");
     if (receptionId) {
-      if (!removeById(data.receptions, receptionId)) {
+      const result = await receptionStore.deleteReception(receptionId);
+      if (!result.deleted) {
         sendJson(response, 404, { error: "接待任务不存在。" });
         return true;
       }
-      saveSeedData(data);
       sendJson(response, 200, { message: "接待任务已删除。" });
       return true;
     }
   }
 
   if (request.method === "GET" && url.pathname === "/api/documents") {
-    sendJson(response, 200, data.documents);
+    const { documents } = await documentStore.listDocuments();
+    sendJson(response, 200, documents);
     return true;
   }
 
   if (request.method === "GET" && url.pathname === "/api/document-previews") {
-    const quoteId = url.searchParams.get("quoteId") || (data.quotes[0] && data.quotes[0].id);
-    const receptionId = url.searchParams.get("receptionId") || (data.receptions[0] && data.receptions[0].id);
+    const [qr, rr] = await Promise.all([quoteStore.listQuotes(), receptionStore.listReceptions()]);
+    const allQuotes = qr.quotes;
+    const allReceptions = rr.receptions;
+    const quoteId = url.searchParams.get("quoteId") || (allQuotes[0] && allQuotes[0].id);
+    const receptionId = url.searchParams.get("receptionId") || (allReceptions[0] && allReceptions[0].id);
     try {
-      const quote = quoteId ? enrichQuote(findById(data.quotes, quoteId, "报价")) : null;
-      const reception = receptionId ? findById(data.receptions, receptionId, "接待任务") : null;
-      sendJson(response, 200, buildDocumentPreviews({ quote, reception }));
+      const quoteObj = quoteId ? allQuotes.find((q) => q.id === quoteId) : null;
+      if (quoteId && !quoteObj) throw new Error("报价不存在。");
+      const receptionObj = receptionId ? allReceptions.find((r) => r.id === receptionId) : null;
+      sendJson(response, 200, buildDocumentPreviews({ quote: quoteObj ? enrichQuote(quoteObj) : null, reception: receptionObj }));
     } catch (error) {
       sendJson(response, 404, { error: error.message });
     }
@@ -711,7 +712,8 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/projects") {
-    sendJson(response, 200, deriveProjects(data));
+    const [qr, rr] = await Promise.all([quoteStore.listQuotes(), receptionStore.listReceptions()]);
+    sendJson(response, 200, deriveProjects({ quotes: qr.quotes, receptions: rr.receptions }));
     return true;
   }
 
@@ -719,7 +721,8 @@ async function handleApi(request, response, url) {
     const projectId = matchIdRoute(url.pathname, "projects");
     if (projectId) {
       try {
-        sendJson(response, 200, getProjectDetail(data, projectId));
+        const [qr, rr] = await Promise.all([quoteStore.listQuotes(), receptionStore.listReceptions()]);
+        sendJson(response, 200, getProjectDetail({ quotes: qr.quotes, receptions: rr.receptions }, projectId));
       } catch (error) {
         sendJson(response, 404, { error: error.message });
       }
@@ -736,72 +739,69 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/api/quotes") {
     const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)));
-    upsertById(data.quotes, quote.id, quote);
-    saveSeedData(data);
-    sendJson(response, 201, enrichQuote(quote));
+    const result = await quoteStore.saveQuote(quote);
+    sendJson(response, 201, enrichQuote(result.quote));
     return true;
   }
 
   if (request.method === "PUT") {
     const quoteId = matchIdRoute(url.pathname, "quotes");
     if (quoteId) {
-      const existing = data.quotes.find((item) => item.id === quoteId);
-      if (!existing) {
+      try {
+        await quoteStore.getQuoteById(quoteId);
+      } catch {
         sendJson(response, 404, { error: "报价不存在。" });
         return true;
       }
-      const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), existing.id);
-      upsertById(data.quotes, quote.id, quote);
-      saveSeedData(data);
-      sendJson(response, 200, enrichQuote(quote));
+      const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), quoteId);
+      const result = await quoteStore.saveQuote(quote);
+      sendJson(response, 200, enrichQuote(result.quote));
       return true;
     }
   }
 
   if (request.method === "POST" && url.pathname === "/api/receptions") {
     const reception = normalizeReceptionPayload(parseJsonBody(await readRequestBody(request)));
-    upsertById(data.receptions, reception.id, reception);
-    saveSeedData(data);
-    sendJson(response, 201, reception);
+    const result = await receptionStore.saveReception(reception);
+    sendJson(response, 201, result.reception);
     return true;
   }
 
   if (request.method === "PUT") {
     const receptionId = matchIdRoute(url.pathname, "receptions");
     if (receptionId) {
-      const existing = data.receptions.find((item) => item.id === receptionId);
-      if (!existing) {
+      try {
+        await receptionStore.getReceptionById(receptionId);
+      } catch {
         sendJson(response, 404, { error: "接待任务不存在。" });
         return true;
       }
-      const reception = normalizeReceptionPayload(parseJsonBody(await readRequestBody(request)), existing.id);
-      upsertById(data.receptions, reception.id, reception);
-      saveSeedData(data);
-      sendJson(response, 200, reception);
+      const reception = normalizeReceptionPayload(parseJsonBody(await readRequestBody(request)), receptionId);
+      const result = await receptionStore.saveReception(reception);
+      sendJson(response, 200, result.reception);
       return true;
     }
   }
 
   if (request.method === "POST" && url.pathname === "/api/documents") {
     const document = normalizeDocumentPayload(parseJsonBody(await readRequestBody(request)));
-    upsertById(data.documents, document.id, document);
-    saveSeedData(data);
-    sendJson(response, 201, document);
+    const result = await documentStore.saveDocument(document);
+    sendJson(response, 201, result.document);
     return true;
   }
 
   if (request.method === "PUT") {
     const documentId = matchIdRoute(url.pathname, "documents");
     if (documentId) {
-      const existing = data.documents.find((item) => item.id === documentId);
-      if (!existing) {
+      try {
+        await documentStore.getDocumentById(documentId);
+      } catch {
         sendJson(response, 404, { error: "文档不存在。" });
         return true;
       }
-      const document = normalizeDocumentPayload(parseJsonBody(await readRequestBody(request)), existing.id);
-      upsertById(data.documents, document.id, document);
-      saveSeedData(data);
-      sendJson(response, 200, document);
+      const document = normalizeDocumentPayload(parseJsonBody(await readRequestBody(request)), documentId);
+      const result = await documentStore.saveDocument(document);
+      sendJson(response, 200, result.document);
       return true;
     }
   }
@@ -840,6 +840,3 @@ module.exports = {
   generateQuoteNumber,
   handleRequest,
 };
-
-
-
