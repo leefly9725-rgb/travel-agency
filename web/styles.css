@@ -72,6 +72,19 @@ textarea {
   align-items: start;
 }
 
+.page-grid-wide {
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 460px);
+}
+
+.sticky-panel {
+  position: sticky;
+  top: 24px;
+}
+
+.wide-preview-panel {
+  /* inherits .sticky-panel behavior */
+}
+
 .quote-editor-grid {
   grid-template-columns: minmax(0, 1fr) minmax(300px, 360px);
   gap: 22px;
