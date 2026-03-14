@@ -1,8 +1,80 @@
 const { getSupabaseConfig } = require("../supabaseConfig");
 const { supabaseRequest } = require("../supabaseClient");
 
+const REMOTE_COMPAT_KEY = "__remoteQuoteCompat";
+let remoteSchemaPromise = null;
+
 function sortByPosition(arr) {
   return [...arr].sort((a, b) => (a.position || 0) - (b.position || 0));
+}
+
+async function getRemoteSchemaCapabilities(config) {
+  if (!remoteSchemaPromise) {
+    remoteSchemaPromise = (async () => {
+      const key = config.serviceRoleKey || config.anonKey || config.publishableKey || "";
+      const response = await fetch(`${config.url}/rest/v1/`, {
+        headers: {
+          apikey: key,
+          Authorization: `Bearer ${key}`,
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`Supabase OpenAPI 读取失败：${response.status} ${text}`);
+      }
+
+      const spec = await response.json();
+      const quoteColumns = new Set(Object.keys(spec.definitions?.quotes?.properties || {}));
+      const paths = new Set(Object.keys(spec.paths || {}));
+
+      return {
+        hasPricingMode: quoteColumns.has("pricing_mode"),
+        hasTotalCost: quoteColumns.has("total_cost"),
+        hasTotalSales: quoteColumns.has("total_sales"),
+        hasTotalProfit: quoteColumns.has("total_profit"),
+        hasQuotationProjects: paths.has("/quotation_projects"),
+        hasQuotationProjectItems: paths.has("/quotation_project_items"),
+      };
+    })();
+  }
+
+  return remoteSchemaPromise;
+}
+
+function getCompatPayload(dataQuality) {
+  if (!dataQuality || typeof dataQuality !== "object") return null;
+  const compat = dataQuality[REMOTE_COMPAT_KEY];
+  return compat && typeof compat === "object" ? compat : null;
+}
+
+function buildRemoteDataQuality(quote, capabilities) {
+  const base = quote.dataQuality && typeof quote.dataQuality === "object"
+    ? { ...quote.dataQuality }
+    : {};
+
+  const needsCompatProjectStorage = quote.pricingMode === "project_based" && (
+    !capabilities.hasPricingMode ||
+    !capabilities.hasTotalCost ||
+    !capabilities.hasTotalSales ||
+    !capabilities.hasTotalProfit ||
+    !capabilities.hasQuotationProjects ||
+    !capabilities.hasQuotationProjectItems
+  );
+
+  if (needsCompatProjectStorage) {
+    base[REMOTE_COMPAT_KEY] = {
+      pricingMode: "project_based",
+      totalCost: Number(quote.totalCost || 0),
+      totalSales: Number(quote.totalSales || 0),
+      totalProfit: Number(quote.totalProfit || 0),
+      projectGroups: Array.isArray(quote.projectGroups) ? quote.projectGroups : [],
+    };
+  } else if (base[REMOTE_COMPAT_KEY]) {
+    delete base[REMOTE_COMPAT_KEY];
+  }
+
+  return base;
 }
 
 function mapRemoteHotelDetail(row) {
@@ -182,6 +254,9 @@ async function saveProjectGroups(config, quote, now) {
 
 function mapRemoteQuote(row) {
   const items = sortByPosition(row.quote_items || []).map(mapRemoteItem);
+  const dataQuality = row.data_quality || {};
+  const compat = getCompatPayload(dataQuality);
+
   return {
     id: row.id,
     quoteNumber: row.quote_number || "",
@@ -199,12 +274,12 @@ function mapRemoteQuote(row) {
     destination: row.destination || "",
     paxCount: Number(row.pax_count || 0),
     notes: row.notes || "",
-    dataQuality: row.data_quality || {},
-    pricingMode: row.pricing_mode || "standard",
-    totalCost: Number(row.total_cost || 0),
-    totalSales: Number(row.total_sales || 0),
-    totalProfit: Number(row.total_profit || 0),
-    projectGroups: [],
+    dataQuality,
+    pricingMode: row.pricing_mode || compat?.pricingMode || "standard",
+    totalCost: Number(row.total_cost ?? compat?.totalCost ?? 0),
+    totalSales: Number(row.total_sales ?? compat?.totalSales ?? 0),
+    totalProfit: Number(row.total_profit ?? compat?.totalProfit ?? 0),
+    projectGroups: Array.isArray(compat?.projectGroups) ? compat.projectGroups : [],
     items,
   };
 }
@@ -212,11 +287,13 @@ function mapRemoteQuote(row) {
 const QUOTE_SELECT = "quotes?select=*,quote_items(*,hotel_details(*),vehicle_details(*),service_details(*))";
 
 async function listRemoteQuotes(config) {
+  await getRemoteSchemaCapabilities(config);
   const rows = await supabaseRequest(config, `${QUOTE_SELECT}&order=updated_at.desc`);
   return Array.isArray(rows) ? rows.map(mapRemoteQuote) : [];
 }
 
 async function getRemoteQuoteById(config, id) {
+  const capabilities = await getRemoteSchemaCapabilities(config);
   const rows = await supabaseRequest(
     config,
     `${QUOTE_SELECT}&id=eq.${encodeURIComponent(id)}`
@@ -224,60 +301,62 @@ async function getRemoteQuoteById(config, id) {
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("报价不存在。");
   }
+
   const quote = mapRemoteQuote(rows[0]);
-  if (quote.pricingMode === "project_based") {
+  if (capabilities.hasQuotationProjects && capabilities.hasQuotationProjectItems && quote.pricingMode === "project_based") {
     try {
       quote.projectGroups = await loadProjectGroups(config, id);
-    } catch (e) {
-      console.error("加载项目分组失败：", e.message);
+    } catch (error) {
+      console.error("加载项目分组失败。", error.message);
       quote.projectGroups = [];
     }
   }
+
   return quote;
 }
 
 async function saveRemoteQuote(config, quote) {
   const now = new Date().toISOString();
+  const capabilities = await getRemoteSchemaCapabilities(config);
 
-  // Phase 1: Upsert the quote row
+  const quotePayload = {
+    id: quote.id,
+    quote_number: quote.quoteNumber || "",
+    project_id: quote.projectId || "",
+    client_name: quote.clientName,
+    project_name: quote.projectName,
+    contact_name: quote.contactName,
+    contact_phone: quote.contactPhone || "",
+    language: quote.language || "zh-CN",
+    currency: quote.currency || "EUR",
+    start_date: quote.startDate,
+    end_date: quote.endDate,
+    trip_date: quote.tripDate || quote.startDate,
+    travel_days: quote.travelDays || 1,
+    destination: quote.destination || "",
+    pax_count: quote.paxCount || 0,
+    notes: quote.notes || "",
+    data_quality: buildRemoteDataQuality(quote, capabilities),
+    updated_at: now,
+  };
+
+  if (capabilities.hasPricingMode) quotePayload.pricing_mode = quote.pricingMode || "standard";
+  if (capabilities.hasTotalCost) quotePayload.total_cost = Number(quote.totalCost || 0);
+  if (capabilities.hasTotalSales) quotePayload.total_sales = Number(quote.totalSales || 0);
+  if (capabilities.hasTotalProfit) quotePayload.total_profit = Number(quote.totalProfit || 0);
+
   await supabaseRequest(config, "quotes", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify({
-      id: quote.id,
-      quote_number: quote.quoteNumber || "",
-      project_id: quote.projectId || "",
-      client_name: quote.clientName,
-      project_name: quote.projectName,
-      contact_name: quote.contactName,
-      contact_phone: quote.contactPhone || "",
-      language: quote.language || "zh-CN",
-      currency: quote.currency || "EUR",
-      start_date: quote.startDate,
-      end_date: quote.endDate,
-      trip_date: quote.tripDate || quote.startDate,
-      travel_days: quote.travelDays || 1,
-      destination: quote.destination || "",
-      pax_count: quote.paxCount || 0,
-      notes: quote.notes || "",
-      data_quality: quote.dataQuality || {},
-      pricing_mode: quote.pricingMode || "standard",
-      total_cost: Number(quote.totalCost || 0),
-      total_sales: Number(quote.totalSales || 0),
-      total_profit: Number(quote.totalProfit || 0),
-      updated_at: now,
-    }),
+    body: JSON.stringify(quotePayload),
   });
 
-  // Phase 2: Delete existing quote_items (ON DELETE CASCADE removes detail rows)
   await supabaseRequest(config, `quote_items?quote_id=eq.${encodeURIComponent(quote.id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=minimal" },
   });
 
-  // Phase 3: Re-insert items and their details
   for (const [index, item] of (quote.items || []).entries()) {
-    // For dining items with mealDetails, store computed totalAmount as cost/price
     const hasMealDetails = item.mealDetails && typeof item.mealDetails === "object";
     const effectiveCost = hasMealDetails ? (item.mealDetails.totalAmount || 0) : (item.cost || 0);
     const effectivePrice = hasMealDetails ? (item.mealDetails.totalAmount || 0) : (item.price || 0);
@@ -361,8 +440,7 @@ async function saveRemoteQuote(config, quote) {
     }
   }
 
-  // project_based 模式：保存项目分组
-  if (quote.pricingMode === "project_based") {
+  if (capabilities.hasQuotationProjects && capabilities.hasQuotationProjectItems && quote.pricingMode === "project_based") {
     await saveProjectGroups(config, quote, now);
   }
 
@@ -420,7 +498,7 @@ function createQuoteStore({ data, saveData }) {
           source: localOnlyQuotes.length > 0 ? "supabase+local_fallback" : "supabase",
         };
       } catch (error) {
-        console.warn("???????????? JSON?", error.message);
+        console.warn("报价读取出错，回退到本地 JSON。", error.message);
         return { quotes: localQuotes, source: "local_json", fallbackReason: error.message };
       }
     },

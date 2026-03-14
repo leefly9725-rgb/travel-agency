@@ -1,4 +1,4 @@
-function getRemoteKey(config) {
+﻿function getRemoteKey(config) {
   return config.serviceRoleKey || config.anonKey || config.publishableKey || "";
 }
 
@@ -33,7 +33,14 @@ async function supabaseRequest(config, pathname, options = {}) {
     return null;
   }
 
-  return response.json();
+  const text = await response.text();
+  if (!text || text.trim() === "") {
+    return null;
+  }
+
+  return JSON.parse(text);
 }
 
 module.exports = { getRemoteKey, buildHeaders, supabaseRequest };
+
+
