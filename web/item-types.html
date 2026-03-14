@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>项目类型管理</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="page-shell">
+    <header class="topbar">
+      <a class="topbar-link" href="/">← 首页</a>
+    </header>
+
+    <div class="page-grid page-grid-wide">
+      <section class="panel">
+        <div class="panel-head">
+          <h1>项目类型管理</h1>
+          <span>管理项目型报价中的明细类型</span>
+        </div>
+        <div id="item-types-message" class="message-box hidden"></div>
+
+        <div class="section-spacing-sm">
+          <div class="list-row">
+            <h2 class="section-title">当前类型列表</h2>
+            <button class="mini-button" id="btn-new-type">+ 新增类型</button>
+          </div>
+          <div id="type-list" class="stack"></div>
+        </div>
+      </section>
+
+      <aside class="panel sticky-panel">
+        <div id="type-form-section">
+          <div class="panel-head">
+            <h2>类型信息</h2>
+            <span id="type-mode">新建</span>
+          </div>
+          <form id="type-form" class="form-stack">
+            <input type="hidden" name="id" />
+            <label>
+              <span>类型代码</span>
+              <input name="code" placeholder="例如：custom_service" pattern="[a-z0-9_]+" title="只能含小写字母、数字、下划线" required />
+            </label>
+            <label><span>中文名称</span><input name="nameZh" placeholder="例如：定制服务" required /></label>
+            <label>
+              <span>分组</span>
+              <select name="categoryGroup">
+                <option value="accommodation">住宿</option>
+                <option value="transport">交通</option>
+                <option value="service">服务</option>
+                <option value="catalog">目录</option>
+                <option value="misc">杂项</option>
+              </select>
+            </label>
+            <label><span>排序序号</span><input type="number" name="sortOrder" value="10" min="0" step="1" /></label>
+            <label class="checkbox-label"><input type="checkbox" name="isActive" checked /><span>启用（在录入时可选）</span></label>
+            <div class="button-row">
+              <button type="submit">保存类型</button>
+              <button type="button" class="ghost" id="btn-cancel-type">取消</button>
+            </div>
+          </form>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/item-types.js"></script>
+</body>
+</html>

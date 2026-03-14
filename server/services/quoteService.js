@@ -411,6 +411,30 @@ function summarizeQuoteItems(items) {
 function enrichQuote(quote) {
   const normalizedCurrency = normalizeCurrency(quote.currency || "EUR");
   const dateFields = normalizeQuoteDates(quote);
+
+  // project_based 模式：用存储的汇总值，不再从 items 计算
+  if (quote.pricingMode === "project_based") {
+    const totalCost = Number(quote.totalCost || 0);
+    const totalPrice = Number(quote.totalSales || 0);
+    const grossProfit = roundToTwo(totalPrice - totalCost);
+    const grossMargin = totalPrice === 0 ? 0 : roundToTwo((grossProfit / totalPrice) * 100);
+    return {
+      ...quote,
+      currency: normalizedCurrency,
+      ...dateFields,
+      totalCost,
+      totalPrice,
+      totalSales: totalPrice,
+      grossProfit,
+      grossMargin,
+      baseCurrency: normalizedCurrency,
+      exchangeRates,
+      items: [],
+      itemSummary: {},
+      projectGroups: quote.projectGroups || [],
+    };
+  }
+
   const totals = calculateQuoteTotals(quote.items || [], normalizedCurrency);
 
   return {

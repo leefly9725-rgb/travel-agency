@@ -16,6 +16,11 @@ create table if not exists public.quotes (
   pax_count integer not null default 0,
   notes text not null default '',
   data_quality jsonb not null default '{}'::jsonb,
+  -- v2: 报价模式与汇总金额
+  pricing_mode text not null default 'standard',
+  total_cost   numeric(14, 2) not null default 0,
+  total_sales  numeric(14, 2) not null default 0,
+  total_profit numeric(14, 2) not null default 0,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
@@ -151,10 +156,13 @@ create table if not exists public.supplier_items (
 create index if not exists idx_supplier_items_supplier_id on public.supplier_items (supplier_id);
 create index if not exists idx_supplier_items_category on public.supplier_items (category);
 
--- Project-based quotation tables
+-- Project-based quotation tables (v2: linked to quotes via quotation_id)
 create table if not exists public.quotation_projects (
   id text primary key,
-  name text not null,
+  -- v2: FK 关联主报价单（NULL = 旧独立记录，兼容保留）
+  quotation_id text references public.quotes(id) on delete cascade,
+  -- 旧字段保留
+  name text not null default '',
   client text not null default '',
   event_date date,
   venue text not null default '',
@@ -162,6 +170,13 @@ create table if not exists public.quotation_projects (
   currency text not null default 'EUR',
   status text not null default 'draft',
   notes text not null default '',
+  -- v2 新增字段
+  project_type  text not null default 'event',
+  project_title text not null default '',
+  sort_order integer not null default 0,
+  project_cost_total   numeric(14, 2) not null default 0,
+  project_sales_total  numeric(14, 2) not null default 0,
+  project_profit_total numeric(14, 2) not null default 0,
   created_at timestamptz not null default timezone('utc', now()),
   updated_at timestamptz not null default timezone('utc', now())
 );
@@ -169,17 +184,35 @@ create table if not exists public.quotation_projects (
 create table if not exists public.quotation_project_items (
   id bigserial primary key,
   project_id text not null references public.quotation_projects(id) on delete cascade,
+  -- 旧字段保留
   group_name text not null default '',
-  name_zh text not null,
+  name_zh text not null default '',
   name_en text not null default '',
-  unit text not null,
+  unit text not null default '套',
   quantity numeric(12, 2) not null default 1,
   cost_price numeric(14, 2) not null default 0,
   sell_price numeric(14, 2) not null default 0,
   supplier text not null default '',
   notes text not null default '',
   is_active boolean not null default true,
-  sort_order integer not null default 0
+  sort_order integer not null default 0,
+  -- v2 新增字段
+  item_type               text not null default 'misc',
+  item_category           text not null default '',
+  item_name               text not null default '',
+  specification           text not null default '',
+  currency                text not null default 'EUR',
+  supplier_id             text not null default '',
+  supplier_catalog_item_id text not null default '',
+  cost_unit_price         numeric(14, 2) not null default 0,
+  sales_unit_price        numeric(14, 2) not null default 0,
+  cost_subtotal           numeric(14, 2) not null default 0,
+  sales_subtotal          numeric(14, 2) not null default 0,
+  extra_json              jsonb not null default '{}'::jsonb,
+  created_at              timestamptz not null default timezone('utc', now()),
+  updated_at              timestamptz not null default timezone('utc', now())
 );
 
 create index if not exists idx_quotation_project_items_project_id on public.quotation_project_items (project_id);
+create index if not exists idx_quotation_projects_quotation_id    on public.quotation_projects (quotation_id);
+create index if not exists idx_quotes_pricing_mode                on public.quotes (pricing_mode);

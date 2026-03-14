@@ -53,8 +53,11 @@
           <form id="supplier-form" class="form-stack">
             <input type="hidden" name="id" />
             <label><span>供应商名称</span><input name="name" placeholder="例如：Congress Rental l.t.d." required /></label>
-            <label><span>联系方式</span><input name="contact" placeholder="邮箱或电话" /></label>
-            <label><span>备注</span><textarea name="notes" rows="3" placeholder="供应商备注说明"></textarea></label>
+            <label><span>联系人</span><input name="contact" placeholder="联系人姓名" /></label>
+            <label><span>电话</span><input name="phone" placeholder="例如：+381 11 1234567" /></label>
+            <label><span>邮箱</span><input name="email" type="email" placeholder="例如：info@example.com" /></label>
+            <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注说明"></textarea></label>
+            <label class="checkbox-label"><input type="checkbox" name="isActiveSupplier" checked /><span>启用（活跃供应商）</span></label>
             <div class="button-row">
               <button type="submit">保存供应商</button>
               <button type="button" class="ghost" id="btn-cancel-supplier">取消</button>

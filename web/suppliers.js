@@ -50,8 +50,8 @@ function renderSupplierList() {
       <article class="card card-selectable${selected}" data-select-supplier="${sup.id}">
         <div class="list-row list-row-top">
           <div>
-            <h3>${sup.name}</h3>
-            <p class="meta">${sup.contact || "暂无联系方式"} · ${itemCount} 条物料</p>
+            <h3>${sup.name}${sup.isActive === false ? ' <span class="status-badge" style="font-size:11px;opacity:0.6">停用</span>' : ""}</h3>
+            <p class="meta">${sup.phone || sup.email || sup.contact || "暂无联系方式"} · ${itemCount} 条物料</p>
           </div>
           <div class="action-row">
             <button class="mini-button" data-edit-supplier="${sup.id}">编辑</button>
@@ -128,8 +128,11 @@ function fillSupplierForm(supplier) {
   const form = document.getElementById("supplier-form");
   form.id.value = supplier ? supplier.id : "";
   form.name.value = supplier ? supplier.name : "";
-  form.contact.value = supplier ? supplier.contact : "";
-  form.notes.value = supplier ? supplier.notes : "";
+  form.contact.value = supplier ? (supplier.contact || "") : "";
+  form.phone.value = supplier ? (supplier.phone || "") : "";
+  form.email.value = supplier ? (supplier.email || "") : "";
+  form.notes.value = supplier ? (supplier.notes || "") : "";
+  form.isActiveSupplier.checked = supplier ? (supplier.isActive !== false) : true;
   document.getElementById("supplier-mode").textContent = supplier ? `${supplier.id} 编辑中` : "新建";
   showSupplierForm();
 }
@@ -235,7 +238,10 @@ async function bootstrap() {
     const payload = {
       name: form.name.value.trim(),
       contact: form.contact.value.trim(),
+      phone: form.phone.value.trim(),
+      email: form.email.value.trim(),
       notes: form.notes.value.trim(),
+      isActive: form.isActiveSupplier.checked,
     };
     try {
       const url = id ? `/api/suppliers/${encodeURIComponent(id)}` : "/api/suppliers";

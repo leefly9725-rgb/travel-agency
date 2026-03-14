@@ -70,3 +70,84 @@ Run with `--test-isolation=none` (required — tests share process state).
 ### Supabase (not yet active)
 
 The app detects Supabase credentials from `.env`. Currently everything reads/writes `data/seed.json`. The schema is at `scripts/supabase-schema.sql`. Check `/api/meta` to verify Supabase readiness.
+---
+
+## Engineering Safety Rules
+
+This project is already in active development and must remain stable.
+
+Claude must follow these rules:
+
+- Do NOT refactor large parts of the system unless explicitly required.
+- Prefer minimal safe modifications.
+- Maintain backward compatibility whenever possible.
+- Do not introduce breaking API changes silently.
+- Avoid creating unnecessary new files.
+
+If a change may affect production behavior, explain the risk first.
+
+---
+
+## Repository Reading Strategy
+
+To reduce token usage and improve efficiency:
+
+- Do NOT scan the entire repository unless necessary.
+- First read only files related to the task.
+- Prefer modifying existing files instead of creating many new ones.
+- Follow existing coding patterns and architecture.
+
+---
+
+## Supabase Safety Rules
+
+Supabase integration exists but is not fully active.
+
+Rules:
+
+- `service_role_key` must never be exposed to frontend code.
+- Privileged database operations must only run on the server.
+- Database schema changes must be backward compatible.
+- Avoid destructive migrations.
+
+Preferred schema change style:
+
+ADD COLUMN IF NOT EXISTS
+
+---
+
+## Development Workflow
+
+Claude Code must follow this process:
+
+1 Understand existing code
+2 Identify minimal safe modification
+3 Implement change
+4 Verify compatibility
+5 Provide structured summary
+
+Never modify files blindly.
+
+---
+
+## Required Delivery Format
+
+At the end of every task Claude must provide:
+
+### Modified Files
+List all files changed.
+
+### Database Changes
+Tables, fields, migration SQL.
+
+### Compatibility Handling
+Explain how old data continues working.
+
+### Local Testing
+Explain how to verify the change locally.
+
+### Production Risk
+Explain any possible production impact.
+
+### Deployment Needed
+Yes / No

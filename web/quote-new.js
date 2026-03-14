@@ -1,6 +1,7 @@
 ﻿const state = {
   templates: [],
   meta: null,
+  pricingMode: "standard",
 };
 
 const vehicleDetailTypeOptions = ["pickup", "dropoff", "full_day"];
@@ -878,6 +879,72 @@ async function bootstrap() {
 
   const form = buildForm(meta);
   const itemsContainer = document.getElementById("items-container");
+
+  // ── 报价模式切换 ─────────────────────────────────────────────────────────────
+  const standardEditorGrid = document.getElementById("standard-editor-grid");
+  const projectModeWrapper = document.getElementById("project-mode-wrapper");
+  const projectGroupsEditor = document.getElementById("project-groups-editor");
+  const modeRadioStandard = document.getElementById("mode-radio-standard");
+  const modeRadioProject = document.getElementById("mode-radio-project");
+  const quoteItemsSection = form.querySelector(".quote-items-section");
+
+  const previewAside = document.getElementById("preview-aside");
+
+  function activatePricingMode(mode, initialGroups, currency) {
+    state.pricingMode = mode;
+    if (mode === "project_based") {
+      if (modeRadioProject) modeRadioProject.checked = true;
+      // 进入项目型模式后隐藏模式切换栏（不需要再切换）
+      const modeSelectorPanel = document.getElementById("mode-selector-panel");
+      if (modeSelectorPanel) modeSelectorPanel.style.display = "none";
+      // 隐藏标准报价项目区和预览面板，保留表单头部（基础信息/联系信息/行程信息）
+      if (quoteItemsSection) quoteItemsSection.style.display = "none";
+      if (previewAside)     previewAside.style.display = "none";
+      // 单列布局
+      if (standardEditorGrid) standardEditorGrid.style.gridTemplateColumns = "1fr";
+      // 展示项目编辑区
+      if (projectModeWrapper) projectModeWrapper.style.display = "";
+      // 初始化项目编辑器
+      if (projectGroupsEditor && window.ProjectEditor) {
+        window.ProjectEditor.init(projectGroupsEditor, initialGroups || [], currency || form.currency.value || "EUR");
+      }
+      // 更新页面标题标签
+      const titleEl = document.getElementById("quote-form-title");
+      if (titleEl) {
+        titleEl.textContent = "项目型报价单";
+      }
+      const subtitleEl = document.getElementById("quote-form-subtitle");
+      if (subtitleEl) {
+        subtitleEl.textContent = "大型活动 / 会议 / 展会 – 可混合旅游接待与活动服务项目。";
+      }
+    } else {
+      if (modeRadioStandard) modeRadioStandard.checked = true;
+      const modeSelectorPanel = document.getElementById("mode-selector-panel");
+      if (modeSelectorPanel) modeSelectorPanel.style.display = "";
+      if (quoteItemsSection) quoteItemsSection.style.display = "";
+      if (previewAside)     previewAside.style.display = "";
+      if (standardEditorGrid) standardEditorGrid.style.gridTemplateColumns = "";
+      if (projectModeWrapper) projectModeWrapper.style.display = "none";
+    }
+  }
+
+  if (modeRadioStandard) {
+    modeRadioStandard.addEventListener("change", () => {
+      if (modeRadioStandard.checked) activatePricingMode("standard", [], form.currency.value);
+    });
+  }
+  if (modeRadioProject) {
+    modeRadioProject.addEventListener("change", () => {
+      if (modeRadioProject.checked) activatePricingMode("project_based", [], form.currency.value);
+    });
+  }
+
+  // 若 URL 带有 mode=project_based，自动激活
+  const urlSearchParams = new URLSearchParams(window.location.search);
+  if (urlSearchParams.get("mode") === "project_based") {
+    activatePricingMode("project_based", [], form.currency.value || "EUR");
+  }
+  // ── 报价模式切换结束 ─────────────────────────────────────────────────────────
   const templateSelect = document.getElementById("template-select");
   const templateDescription = document.getElementById("template-description");
 
@@ -1282,18 +1349,28 @@ async function bootstrap() {
     updateTravelDays(form);
 
     clearItemRows();
-    (quote.items || []).forEach((item) => addItemRow(item));
-    if (!quote.items || quote.items.length === 0) {
-      addItemRow({
-        type: "hotel",
-        currency: form.currency.value || meta.defaultItemCurrency || "EUR",
-      });
+
+    if (quote.pricingMode === "project_based") {
+      // 切换至项目型模式
+      activatePricingMode("project_based", quote.projectGroups || [], quote.currency || "EUR");
+    } else {
+      (quote.items || []).forEach((item) => addItemRow(item));
+      if (!quote.items || quote.items.length === 0) {
+        addItemRow({
+          type: "hotel",
+          currency: form.currency.value || meta.defaultItemCurrency || "EUR",
+        });
+      }
+      await renderPreview(form);
     }
 
-    document.getElementById("quote-form-title").textContent = "编辑报价单";
-    document.getElementById("quote-form-subtitle").textContent = "用于调整客户信息、行程安排和服务明细，保存后会重新计算全部报价汇总。";
+    const titleEl = document.getElementById("quote-form-title") || document.getElementById("proj-form-title");
+    if (titleEl) titleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑报价单";
+    const projTitleEl = document.getElementById("proj-form-title");
+    if (projTitleEl) projTitleEl.textContent = "编辑项目型报价单";
+    const formTitleEl = document.getElementById("quote-form-title");
+    if (formTitleEl) formTitleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑报价单";
     document.getElementById("quote-form-mode").textContent = "编辑模式";
-    await renderPreview(form);
   }
 
   const today = window.AppUtils.getToday();
@@ -1412,9 +1489,25 @@ async function bootstrap() {
 
   form.addEventListener("submit", async (event) => {
     event.preventDefault();
-    if (!validateQuoteForm(form)) {
-      return;
+
+    const isProjectMode = state.pricingMode === "project_based";
+
+    if (isProjectMode) {
+      // 项目型模式：只校验基础信息
+      if (!form.clientName.value.trim() || !form.projectName.value.trim() || !form.contactName.value.trim()) {
+        window.AppUtils.showMessage("quote-message", "请填写客户名称、项目名称和联系人。", "error");
+        return;
+      }
+    } else {
+      if (!validateQuoteForm(form)) {
+        return;
+      }
     }
+
+    const projectGroups = isProjectMode && window.ProjectEditor ? window.ProjectEditor.getGroups() : [];
+    const projectSummary = isProjectMode && window.ProjectEditor
+      ? window.ProjectEditor.getSummary()
+      : { totalCost: 0, totalSales: 0, totalProfit: 0 };
 
     const payload = {
       quoteNumber: form.quoteNumber.value,
@@ -1426,10 +1519,15 @@ async function bootstrap() {
       currency: form.currency.value,
       startDate: form.startDate.value,
       endDate: form.endDate.value,
-      destination: form.destination.value.trim(),
+      destination: form.destination.value.trim() || "Belgrade",
       paxCount: Number(form.paxCount.value || 0),
       notes: form.notes.value.trim(),
-      items: getItemRows(),
+      pricingMode: state.pricingMode,
+      items: isProjectMode ? [] : getItemRows(),
+      projectGroups: isProjectMode ? projectGroups : [],
+      totalCost: isProjectMode ? projectSummary.totalCost : undefined,
+      totalSales: isProjectMode ? projectSummary.totalSales : undefined,
+      totalProfit: isProjectMode ? projectSummary.totalProfit : undefined,
     };
 
     const isEditing = Boolean(form.quoteId.value);
@@ -1444,7 +1542,11 @@ async function bootstrap() {
       }, isEditing ? "报价更新失败，请稍后重试。" : "报价保存失败，请稍后重试。");
 
       window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
-      window.location.href = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
+      if (isProjectMode) {
+        window.location.href = "/quotes.html";
+      } else {
+        window.location.href = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
+      }
     } catch (error) {
       window.AppUtils.showMessage("quote-message", error.message, "error");
     }

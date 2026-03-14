@@ -81,6 +81,25 @@
     logistics: "物流设备",
     management: "管理服务",
   },
+  pricingModeLabels: {
+    standard:      "标准差旅报价",
+    project_based: "项目型报价",
+  },
+  projectItemTypeLabels: {
+    hotel:             "酒店",
+    transport:         "用车",
+    guide_translation: "导游/翻译",
+    event_material:    "活动物料",
+    print_display:     "印刷展示",
+    av_equipment:      "音视频设备",
+    decoration:        "装饰物料",
+    misc:              "杂项",
+  },
+  projectGroupTypeLabels: {
+    travel: "旅游接待",
+    event:  "活动服务",
+    mixed:  "综合项目",
+  },
   projectQuoteStatusLabels: {
     draft: "草稿",
     sent: "已发送",

@@ -12,21 +12,39 @@
       <a class="topbar-link" href="/quotes.html">← 返回报价列表</a>
     </header>
 
-    <div class="page-grid quote-editor-grid">
-      <section class="panel form-main-panel">
+    <!-- 全局消息框（两种模式下均可见） -->
+    <div id="quote-message" class="message-box hidden" style="margin:0 0 0 0;border-radius:0"></div>
+
+    <!-- 报价模式选择栏 -->
+    <div id="mode-selector-panel" class="panel" style="margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <span style="font-weight:600;color:var(--text-secondary,#666);font-size:13px">报价模式：</span>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="pricingModeRadio" value="standard" checked id="mode-radio-standard" />
+          标准差旅报价
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
+          <input type="radio" name="pricingModeRadio" value="project_based" id="mode-radio-project" />
+          项目型报价（活动 / 会议 / 展会）
+        </label>
+        <span style="flex:1"></span>
+        <span id="quote-form-mode" class="status-text subtle-status">新建模式</span>
+      </div>
+    </div>
+
+    <div class="page-grid quote-editor-grid" id="standard-editor-grid">
+      <section class="panel form-main-panel" style="border-top-left-radius:0;border-top-right-radius:0">
         <div class="admin-page-head">
           <div>
             <p class="eyebrow">报价管理</p>
             <h1 id="quote-form-title" class="page-title-sm">新建报价单</h1>
             <p id="quote-form-subtitle" class="page-subtitle">用于录入客户信息、行程日期和报价项目，右侧会同步显示汇总结果。</p>
           </div>
-          <span id="quote-form-mode" class="status-text subtle-status">新建模式</span>
         </div>
-        <div id="quote-message" class="message-box hidden"></div>
         <form id="quote-form" class="form-stack"></form>
       </section>
 
-      <aside class="panel preview-side-panel preview-panel-static-safe">
+      <aside class="panel preview-side-panel preview-panel-static-safe" id="preview-aside">
         <div class="panel-head panel-head-wrap">
           <div>
             <h2>报价预览</h2>
@@ -36,9 +54,20 @@
         <div id="quote-preview" class="stack"></div>
       </aside>
     </div>
+
+    <!-- 项目型报价编辑区（project_based 模式专用） -->
+    <div id="project-mode-wrapper" style="display:none">
+      <section class="panel" style="border-top-left-radius:0;border-top-right-radius:0">
+        <div id="project-header-area"></div>
+        <!-- 项目型报价基础信息（镜像 standard 表单字段） -->
+        <div id="project-base-info" style="display:none"></div>
+        <div id="project-groups-editor"></div>
+      </section>
+    </div>
   </div>
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
+  <script src="/quote-project-editor.js"></script>
   <script src="/quote-new.js"></script>
 </body>
 </html>

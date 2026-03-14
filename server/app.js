@@ -396,7 +396,23 @@ function normalizeQuotePayload(payload, existingId) {
     destination: notEmpty(payload.destination || "Belgrade", "主要目的地"),
     paxCount: Number(payload.paxCount || 0),
     notes: String(payload.notes || "").trim(),
-    items: normalizeQuoteItems(payload.items, currency),
+    pricingMode: supportedPricingModes.includes(payload.pricingMode) ? payload.pricingMode : "standard",
+    items: supportedPricingModes.includes(payload.pricingMode) && payload.pricingMode === "project_based"
+      ? []
+      : normalizeQuoteItems(payload.items, currency),
+    projectGroups: payload.pricingMode === "project_based"
+      ? normalizeProjectGroups(payload.projectGroups || [])
+      : [],
+    totalCost: payload.pricingMode === "project_based"
+      ? Math.round((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0) * 100) / 100
+      : 0,
+    totalSales: payload.pricingMode === "project_based"
+      ? Math.round((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectSalesTotal || 0), 0) * 100) / 100
+      : 0,
+    totalProfit: payload.pricingMode === "project_based"
+      ? Math.round(((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectSalesTotal || 0), 0) -
+                    (payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0)) * 100) / 100
+      : 0,
   };
 }
 
@@ -454,7 +470,10 @@ function normalizeSupplierPayload(payload, existingId) {
     id: existingId || payload.id || createId("SUP"),
     name: notEmpty(payload.name, "供应商名称"),
     contact: String(payload.contact || "").trim(),
+    phone: String(payload.phone || "").trim(),
+    email: String(payload.email || "").trim(),
     notes: String(payload.notes || "").trim(),
+    isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : true,
   };
 }
 
@@ -474,6 +493,86 @@ function normalizeSupplierItemPayload(payload, existingId) {
 }
 
 const supportedProjectQuoteStatuses = ["draft", "sent", "confirmed", "cancelled"];
+const supportedPricingModes = ["standard", "project_based"];
+const supportedProjectItemTypes = ["hotel", "transport", "guide_translation", "event_material", "print_display", "av_equipment", "decoration", "misc"];
+
+const DEFAULT_QUOTE_ITEM_TYPES = [
+  { id: "qt-001", code: "hotel",            nameZh: "酒店",      categoryGroup: "accommodation", sortOrder: 1, isActive: true, isSystem: true },
+  { id: "qt-002", code: "transport",        nameZh: "用车",      categoryGroup: "transport",     sortOrder: 2, isActive: true, isSystem: true },
+  { id: "qt-003", code: "guide_translation",nameZh: "导游/翻译", categoryGroup: "service",       sortOrder: 3, isActive: true, isSystem: true },
+  { id: "qt-004", code: "catalog_item",     nameZh: "目录项目",  categoryGroup: "catalog",       sortOrder: 4, isActive: true, isSystem: true },
+  { id: "qt-005", code: "misc",             nameZh: "杂项",      categoryGroup: "misc",          sortOrder: 5, isActive: true, isSystem: true },
+];
+
+function ensureQuoteItemTypes(data) {
+  if (!Array.isArray(data.quotationItemTypes) || data.quotationItemTypes.length === 0) {
+    data.quotationItemTypes = DEFAULT_QUOTE_ITEM_TYPES.map((t) => ({ ...t }));
+  }
+  return data.quotationItemTypes;
+}
+
+function normalizeQuoteItemTypePayload(payload, existingId, existing) {
+  return {
+    id: existingId || payload.id || createId("QT"),
+    code: existing?.isSystem ? (existing.code) : notEmpty(payload.code, "类型代码").toLowerCase().replace(/\s+/g, "_"),
+    nameZh: notEmpty(payload.nameZh, "中文名称"),
+    categoryGroup: String(payload.categoryGroup || "misc").trim(),
+    sortOrder: Number(payload.sortOrder || 0),
+    isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : true,
+    isSystem: Boolean(existing?.isSystem || payload.isSystem || false),
+  };
+}
+
+function normalizeProjectGroups(groups) {
+  if (!Array.isArray(groups)) return [];
+  return groups.map((group, gi) => {
+    const items = Array.isArray(group.items) ? group.items.map((item, ii) => {
+      const itemType = supportedProjectItemTypes.includes(item.itemType) ? item.itemType : "misc";
+      const qty = Math.max(Number(item.quantity || 1), 0);
+      const costUnit = Math.max(Number(item.costUnitPrice || 0), 0);
+      const salesUnit = Math.max(Number(item.salesUnitPrice || 0), 0);
+      const extraJson = (item.extraJson && typeof item.extraJson === "object") ? item.extraJson : {};
+      const nights = itemType === "hotel" ? Math.max(Number(extraJson.nights || 1), 1) : 1;
+      const costSubtotal = Math.round(qty * nights * costUnit * 100) / 100;
+      const salesSubtotal = Math.round(qty * nights * salesUnit * 100) / 100;
+      return {
+        itemType,
+        itemCategory: String(item.itemCategory || "").trim(),
+        itemName: String(item.itemName || "").trim(),
+        nameEn: String(item.nameEn || "").trim(),
+        specification: String(item.specification || "").trim(),
+        unit: String(item.unit || "套").trim(),
+        quantity: qty,
+        currency: item.currency || "EUR",
+        supplierId: String(item.supplierId || "").trim(),
+        supplierCatalogItemId: String(item.supplierCatalogItemId || "").trim(),
+        costUnitPrice: costUnit,
+        salesUnitPrice: salesUnit,
+        costSubtotal,
+        salesSubtotal,
+        remarks: String(item.remarks || "").trim(),
+        sortOrder: ii,
+        extraJson,
+      };
+    }) : [];
+
+    const projectCostTotal = Math.round(items.reduce((s, i) => s + i.costSubtotal, 0) * 100) / 100;
+    const projectSalesTotal = Math.round(items.reduce((s, i) => s + i.salesSubtotal, 0) * 100) / 100;
+    const projectProfitTotal = Math.round((projectSalesTotal - projectCostTotal) * 100) / 100;
+
+    return {
+      id: group.id || null,
+      projectType: String(group.projectType || "event").trim(),
+      projectTitle: String(group.projectTitle || "").trim(),
+      sortOrder: gi,
+      remarks: String(group.remarks || "").trim(),
+      projectCostTotal,
+      projectSalesTotal,
+      projectProfitTotal,
+      items,
+    };
+  });
+}
 
 function normalizeProjectQuoteItems(items) {
   if (!Array.isArray(items)) return [];
@@ -1006,6 +1105,62 @@ async function handleApi(request, response, url) {
         return true;
       }
       sendJson(response, 200, { message: "项目型报价已删除。" });
+      return true;
+    }
+  }
+
+  // ── Quote Item Types ────────────────────────────────────────────────────────
+
+  if (request.method === "GET" && url.pathname === "/api/quote-item-types") {
+    const data = await loadSeedData();
+    const types = ensureQuoteItemTypes(data);
+    sendJson(response, 200, types);
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/quote-item-types") {
+    const data = await loadSeedData();
+    const types = ensureQuoteItemTypes(data);
+    const payload = normalizeQuoteItemTypePayload(parseJsonBody(await readRequestBody(request)));
+    if (types.some((t) => t.code === payload.code)) {
+      sendJson(response, 409, { error: `类型代码「${payload.code}」已存在。` });
+      return true;
+    }
+    types.push(payload);
+    data.quotationItemTypes = types;
+    await saveSeedData(data);
+    sendJson(response, 201, payload);
+    return true;
+  }
+
+  if (request.method === "PUT") {
+    const typeId = matchIdRoute(url.pathname, "quote-item-types");
+    if (typeId) {
+      const data = await loadSeedData();
+      const types = ensureQuoteItemTypes(data);
+      const idx = types.findIndex((t) => t.id === typeId);
+      if (idx === -1) { sendJson(response, 404, { error: "类型不存在。" }); return true; }
+      const payload = normalizeQuoteItemTypePayload(parseJsonBody(await readRequestBody(request)), typeId, types[idx]);
+      types[idx] = payload;
+      data.quotationItemTypes = types;
+      await saveSeedData(data);
+      sendJson(response, 200, payload);
+      return true;
+    }
+  }
+
+  if (request.method === "DELETE") {
+    const typeId = matchIdRoute(url.pathname, "quote-item-types");
+    if (typeId) {
+      const data = await loadSeedData();
+      const types = ensureQuoteItemTypes(data);
+      const idx = types.findIndex((t) => t.id === typeId);
+      if (idx === -1) { sendJson(response, 404, { error: "类型不存在。" }); return true; }
+      if (types[idx].isSystem) { sendJson(response, 403, { error: "系统内置类型不可删除。" }); return true; }
+      types.splice(idx, 1);
+      data.quotationItemTypes = types;
+      await saveSeedData(data);
+      sendJson(response, 200, { message: "类型已删除。" });
       return true;
     }
   }
