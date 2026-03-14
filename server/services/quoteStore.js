@@ -66,6 +66,120 @@ function mapRemoteItem(row) {
   };
 }
 
+function mapRemoteProjectGroupItem(row) {
+  return {
+    id: String(row.id),
+    itemType: row.item_type || "misc",
+    itemCategory: row.item_category || "",
+    itemName: row.item_name || row.name_zh || "",
+    nameEn: row.name_en || "",
+    specification: row.specification || "",
+    unit: row.unit || "套",
+    quantity: Number(row.quantity || 1),
+    currency: row.currency || "EUR",
+    supplierId: row.supplier_id || "",
+    supplierCatalogItemId: row.supplier_catalog_item_id || "",
+    costUnitPrice: Number(row.cost_unit_price ?? row.cost_price ?? 0),
+    salesUnitPrice: Number(row.sales_unit_price ?? row.sell_price ?? 0),
+    costSubtotal: Number(row.cost_subtotal || 0),
+    salesSubtotal: Number(row.sales_subtotal || 0),
+    remarks: row.notes || "",
+    sortOrder: Number(row.sort_order || 0),
+    extraJson: row.extra_json || {},
+  };
+}
+
+async function loadProjectGroups(config, quotationId) {
+  const groups = await supabaseRequest(
+    config,
+    `quotation_projects?select=*&quotation_id=eq.${encodeURIComponent(quotationId)}&order=sort_order.asc`,
+  );
+  if (!Array.isArray(groups) || groups.length === 0) return [];
+
+  const result = [];
+  for (const group of groups) {
+    const items = await supabaseRequest(
+      config,
+      `quotation_project_items?select=*&project_id=eq.${encodeURIComponent(group.id)}&order=sort_order.asc`,
+    );
+    result.push({
+      id: group.id,
+      projectType: group.project_type || "event",
+      projectTitle: group.project_title || group.name || "",
+      sortOrder: Number(group.sort_order || 0),
+      remarks: group.notes || "",
+      projectCostTotal: Number(group.project_cost_total || 0),
+      projectSalesTotal: Number(group.project_sales_total || 0),
+      projectProfitTotal: Number(group.project_profit_total || 0),
+      items: Array.isArray(items) ? items.map(mapRemoteProjectGroupItem) : [],
+    });
+  }
+  return result;
+}
+
+async function saveProjectGroups(config, quote, now) {
+  // 删除旧分组（ON DELETE CASCADE 会级联删除 quotation_project_items）
+  await supabaseRequest(
+    config,
+    `quotation_projects?quotation_id=eq.${encodeURIComponent(quote.id)}`,
+    { method: "DELETE", headers: { Prefer: "return=minimal" } },
+  );
+
+  for (const [gi, group] of (quote.projectGroups || []).entries()) {
+    const groupId = group.id || `${quote.id}-G${gi}-${Date.now()}`;
+    await supabaseRequest(config, "quotation_projects", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        id: groupId,
+        quotation_id: quote.id,
+        name: group.projectTitle || "",
+        client: "",
+        project_type: group.projectType || "event",
+        project_title: group.projectTitle || "",
+        sort_order: gi,
+        project_cost_total: Number(group.projectCostTotal || 0),
+        project_sales_total: Number(group.projectSalesTotal || 0),
+        project_profit_total: Number(group.projectProfitTotal || 0),
+        notes: group.remarks || "",
+        updated_at: now,
+      }),
+    });
+
+    if (Array.isArray(group.items) && group.items.length > 0) {
+      const itemRows = group.items.map((item, ii) => ({
+        project_id: groupId,
+        item_type: item.itemType || "misc",
+        item_category: item.itemCategory || "",
+        item_name: item.itemName || "",
+        name_zh: item.itemName || "",
+        name_en: item.nameEn || "",
+        specification: item.specification || "",
+        unit: item.unit || "套",
+        quantity: Number(item.quantity || 1),
+        currency: item.currency || quote.currency || "EUR",
+        supplier_id: item.supplierId || "",
+        supplier_catalog_item_id: item.supplierCatalogItemId || "",
+        cost_unit_price: Number(item.costUnitPrice || 0),
+        sales_unit_price: Number(item.salesUnitPrice || 0),
+        cost_price: Number(item.costUnitPrice || 0),
+        sell_price: Number(item.salesUnitPrice || 0),
+        cost_subtotal: Number(item.costSubtotal || 0),
+        sales_subtotal: Number(item.salesSubtotal || 0),
+        notes: item.remarks || "",
+        sort_order: ii,
+        extra_json: item.extraJson || {},
+        is_active: true,
+      }));
+      await supabaseRequest(config, "quotation_project_items", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify(itemRows),
+      });
+    }
+  }
+}
+
 function mapRemoteQuote(row) {
   const items = sortByPosition(row.quote_items || []).map(mapRemoteItem);
   return {
@@ -86,6 +200,11 @@ function mapRemoteQuote(row) {
     paxCount: Number(row.pax_count || 0),
     notes: row.notes || "",
     dataQuality: row.data_quality || {},
+    pricingMode: row.pricing_mode || "standard",
+    totalCost: Number(row.total_cost || 0),
+    totalSales: Number(row.total_sales || 0),
+    totalProfit: Number(row.total_profit || 0),
+    projectGroups: [],
     items,
   };
 }
@@ -105,7 +224,16 @@ async function getRemoteQuoteById(config, id) {
   if (!Array.isArray(rows) || rows.length === 0) {
     throw new Error("报价不存在。");
   }
-  return mapRemoteQuote(rows[0]);
+  const quote = mapRemoteQuote(rows[0]);
+  if (quote.pricingMode === "project_based") {
+    try {
+      quote.projectGroups = await loadProjectGroups(config, id);
+    } catch (e) {
+      console.error("加载项目分组失败：", e.message);
+      quote.projectGroups = [];
+    }
+  }
+  return quote;
 }
 
 async function saveRemoteQuote(config, quote) {
@@ -133,6 +261,10 @@ async function saveRemoteQuote(config, quote) {
       pax_count: quote.paxCount || 0,
       notes: quote.notes || "",
       data_quality: quote.dataQuality || {},
+      pricing_mode: quote.pricingMode || "standard",
+      total_cost: Number(quote.totalCost || 0),
+      total_sales: Number(quote.totalSales || 0),
+      total_profit: Number(quote.totalProfit || 0),
       updated_at: now,
     }),
   });
@@ -229,6 +361,11 @@ async function saveRemoteQuote(config, quote) {
     }
   }
 
+  // project_based 模式：保存项目分组
+  if (quote.pricingMode === "project_based") {
+    await saveProjectGroups(config, quote, now);
+  }
+
   return quote;
 }
 
@@ -270,15 +407,21 @@ function createQuoteStore({ data, saveData }) {
 
   return {
     async listQuotes() {
+      const localQuotes = listLocalQuotes();
       if (!config.enabled) {
-        return { quotes: listLocalQuotes(), source: "local_json" };
+        return { quotes: localQuotes, source: "local_json" };
       }
       try {
-        const quotes = await listRemoteQuotes(config);
-        return { quotes, source: "supabase" };
+        const remoteQuotes = await listRemoteQuotes(config);
+        const remoteIds = new Set(remoteQuotes.map((quote) => quote.id));
+        const localOnlyQuotes = localQuotes.filter((quote) => !remoteIds.has(quote.id));
+        return {
+          quotes: [...localOnlyQuotes, ...remoteQuotes],
+          source: localOnlyQuotes.length > 0 ? "supabase+local_fallback" : "supabase",
+        };
       } catch (error) {
-        console.warn("报价读取出错，回退到本地 JSON。", error.message);
-        return { quotes: listLocalQuotes(), source: "local_json", fallbackReason: error.message };
+        console.warn("???????????? JSON?", error.message);
+        return { quotes: localQuotes, source: "local_json", fallbackReason: error.message };
       }
     },
 
