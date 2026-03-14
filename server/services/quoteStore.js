@@ -461,9 +461,13 @@ function createQuoteStore({ data, saveData }) {
       }
       try {
         await deleteRemoteQuote(config, id);
-        return { deleted: true, source: "supabase" };
+        const localDeleted = deleteLocalQuote(id);
+        return {
+          deleted: true,
+          source: localDeleted ? "supabase+local_fallback_cleanup" : "supabase",
+        };
       } catch (error) {
-        console.warn("报价删除出错，回退到本地 JSON。", error.message);
+        console.warn("???????????? JSON?", error.message);
         return { deleted: deleteLocalQuote(id), source: "local_json", fallbackReason: error.message };
       }
     },
