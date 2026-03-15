@@ -19,7 +19,12 @@
 
   async fetchJson(url, options, fallbackMessage) {
     const response = await fetch(url, options);
-    const payload = await response.json();
+    let payload;
+    try {
+      payload = await response.json();
+    } catch (_e) {
+      throw new Error(fallbackMessage || "服务器响应格式错误，请稍后重试。");
+    }
     if (!response.ok) {
       throw new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
     }

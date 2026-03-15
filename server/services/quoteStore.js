@@ -280,6 +280,8 @@ function mapRemoteQuote(row) {
     totalSales: Number(row.total_sales ?? compat?.totalSales ?? 0),
     totalProfit: Number(row.total_profit ?? compat?.totalProfit ?? 0),
     projectGroups: Array.isArray(compat?.projectGroups) ? compat.projectGroups : [],
+    createdAt: row.created_at ? String(row.created_at) : "",
+    updatedAt: row.updated_at ? String(row.updated_at) : "",
     items,
   };
 }

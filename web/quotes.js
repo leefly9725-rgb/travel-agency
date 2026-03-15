@@ -11,6 +11,31 @@ function attachCardClicks(container) {
   });
 }
 
+// ── 排序 ────────────────────────────────────────────────────────────────────
+let _currentSortKey = "updated_at";
+let _cachedQuotes = [];
+
+function sortQuotes(arr, sortKey) {
+  const copy = [...arr];
+  switch (sortKey) {
+    case "updated_at":
+      return copy.sort((a, b) => (b.updatedAt || "0").localeCompare(a.updatedAt || "0"));
+    case "created_at":
+      // 旧数据无 createdAt 时用 quoteNumber 兜底（报价编号含时序信息）
+      return copy.sort((a, b) =>
+        (b.createdAt || b.quoteNumber || "0").localeCompare(a.createdAt || a.quoteNumber || "0")
+      );
+    case "quoteNumber":
+      return copy.sort((a, b) => (a.quoteNumber || "").localeCompare(b.quoteNumber || ""));
+    case "clientName":
+      return copy.sort((a, b) =>
+        (a.clientName || "").localeCompare(b.clientName || "", "zh-CN")
+      );
+    default:
+      return copy;
+  }
+}
+
 function renderProjectQuotes(quotes) {
   const container = document.getElementById("project-quote-list");
   if (quotes.length === 0) {
@@ -103,15 +128,26 @@ async function loadAllQuotes() {
 }
 
 function splitAndRender(allQuotes) {
-  const standard = allQuotes.filter((q) => (q.pricingMode || "standard") !== "project_based");
-  const projectBased = allQuotes.filter((q) => q.pricingMode === "project_based");
+  const sorted = sortQuotes(allQuotes, _currentSortKey);
+  const standard = sorted.filter((q) => (q.pricingMode || "standard") !== "project_based");
+  const projectBased = sorted.filter((q) => q.pricingMode === "project_based");
   renderQuotes(standard);
   renderProjectQuotes(projectBased);
 }
 
 async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
-  splitAndRender(await loadAllQuotes());
+  _cachedQuotes = await loadAllQuotes();
+  splitAndRender(_cachedQuotes);
+
+  // 排序切换
+  const sortSelect = document.getElementById("quote-sort-select");
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      _currentSortKey = sortSelect.value;
+      splitAndRender(_cachedQuotes);
+    });
+  }
 
   document.body.addEventListener("click", async (event) => {
     const deleteId = event.target.getAttribute("data-delete-id");
@@ -126,7 +162,8 @@ async function bootstrap() {
           "删除报价失败，请稍后重试。"
         );
         window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
-        splitAndRender(await loadAllQuotes());
+        _cachedQuotes = await loadAllQuotes();
+        splitAndRender(_cachedQuotes);
       } catch (error) {
         window.AppUtils.showMessage("quote-message", error.message, "error");
       }

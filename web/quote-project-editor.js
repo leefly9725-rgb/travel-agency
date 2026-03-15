@@ -64,6 +64,24 @@ window.ProjectEditor = (function () {
     misc:             "规格",
   };
 
+  // 各行类型的默认单位——可扩展为从类型主数据读取 default_unit
+  const TYPE_DEFAULT_UNIT = {
+    hotel:             "间",
+    transport:         "辆",
+    guide_translation: "天",
+    catalog_item:      "项",
+    misc:              "项",
+    av_equipment:      "台",
+    print_display:     "项",
+    decoration:        "项",
+    personnel:         "人天",
+    logistics:         "项",
+  };
+
+  function _getDefaultUnit(iType) {
+    return TYPE_DEFAULT_UNIT[iType] || "项";
+  }
+
   // 不同项目组类型 × 行类型的录入提示
   const GROUP_ITEM_NAME_HINTS = {
     travel: {
@@ -161,7 +179,7 @@ window.ProjectEditor = (function () {
       </td>
       <td><input class="cell-input" name="itemName" value="${esc(item.itemName || "")}" placeholder="${esc(nameHint)}" style="min-width:110px" /></td>
       <td><input class="cell-input spec-input" name="specification" value="${esc(item.specification || "")}" placeholder="${esc(specLabel)}" style="min-width:72px" /></td>
-      <td><input class="cell-input" name="unit" value="${esc(item.unit || "套")}" placeholder="单位" style="width:44px" /></td>
+      <td><input class="cell-input" name="unit" value="${esc(item.unit || _getDefaultUnit(iType))}" placeholder="单位" style="width:44px" data-system-unit="${esc(_getDefaultUnit(iType))}" /></td>
       <td class="qty-td">
         <div class="qty-stack">
           <div class="qty-main-line">
@@ -260,6 +278,16 @@ window.ProjectEditor = (function () {
       nameInput.placeholder = (GROUP_ITEM_NAME_HINTS[groupType] || {})[iType] || "名称";
     }
 
+    // unit 自动联动：仅当当前单位仍等于系统上次设定的默认值时才跟随类型切换，用户已手动修改则保留
+    const unitInput = tr.querySelector("[name='unit']");
+    if (unitInput) {
+      const newDefault = _getDefaultUnit(iType);
+      if (!unitInput.value || unitInput.value === unitInput.dataset.systemUnit) {
+        unitInput.value = newDefault;
+      }
+      unitInput.dataset.systemUnit = newDefault;
+    }
+
     const actionsCell = tr.querySelector("td:last-child > div");
     if (actionsCell) {
       const existing = actionsCell.querySelector(".catalog-btn");
@@ -309,7 +337,7 @@ window.ProjectEditor = (function () {
     if (emptyRow) emptyRow.remove();
     const allowedTypes = _getAllowedTypes(groupEl);
     const defaultType = allowedTypes[0]?.value || "misc";
-    const item = { itemType: defaultType, unit: "套", quantity: 1, ...defaults };
+    const item = { itemType: defaultType, unit: _getDefaultUnit(defaultType), quantity: 1, ...defaults };
     const tr = createItemRow(item, groupEl, allowedTypes);
     tbody.appendChild(tr);
     tr.querySelector("[name='itemName']")?.focus();
@@ -578,7 +606,7 @@ window.ProjectEditor = (function () {
     if (!tr) return;
     tr.querySelector("[name='itemName']").value          = catalogItem.nameZh  || "";
     tr.querySelector("[name='specification']").value     = catalogItem.spec    || "";
-    tr.querySelector("[name='unit']").value              = catalogItem.unit    || "套";
+    tr.querySelector("[name='unit']").value              = catalogItem.unit    || "项";
     tr.querySelector("[name='costUnitPrice']").value     = catalogItem.costPrice || 0;
     tr.querySelector("[name='supplierId']").value        = catalogItem.supplierId || "";
     tr.querySelector("[name='supplierCatalogItemId']").value = String(catalogItem.id);

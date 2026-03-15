@@ -369,7 +369,8 @@ function normalizeQuoteItems(items, baseCurrency) {
   });
 }
 
-function normalizeQuotePayload(payload, existingId) {
+function normalizeQuotePayload(payload, existingId, existingCreatedAt) {
+  const now = new Date().toISOString();
   const currency = assertSupportedCurrency(payload.currency || "EUR", "报价币种");
   const language = assertOneOf(payload.language || "zh-CN", supportedLanguages, "文档输出语言");
   const startDate = formatDate(notEmpty(payload.startDate || payload.tripDate, "行程开始日期"));
@@ -413,6 +414,8 @@ function normalizeQuotePayload(payload, existingId) {
       ? Math.round(((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectSalesTotal || 0), 0) -
                     (payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0)) * 100) / 100
       : 0,
+    createdAt: existingCreatedAt || now,
+    updatedAt: now,
   };
 }
 
@@ -909,13 +912,15 @@ async function handleApi(request, response, url) {
   if (request.method === "PUT") {
     const quoteId = matchIdRoute(url.pathname, "quotes");
     if (quoteId) {
+      let existingCreatedAt = null;
       try {
-        await quoteStore.getQuoteById(quoteId);
+        const { quote: existing } = await quoteStore.getQuoteById(quoteId);
+        existingCreatedAt = existing.createdAt || null;
       } catch {
         sendJson(response, 404, { error: "报价不存在。" });
         return true;
       }
-      const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), quoteId);
+      const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), quoteId, existingCreatedAt);
       const result = await quoteStore.saveQuote(quote);
       sendJson(response, 200, enrichQuote(result.quote));
       return true;

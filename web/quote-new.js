@@ -870,10 +870,23 @@ async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
   const params = new URLSearchParams(window.location.search);
   const editingId = params.get("id");
-  const [meta, templates] = await Promise.all([
-    window.AppUtils.fetchJson("/api/meta", null, "\u9875\u9762\u521d\u59cb\u5316\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002"),
-    window.AppUtils.fetchJson("/api/templates", null, "\u6a21\u677f\u6570\u636e\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002"),
-  ]);
+  let meta = {
+    supportedLanguages: ["zh-CN", "en", "sr"],
+    supportedCurrencies: ["EUR", "RSD", "KM", "ALL", "RMB"],
+    supportedQuoteItemTypes: [],
+    defaultQuoteCurrency: "EUR",
+    defaultItemCurrency: "EUR",
+    nextQuoteNumber: "",
+  };
+  let templates = [];
+  try {
+    [meta, templates] = await Promise.all([
+      window.AppUtils.fetchJson("/api/meta", null, "\u9875\u9762\u521d\u59cb\u5316\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002"),
+      window.AppUtils.fetchJson("/api/templates", null, "\u6a21\u677f\u6570\u636e\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002"),
+    ]);
+  } catch (err) {
+    window.AppUtils.showMessage("quote-message", err.message, "error");
+  }
   state.meta = meta;
   state.templates = templates;
 

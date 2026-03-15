@@ -65,6 +65,20 @@
       </section>
     </div>
   </div>
+  <!-- 最早阶段判断 mode，立即隐藏标准报价区，避免进入 project_based 时闪旧界面 -->
+  <script>
+    (function () {
+      var p = new URLSearchParams(location.search);
+      if (p.get('mode') === 'project_based') {
+        var sel = document.getElementById('mode-selector-panel');
+        if (sel) sel.style.display = 'none';
+        var aside = document.getElementById('preview-aside');
+        if (aside) aside.style.display = 'none';
+        var grid = document.getElementById('standard-editor-grid');
+        if (grid) grid.style.gridTemplateColumns = '1fr';
+      }
+    })();
+  </script>
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
   <script src="/quote-project-editor.js"></script>

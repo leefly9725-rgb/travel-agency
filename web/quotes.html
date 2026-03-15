@@ -18,8 +18,19 @@
 
     <section class="panel">
       <div class="panel-head">
-        <h1>标准报价列表</h1>
-        <span>差旅接待报价，支持查看、编辑与删除操作</span>
+        <div>
+          <h1>标准报价列表</h1>
+          <span>差旅接待报价，支持查看、编辑与删除操作</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
+          <label for="quote-sort-select" style="font-size:13px;color:var(--text-secondary,#666);white-space:nowrap">排序：</label>
+          <select id="quote-sort-select" style="font-size:13px;height:30px;border:1px solid var(--line,#e0e0e0);border-radius:6px;padding:2px 8px;background:var(--bg,#fff)">
+            <option value="updated_at">最近更新</option>
+            <option value="created_at">最新创建</option>
+            <option value="quoteNumber">报价编号</option>
+            <option value="clientName">客户名称</option>
+          </select>
+        </div>
       </div>
       <div id="quote-message" class="message-box hidden"></div>
       <div id="quote-list" class="stack"></div>
