@@ -21,7 +21,6 @@ function sortQuotes(arr, sortKey) {
     case "updated_at":
       return copy.sort((a, b) => (b.updatedAt || "0").localeCompare(a.updatedAt || "0"));
     case "created_at":
-      // 旧数据无 createdAt 时用 quoteNumber 兜底（报价编号含时序信息）
       return copy.sort((a, b) =>
         (b.createdAt || b.quoteNumber || "0").localeCompare(a.createdAt || a.quoteNumber || "0")
       );
@@ -51,7 +50,8 @@ function renderProjectQuotes(quotes) {
       : (pq.projectGroups || []).reduce((s, g) => s + (g.projectCostTotal || 0), 0);
     const grossProfit = totalSell - totalCost;
     const margin = totalSell > 0 ? ((grossProfit / totalSell) * 100).toFixed(1) : "0.0";
-    const cardHref = `/quote-new.html?id=${encodeURIComponent(pq.id)}`;
+    // 编辑链接携带 mode=project_based，确保进入 project_based 编辑态且不闪标准报价界面
+    const cardHref = `/quote-new.html?id=${encodeURIComponent(pq.id)}&mode=project_based`;
     const groupCount = (pq.projectGroups || []).length;
     const itemCount = (pq.projectGroups || []).reduce((s, g) => s + (g.items || []).length, 0);
     return `
@@ -137,8 +137,30 @@ function splitAndRender(allQuotes) {
 
 async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
-  _cachedQuotes = await loadAllQuotes();
-  splitAndRender(_cachedQuotes);
+
+  // 删除事件委托：必须在任何异步操作之前绑定，确保无论列表加载是否成功，
+  // 用户点击删除按钮时都能响应。使用 closest 确保事件冒泡时也能正确命中。
+  document.body.addEventListener("click", async (event) => {
+    const btn = event.target.closest("[data-delete-id]");
+    if (!btn) return;
+    const deleteId = btn.getAttribute("data-delete-id");
+    if (!deleteId) return;
+    const name = btn.getAttribute("data-name") || "该报价";
+    if (!window.confirm(`确定删除「${name}」吗？`)) return;
+    try {
+      window.AppUtils.hideMessage("quote-message");
+      await window.AppUtils.fetchJson(
+        `/api/quotes/${encodeURIComponent(deleteId)}`,
+        { method: "DELETE" },
+        "删除报价失败，请稍后重试。"
+      );
+      window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
+      _cachedQuotes = await loadAllQuotes();
+      splitAndRender(_cachedQuotes);
+    } catch (error) {
+      window.AppUtils.showMessage("quote-message", error.message, "error");
+    }
+  });
 
   // 排序切换
   const sortSelect = document.getElementById("quote-sort-select");
@@ -149,28 +171,12 @@ async function bootstrap() {
     });
   }
 
-  document.body.addEventListener("click", async (event) => {
-    const deleteId = event.target.getAttribute("data-delete-id");
-    if (deleteId) {
-      const name = event.target.getAttribute("data-name") || "该报价";
-      if (!window.confirm(`确定删除「${name}」吗？`)) return;
-      try {
-        window.AppUtils.hideMessage("quote-message");
-        await window.AppUtils.fetchJson(
-          `/api/quotes/${encodeURIComponent(deleteId)}`,
-          { method: "DELETE" },
-          "删除报价失败，请稍后重试。"
-        );
-        window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
-        _cachedQuotes = await loadAllQuotes();
-        splitAndRender(_cachedQuotes);
-      } catch (error) {
-        window.AppUtils.showMessage("quote-message", error.message, "error");
-      }
-    }
-  });
+  try {
+    _cachedQuotes = await loadAllQuotes();
+    splitAndRender(_cachedQuotes);
+  } catch (error) {
+    window.AppUtils.showMessage("quote-message", error.message, "error");
+  }
 }
 
-bootstrap().catch((error) => {
-  window.AppUtils.showMessage("quote-message", error.message, "error");
-});
+bootstrap();
