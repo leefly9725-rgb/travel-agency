@@ -614,6 +614,15 @@ function matchIdRoute(pathname, collection) {
   return match ? decodeURIComponent(match[1]) : null;
 }
 
+function getNormalizedRequestPath(url) {
+  const pathname = url.pathname || "/";
+  if (pathname === "/api/[[...route]]") {
+    const routedPath = String(url.searchParams.get("route") || "").replace(/^\/+/, "");
+    return routedPath ? `/api/${routedPath}` : "/api";
+  }
+  return pathname;
+}
+
 function deriveProjectStatus(quote, linkedReceptions) {
   if (linkedReceptions.some((item) => item.status === "in_progress")) {
     return "running";
@@ -1176,14 +1185,17 @@ async function handleApi(request, response, url) {
 async function handleRequest(request, response) {
   const baseUrl = request.headers?.host ? `http://${request.headers.host}` : "http://localhost";
   const url = new URL(request.url, baseUrl);
+  const normalizedPath = getNormalizedRequestPath(url);
 
   try {
-    const handled = await handleApi(request, response, url);
+    const routedUrl = new URL(url.toString());
+    routedUrl.pathname = normalizedPath;
+    const handled = await handleApi(request, response, routedUrl);
     if (handled) {
       return;
     }
 
-    const requestedPath = url.pathname === "/" ? "/index.html" : url.pathname;
+    const requestedPath = normalizedPath === "/" ? "/index.html" : normalizedPath;
     const safePath = path.normalize(requestedPath).replace(/^([.][.][/\\])+/, "");
     const filePath = path.join(publicDir, safePath);
     sendFile(response, filePath);
