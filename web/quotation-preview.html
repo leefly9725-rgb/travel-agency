@@ -1,0 +1,741 @@
+﻿<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>客户报价单原型 V1</title>
+  <style>
+    :root {
+      --qp-ink: #12263f;
+      --qp-ink-soft: #5f7188;
+      --qp-ink-muted: #7f8d9f;
+      --qp-accent: #b6864a;
+      --qp-accent-soft: rgba(182, 134, 74, 0.14);
+      --qp-card: #fffdf8;
+      --qp-paper: #f7f2e9;
+      --qp-paper-strong: #f3ecde;
+      --qp-line: #dbcdb7;
+      --qp-line-strong: #cbb393;
+      --qp-bg: linear-gradient(180deg, #efe6d8 0%, #f8f5ef 38%, #efe8dc 100%);
+      --qp-shadow: 0 24px 60px rgba(18, 38, 63, 0.12);
+      --qp-radius: 20px;
+      --qp-font-cn: "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+      --qp-font-en: Georgia, "Times New Roman", serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: var(--qp-font-cn);
+      background: var(--qp-bg);
+      color: var(--qp-ink);
+    }
+
+    .qp-preview-shell {
+      width: min(1420px, calc(100vw - 48px));
+      margin: 0 auto;
+      padding: 28px 0 72px;
+    }
+
+    .qp-toolbar {
+      position: sticky;
+      top: 18px;
+      z-index: 20;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      align-items: end;
+      padding: 18px 22px;
+      margin-bottom: 28px;
+      background: rgba(255, 252, 246, 0.92);
+      border: 1px solid rgba(199, 179, 148, 0.55);
+      border-radius: 22px;
+      box-shadow: 0 16px 40px rgba(18, 38, 63, 0.08);
+      backdrop-filter: blur(10px);
+    }
+
+    .qp-toolbar-title {
+      min-width: 250px;
+      padding-right: 10px;
+    }
+
+    .qp-toolbar-title strong {
+      display: block;
+      margin-bottom: 6px;
+      font-size: 19px;
+      letter-spacing: 0.04em;
+    }
+
+    .qp-toolbar-title span {
+      color: var(--qp-ink-soft);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+
+    .qp-control {
+      display: grid;
+      gap: 8px;
+      min-width: 190px;
+      flex: 1 1 190px;
+    }
+
+    .qp-control label {
+      font-size: 12px;
+      color: var(--qp-ink-soft);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .qp-control select {
+      height: 48px;
+      border-radius: 14px;
+      border: 1px solid var(--qp-line-strong);
+      background: #fffdf9;
+      padding: 0 14px;
+      font-size: 15px;
+      color: var(--qp-ink);
+    }
+
+    .qp-document {
+      display: grid;
+      gap: 30px;
+      justify-items: center;
+    }
+
+    .qp-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: var(--qp-card);
+      border-radius: 18px;
+      border: 1px solid rgba(199, 179, 148, 0.48);
+      box-shadow: var(--qp-shadow);
+      padding: 18mm 16mm 16mm;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .qp-page::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-top: 7mm solid rgba(18, 38, 63, 0.98);
+      pointer-events: none;
+    }
+
+    .qp-cover { display: flex; flex-direction: column; }
+
+    .qp-cover-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+      padding-top: 2mm;
+    }
+
+    .qp-logo-block {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .qp-logo-mark {
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(160deg, #193252 0%, #0e2138 100%);
+      color: #fff;
+      display: grid;
+      place-items: center;
+      font-family: var(--qp-font-en);
+      font-size: 27px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+    }
+
+    .qp-company-cn {
+      margin: 0 0 4px;
+      font-size: 23px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .qp-company-en {
+      margin: 0;
+      font-family: var(--qp-font-en);
+      font-size: 15px;
+      letter-spacing: 0.14em;
+      color: var(--qp-accent);
+      text-transform: uppercase;
+    }
+
+    .qp-company-meta {
+      max-width: 300px;
+      color: var(--qp-ink-soft);
+      font-size: 13px;
+      line-height: 1.8;
+      text-align: right;
+    }
+
+    .qp-cover-hero {
+      display: grid;
+      grid-template-columns: 1.28fr 0.92fr;
+      gap: 18px;
+      margin-bottom: 22px;
+      align-items: stretch;
+    }
+
+    .qp-hero-card,
+    .qp-side-card,
+    .qp-section,
+    .qp-summary-card,
+    .qp-terms-card,
+    .qp-detail-card,
+    .qp-intro-panel,
+    .qp-summary-panel,
+    .qp-total-card {
+      border: 1px solid var(--qp-line);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fffcf7 0%, #fcf8f0 100%);
+    }
+
+    .qp-hero-card {
+      padding: 24px 26px;
+      background: linear-gradient(135deg, rgba(18, 38, 63, 0.97), rgba(22, 43, 68, 0.9));
+      color: #fff;
+    }
+
+    .qp-hero-eyebrow {
+      color: rgba(255,255,255,0.72);
+      letter-spacing: 0.18em;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .qp-hero-card h1 {
+      margin: 0 0 14px;
+      font-size: 35px;
+      line-height: 1.24;
+      letter-spacing: 0.03em;
+    }
+
+    .qp-hero-sub {
+      margin: 0;
+      color: rgba(255,255,255,0.82);
+      line-height: 1.9;
+      font-size: 15px;
+    }
+
+    .qp-side-card {
+      padding: 20px 18px;
+      display: grid;
+      gap: 14px;
+    }
+
+    .qp-meta-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: baseline;
+      border-bottom: 1px dashed rgba(199,179,148,0.55);
+      padding-bottom: 10px;
+    }
+
+    .qp-meta-row:last-child { border-bottom: 0; padding-bottom: 0; }
+    .qp-meta-row span { color: var(--qp-ink-soft); font-size: 13px; }
+    .qp-meta-row strong { font-size: 15px; text-align: right; }
+
+    .qp-cover-grid {
+      display: grid;
+      grid-template-columns: 1.08fr 0.92fr;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+
+    .qp-section,
+    .qp-intro-panel,
+    .qp-summary-panel,
+    .qp-terms-card {
+      padding: 20px 20px 18px;
+    }
+
+    .qp-section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 14px;
+    }
+
+    .qp-section-title h2,
+    .qp-section-title h3 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.35;
+    }
+
+    .qp-section-title span {
+      color: var(--qp-accent);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .qp-section p,
+    .qp-section li,
+    .qp-terms-card li,
+    .qp-terms-card p,
+    .qp-detail-card p,
+    .qp-detail-card li,
+    .qp-intro-panel p,
+    .qp-summary-panel p,
+    .qp-summary-panel li {
+      margin: 0;
+      color: var(--qp-ink-soft);
+      font-size: 14px;
+      line-height: 1.9;
+    }
+
+    .qp-sub-lang {
+      display: block;
+      margin-top: 6px;
+      color: var(--qp-ink-muted);
+      font-size: 12.5px;
+      line-height: 1.75;
+    }
+
+    .qp-section ul,
+    .qp-terms-card ul,
+    .qp-detail-card ul,
+    .qp-summary-panel ul {
+      margin: 0;
+      padding-left: 20px;
+      display: grid;
+      gap: 10px;
+    }
+
+    .qp-summary-board {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: auto;
+    }
+
+    .qp-summary-card {
+      padding: 18px 18px 16px;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    .qp-summary-card span {
+      color: var(--qp-ink-soft);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .qp-summary-card strong {
+      font-size: 25px;
+      line-height: 1.15;
+    }
+
+    .qp-summary-card p {
+      margin: 0;
+      color: var(--qp-ink-soft);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .qp-page-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: end;
+      gap: 18px;
+      margin-bottom: 20px;
+      padding-top: 3mm;
+    }
+
+    .qp-page-head h2 {
+      margin: 0 0 6px;
+      font-size: 30px;
+      line-height: 1.2;
+    }
+
+    .qp-page-head p {
+      margin: 0;
+      color: var(--qp-ink-soft);
+      line-height: 1.8;
+      font-size: 14px;
+    }
+
+    .qp-page-mark {
+      font-family: var(--qp-font-en);
+      font-size: 12px;
+      letter-spacing: 0.22em;
+      color: var(--qp-accent);
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .qp-overview-stack {
+      display: grid;
+      gap: 18px;
+    }
+
+    .qp-intro-panel {
+      background: linear-gradient(180deg, #fffdf8 0%, #f8f3e8 100%);
+      padding: 22px 24px;
+    }
+
+    .qp-intro-panel p { font-size: 15px; }
+
+    .qp-summary-columns {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .qp-summary-panel {
+      display: grid;
+      gap: 14px;
+    }
+
+    .qp-module-grid {
+      display: grid;
+      gap: 12px;
+      margin-top: 4px;
+    }
+
+    .qp-module-card {
+      border: 1px solid rgba(199,179,148,0.55);
+      border-radius: 16px;
+      background: #fffdfa;
+      padding: 15px 16px;
+      display: grid;
+      gap: 8px;
+    }
+
+    .qp-module-card strong {
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .qp-detail-card {
+      margin-bottom: 20px;
+      overflow: hidden;
+      background: linear-gradient(180deg, #fffcf7 0%, #fefaf2 100%);
+    }
+
+    .qp-group-head {
+      padding: 18px 20px;
+      border-bottom: 1px solid rgba(199,179,148,0.5);
+      background: linear-gradient(180deg, rgba(18,38,63,0.07), rgba(18,38,63,0.015));
+      display: flex;
+      justify-content: space-between;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .qp-group-head h3 {
+      margin: 0 0 7px;
+      font-size: 21px;
+      line-height: 1.35;
+    }
+
+    .qp-group-head p {
+      max-width: 540px;
+      font-size: 14px;
+      line-height: 1.85;
+    }
+
+    .qp-badge {
+      display: inline-flex;
+      align-items: center;
+      padding: 7px 12px;
+      border-radius: 999px;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--qp-ink);
+      background: rgba(182, 134, 74, 0.15);
+      border: 1px solid rgba(182, 134, 74, 0.35);
+    }
+
+    .qp-group-foot {
+      padding: 16px 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      background: #fff7eb;
+      border-top: 1px solid rgba(199,179,148,0.55);
+    }
+
+    .qp-group-foot span { color: var(--qp-ink-soft); font-size: 14px; }
+    .qp-group-foot strong { font-size: 20px; }
+
+    .qp-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+    }
+
+    .qp-table th,
+    .qp-table td {
+      padding: 14px 14px;
+      border-bottom: 1px solid rgba(199,179,148,0.38);
+      text-align: left;
+      vertical-align: top;
+      font-size: 13px;
+      line-height: 1.82;
+    }
+
+    .qp-table th {
+      background: rgba(18,38,63,0.04);
+      color: var(--qp-ink-soft);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      white-space: nowrap;
+      font-size: 12.5px;
+    }
+
+    .qp-table tbody tr:nth-child(even) td {
+      background: rgba(255,252,246,0.6);
+    }
+
+    .qp-table td strong {
+      display: block;
+      font-size: 14px;
+      color: var(--qp-ink);
+      margin-bottom: 5px;
+      line-height: 1.55;
+    }
+
+    .qp-table tr:last-child td { border-bottom: 0; }
+    .qp-table td:last-child,
+    .qp-table th:last-child,
+    .qp-money { text-align: right; }
+
+    .qp-total-card {
+      margin-top: 24px;
+      border: 1px solid rgba(18,38,63,0.12);
+      border-radius: 22px;
+      background: linear-gradient(135deg, #132941 0%, #183556 100%);
+      color: #fff;
+      padding: 22px 24px;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 20px;
+      align-items: center;
+      box-shadow: 0 18px 40px rgba(18, 38, 63, 0.18);
+    }
+
+    .qp-total-note {
+      display: grid;
+      gap: 6px;
+    }
+
+    .qp-total-note span {
+      color: rgba(255,255,255,0.72);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    .qp-total-note strong {
+      font-size: 20px;
+      line-height: 1.3;
+    }
+
+    .qp-total-note p {
+      margin: 0;
+      color: rgba(255,255,255,0.76);
+      font-size: 13px;
+      line-height: 1.85;
+    }
+
+    .qp-total-amount {
+      text-align: right;
+      min-width: 250px;
+    }
+
+    .qp-total-amount span {
+      display: block;
+      color: rgba(255,255,255,0.72);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+
+    .qp-total-currency {
+      display: block;
+      font-size: 18px;
+      color: rgba(255,255,255,0.76);
+      letter-spacing: 0.08em;
+      margin-bottom: 4px;
+    }
+
+    .qp-total-value {
+      display: block;
+      font-size: 34px;
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: 0.01em;
+    }
+
+    .qp-terms-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+
+    .qp-sign-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 18px;
+      margin-top: 22px;
+    }
+
+    .qp-sign-box {
+      border: 1px solid rgba(18,38,63,0.14);
+      border-radius: 18px;
+      background: linear-gradient(180deg, #fffefa 0%, #faf4ea 100%);
+      padding: 18px 18px 20px;
+      min-height: 180px;
+      display: grid;
+      grid-template-rows: auto auto 1fr;
+      gap: 12px;
+    }
+
+    .qp-sign-box strong {
+      font-size: 16px;
+      line-height: 1.4;
+    }
+
+    .qp-sign-box p {
+      margin: 0;
+      color: var(--qp-ink-soft);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .qp-sign-lines {
+      display: grid;
+      gap: 18px;
+      align-self: end;
+    }
+
+    .qp-sign-field {
+      display: grid;
+      gap: 6px;
+    }
+
+    .qp-sign-field span {
+      color: var(--qp-ink-muted);
+      font-size: 12px;
+      letter-spacing: 0.05em;
+    }
+
+    .qp-sign-line {
+      border-top: 1px solid rgba(18,38,63,0.34);
+      width: 100%;
+      min-height: 24px;
+    }
+
+    .qp-page-no {
+      position: absolute;
+      bottom: 10mm;
+      left: 16mm;
+      right: 16mm;
+      display: flex;
+      justify-content: space-between;
+      color: rgba(18,38,63,0.52);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+    }
+
+    @media (max-width: 1200px) {
+      .qp-preview-shell { width: min(100vw - 24px, 980px); }
+      .qp-page { width: 100%; min-height: auto; padding: 28px 22px 62px; }
+      .qp-cover-hero,
+      .qp-cover-grid,
+      .qp-summary-board,
+      .qp-summary-columns,
+      .qp-terms-grid,
+      .qp-sign-row,
+      .qp-total-card { grid-template-columns: 1fr; }
+      .qp-cover-top,
+      .qp-page-head,
+      .qp-group-head,
+      .qp-group-foot { display: grid; }
+      .qp-total-amount { text-align: left; min-width: 0; }
+    }
+
+    @media print {
+      body { background: #fff; }
+      .qp-preview-shell { width: auto; padding: 0; }
+      .qp-toolbar { display: none; }
+      .qp-document { gap: 0; }
+      .qp-page {
+        width: 210mm;
+        min-height: 297mm;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+        overflow: visible;
+        page-break-after: always;
+        break-after: page;
+      }
+      /* 防止表格行在页面中间截断 */
+      .qp-table tr { page-break-inside: avoid; break-inside: avoid; }
+      /* 表头每页重复 */
+      .qp-table thead { display: table-header-group; }
+      /* 签字区整体不被截断 */
+      .qp-sign-row { page-break-inside: avoid; break-inside: avoid; }
+      .qp-sign-box { page-break-inside: avoid; break-inside: avoid; }
+    }
+
+    @page { size: A4 portrait; margin: 0; }
+  </style>
+</head>
+<body>
+  <div class="qp-preview-shell">
+    <section class="qp-toolbar">
+      <div class="qp-toolbar-title">
+        <strong>客户报价单静态原型 V1</strong>
+        <span>仅用于内部样式预览：语言、展示模式与版式切换不会接入真实报价数据。</span>
+      </div>
+      <div class="qp-control">
+        <label for="preview-language">语言版本</label>
+        <select id="preview-language">
+          <option value="zh">中文</option>
+          <option value="zh-en">中文 + 英文</option>
+          <option value="zh-sr">中文 + 塞语</option>
+        </select>
+      </div>
+      <div class="qp-control">
+        <label for="preview-mode">报价模式</label>
+        <select id="preview-mode">
+          <option value="professional">专业版</option>
+          <option value="mixed">混合版</option>
+        </select>
+      </div>
+      <div class="qp-control">
+        <label for="preview-grouping">展示方式</label>
+        <select id="preview-grouping">
+          <option value="grouped">按组展示</option>
+          <option value="flat">不按组展示</option>
+        </select>
+      </div>
+    </section>
+
+    <main id="quotation-preview" class="qp-document"></main>
+  </div>
+
+  <script src="/quotation-preview.js"></script>
+</body>
+</html>
