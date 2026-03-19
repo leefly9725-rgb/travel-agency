@@ -1,9 +1,11 @@
 ﻿const COMPANY = {
-  logoText: 'LDS',
-  cn: '泷鼎晟国际旅行社',
-  en: 'LDS International Travel',
-  address: 'Belgrade, Serbia | 商务接待与高端定制服务',
-  contact: 'sales@lds-travel.com',
+  logoText: 'FY',
+  cn: '飞扬国际旅行社',
+  en: 'FEIYANG TRIP',
+  legal: 'FEIYANG TRIP d.o.o Beograd',
+  address: 'Second Floor, TRG PRIJATELJSTVA SRBIJE KINE 4, BEOGRAD',
+  contact: 'shen.summer@yahoo.com',
+  pib: '112696746',
 };
 
 const GROUP_TYPE_LABELS = {
@@ -111,6 +113,40 @@ function esc(value) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;');
+}
+
+function buildPageHeaderHtml(type, data) {
+  const leftHtml = `
+    <div class="qp-phd-left">
+      <img class="qp-phd-logo" src="/assets/logo.png" alt="FEIYANG TRIP"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div class="qp-phd-logo-fallback" style="display:none">${esc(COMPANY.logoText)}</div>
+      <div class="qp-phd-brand">
+        <span class="qp-phd-brand-cn">${esc(COMPANY.cn)}</span>
+        <span class="qp-phd-brand-en">${esc(COMPANY.en)}</span>
+      </div>
+    </div>`;
+
+  let rightHtml = '';
+  if (type === 'cover') {
+    rightHtml = `
+      <div class="qp-phd-right qp-phd-right-cover">
+        <span>${esc(data.address)}</span>
+        <span>${esc(data.contact)}</span>
+        <span>PIB: ${esc(data.pib)}</span>
+      </div>`;
+  } else {
+    const pageStr = data.pageNo && data.totalPages
+      ? `${String(data.pageNo).padStart(2, '0')} / ${String(data.totalPages).padStart(2, '0')}`
+      : '';
+    const subtitle = [data.projectName, data.clientName].filter(Boolean).join(' · ');
+    rightHtml = `
+      <div class="qp-phd-right qp-phd-right-inner">
+        <span class="qp-phd-subtitle">${esc(subtitle)}</span>
+        <span class="qp-phd-pageno">${esc(pageStr)}</span>
+      </div>`;
+  }
+  return `<div class="qp-page-header">${leftHtml}${rightHtml}</div>`;
 }
 
 function addDays(dateStr, days) {
@@ -268,7 +304,7 @@ function renderTotalBlock(vm, note) {
 
 function renderItemRows(items, currency) {
   if (!items || items.length === 0) {
-    return '<tr><td colspan="7" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>';
+    return '<tr><td colspan="6" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>';
   }
 
   return items.map((item) => `
@@ -279,7 +315,6 @@ function renderItemRows(items, currency) {
       <td>${esc(item.unit)}</td>
       <td class="qp-money">${money(item.salesUnitPrice, currency)}</td>
       <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
-      <td>${item.remarks ? esc(item.remarks) : ''}</td>
     </tr>
   `).join('');
 }
@@ -523,7 +558,6 @@ function renderProfessionalGroupCard(vm, group) {
             ${tableHead('单位', 'Unit', 'Jedinica')}
             ${tableHead('销售单价', 'Unit Price', 'Jedinicna cena', 'qp-money')}
             ${tableHead('小计', 'Subtotal', 'Medjuzbir', 'qp-money')}
-            ${tableHead('备注', 'Remarks', 'Napomena')}
           </tr>
         </thead>
         <tbody>${renderItemRows(group.items, vm.currency)}</tbody>
@@ -548,7 +582,6 @@ function renderProfessionalFlatChunk(vm, items) {
             ${tableHead('单位', 'Unit', 'Jedinica')}
             ${tableHead('销售单价', 'Unit Price', 'Jedinicna cena', 'qp-money')}
             ${tableHead('小计', 'Subtotal', 'Medjuzbir', 'qp-money')}
-            ${tableHead('备注', 'Remarks', 'Napomena')}
           </tr>
         </thead>
         <tbody>${renderItemRows(items, vm.currency)}</tbody>
@@ -680,6 +713,7 @@ function renderSignatureBlock() {
       </div>
       <div class="qp-sign-box">
         <strong>${biTitle(COMPANY.cn, COMPANY.en, COMPANY.en)}</strong>
+        <p class="qp-sign-legal">${esc(COMPANY.legal)} · PIB: ${esc(COMPANY.pib)}</p>
         <p>由公司授权代表签字确认，并加盖公章。</p>
         <div class="qp-sign-lines">
           <div class="qp-sign-field"><span>签字 Signature</span><div class="qp-sign-line"></div></div>
@@ -718,7 +752,7 @@ function renderPageShell(pageClassName, bodyClassName, contentHtml, pageNo) {
     contentHtml,
     '    </div>',
     '    <div class="qp-page-footer">',
-    `      <span>${esc(COMPANY.en)}</span>`,
+    `      <span>${esc(COMPANY.legal)}</span>`,
     `      <span>${formatPageNo(pageNo)}</span>`,
     '    </div>',
     '  </div>',
@@ -782,7 +816,8 @@ function buildComposerPlan(vm) {
   }
 
   const runtime = buildComposerRuntime();
-  const footer = { left: esc(COMPANY.en), right: '' };
+  const footer = { left: esc(COMPANY.legal), right: '' };
+  const innerHeaderData = { projectName: vm.projectName, clientName: vm.clientName };
   const built = blocksApi.buildAllBlocks(vm, runtime);
   const sections = [
     {
@@ -792,6 +827,8 @@ function buildComposerPlan(vm) {
       bodyClassName: 'qp-cover-body',
       blocks: [built.cover],
       footer,
+      headerType: 'cover',
+      headerData: { address: COMPANY.address, contact: COMPANY.contact, pib: COMPANY.pib },
     },
   ];
 
@@ -803,6 +840,8 @@ function buildComposerPlan(vm) {
       bodyClassName: 'qp-standard-body',
       blocks: [built.overview],
       footer,
+      headerType: 'inner',
+      headerData: innerHeaderData,
     });
   }
 
@@ -817,6 +856,8 @@ function buildComposerPlan(vm) {
       leadBlocks: [built.detailHeader],
       blocks: detailBlocks,
       footer,
+      headerType: 'inner',
+      headerData: innerHeaderData,
     });
   }
 
@@ -827,6 +868,8 @@ function buildComposerPlan(vm) {
     bodyClassName: 'qp-terms-body',
     blocks: built.terms,
     footer,
+    headerType: 'inner',
+    headerData: innerHeaderData,
   });
 
   return { sections };
@@ -1013,6 +1056,14 @@ async function bootstrap() {
     showError(`报价数据加载失败：${error.message || '未知错误'}`);
   }
 }
+
+window.buildQpPageHeader = function (page) {
+  return buildPageHeaderHtml(page.headerType || 'inner', {
+    ...(page.headerData || {}),
+    pageNo: page.pageNo,
+    totalPages: page.totalPages,
+  });
+};
 
 bootstrap();
 
