@@ -1,9 +1,11 @@
 ﻿const COMPANY = {
-  logoText: 'LDS',
-  cn: '泷鼎晟国际旅行社',
-  en: 'LDS International Travel',
-  address: 'Belgrade, Serbia | 商务接待与高端定制服务',
-  contact: 'sales@lds-travel.com',
+  logoText: 'FY',
+  cn: '飞扬国际旅行社',
+  en: 'FEIYANG TRIP',
+  legal: 'FEIYANG TRIP d.o.o Beograd',
+  address: 'Second Floor, TRG PRIJATELJSTVA SRBIJE KINE 4, BEOGRAD',
+  contact: 'shen.summer@yahoo.com',
+  pib: '112696746',
 };
 
 const GROUP_TYPE_LABELS = {
@@ -309,109 +311,104 @@ function createBlock(id, html, options) {
 }
 
 function renderCoverContent(vm) {
-  const titleLineParts = [
+  const destParts = [
     vm.destination ? esc(vm.destination) : '',
     vm.startDate && vm.endDate
       ? `${esc(vm.startDate)} ~ ${esc(vm.endDate)}`
       : vm.startDate ? esc(vm.startDate) : '',
   ].filter(Boolean);
+  const destLine = destParts.length > 0
+    ? destParts.map((p, i) => i === 0
+        ? `<span>${p}</span>`
+        : `<span style="color:#C9A84C;margin:0 4px;">|</span><span>${p}</span>`
+      ).join('')
+    : '';
 
-  const summaryText = vm.notes && vm.notes.trim()
-    ? esc(vm.notes.trim())
-    : (state.lang === 'zh-sr'
-        ? 'Ova ponuda obuhvata kompletan opseg usluga i finalnu cenu za ovaj projekat.'
-        : state.lang === 'zh-en'
-        ? 'This quotation covers the full scope of services and final pricing for this project.'
-        : '本报价单涵盖本次项目全部服务内容，各项服务明细及金额以最终签署版本为准。');
-
-  const peopleText = vm.paxCount !== '' ? `${esc(String(vm.paxCount))}人` : '—';
+  const paxText = vm.paxCount !== '' ? `${esc(String(vm.paxCount))} 人` : '—';
+  const contactDetail = [esc(vm.contactName || ''), esc(vm.contactPhone || '')].filter(Boolean).join(' · ') || '—';
 
   return `
-    <div class="qp-cover">
-      <div class="qp-cover-top">
-        <div class="qp-logo-block">
-          <div class="qp-logo-mark">${esc(COMPANY.logoText)}</div>
+    <div style="display:flex;flex-direction:column;flex:1;min-height:0;background:#F5F2EC;font-family:Arial,sans-serif;overflow:hidden;position:relative;">
+
+      <!-- 右上角几何装饰 -->
+      <svg style="position:absolute;top:0;right:0;width:260px;height:260px;pointer-events:none;z-index:1;" viewBox="0 0 260 260">
+        <polygon points="260,0 260,260 0,0" fill="#1B2A4A" opacity="0.06"/>
+        <polygon points="260,0 260,170 90,0" fill="#C9A84C" opacity="0.11"/>
+        <polygon points="260,0 260,70 190,0" fill="#1B2A4A" opacity="0.09"/>
+      </svg>
+      <!-- 左下角几何装饰 -->
+      <svg style="position:absolute;bottom:56px;left:0;width:180px;height:180px;pointer-events:none;z-index:1;" viewBox="0 0 180 180">
+        <polygon points="0,180 180,180 0,0" fill="#1B2A4A" opacity="0.05"/>
+        <polygon points="0,180 110,180 0,70" fill="#C9A84C" opacity="0.08"/>
+      </svg>
+
+      <!-- Header -->
+      <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <svg width="22" height="32" viewBox="0 0 26 36" style="flex-shrink:0;">
+            <path d="M13 2 C13 2,5 10,4.5 18 C4 24,7.5 30,13 32 C13 32,9.5 26,11 20 C12 16,15 13,16 10 C17 16,14 22,16 27 C17.5 31,21 33,21 33 C25 28,26 22,24 16 C22 10,17 5,13 2 Z" fill="#C9A84C"/>
+          </svg>
           <div>
-            <p class="qp-company-cn">${esc(COMPANY.cn)}</p>
-            <p class="qp-company-en">${esc(COMPANY.en)}</p>
+            <div style="font-size:15px;font-weight:700;color:#F5F2EC;letter-spacing:1px;">${esc(COMPANY.cn)}</div>
+            <div style="font-size:8px;letter-spacing:3px;color:#C9A84C;margin-top:3px;text-transform:uppercase;">${esc(COMPANY.en)}</div>
           </div>
         </div>
-        <div class="qp-company-meta">
-          <div>${esc(COMPANY.address)}</div>
+        <div style="text-align:right;font-size:9px;color:#9AACCC;line-height:1.9;">
+          <div>Belgrade, Serbia</div>
           <div>${esc(COMPANY.contact)}</div>
+          <div>PIB: ${esc(COMPANY.pib)}</div>
         </div>
       </div>
 
-      <div class="qp-cover-title-block">
-        <div class="qp-cover-title-main">
-          <p class="qp-cover-doc-title">客户报价书</p>
-          <p class="qp-cover-doc-sub">CLIENT QUOTATION</p>
-          <h1 class="qp-cover-project-name">${esc(vm.projectName)}</h1>
-          ${titleLineParts.length > 0 ? `<p class="qp-cover-project-line">${titleLineParts.map((part) => `<span>${part}</span>`).join('')}</p>` : ''}
+      <!-- Hero 区 -->
+      <div style="flex:1;min-height:0;padding:44px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
+        <!-- 报价编号徽章 -->
+        <div style="position:absolute;top:10px;right:10px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
+          <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
+          <div style="font-size:10px;color:#1B2A4A;font-weight:700;letter-spacing:1px;margin-top:2px;">${esc(vm.quoteNumber || '—')}</div>
         </div>
-        <div class="qp-cover-quote-box">
-          <span>报价编号 / Quote No.</span>
-          <strong>${esc(vm.quoteNumber || '—')}</strong>
+        <!-- 内容 -->
+        <div style="font-size:9px;letter-spacing:4px;color:#C9A84C;text-transform:uppercase;margin-bottom:16px;">CLIENT QUOTATION · 客户报价书</div>
+        <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:10px;">${esc(vm.projectName || '—')}</div>
+        <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:32px;">${destLine}</div>
+        <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:24px;"></div>
+        <div style="font-size:8px;letter-spacing:3px;color:#9AACCC;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
+        <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:24px;">${esc(vm.clientName || '—')}</div>
+        <div style="display:flex;gap:36px;">
+          <div>
+            <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
+            <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${contactDetail}</div>
+          </div>
+          <div>
+            <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
+            <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
+          </div>
         </div>
       </div>
 
-      <section class="qp-cover-core">
-        <div class="qp-cover-core-head">核心报价信息</div>
-        <div class="qp-cover-core-panel">
-          <div class="qp-cover-core-customer">
-            <span>客户名称</span>
-            <strong>${esc(vm.clientName || '—')}</strong>
-          </div>
-          <div class="qp-cover-core-pair-grid">
-            <div class="qp-cover-core-cell">
-              <span>联系人</span>
-              <strong>${esc(vm.contactName || '—')}</strong>
-            </div>
-            <div class="qp-cover-core-cell">
-              <span>联系方式</span>
-              <strong>${esc(vm.contactPhone || '—')}</strong>
-            </div>
-          </div>
-          <div class="qp-cover-core-meta-grid">
-            <div class="qp-cover-core-cell">
-              <span>报价日期</span>
-              <strong>${esc(vm.quoteDate || '—')}</strong>
-            </div>
-            <div class="qp-cover-core-cell">
-              <span>有效期至</span>
-              <strong>${esc(vm.validUntil || '—')}</strong>
-            </div>
-            <div class="qp-cover-core-cell">
-              <span>报价币种</span>
-              <strong>${esc(vm.currency || 'EUR')}</strong>
-            </div>
-            <div class="qp-cover-core-cell">
-              <span>参加人数</span>
-              <strong>${peopleText}</strong>
-            </div>
-          </div>
-        </div>
-      </section>
+      <!-- 深蓝 meta 腰带 -->
+      <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;position:relative;z-index:2;">
+        <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">报价日期</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.quoteDate || '—')}</div></div>
+        <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">有效期至</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.validUntil || '—')}</div></div>
+        <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">币种</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.currency || 'EUR')}</div></div>
+        <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">服务模块</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${vm.groups.length} 个</div></div>
+      </div>
 
-      <section class="qp-cover-summary-strip">
-        <div class="qp-cover-summary-head">项目摘要</div>
-        <p>${summaryText}</p>
-      </section>
-
-      <section class="qp-cover-modules-strip">
-        <span>服务模块：${vm.groups.length}</span>
-      </section>
-
-      <section class="qp-cover-total-strip">
-        <div class="qp-cover-total-copy">
-          <span>客户报价总额</span>
-          <small>${state.lang === 'zh-sr' ? 'Klijentska ukupna cena' : 'Client Grand Total'}</small>
+      <!-- 金色总价栏 -->
+      <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
+        <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+        <div style="display:flex;align-items:baseline;gap:8px;">
+          <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
+          <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${money(vm.totalSales, vm.currency)}</span>
         </div>
-        <div class="qp-cover-total-amount">
-          <em>${esc(vm.currency || 'EUR')}</em>
-          <strong>${money(vm.totalSales, vm.currency)}</strong>
-        </div>
-      </section>
+      </div>
+
+      <!-- 页脚 -->
+      <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE;position:relative;z-index:2;">
+        <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(COMPANY.legal)}</span>
+        <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(vm.quoteNumber || '')}</span>
+      </div>
+
     </div>
   `;
 }
