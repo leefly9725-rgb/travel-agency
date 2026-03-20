@@ -57,122 +57,103 @@
   function renderCoverContent(vm, runtime) {
     const { company, utils } = getRuntime(runtime);
     const { esc, money } = utils;
-    const titleLineParts = [
+
+    const destParts = [
       vm.destination ? esc(vm.destination) : '',
-      vm.startDate && vm.endDate ? `${esc(vm.startDate)} ~ ${esc(vm.endDate)}` : vm.startDate ? esc(vm.startDate) : '',
+      vm.startDate && vm.endDate
+        ? `${esc(vm.startDate)} ~ ${esc(vm.endDate)}`
+        : vm.startDate ? esc(vm.startDate) : '',
     ].filter(Boolean);
+    const destLine = destParts.length > 0
+      ? destParts.map((p, i) => i === 0
+          ? `<span>${p}</span>`
+          : `<span style="color:#C9A84C;margin:0 4px;">|</span><span>${p}</span>`
+        ).join('')
+      : '';
 
-    const peopleText = vm.paxCount !== '' ? `${esc(String(vm.paxCount))}人` : '—';
-
-    const flameSvg = `<svg width="22" height="32" viewBox="0 0 26 36" style="flex-shrink:0">
-      <path d="M13 2 C13 2,5 10,4.5 18 C4 24,7.5 30,13 32
-        C13 32,9.5 26,11 20 C12 16,15 13,16 10
-        C17 16,14 22,16 27 C17.5 31,21 33,21 33
-        C25 28,26 22,24 16 C22 10,17 5,13 2 Z"
-        fill="#C9A84C"/>
-    </svg>`;
+    const paxText = vm.paxCount !== '' ? `${esc(String(vm.paxCount))} 人` : '—';
+    const contactDetail = [esc(vm.contactName || ''), esc(vm.contactPhone || '')].filter(Boolean).join(' · ') || '—';
 
     return `
-      <div style="display:flex;flex-direction:column;width:100%;height:100%;background:#F5F2EC;position:relative;overflow:hidden;font-family:Arial,sans-serif">
+      <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:#F5F2EC;font-family:Arial,sans-serif;overflow:hidden;">
 
-        <!-- Layer 1: Deep navy header -->
-        <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:10px">
-            ${flameSvg}
+        <!-- 右上角几何装饰 -->
+        <svg style="position:absolute;top:0;right:0;width:260px;height:260px;pointer-events:none;z-index:1;" viewBox="0 0 260 260">
+          <polygon points="260,0 260,260 0,0" fill="#1B2A4A" opacity="0.06"/>
+          <polygon points="260,0 260,170 90,0" fill="#C9A84C" opacity="0.11"/>
+          <polygon points="260,0 260,70 190,0" fill="#1B2A4A" opacity="0.09"/>
+        </svg>
+        <!-- 左下角几何装饰 -->
+        <svg style="position:absolute;bottom:56px;left:0;width:180px;height:180px;pointer-events:none;z-index:1;" viewBox="0 0 180 180">
+          <polygon points="0,180 180,180 0,0" fill="#1B2A4A" opacity="0.05"/>
+          <polygon points="0,180 110,180 0,70" fill="#C9A84C" opacity="0.08"/>
+        </svg>
+
+        <!-- Header -->
+        <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <svg width="22" height="32" viewBox="0 0 26 36" style="flex-shrink:0;">
+              <path d="M13 2 C13 2,5 10,4.5 18 C4 24,7.5 30,13 32 C13 32,9.5 26,11 20 C12 16,15 13,16 10 C17 16,14 22,16 27 C17.5 31,21 33,21 33 C25 28,26 22,24 16 C22 10,17 5,13 2 Z" fill="#C9A84C"/>
+            </svg>
             <div>
-              <div style="color:#fff;font-size:13px;font-weight:700;letter-spacing:0.04em">${esc(company.cn)}</div>
-              <div style="color:#C9A84C;font-size:9px;letter-spacing:0.18em;text-transform:uppercase">${esc(company.en)}</div>
+              <div style="font-size:15px;font-weight:700;color:#F5F2EC;letter-spacing:1px;">${esc(company.cn)}</div>
+              <div style="font-size:8px;letter-spacing:3px;color:#C9A84C;margin-top:3px;text-transform:uppercase;">${esc(company.en)}</div>
             </div>
           </div>
-          <div style="text-align:right;color:#9AACCC;font-size:9px;line-height:1.8">
-            <div>Belgrade Serbia</div>
+          <div style="text-align:right;font-size:9px;color:#9AACCC;line-height:1.9;">
+            <div>Belgrade, Serbia</div>
             <div>${esc(company.contact)}</div>
             <div>PIB: ${esc(company.pib)}</div>
           </div>
         </div>
 
-        <!-- Layer 2: Beige main area -->
-        <div style="flex:1;min-height:0;position:relative;overflow:hidden;padding:44px 32px 32px;display:flex;flex-direction:column">
-
-          <!-- Quote badge (top-right) -->
-          <div style="position:absolute;top:10px;right:10px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right">
-            <div style="font-size:7px;color:#C9A84C;text-transform:uppercase;letter-spacing:2px">Quote No.</div>
-            <div style="font-size:10px;color:#1B2A4A;font-weight:700">${esc(vm.quoteNumber || '—')}</div>
+        <!-- 米白主体区 -->
+        <div style="flex:1;min-height:0;padding:44px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
+          <!-- 报价编号徽章 -->
+          <div style="position:absolute;top:10px;right:10px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
+            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
+            <div style="font-size:10px;color:#1B2A4A;font-weight:700;letter-spacing:1px;margin-top:2px;">${esc(vm.quoteNumber || '—')}</div>
           </div>
-
-          <!-- Decorative: right-top triangles -->
-          <svg style="position:absolute;top:0;right:0;width:260px;height:260px;pointer-events:none" viewBox="0 0 260 260">
-            <polygon points="260,0 260,220 60,0" fill="#1B2A4A" opacity="0.06"/>
-            <polygon points="260,0 260,140 120,0" fill="#C9A84C" opacity="0.10"/>
-            <polygon points="260,0 260,70 200,0" fill="#1B2A4A" opacity="0.08"/>
-          </svg>
-
-          <!-- Decorative: left-bottom triangles -->
-          <svg style="position:absolute;bottom:56px;left:0;width:180px;height:180px;pointer-events:none" viewBox="0 0 180 180">
-            <polygon points="0,180 160,180 0,40" fill="#1B2A4A" opacity="0.05"/>
-            <polygon points="0,180 100,180 0,100" fill="#C9A84C" opacity="0.08"/>
-          </svg>
-
-          <!-- Content -->
-          <div style="z-index:2;position:relative;display:flex;flex-direction:column;justify-content:space-between;flex:1;min-height:0;height:100%">
+          <!-- 内容 -->
+          <div style="font-size:9px;letter-spacing:4px;color:#C9A84C;text-transform:uppercase;margin-bottom:16px;">CLIENT QUOTATION · 客户报价书</div>
+          <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:10px;">${esc(vm.projectName || '—')}</div>
+          <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:32px;">${destLine}</div>
+          <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:24px;"></div>
+          <div style="font-size:8px;letter-spacing:3px;color:#9AACCC;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
+          <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:24px;">${esc(vm.clientName || '—')}</div>
+          <div style="display:flex;gap:36px;">
             <div>
-              <div style="font-size:9px;color:#C9A84C;letter-spacing:4px;margin-bottom:16px">CLIENT QUOTATION · 客户报价书</div>
-              <h1 style="font-size:38px;font-weight:700;color:#1B2A4A;margin:0 0 10px;line-height:1.15">${esc(vm.projectName || '—')}</h1>
-              ${titleLineParts.length > 0
-                ? `<p style="font-size:11px;color:#6B7280;margin:0 0 32px">${titleLineParts.join(' | ')}</p>`
-                : '<p style="margin:0 0 32px"></p>'}
-              <div style="width:44px;height:3px;background:#C9A84C"></div>
+              <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
+              <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${contactDetail}</div>
             </div>
-            <div style="padding-top:28px">
-              <div style="font-size:8px;color:#9AACCC;text-transform:uppercase;letter-spacing:2px;margin-bottom:6px">CLIENT · 客户</div>
-              <div style="font-size:20px;font-weight:700;color:#1B2A4A;margin-bottom:24px">${esc(vm.clientName || '—')}</div>
-              <div style="display:flex;gap:36px">
-                <div>
-                  <div style="font-size:8px;color:#9AACCC;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">联系人</div>
-                  <div style="font-size:12px;color:#1B2A4A;font-weight:600">${esc(vm.contactName || '—')}</div>
-                </div>
-                <div>
-                  <div style="font-size:8px;color:#9AACCC;text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">人数</div>
-                  <div style="font-size:12px;color:#1B2A4A;font-weight:600">${peopleText}</div>
-                </div>
-              </div>
+            <div>
+              <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
+              <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
             </div>
           </div>
         </div>
 
-        <!-- Layer 3: Deep navy meta band -->
-        <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:16px">
-          <div>
-            <div style="font-size:8px;color:#9AACCC;letter-spacing:1px;margin-bottom:5px">报价日期</div>
-            <div style="font-size:12px;color:#fff;font-weight:600">${esc(vm.quoteDate || '—')}</div>
-          </div>
-          <div>
-            <div style="font-size:8px;color:#9AACCC;letter-spacing:1px;margin-bottom:5px">有效期至</div>
-            <div style="font-size:12px;color:#fff;font-weight:600">${esc(vm.validUntil || '—')}</div>
-          </div>
-          <div>
-            <div style="font-size:8px;color:#9AACCC;letter-spacing:1px;margin-bottom:5px">币种</div>
-            <div style="font-size:12px;color:#fff;font-weight:600">${esc(vm.currency || 'EUR')}</div>
-          </div>
-          <div>
-            <div style="font-size:8px;color:#9AACCC;letter-spacing:1px;margin-bottom:5px">服务模块数</div>
-            <div style="font-size:12px;color:#fff;font-weight:600">${vm.groups.length}</div>
+        <!-- 深蓝 meta 腰带 -->
+        <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;position:relative;z-index:2;">
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">报价日期</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.quoteDate || '—')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">有效期至</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.validUntil || '—')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">币种</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.currency || 'EUR')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">服务模块</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${vm.groups.length} 个</div></div>
+        </div>
+
+        <!-- 金色总价栏 -->
+        <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
+          <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
+            <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${money(vm.totalSales, vm.currency)}</span>
           </div>
         </div>
 
-        <!-- Layer 4: Gold total strip -->
-        <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between">
-          <div style="font-size:9px;font-weight:700;color:#1B2A4A;text-transform:uppercase;letter-spacing:1px">Grand Total · 客户报价总额</div>
-          <div style="display:flex;align-items:baseline;gap:8px">
-            <span style="font-size:14px;font-weight:700;color:#1B2A4A">${esc(vm.currency || 'EUR')}</span>
-            <span style="font-size:30px;font-weight:700;color:#1B2A4A">${money(vm.totalSales, vm.currency)}</span>
-          </div>
-        </div>
-
-        <!-- Layer 5: Footer -->
-        <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE">
-          <span style="font-size:9px;color:#9AACCC">${esc(company.legal)}</span>
-          <span style="font-size:9px;color:#9AACCC">${esc(vm.quoteNumber || '')}</span>
+        <!-- 页脚 -->
+        <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE;position:relative;z-index:2;">
+          <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(company.legal)}</span>
+          <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(vm.quoteNumber || '')}</span>
         </div>
 
       </div>
@@ -543,7 +524,7 @@
     return createBlock('cover', 'cover', {
       html: renderCoverContent(vm, runtime),
       className: 'qp-block-cover',
-      wrapperStyle: 'display:flex;flex-direction:column;height:100%',
+      wrapperStyle: 'position:relative;height:100%;',
       measureMode: 'fixed',
       minHeight: 0,
       meta: { pageClassName: 'qp-cover', bodyClassName: 'qp-cover-body' },
