@@ -361,7 +361,7 @@ function renderCoverContent(vm) {
       <!-- Hero 区 -->
       <div style="flex:1;min-height:0;padding:48px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
         <!-- 报价编号徽章 -->
-        <div style="position:absolute;top:10px;right:10px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
+        <div style="position:absolute;top:8px;right:8px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
           <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
           <div style="font-size:10px;color:#1B2A4A;font-weight:700;letter-spacing:1px;margin-top:2px;">${esc(vm.quoteNumber || '—')}</div>
         </div>
@@ -382,6 +382,7 @@ function renderCoverContent(vm) {
             <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
           </div>
         </div>
+        <div style="flex:1;min-height:0;"></div>
       </div>
 
       <!-- 深蓝 meta 腰带 -->

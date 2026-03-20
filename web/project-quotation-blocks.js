@@ -110,7 +110,7 @@
         <!-- 米白主体区 -->
         <div style="flex:1;min-height:0;padding:44px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
           <!-- 报价编号徽章 -->
-          <div style="position:absolute;top:10px;right:10px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
+          <div style="position:absolute;top:8px;right:8px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
             <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
             <div style="font-size:10px;color:#1B2A4A;font-weight:700;letter-spacing:1px;margin-top:2px;">${esc(vm.quoteNumber || '—')}</div>
           </div>
@@ -131,6 +131,7 @@
               <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
             </div>
           </div>
+          <div style="flex:1;min-height:0;"></div>
         </div>
 
         <!-- 深蓝 meta 腰带 -->
@@ -161,7 +162,7 @@
   }
 
   function renderOverviewContent(vm, runtime) {
-    const { state, groupLabels, utils } = getRuntime(runtime);
+    const { state, company, groupLabels, utils } = getRuntime(runtime);
     const { esc, getText, biTitle, money, tableHead } = utils;
     const totalItems = vm.groups.reduce((sum, g) => sum + g.items.length, 0);
     const hasNotes = Boolean(vm.notes && vm.notes.trim());
@@ -201,12 +202,18 @@
       : '各服务模块的完整明细项目与单价信息详见后续页面。';
 
     return `
-      <div class="qp-page-head">
-        <div>
-          <h2>${biTitle('服务方案概述', 'Service Overview', 'Pregled usluga')}</h2>
-          <p>${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</p>
+      <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#F5F2EC;">${esc(company.cn)}</div>
+            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-top:2px;">${esc(company.en)}</div>
+          </div>
         </div>
-        <div class="qp-page-mark">Service Overview</div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:#9AACCC;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
+          <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">SERVICE OVERVIEW</div>
+        </div>
       </div>
 
       <div class="qp-overview-layout">
@@ -237,15 +244,21 @@
   }
 
   function renderDetailHeader(vm, runtime) {
-    const { utils } = getRuntime(runtime);
-    const { esc, biTitle } = utils;
+    const { company, utils } = getRuntime(runtime);
+    const { esc } = utils;
     return `
-      <div class="qp-page-head">
-        <div>
-          <h2>${biTitle('报价明细', 'Detailed Quotation', 'Detaljna ponuda')}</h2>
-          <p>${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</p>
+      <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#F5F2EC;">${esc(company.cn)}</div>
+            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-top:2px;">${esc(company.en)}</div>
+          </div>
         </div>
-        <div class="qp-page-mark">Detailed Quotation</div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:#9AACCC;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
+          <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">DETAILED QUOTATION</div>
+        </div>
       </div>
     `;
   }
@@ -470,15 +483,21 @@
   }
 
   function renderTermsHeader(runtime) {
-    const { utils } = getRuntime(runtime);
-    const { biTitle } = utils;
+    const { company, utils } = getRuntime(runtime);
+    const { esc } = utils;
     return `
-      <div class="qp-page-head qp-terms-span-full">
-        <div>
-          <h2>${biTitle('商务条款', 'Commercial Terms', 'Komercijalni uslovi')}</h2>
-          <p>以下条款明确本次服务的费用范围、付款安排与确认要求，请双方签署前仔细阅读。</p>
+      <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;grid-column:1/-1;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
+          <div>
+            <div style="font-size:12px;font-weight:700;color:#F5F2EC;">${esc(company.cn)}</div>
+            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-top:2px;">${esc(company.en)}</div>
+          </div>
         </div>
-        <div class="qp-page-mark">Commercial Terms</div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:#9AACCC;">以下条款请双方签署前仔细阅读</div>
+          <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">COMMERCIAL TERMS</div>
+        </div>
       </div>
     `;
   }
