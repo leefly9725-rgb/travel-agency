@@ -75,7 +75,7 @@
     const contactDetail = [esc(vm.contactName || ''), esc(vm.contactPhone || '')].filter(Boolean).join(' · ') || '—';
 
     return `
-      <div style="position:absolute;top:0;left:0;right:0;bottom:0;display:flex;flex-direction:column;background:#F5F2EC;font-family:Arial,sans-serif;overflow:hidden;">
+      <div style="display:flex;flex-direction:column;width:100%;height:100%;background:#F5F2EC;font-family:Arial,sans-serif;overflow:hidden;">
 
         <!-- 右上角几何装饰 -->
         <svg style="position:absolute;top:0;right:0;width:260px;height:260px;pointer-events:none;z-index:1;" viewBox="0 0 260 260">
@@ -524,7 +524,7 @@
     return createBlock('cover', 'cover', {
       html: renderCoverContent(vm, runtime),
       className: 'qp-block-cover',
-      wrapperStyle: 'height:100%;',
+      wrapperStyle: 'display:flex;flex-direction:column;height:100%;',
       measureMode: 'fixed',
       minHeight: 0,
       meta: { pageClassName: 'qp-cover', bodyClassName: 'qp-cover-body' },
