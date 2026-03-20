@@ -337,7 +337,7 @@ function renderCoverContent(vm) {
         <polygon points="260,0 260,70 190,0" fill="#1B2A4A" opacity="0.09"/>
       </svg>
       <!-- 左下角几何装饰 -->
-      <svg style="position:absolute;bottom:56px;left:0;width:180px;height:180px;pointer-events:none;z-index:1;" viewBox="0 0 180 180">
+      <svg style="position:absolute;bottom:55px;left:0;width:180px;height:180px;pointer-events:none;z-index:1;" viewBox="0 0 180 180">
         <polygon points="0,180 180,180 0,0" fill="#1B2A4A" opacity="0.05"/>
         <polygon points="0,180 110,180 0,70" fill="#C9A84C" opacity="0.08"/>
       </svg>
@@ -345,9 +345,7 @@ function renderCoverContent(vm) {
       <!-- Header -->
       <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <svg width="22" height="32" viewBox="0 0 26 36" style="flex-shrink:0;">
-            <path d="M13 2 C13 2,5 10,4.5 18 C4 24,7.5 30,13 32 C13 32,9.5 26,11 20 C12 16,15 13,16 10 C17 16,14 22,16 27 C17.5 31,21 33,21 33 C25 28,26 22,24 16 C22 10,17 5,13 2 Z" fill="#C9A84C"/>
-          </svg>
+          <img src="/assets/logo.png" style="height:32px;width:auto;display:block;flex-shrink:0;">
           <div>
             <div style="font-size:15px;font-weight:700;color:#F5F2EC;letter-spacing:1px;">${esc(COMPANY.cn)}</div>
             <div style="font-size:8px;letter-spacing:3px;color:#C9A84C;margin-top:3px;text-transform:uppercase;">${esc(COMPANY.en)}</div>
@@ -361,7 +359,7 @@ function renderCoverContent(vm) {
       </div>
 
       <!-- Hero 区 -->
-      <div style="flex:1;min-height:0;padding:44px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
+      <div style="flex:1;min-height:0;padding:48px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
         <!-- 报价编号徽章 -->
         <div style="position:absolute;top:10px;right:10px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
           <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
@@ -398,7 +396,7 @@ function renderCoverContent(vm) {
       <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
         <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
         <div style="display:flex;align-items:baseline;gap:8px;">
-          <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
+          <span style="font-size:12px;color:#1B2A4A;opacity:0.6;">${esc(vm.currency || 'EUR')}</span>
           <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${money(vm.totalSales, vm.currency)}</span>
         </div>
       </div>
@@ -707,55 +705,6 @@ function buildTermsBlocks() {
   return blocks;
 }
 
-function renderPageShell(pageClassName, bodyClassName, contentHtml, pageNo) {
-  return [
-    `<section class="qp-page ${pageClassName}">`,
-    '  <div class="qp-page-inner">',
-    `    <div class="qp-page-body ${bodyClassName || ''}">`,
-    contentHtml,
-    '    </div>',
-    '    <div class="qp-page-footer">',
-    `      <span>${esc(COMPANY.en)}</span>`,
-    `      <span>${formatPageNo(pageNo)}</span>`,
-    '    </div>',
-    '  </div>',
-    '</section>',
-  ].join('\n');
-}
-
-function renderCoverPage(vm, pageNo) {
-  return renderPageShell('qp-cover', 'qp-cover-body', renderCoverContent(vm), pageNo);
-}
-
-function renderOverviewPage(vm, pageNo) {
-  return renderPageShell('qp-overview-page', 'qp-standard-body', renderOverviewHeader(vm) + renderOverviewBody(vm), pageNo);
-}
-
-function renderDetailPages(vm, startPageNo) {
-  const blocks = buildDetailBlocks(vm);
-  if (blocks.length === 0) return [];
-
-  const perPage = state.mode === 'professional' && state.grouping === 'flat' ? 1 : 2;
-
-  return chunkItems(blocks, perPage).map((pageBlocks, index) =>
-    renderPageShell(
-      'qp-detail-page',
-      'qp-standard-body',
-      renderDetailHeader(vm) + pageBlocks.map((block) => block.html).join(''),
-      startPageNo + index,
-    )
-  );
-}
-
-function renderTermsPage(pageNo) {
-  return renderPageShell(
-    'qp-terms-page',
-    'qp-terms-body',
-    buildTermsBlocks().map((block) => block.html).join(''),
-    pageNo,
-  );
-}
-
 function buildComposerRuntime() {
   return {
     state,
@@ -839,32 +788,6 @@ async function ensureFontsReady() {
   }
 }
 
-async function renderLegacy(vm) {
-  window.__QP_READY__ = false;
-  window.__QP_TOTAL_PAGES__ = 0;
-
-  const pages = [];
-  let pageNo = 1;
-
-  pages.push(renderCoverPage(vm, pageNo));
-  pageNo += 1;
-
-  if (state.showOverview) {
-    pages.push(renderOverviewPage(vm, pageNo));
-    pageNo += 1;
-  }
-
-  const detailPages = renderDetailPages(vm, pageNo);
-  if (detailPages.length > 0) {
-    pages.push(...detailPages);
-    pageNo += detailPages.length;
-  }
-
-  pages.push(renderTermsPage(pageNo));
-  previewRoot.innerHTML = pages.join('');
-  markReady(0);
-}
-
 async function renderComposer(vm) {
   const composerApi = window.ProjectQuotationComposer;
   if (!composerApi) {
@@ -898,10 +821,7 @@ async function renderComposer(vm) {
 }
 
 async function render(vm) {
-  if (FEATURE_FLAGS.composerPagination) {
-    return renderComposer(vm);
-  }
-  return renderLegacy(vm);
+  return renderComposer(vm);
 }
 
 function bindControls(vm) {
