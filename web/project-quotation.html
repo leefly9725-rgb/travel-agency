@@ -196,21 +196,10 @@
       grid-column: 1 / -1;
     }
 
-    .qp-page::before {
-      content: "";
-      position: absolute;
-      inset: 0;
-      border-top: 7mm solid rgba(18, 38, 63, 0.98);
-      pointer-events: none;
-    }
-
     .qp-cover {
-      display: grid;
-      grid-template-rows: auto auto auto auto auto 1fr;
-      gap: var(--qp-page-gap);
-      min-height: 0;
+      display: block;
       height: 100%;
-      align-content: start;
+      position: relative;
     }
 
     .qp-cover-top,
