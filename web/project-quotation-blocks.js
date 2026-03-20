@@ -524,7 +524,7 @@
     return createBlock('cover', 'cover', {
       html: renderCoverContent(vm, runtime),
       className: 'qp-block-cover',
-      wrapperStyle: 'display:flex;flex-direction:column;height:100%;',
+      wrapperStyle: 'display:flex;flex-direction:column;flex:1;min-height:0;',
       measureMode: 'fixed',
       minHeight: 0,
       meta: { pageClassName: 'qp-cover', bodyClassName: 'qp-cover-body' },
