@@ -37,6 +37,12 @@ async function getRemoteSchemaCapabilities(config) {
         hasQuotationProjectItems: paths.has("/quotation_project_items"),
       };
     })();
+
+    // Reset on rejection so the next request can retry instead of permanently failing
+    remoteSchemaPromise = remoteSchemaPromise.catch((err) => {
+      remoteSchemaPromise = null;
+      throw err;
+    });
   }
 
   return remoteSchemaPromise;
@@ -289,13 +295,11 @@ function mapRemoteQuote(row) {
 const QUOTE_SELECT = "quotes?select=*,quote_items(*,hotel_details(*),vehicle_details(*),service_details(*))";
 
 async function listRemoteQuotes(config) {
-  await getRemoteSchemaCapabilities(config);
   const rows = await supabaseRequest(config, `${QUOTE_SELECT}&order=updated_at.desc`);
   return Array.isArray(rows) ? rows.map(mapRemoteQuote) : [];
 }
 
 async function getRemoteQuoteById(config, id) {
-  const capabilities = await getRemoteSchemaCapabilities(config);
   const rows = await supabaseRequest(
     config,
     `${QUOTE_SELECT}&id=eq.${encodeURIComponent(id)}`
@@ -305,12 +309,14 @@ async function getRemoteQuoteById(config, id) {
   }
 
   const quote = mapRemoteQuote(rows[0]);
-  if (capabilities.hasQuotationProjects && capabilities.hasQuotationProjectItems && quote.pricingMode === "project_based") {
+  // Always try loading project groups for project_based quotes;
+  // if the quotation_projects table doesn't exist, the try-catch falls back
+  // to the compat payload already populated by mapRemoteQuote.
+  if (quote.pricingMode === "project_based") {
     try {
       quote.projectGroups = await loadProjectGroups(config, id);
     } catch (error) {
-      console.error("加载项目分组失败。", error.message);
-      quote.projectGroups = [];
+      console.error("加载项目分组失败，使用兼容字段数据。", error.message);
     }
   }
 
@@ -539,17 +545,14 @@ function createQuoteStore({ data, saveData }) {
       if (!config.enabled) {
         return { deleted: deleteLocalQuote(id), source: "local_json" };
       }
-      try {
-        await deleteRemoteQuote(config, id);
-        const localDeleted = deleteLocalQuote(id);
-        return {
-          deleted: true,
-          source: localDeleted ? "supabase+local_fallback_cleanup" : "supabase",
-        };
-      } catch (error) {
-        console.warn("???????????? JSON?", error.message);
-        return { deleted: deleteLocalQuote(id), source: "local_json", fallbackReason: error.message };
-      }
+      // When Supabase is configured, errors must propagate — silent fallback to
+      // local-only delete would make the quote reappear from Supabase on next load.
+      await deleteRemoteQuote(config, id);
+      const localDeleted = deleteLocalQuote(id);
+      return {
+        deleted: true,
+        source: localDeleted ? "supabase+local_fallback_cleanup" : "supabase",
+      };
     },
   };
 }

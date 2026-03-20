@@ -1,5 +1,20 @@
-function isFlaggedReview(record) {
+﻿function isFlaggedReview(record) {
   return record?.dataQuality?.reviewStatus === "flagged_review";
+}
+
+function esc(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function sanitizeProjectName(name) {
+  if (!name) return "未命名项目";
+  const trimmed = name.trim();
+  if (!trimmed || /^[?？]+$/.test(trimmed)) return "未命名项目";
+  return trimmed;
 }
 
 function attachCardClicks(container) {
@@ -11,9 +26,8 @@ function attachCardClicks(container) {
   });
 }
 
-// ── 排序 ────────────────────────────────────────────────────────────────────
-let _currentSortKey = "updated_at";
-let _cachedQuotes = [];
+let currentSortKey = "updated_at";
+let cachedQuotes = [];
 
 function sortQuotes(arr, sortKey) {
   const copy = [...arr];
@@ -21,15 +35,11 @@ function sortQuotes(arr, sortKey) {
     case "updated_at":
       return copy.sort((a, b) => (b.updatedAt || "0").localeCompare(a.updatedAt || "0"));
     case "created_at":
-      return copy.sort((a, b) =>
-        (b.createdAt || b.quoteNumber || "0").localeCompare(a.createdAt || a.quoteNumber || "0")
-      );
+      return copy.sort((a, b) => (b.createdAt || b.quoteNumber || "0").localeCompare(a.createdAt || a.quoteNumber || "0"));
     case "quoteNumber":
       return copy.sort((a, b) => (a.quoteNumber || "").localeCompare(b.quoteNumber || ""));
     case "clientName":
-      return copy.sort((a, b) =>
-        (a.clientName || "").localeCompare(b.clientName || "", "zh-CN")
-      );
+      return copy.sort((a, b) => (a.clientName || "").localeCompare(b.clientName || "", "zh-CN"));
     default:
       return copy;
   }
@@ -37,89 +47,105 @@ function sortQuotes(arr, sortKey) {
 
 function renderProjectQuotes(quotes) {
   const container = document.getElementById("project-quote-list");
+  const countEl = document.getElementById("project-quote-count");
+  if (countEl) countEl.textContent = `${quotes.length} 条`;
+
   if (quotes.length === 0) {
-    container.innerHTML = '<p class="empty">暂无项目型报价，点击「新建项目型报价」开始录入。</p>';
+    container.innerHTML = '<p class="empty list-empty-state">当前还没有项目型报价，点击上方“新建项目型报价”开始录入。</p>';
     return;
   }
-  container.innerHTML = quotes.map((pq) => {
-    const totalSell = pq.totalSales != null
-      ? pq.totalSales
-      : (pq.projectGroups || []).reduce((s, g) => s + (g.projectSalesTotal || 0), 0);
-    const totalCost = pq.totalCost != null
-      ? pq.totalCost
-      : (pq.projectGroups || []).reduce((s, g) => s + (g.projectCostTotal || 0), 0);
-    const grossProfit = totalSell - totalCost;
-    const margin = totalSell > 0 ? ((grossProfit / totalSell) * 100).toFixed(1) : "0.0";
-    // 编辑链接携带 mode=project_based，确保进入 project_based 编辑态且不闪标准报价界面
-    const cardHref = `/quote-new.html?id=${encodeURIComponent(pq.id)}&mode=project_based`;
-    const groupCount = (pq.projectGroups || []).length;
-    const itemCount = (pq.projectGroups || []).reduce((s, g) => s + (g.items || []).length, 0);
+
+  container.innerHTML = quotes.map((quote) => {
+    const totalSales = quote.totalSales != null
+      ? quote.totalSales
+      : (quote.projectGroups || []).reduce((sum, group) => sum + (group.projectSalesTotal || 0), 0);
+    const totalCost = quote.totalCost != null
+      ? quote.totalCost
+      : (quote.projectGroups || []).reduce((sum, group) => sum + (group.projectCostTotal || 0), 0);
+    const grossProfit = totalSales - totalCost;
+    const margin = totalSales > 0 ? ((grossProfit / totalSales) * 100).toFixed(1) : "0.0";
+    const groupCount = (quote.projectGroups || []).length;
+    const itemCount = (quote.projectGroups || []).reduce((sum, group) => sum + (group.items || []).length, 0);
+    const cardHref = `/quote-new.html?id=${encodeURIComponent(quote.id)}&mode=project_based`;
+    const title = esc(sanitizeProjectName(quote.projectName));
+    const deleteName = esc(sanitizeProjectName(quote.projectName));
+    const dimPax = quote.paxCount == null;
+    const dimGroups = groupCount === 0 && itemCount === 0;
+    const dimAttr = ' style="opacity:0.45"';
+
     return `
-      <article class="card" data-card-href="${cardHref}">
-        <div class="list-row list-row-top">
-          <div>
-            <div class="title-row">
-              <h3>${pq.projectName || "未命名项目"}</h3>
-              <span class="status-badge">项目型报价</span>
-              ${isFlaggedReview(pq) ? '<span class="review-badge">待复核</span>' : ""}
+      <article class="card quote-card quote-card-project" data-card-href="${cardHref}">
+        <div class="list-row list-row-top quote-card-head">
+          <div class="quote-card-main">
+            <div class="title-row quote-title-row">
+              <h3>${title}</h3>
+              <span class="status-badge status-badge-strong">项目型报价</span>
+              ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
             </div>
-            <p class="meta">${pq.clientName || "暂无客户"} · ${pq.startDate || "日期待定"} · ${pq.destination || "地点待定"}</p>
+            <p class="meta quote-card-meta">${esc(quote.clientName || "未填写客户")} · ${esc(quote.startDate || "日期待定")} · ${esc(quote.destination || "地点待定")}</p>
+            <p class="quote-card-hint">按项目组汇总的活动 / 会展 / 综合服务报价，可直接进入编辑页继续维护。</p>
           </div>
-          <div class="action-row">
-            <a class="button-link small-link" href="${cardHref}">编辑</a>
-            <button class="ghost mini-button" data-delete-id="${pq.id}" data-name="${pq.projectName || "该报价"}">删除</button>
+          <div class="action-row quote-card-actions">
+            <a class="button-link small-link action-link-primary" href="${cardHref}">编辑</a>
+            <button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>
           </div>
         </div>
-        <div class="detail-grid">
-          <div class="metric"><span>参与人数</span><strong>${pq.paxCount || "—"} 人</strong></div>
-          <div class="metric"><span>项目组 / 明细</span><strong>${groupCount} 组 / ${itemCount} 项</strong></div>
-          <div class="metric"><span>报价合计</span><strong>${window.AppUtils.formatCurrency(totalSell, pq.currency || "EUR")}</strong></div>
-          <div class="metric"><span>毛利率</span><strong>${margin}%</strong></div>
+        <div class="detail-grid quote-card-metrics">
+          <div class="metric quote-metric"${dimPax ? dimAttr : ""}><span>参与人数</span><strong>${quote.paxCount != null ? quote.paxCount : "—"} 人</strong></div>
+          <div class="metric quote-metric"${dimGroups ? dimAttr : ""}><span>项目组 / 明细</span><strong>${groupCount} 组 / ${itemCount} 项</strong></div>
+          <div class="metric quote-metric"><span>报价合计</span><strong>${window.AppUtils.formatCurrency(totalSales, quote.currency || "EUR")}</strong></div>
+          <div class="metric quote-metric"><span>毛利率</span><strong>${margin}%</strong></div>
         </div>
       </article>
     `;
   }).join("");
+
   attachCardClicks(container);
 }
 
 function renderQuotes(quotes) {
   const container = document.getElementById("quote-list");
+  const countEl = document.getElementById("standard-quote-count");
+  if (countEl) countEl.textContent = `${quotes.length} 条`;
+
   if (quotes.length === 0) {
-    container.innerHTML = '<p class="empty">当前还没有标准报价记录，先新建一份报价吧。</p>';
+    container.innerHTML = '<p class="empty list-empty-state">当前还没有标准报价，点击上方“新建标准报价”开始录入。</p>';
     return;
   }
+
   container.innerHTML = quotes.map((quote) => {
     const modeLabel = window.AppUi.getLabel("pricingModeLabels", quote.pricingMode || "standard");
     const dateInfo = `${quote.startDate || "—"} ~ ${quote.endDate || "—"}`;
-    const locInfo = quote.destination || "—";
+    const locationInfo = quote.destination || "未填写";
     const cardHref = `/quote-detail.html?id=${encodeURIComponent(quote.id)}`;
     return `
-    <article class="card" data-card-href="${cardHref}">
-      <div class="list-row list-row-top">
-        <div>
-          <div class="title-row">
-            <h3>${quote.projectName}</h3>
-            <span class="status-badge">${modeLabel}</span>
-            ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
+      <article class="card quote-card quote-card-standard" data-card-href="${cardHref}">
+        <div class="list-row list-row-top quote-card-head">
+          <div class="quote-card-main">
+            <div class="title-row quote-title-row">
+              <h3>${esc(quote.projectName || "未命名报价")}</h3>
+              <span class="status-badge">${esc(modeLabel)}</span>
+              ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
+            </div>
+            <p class="meta quote-card-meta">${esc(quote.quoteNumber || "无编号")} · ${esc(quote.clientName || "未填写客户")}</p>
           </div>
-          <p class="meta">${quote.quoteNumber} / ${quote.clientName}</p>
+          <div class="action-row quote-card-actions">
+            <a class="button-link small-link action-link-primary" href="/quote-new.html?id=${encodeURIComponent(quote.id)}">编辑</a>
+            <a class="button-link small-link action-link-secondary" href="${cardHref}">查看详情</a>
+            <button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${esc(quote.projectName || '该报价')}">删除</button>
+          </div>
         </div>
-        <div class="action-row">
-          <a class="button-link small-link" href="/quote-detail.html?id=${encodeURIComponent(quote.id)}">查看详情</a>
-          <a class="button-link small-link" href="/quote-new.html?id=${encodeURIComponent(quote.id)}">编辑</a>
-          <button class="ghost mini-button" data-delete-id="${quote.id}" data-name="${quote.projectName}">删除</button>
+        <div class="detail-grid quote-card-metrics">
+          <div class="metric quote-metric"><span>行程日期</span><strong>${esc(dateInfo)}</strong></div>
+          <div class="metric quote-metric"><span>主要目的地</span><strong>${esc(locationInfo)}</strong></div>
+          <div class="metric quote-metric"><span>销售合计</span><strong>${window.AppUtils.formatCurrency(quote.totalPrice, quote.currency)}</strong></div>
+          <div class="metric quote-metric"><span>毛利率</span><strong>${quote.grossMargin}%</strong></div>
         </div>
-      </div>
-      <div class="detail-grid">
-        <div class="metric"><span>行程日期</span><strong>${dateInfo}</strong></div>
-        <div class="metric"><span>主要目的地</span><strong>${locInfo}</strong></div>
-        <div class="metric"><span>售价合计</span><strong>${window.AppUtils.formatCurrency(quote.totalPrice, quote.currency)}</strong></div>
-        <div class="metric"><span>毛利率</span><strong>${quote.grossMargin}%</strong></div>
-      </div>
-      ${isFlaggedReview(quote) ? '<p class="review-inline-note">该报价已标记为待复核，正式业务使用前请先检查内容。</p>' : ''}
-    </article>
-  `;
+        ${isFlaggedReview(quote) ? '<p class="review-inline-note">该报价已标记为待复核，正式业务使用前请先检查内容。</p>' : ''}
+      </article>
+    `;
   }).join("");
+
   attachCardClicks(container);
 }
 
@@ -128,9 +154,9 @@ async function loadAllQuotes() {
 }
 
 function splitAndRender(allQuotes) {
-  const sorted = sortQuotes(allQuotes, _currentSortKey);
-  const standard = sorted.filter((q) => (q.pricingMode || "standard") !== "project_based");
-  const projectBased = sorted.filter((q) => q.pricingMode === "project_based");
+  const sorted = sortQuotes(allQuotes, currentSortKey);
+  const standard = sorted.filter((quote) => (quote.pricingMode || "standard") !== "project_based");
+  const projectBased = sorted.filter((quote) => quote.pricingMode === "project_based");
   renderQuotes(standard);
   renderProjectQuotes(projectBased);
 }
@@ -138,15 +164,16 @@ function splitAndRender(allQuotes) {
 async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
 
-  // 删除事件委托：必须在任何异步操作之前绑定，确保无论列表加载是否成功，
-  // 用户点击删除按钮时都能响应。使用 closest 确保事件冒泡时也能正确命中。
   document.body.addEventListener("click", async (event) => {
-    const btn = event.target.closest("[data-delete-id]");
-    if (!btn) return;
-    const deleteId = btn.getAttribute("data-delete-id");
+    const button = event.target.closest("[data-delete-id]");
+    if (!button) return;
+
+    const deleteId = button.getAttribute("data-delete-id");
     if (!deleteId) return;
-    const name = btn.getAttribute("data-name") || "该报价";
-    if (!window.confirm(`确定删除「${name}」吗？`)) return;
+
+    const name = button.getAttribute("data-name") || "该报价";
+    if (!window.confirm(`确认删除“${name}”吗？`)) return;
+
     try {
       window.AppUtils.hideMessage("quote-message");
       await window.AppUtils.fetchJson(
@@ -155,25 +182,24 @@ async function bootstrap() {
         "删除报价失败，请稍后重试。"
       );
       window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
-      _cachedQuotes = await loadAllQuotes();
-      splitAndRender(_cachedQuotes);
+      cachedQuotes = await loadAllQuotes();
+      splitAndRender(cachedQuotes);
     } catch (error) {
       window.AppUtils.showMessage("quote-message", error.message, "error");
     }
   });
 
-  // 排序切换
   const sortSelect = document.getElementById("quote-sort-select");
   if (sortSelect) {
     sortSelect.addEventListener("change", () => {
-      _currentSortKey = sortSelect.value;
-      splitAndRender(_cachedQuotes);
+      currentSortKey = sortSelect.value;
+      splitAndRender(cachedQuotes);
     });
   }
 
   try {
-    _cachedQuotes = await loadAllQuotes();
-    splitAndRender(_cachedQuotes);
+    cachedQuotes = await loadAllQuotes();
+    splitAndRender(cachedQuotes);
   } catch (error) {
     window.AppUtils.showMessage("quote-message", error.message, "error");
   }

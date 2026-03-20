@@ -7,8 +7,8 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="page-shell">
-    <header class="topbar">
+  <div class="page-shell quote-list-shell">
+    <header class="topbar quote-list-topbar">
       <a class="topbar-link" href="/">← 首页</a>
       <div class="topbar-actions">
         <a class="button-link" href="/quote-new.html">新建标准报价</a>
@@ -16,33 +16,45 @@
       </div>
     </header>
 
-    <section class="panel">
-      <div class="panel-head">
+    <section class="panel quote-list-section">
+      <div class="panel-head list-section-head">
         <div>
-          <h1>标准报价列表</h1>
-          <span>差旅接待报价，支持查看、编辑与删除操作</span>
+          <p class="section-kicker">标准报价</p>
+          <div class="list-title-row">
+            <h1>标准报价列表</h1>
+            <span id="standard-quote-count" class="count-pill">0 条</span>
+          </div>
+          <span class="list-section-subtitle">用于日常差旅接待、商务考察和常规报价管理。</span>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0">
-          <label for="quote-sort-select" style="font-size:13px;color:var(--text-secondary,#666);white-space:nowrap">排序：</label>
-          <select id="quote-sort-select" style="font-size:13px;height:30px;border:1px solid var(--line,#e0e0e0);border-radius:6px;padding:2px 8px;background:var(--bg,#fff)">
-            <option value="updated_at">最近更新</option>
-            <option value="created_at">最新创建</option>
-            <option value="quoteNumber">报价编号</option>
-            <option value="clientName">客户名称</option>
-          </select>
+        <div class="list-toolbar">
+          <label class="sort-toolbar" for="quote-sort-select">
+            <span>排序方式</span>
+            <select id="quote-sort-select">
+              <option value="updated_at">最近更新</option>
+              <option value="created_at">最新创建</option>
+              <option value="quoteNumber">报价编号</option>
+              <option value="clientName">客户名称</option>
+            </select>
+          </label>
         </div>
       </div>
       <div id="quote-message" class="message-box hidden"></div>
-      <div id="quote-list" class="stack"></div>
+      <div id="quote-list" class="stack quote-list-stack"></div>
     </section>
 
-    <section class="panel section-spacing">
-      <div class="panel-head">
-        <h1>项目型报价列表</h1>
-        <span>大型活动、会议、展会报价，支持查看、编辑与删除操作</span>
+    <section class="panel section-spacing quote-list-section quote-list-section-project">
+      <div class="panel-head list-section-head">
+        <div>
+          <p class="section-kicker">项目型报价</p>
+          <div class="list-title-row">
+            <h1>项目型报价列表</h1>
+            <span id="project-quote-count" class="count-pill">0 条</span>
+          </div>
+          <span class="list-section-subtitle">用于活动、会议、展会等按项目组拆分的复杂报价。</span>
+        </div>
       </div>
       <div id="project-quote-message" class="message-box hidden"></div>
-      <div id="project-quote-list" class="stack"></div>
+      <div id="project-quote-list" class="stack quote-list-stack"></div>
     </section>
   </div>
   <script src="/ui-labels.js"></script>

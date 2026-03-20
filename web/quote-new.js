@@ -907,6 +907,8 @@ async function bootstrap() {
     state.pricingMode = mode;
     if (mode === "project_based") {
       if (modeRadioProject) modeRadioProject.checked = true;
+      // 移除 <head> 阶段添加的初始化隐藏类，防止 JS 接管后 CSS 状态残留
+      document.documentElement.classList.remove("initializing-project");
       // 进入项目型模式后隐藏模式切换栏（不需要再切换）
       const modeSelectorPanel = document.getElementById("mode-selector-panel");
       if (modeSelectorPanel) modeSelectorPanel.style.display = "none";

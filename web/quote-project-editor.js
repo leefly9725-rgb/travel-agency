@@ -16,13 +16,22 @@ window.ProjectEditor = (function () {
   let _supplierMap   = {};   // id → supplier name
   let _catalogLoaded = false;
 
-  // ── 明细类型（精简为5种，驱动录入逻辑）────────────────────────────────────
+  // ── 明细类型（全集，travel + event + misc，作为 mixed 与兜底使用）────────────
   const ITEM_TYPES = [
-    { value: "hotel",             label: "酒店"      },
-    { value: "transport",         label: "用车"      },
-    { value: "guide_translation", label: "导游/翻译" },
-    { value: "catalog_item",      label: "目录项目"  },
-    { value: "misc",              label: "杂项"      },
+    { value: "hotel",             label: "酒店"       },
+    { value: "transport",         label: "用车"       },
+    { value: "guide_translation", label: "导游/翻译"  },
+    { value: "driver_guide",      label: "司兼导"     },
+    { value: "ticket",            label: "票务"       },
+    { value: "fuel",              label: "油费"       },
+    { value: "toll_parking",      label: "过路/停车"  },
+    { value: "catalog_item",      label: "目录项目"   },
+    { value: "av_equipment",      label: "音视频设备" },
+    { value: "print_display",     label: "印刷展示"   },
+    { value: "decoration",        label: "装饰物料"   },
+    { value: "personnel",         label: "人员服务"   },
+    { value: "logistics",         label: "物流配送"   },
+    { value: "misc",              label: "杂项"       },
   ];
 
   const GROUP_TYPES = [
@@ -32,23 +41,29 @@ window.ProjectEditor = (function () {
   ];
 
   const GROUP_TYPE_ITEM_TYPES = {
+    // 旅游接待：以接待业务为主，覆盖住宿、用车、导游、司兼导、票务、油费、过路停车
     travel: [
       { value: "hotel",             label: "酒店"      },
       { value: "transport",         label: "用车"      },
       { value: "guide_translation", label: "导游/翻译" },
+      { value: "driver_guide",      label: "司兼导"    },
+      { value: "ticket",            label: "票务"      },
+      { value: "fuel",              label: "油费"      },
+      { value: "toll_parking",      label: "过路/停车" },
       { value: "misc",              label: "杂项"      },
     ],
+    // 活动服务：以物料/设备/人员/服务为主，catalog_item 支持从价格库选取
     event: [
-      { value: "catalog_item",      label: "目录项目"  },
-      { value: "misc",              label: "杂项"      },
+      { value: "catalog_item",      label: "目录项目"   },
+      { value: "av_equipment",      label: "音视频设备" },
+      { value: "print_display",     label: "印刷展示"   },
+      { value: "decoration",        label: "装饰物料"   },
+      { value: "personnel",         label: "人员服务"   },
+      { value: "logistics",         label: "物流配送"   },
+      { value: "misc",              label: "杂项"       },
     ],
-    mixed: [
-      { value: "hotel",             label: "酒店"      },
-      { value: "transport",         label: "用车"      },
-      { value: "guide_translation", label: "导游/翻译" },
-      { value: "catalog_item",      label: "目录项目"  },
-      { value: "misc",              label: "杂项"      },
-    ],
+    // 综合项目：兼容 travel + event 全部类型
+    mixed: ITEM_TYPES,
   };
 
   function _getAllowedTypes(groupEl) {
@@ -57,50 +72,106 @@ window.ProjectEditor = (function () {
   }
 
   const SPEC_LABELS = {
-    hotel:            "房型",
-    transport:        "车型/路线",
-    guide_translation:"语言/时长",
-    catalog_item:     "规格",
-    misc:             "规格",
+    hotel:             "房型",
+    transport:         "车型/路线",
+    guide_translation: "语言/时长",
+    driver_guide:      "语种",
+    ticket:            "票种",
+    fuel:              "车型/路线",
+    toll_parking:      "路线/地点",
+    catalog_item:      "规格",
+    av_equipment:      "型号/规格",
+    print_display:     "尺寸/规格",
+    decoration:        "规格/材质",
+    personnel:         "岗位/服务描述",
+    logistics:         "型号/规格",
+    misc:              "规格",
   };
 
-  // 各行类型的默认单位——可扩展为从类型主数据读取 default_unit
+  // 各行类型的默认单位。
+  // 后续将接入项目类型主数据 default_unit（运营侧可维护），此映射作为代码级兜底。
+  // 读取优先级：主数据 default_unit > 此映射 > "项"
   const TYPE_DEFAULT_UNIT = {
     hotel:             "间",
     transport:         "辆",
     guide_translation: "天",
+    driver_guide:      "天",
+    ticket:            "张",
+    fuel:              "次",
+    toll_parking:      "次",
     catalog_item:      "项",
-    misc:              "项",
     av_equipment:      "台",
     print_display:     "项",
     decoration:        "项",
     personnel:         "人天",
     logistics:         "项",
+    misc:              "项",
   };
 
-  function _getDefaultUnit(iType) {
-    return TYPE_DEFAULT_UNIT[iType] || "项";
+  // 数量输入框旁的单位标签（仅对有强业务语义的类型显示）
+  const QTY_UNIT_LABELS = {
+    hotel:        "间",
+    transport:    "辆",
+    ticket:       "张",
+    av_equipment: "台",
+  };
+
+  // masterDataUnit：将来主数据接入后由调用方传入；优先级：主数据 > 代码映射 > "项"
+  function _getDefaultUnit(iType, masterDataUnit) {
+    return masterDataUnit || TYPE_DEFAULT_UNIT[iType] || "项";
   }
 
   // 不同项目组类型 × 行类型的录入提示
   const GROUP_ITEM_NAME_HINTS = {
     travel: {
-      hotel:            "例：Superior 双床房 / 四星标准间",
-      transport:        "例：商务中巴 Mercedes Sprinter",
-      guide_translation:"例：中塞双语全程导游",
-      misc:             "例：景区门票 / 餐费 / 小费",
+      hotel:             "例：Superior 双床房 / 四星标准间",
+      transport:         "例：商务中巴 Mercedes Sprinter",
+      guide_translation: "例：中塞双语全程导游",
+      driver_guide:      "例：中英文司兼导 / 塞尔维亚语司导",
+      ticket:            "例：贝尔格莱德城堡门票 / 皮伦特表演票",
+      fuel:              "例：接机专程油费 / 全程油费补贴",
+      toll_parking:      "例：高速过路费 / 景区停车费",
+      misc:              "例：景区门票 / 餐费 / 小费",
     },
     event: {
-      catalog_item:     "例：LED 墙 8×3m 含运输安装",
-      misc:             "例：现场礼仪 / 活动统筹服务费",
+      catalog_item:      "例：LED 墙 8×3m 含运输安装",
+      av_equipment:      "例：无线话筒套装 / LED 显示屏 6×3m",
+      print_display:     "例：易拉宝 80×200cm / 背景板 4×6m",
+      decoration:        "例：鲜花台型装饰 / 签到台布置",
+      personnel:         "例：礼仪引导 2 人 / 现场统筹",
+      logistics:         "例：设备运输车 / 叉车及操作员 4h",
+      misc:              "例：现场礼仪 / 活动统筹服务费",
     },
     mixed: {
-      hotel:            "例：双人标准间",
-      transport:        "例：机场接送车",
-      guide_translation:"例：翻译服务",
-      catalog_item:     "例：展架展台物料",
-      misc:             "例：杂项费用",
+      hotel:             "例：双人标准间",
+      transport:         "例：机场接送车",
+      guide_translation: "例：翻译服务",
+      driver_guide:      "例：司兼导",
+      ticket:            "例：景区门票",
+      fuel:              "例：油费补贴",
+      toll_parking:      "例：过路停车费",
+      catalog_item:      "例：展架展台物料",
+      av_equipment:      "例：音响设备",
+      print_display:     "例：展示物料",
+      decoration:        "例：装饰布置",
+      personnel:         "例：人员服务",
+      logistics:         "例：物流配送",
+      misc:              "例：杂项费用",
     },
+  };
+
+  // 各组类型对应的 projectTitle 输入框提示文字
+  const GROUP_TITLE_HINTS = {
+    travel: "项目组名称（如：第一天接机 / 行程安排）",
+    event:  "项目组名称（如：开幕式物料 / 音视频设备组）",
+    mixed:  "项目组名称（如：第一天行程 / 开幕式服务）",
+  };
+
+  // 各组类型对应的表头文字（名称列 + 规格列）
+  const GROUP_HEADER_LABELS = {
+    travel: { name: "服务名称",   spec: "规格 / 说明" },
+    event:  { name: "物料 / 服务", spec: "规格 / 型号" },
+    mixed:  { name: "名称",        spec: "规格"        },
   };
 
   const CATALOG_CATS = [
@@ -143,19 +214,24 @@ window.ProjectEditor = (function () {
   // ── 明细行渲染 ──────────────────────────────────────────────────────────────
   function createItemRow(item, groupEl, allowedTypes) {
     const tr    = document.createElement("tr");
-    const types = allowedTypes || ITEM_TYPES;
+    const iType = item.itemType || "misc";
+    // 向后兼容：如果 item 自带的类型不在当前组的允许列表里，追加进去，避免丢失已有数据
+    let types = allowedTypes || ITEM_TYPES;
+    if (!types.find((t) => t.value === iType)) {
+      const entry = ITEM_TYPES.find((t) => t.value === iType);
+      if (entry) types = [...types, entry];
+    }
     tr.dataset.itemId = item._id || _generateId();
     item._id = tr.dataset.itemId;
 
     const extra         = item.extraJson || {};
     const nights        = Number(extra.nights || 1);
     const transportDays = Number(extra.transportDays || 1);
-    const iType         = item.itemType || "misc";
     const isHotel       = iType === "hotel";
     const isTransport   = iType === "transport";
     const isCatalog     = iType === "catalog_item";
     const specLabel     = SPEC_LABELS[iType] || "规格";
-    const qtyUnitLabel  = isHotel ? "间" : isTransport ? "辆" : "";
+    const qtyUnitLabel  = QTY_UNIT_LABELS[iType] || "";
 
     const groupType = groupEl?.querySelector("[name='projectType']")?.value || "event";
     const nameHint  = (GROUP_ITEM_NAME_HINTS[groupType] || {})[iType] || "名称";
@@ -256,7 +332,7 @@ window.ProjectEditor = (function () {
 
     // qty 区：单位标签
     const qtyUnitLabel = tr.querySelector(".qty-unit-label");
-    if (qtyUnitLabel) qtyUnitLabel.textContent = isHotel ? "间" : isTransport ? "辆" : "";
+    if (qtyUnitLabel) qtyUnitLabel.textContent = QTY_UNIT_LABELS[iType] || "";
 
     // qty 区：hotel 晚数行
     const nightsLine = tr.querySelector(".nights-marker");
@@ -615,6 +691,17 @@ window.ProjectEditor = (function () {
     _updateRow(tr, groupEl);
   }
 
+  // 更新分组的表头文字和 projectTitle 占位文字（与组类型联动）
+  function _updateGroupHeaders(div, groupType) {
+    const labels = GROUP_HEADER_LABELS[groupType] || GROUP_HEADER_LABELS.mixed;
+    const nameTh = div.querySelector(".name-th");
+    const specTh = div.querySelector(".spec-th");
+    if (nameTh) nameTh.textContent = labels.name;
+    if (specTh) specTh.textContent = labels.spec;
+    const titleInput = div.querySelector("[name='projectTitle']");
+    if (titleInput) titleInput.placeholder = GROUP_TITLE_HINTS[groupType] || GROUP_TITLE_HINTS.mixed;
+  }
+
   // ── 分组渲染 ────────────────────────────────────────────────────────────────
   function _renderGroup(group) {
     const groupId = group._id || ("group-" + (++_groupCounter));
@@ -629,7 +716,7 @@ window.ProjectEditor = (function () {
         </select>
         <input name="projectTitle" class="proj-title-input"
           value="${esc(group.projectTitle || "")}"
-          placeholder="项目组名称（如：第一天接机 / 开幕式物料）" />
+          placeholder="${esc(GROUP_TITLE_HINTS[group.projectType || "travel"] || GROUP_TITLE_HINTS.mixed)}" />
         <span class="group-totals-badge proj-group-badge view-internal"></span>
         <div class="proj-header-actions">
           <button type="button" class="ghost mini-button collapse-btn">折叠</button>
@@ -644,8 +731,8 @@ window.ProjectEditor = (function () {
             <thead>
               <tr>
                 <th style="min-width:90px">类型</th>
-                <th style="min-width:120px">名称</th>
-                <th style="min-width:80px">规格</th>
+                <th class="name-th" style="min-width:120px">名称</th>
+                <th class="spec-th" style="min-width:80px">规格</th>
                 <th style="width:46px">单位</th>
                 <th class="r" style="width:80px">数量</th>
                 <th class="r view-internal" style="width:82px">成本单价</th>
@@ -677,6 +764,9 @@ window.ProjectEditor = (function () {
         </div>
       </div>
     `;
+
+    // 按组类型设置正确的表头文字和 projectTitle 占位（HTML 模板占位为通用文字，此处覆盖）
+    _updateGroupHeaders(div, group.projectType || "travel");
 
     // 分组操作绑定
     div.querySelector(".delete-btn").addEventListener("click", () => {
@@ -714,10 +804,11 @@ window.ProjectEditor = (function () {
     // 明细添加按钮
     div.querySelector(".add-item-btn").addEventListener("click", () => _addItemToGroup(div, {}));
 
-    // 项目类型变更时，更新 CSS class、类型下拉、行 hints
+    // 项目类型变更时，更新 CSS class、表头文字、类型下拉、行 hints
     div.querySelector("[name='projectType']").addEventListener("change", () => {
       const newType     = div.querySelector("[name='projectType']").value;
       div.className     = "project-group group-type-" + newType;
+      _updateGroupHeaders(div, newType);
       const allowedTypes = _getAllowedTypes(div);
       div.querySelectorAll(".items-tbody tr[data-item-id]").forEach((tr) => {
         const sel = tr.querySelector(".item-type-sel");
@@ -744,6 +835,102 @@ window.ProjectEditor = (function () {
     return div;
   }
 
+  // ── 导出弹窗（单例，首次点击时创建，后续复用） ──────────────────────────────
+  let _exportModal = null;
+
+  function _ensureExportModal() {
+    if (_exportModal) return _exportModal;
+
+    _exportModal = document.createElement("div");
+    _exportModal.id = "proj-export-modal";
+    _exportModal.style.cssText =
+      "display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center";
+
+    _exportModal.innerHTML = `
+      <div style="background:#fff;border-radius:20px;padding:28px 30px;width:min(460px,92vw);box-shadow:0 20px 60px rgba(0,0,0,0.22);max-height:90vh;overflow-y:auto">
+        <h2 style="margin:0 0 6px;font-size:18px;font-weight:700">导出客户报价单</h2>
+        <p style="margin:0 0 22px;font-size:13px;color:#5f7188">配置后在新标签页打开正式报价预览，支持浏览器打印 / 导出 PDF。</p>
+        <div style="display:grid;gap:16px">
+          <label style="display:grid;gap:6px;font-size:13px;color:#5f7188">
+            语言版本
+            <select id="export-lang" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;padding:0 12px;font-size:14px;background:#fffdf9">
+              <option value="zh">中文</option>
+              <option value="zh-en">中文 + 英文</option>
+              <option value="zh-sr">中文 + 塞语</option>
+            </select>
+          </label>
+          <label style="display:grid;gap:6px;font-size:13px;color:#5f7188">
+            明细模式
+            <select id="export-mode" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;padding:0 12px;font-size:14px;background:#fffdf9">
+              <option value="professional">专业版（含逐项明细与单价）</option>
+              <option value="mixed">混合版（服务包 + 模块小计）</option>
+            </select>
+          </label>
+          <label style="display:grid;gap:6px;font-size:13px;color:#5f7188">
+            展示方式
+            <select id="export-grouping" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;padding:0 12px;font-size:14px;background:#fffdf9">
+              <option value="grouped">按组展示（分服务模块）</option>
+              <option value="flat">不按组展示（全部平铺）</option>
+            </select>
+          </label>
+          <div style="display:grid;gap:10px;padding:14px 16px;border:1px solid #dbcdb7;border-radius:12px;background:#fffcf7">
+            <p style="margin:0 0 4px;font-size:12px;color:#7f8d9f;letter-spacing:0.06em;text-transform:uppercase">可选页面</p>
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+              <input type="checkbox" id="export-overview" checked style="width:16px;height:16px;cursor:pointer" />
+              项目概述页（项目说明 + 服务范围摘要）
+            </label>
+            <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
+              <input type="checkbox" id="export-sign" checked style="width:16px;height:16px;cursor:pointer" />
+              签字盖章区（条款页末尾）
+            </label>
+          </div>
+        </div>
+        <div style="display:flex;gap:12px;margin-top:26px;justify-content:flex-end">
+          <button id="export-cancel-btn" type="button" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;background:#fff;padding:0 20px;font-size:14px;cursor:pointer;color:#5f7188">取消</button>
+          <button id="export-open-btn" type="button" style="height:40px;border-radius:10px;border:none;background:#132941;color:#fff;padding:0 24px;font-size:14px;cursor:pointer;font-weight:600">打开预览</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(_exportModal);
+
+    // 点击遮罩关闭
+    _exportModal.addEventListener("click", (e) => {
+      if (e.target === _exportModal) _exportModal.style.display = "none";
+    });
+
+    // 取消按钮
+    _exportModal.querySelector("#export-cancel-btn").addEventListener("click", () => {
+      _exportModal.style.display = "none";
+    });
+
+    // 打开预览
+    _exportModal.querySelector("#export-open-btn").addEventListener("click", () => {
+      // 读取当前报价 ID（必须先保存）
+      const qid =
+        document.querySelector('#quote-form [name="quoteId"]')?.value ||
+        document.querySelector('input[name="quoteId"]')?.value ||
+        "";
+
+      if (!qid) {
+        alert("请先保存报价，再生成客户报价单。\n（点击页面底部「保存」按钮后再试）");
+        return;
+      }
+
+      const lang     = _exportModal.querySelector("#export-lang").value;
+      const mode     = _exportModal.querySelector("#export-mode").value;
+      const grouping = _exportModal.querySelector("#export-grouping").value;
+      const overview = _exportModal.querySelector("#export-overview").checked ? "1" : "0";
+      const sign     = _exportModal.querySelector("#export-sign").checked     ? "1" : "0";
+
+      const url = `/project-quotation.html?id=${encodeURIComponent(qid)}&lang=${encodeURIComponent(lang)}&mode=${encodeURIComponent(mode)}&grouping=${encodeURIComponent(grouping)}&overview=${overview}&sign=${sign}`;
+      window.open(url, "_blank");
+      _exportModal.style.display = "none";
+    });
+
+    return _exportModal;
+  }
+
   // ── 公开 API ────────────────────────────────────────────────────────────────
   return {
     init(container, groups, currency) {
@@ -757,6 +944,7 @@ window.ProjectEditor = (function () {
           <div class="proj-editor-toolbar">
             <h2>项目组 &amp; 明细</h2>
             <button type="button" id="proj-toggle-view-btn" class="proj-toggle-view-btn">切换客户视图</button>
+            <button type="button" id="proj-export-btn" class="proj-add-group-btn" style="background:#132941;color:#fff;border-color:#132941">客户报价单</button>
             <button type="button" id="proj-add-group-btn" class="proj-add-group-btn">＋ 新增项目组</button>
           </div>
 
@@ -788,8 +976,13 @@ window.ProjectEditor = (function () {
 
       const groupsList = container.querySelector("#proj-groups-list");
 
+      // 客户报价单按钮 → 打开导出设置弹窗
+      container.querySelector("#proj-export-btn").addEventListener("click", () => {
+        _ensureExportModal().style.display = "flex";
+      });
+
       container.querySelector("#proj-add-group-btn").addEventListener("click", () => {
-        const newGroup = { projectType: "event", projectTitle: "", items: [] };
+        const newGroup = { projectType: "travel", projectTitle: "", items: [] };
         const newDiv   = _renderGroup(newGroup);
         groupsList.appendChild(newDiv);
         newDiv.querySelector("[name='projectTitle']")?.focus();
@@ -804,10 +997,10 @@ window.ProjectEditor = (function () {
         applyViewMode();
       });
 
-      // 渲染初始分组（新建时默认一个空分组）
+      // 渲染初始分组（新建时默认一个空旅游接待分组）
       const initGroups = Array.isArray(groups) && groups.length > 0
         ? groups
-        : [{ projectType: "event", projectTitle: "", items: [] }];
+        : [{ projectType: "travel", projectTitle: "", items: [] }];
       initGroups.forEach((g) => groupsList.appendChild(_renderGroup(g)));
 
       applyViewMode();

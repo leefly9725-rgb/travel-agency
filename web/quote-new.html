@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>报价单维护</title>
   <link rel="stylesheet" href="/styles.css" />
+  <style>
+    .initializing-project #mode-selector-panel,
+    .initializing-project #preview-aside,
+    .initializing-project .quote-items-section { display: none !important; }
+    .initializing-project #standard-editor-grid { grid-template-columns: 1fr !important; }
+  </style>
+  <script>
+    (function () {
+      if (new URLSearchParams(location.search).get('mode') === 'project_based') {
+        document.documentElement.classList.add('initializing-project');
+      }
+    })();
+  </script>
 </head>
 <body>
   <div class="page-shell">
@@ -12,10 +25,8 @@
       <a class="topbar-link" href="/quotes.html">← 返回报价列表</a>
     </header>
 
-    <!-- 全局消息框（两种模式下均可见） -->
     <div id="quote-message" class="message-box hidden" style="margin:0 0 0 0;border-radius:0"></div>
 
-    <!-- 报价模式选择栏 -->
     <div id="mode-selector-panel" class="panel" style="margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
         <span style="font-weight:600;color:var(--text-secondary,#666);font-size:13px">报价模式：</span>
@@ -55,30 +66,21 @@
       </aside>
     </div>
 
-    <!-- 项目型报价编辑区（project_based 模式专用） -->
     <div id="project-mode-wrapper" style="display:none">
-      <section class="panel" style="border-top-left-radius:0;border-top-right-radius:0">
+      <section class="panel project-mode-panel" style="border-top-left-radius:0;border-top-right-radius:0">
+        <div class="project-mode-intro">
+          <div>
+            <p class="section-kicker">项目型报价</p>
+            <h2 class="project-mode-title">项目组与明细录入</h2>
+          </div>
+          <p class="project-mode-copy">按项目组拆分差旅接待、活动执行和综合服务，底部汇总区会自动形成报价结论。建议先命名项目组，再逐项补充明细。</p>
+        </div>
         <div id="project-header-area"></div>
-        <!-- 项目型报价基础信息（镜像 standard 表单字段） -->
         <div id="project-base-info" style="display:none"></div>
         <div id="project-groups-editor"></div>
       </section>
     </div>
   </div>
-  <!-- 最早阶段判断 mode，立即隐藏标准报价区，避免进入 project_based 时闪旧界面 -->
-  <script>
-    (function () {
-      var p = new URLSearchParams(location.search);
-      if (p.get('mode') === 'project_based') {
-        var sel = document.getElementById('mode-selector-panel');
-        if (sel) sel.style.display = 'none';
-        var aside = document.getElementById('preview-aside');
-        if (aside) aside.style.display = 'none';
-        var grid = document.getElementById('standard-editor-grid');
-        if (grid) grid.style.gridTemplateColumns = '1fr';
-      }
-    })();
-  </script>
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
   <script src="/quote-project-editor.js"></script>

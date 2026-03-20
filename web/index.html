@@ -7,47 +7,62 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="page-shell">
-    <header class="hero compact-hero">
+  <div class="page-shell home-shell">
+    <header class="hero compact-hero home-hero">
       <div>
         <p class="eyebrow">LDS International Travel</p>
         <h1>泷鼎晟国际旅行社运营系统 V1.0</h1>
-        <p class="hero-copy">在当前轻量 Node 架构上持续实现报价、接待运营、文档中心、项目主档和模板管理功能。</p>
+        <p class="hero-copy">面向日常运营场景的轻量工作台，集中处理报价、接待、文档、项目主档和供应商价格信息。</p>
       </div>
-      <div class="hero-card">
+      <div class="hero-card hero-card-ops">
         <div id="runtime-info" class="runtime-box"></div>
         <div id="metrics"></div>
       </div>
     </header>
 
-    <nav class="nav-grid section-spacing-sm">
-      <a class="nav-card" href="/quotes.html">
+    <section class="home-entry-heading section-spacing-sm">
+      <div>
+        <p class="section-kicker">运营入口</p>
+        <h2 class="section-title-lg">常用模块</h2>
+      </div>
+      <p class="section-lead">从这里进入日常最常用的工作页。卡片按运营频率排列，便于快速切换。</p>
+    </section>
+
+    <nav class="nav-grid home-nav-grid section-spacing-sm">
+      <a class="nav-card nav-card-entry" href="/quotes.html">
         <strong>报价管理</strong>
-        <span>查看标准报价与项目型报价列表，新建、编辑与删除报价</span>
+        <span>查看标准报价与项目型报价列表，完成新建、编辑与删除。</span>
+        <span class="nav-card-foot">进入模块 <span aria-hidden="true">→</span></span>
       </a>
-      <a class="nav-card" href="/templates.html">
+      <a class="nav-card nav-card-entry" href="/templates.html">
         <strong>报价模板</strong>
-        <span>维护常用报价项目模板，支持新建、编辑与删除</span>
+        <span>维护常用报价项目模板，减少重复录入，支持快速插入。</span>
+        <span class="nav-card-foot">维护模板 <span aria-hidden="true">→</span></span>
       </a>
-      <a class="nav-card" href="/receptions.html">
+      <a class="nav-card nav-card-entry" href="/receptions.html">
         <strong>接待任务</strong>
-        <span>新建、编辑、筛选与删除接待任务</span>
+        <span>新建、编辑、筛选与删除接待任务，跟踪负责人和截止时间。</span>
+        <span class="nav-card-foot">查看任务 <span aria-hidden="true">→</span></span>
       </a>
-      <a class="nav-card" href="/documents.html">
+      <a class="nav-card nav-card-entry" href="/documents.html">
         <strong>文档源数据</strong>
-        <span>预览报价单、行程单、接待确认单</span>
+        <span>预览报价单、行程单、接送机确认等文档所需源数据。</span>
+        <span class="nav-card-foot">查看预览 <span aria-hidden="true">→</span></span>
       </a>
-      <a class="nav-card" href="/projects.html">
+      <a class="nav-card nav-card-entry" href="/projects.html">
         <strong>项目主档中心</strong>
-        <span>查看项目概览、档案信息及关联业务</span>
+        <span>查看项目概览、档案信息及其关联报价、任务与文档。</span>
+        <span class="nav-card-foot">进入主档 <span aria-hidden="true">→</span></span>
       </a>
-      <a class="nav-card" href="/suppliers.html">
+      <a class="nav-card nav-card-entry" href="/suppliers.html">
         <strong>供应商价格库</strong>
-        <span>大型活动物料成本数据库，支持按类别筛选与最低价查询</span>
+        <span>集中管理活动物料成本，支持按类别筛选与最低价查询。</span>
+        <span class="nav-card-foot">查看价格库 <span aria-hidden="true">→</span></span>
       </a>
-      <a class="nav-card" href="/item-types.html">
+      <a class="nav-card nav-card-entry" href="/item-types.html">
         <strong>项目类型管理</strong>
-        <span>管理项目型报价明细类型，自定义录入分类与显示名称</span>
+        <span>维护项目型报价的录入类型、显示名称与分类出口。</span>
+        <span class="nav-card-foot">管理类型 <span aria-hidden="true">→</span></span>
       </a>
     </nav>
   </div>

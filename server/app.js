@@ -497,7 +497,7 @@ function normalizeSupplierItemPayload(payload, existingId) {
 
 const supportedProjectQuoteStatuses = ["draft", "sent", "confirmed", "cancelled"];
 const supportedPricingModes = ["standard", "project_based"];
-const supportedProjectItemTypes = ["hotel", "transport", "guide_translation", "event_material", "print_display", "av_equipment", "decoration", "misc"];
+const supportedProjectItemTypes = ["hotel", "transport", "guide_translation", "driver_guide", "ticket", "fuel", "toll_parking", "event_material", "catalog_item", "av_equipment", "print_display", "decoration", "personnel", "logistics", "misc"];
 
 const DEFAULT_QUOTE_ITEM_TYPES = [
   { id: "qt-001", code: "hotel",            nameZh: "酒店",      categoryGroup: "accommodation", sortOrder: 1, isActive: true, isSystem: true },
