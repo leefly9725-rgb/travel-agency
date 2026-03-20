@@ -351,7 +351,7 @@ function renderCoverContent(vm) {
             <div style="font-size:8px;letter-spacing:3px;color:#C9A84C;margin-top:3px;text-transform:uppercase;">${esc(COMPANY.en)}</div>
           </div>
         </div>
-        <div style="text-align:right;font-size:9px;color:#9AACCC;line-height:1.9;">
+        <div style="text-align:right;font-size:9px;color:#7B8FAD;line-height:1.9;">
           <div>Belgrade, Serbia</div>
           <div>${esc(COMPANY.contact)}</div>
           <div>PIB: ${esc(COMPANY.pib)}</div>
@@ -359,7 +359,7 @@ function renderCoverContent(vm) {
       </div>
 
       <!-- Hero 区 -->
-      <div style="flex:1;min-height:0;padding:48px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
+      <div style="flex:1;min-height:0;padding:28px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
         <!-- 报价编号徽章 -->
         <div style="position:absolute;top:8px;right:8px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
           <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
@@ -367,18 +367,18 @@ function renderCoverContent(vm) {
         </div>
         <!-- 内容 -->
         <div style="font-size:9px;letter-spacing:4px;color:#C9A84C;text-transform:uppercase;margin-bottom:16px;">CLIENT QUOTATION · 客户报价书</div>
-        <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:10px;">${esc(vm.projectName || '—')}</div>
-        <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:32px;">${destLine}</div>
-        <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:24px;"></div>
-        <div style="font-size:8px;letter-spacing:3px;color:#9AACCC;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
-        <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:24px;">${esc(vm.clientName || '—')}</div>
+        <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:4px;">${esc(vm.projectName || '—')}</div>
+        <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:26px;">${destLine}</div>
+        <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:20px;"></div>
+        <div style="font-size:8px;letter-spacing:3px;color:#7B8FAD;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
+        <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:18px;">${esc(vm.clientName || '—')}</div>
         <div style="display:flex;gap:36px;">
           <div>
-            <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
+            <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
             <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${contactDetail}</div>
           </div>
           <div>
-            <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
+            <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
             <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
           </div>
         </div>
@@ -404,8 +404,8 @@ function renderCoverContent(vm) {
 
       <!-- 页脚 -->
       <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE;position:relative;z-index:2;">
-        <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(COMPANY.legal)}</span>
-        <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(vm.quoteNumber || '')}</span>
+        <span style="font-size:9px;color:#7B8FAD;letter-spacing:1px;">${esc(COMPANY.legal)}</span>
+        <span style="font-size:9px;color:#7B8FAD;letter-spacing:1px;">${esc(vm.quoteNumber || '')}</span>
       </div>
 
     </div>

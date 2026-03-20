@@ -92,15 +92,13 @@
         <!-- Header -->
         <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
           <div style="display:flex;align-items:center;gap:10px;">
-            <svg width="22" height="32" viewBox="0 0 26 36" style="flex-shrink:0;">
-              <path d="M13 2 C13 2,5 10,4.5 18 C4 24,7.5 30,13 32 C13 32,9.5 26,11 20 C12 16,15 13,16 10 C17 16,14 22,16 27 C17.5 31,21 33,21 33 C25 28,26 22,24 16 C22 10,17 5,13 2 Z" fill="#C9A84C"/>
-            </svg>
+            <img src="/assets/logo.png" style="height:32px;width:auto;display:block;flex-shrink:0;">
             <div>
               <div style="font-size:15px;font-weight:700;color:#F5F2EC;letter-spacing:1px;">${esc(company.cn)}</div>
               <div style="font-size:8px;letter-spacing:3px;color:#C9A84C;margin-top:3px;text-transform:uppercase;">${esc(company.en)}</div>
             </div>
           </div>
-          <div style="text-align:right;font-size:9px;color:#9AACCC;line-height:1.9;">
+          <div style="text-align:right;font-size:9px;color:#7B8FAD;line-height:1.9;">
             <div>Belgrade, Serbia</div>
             <div>${esc(company.contact)}</div>
             <div>PIB: ${esc(company.pib)}</div>
@@ -108,7 +106,7 @@
         </div>
 
         <!-- 米白主体区 -->
-        <div style="flex:1;min-height:0;padding:44px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
+        <div style="flex:1;min-height:0;padding:28px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
           <!-- 报价编号徽章 -->
           <div style="position:absolute;top:8px;right:8px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
             <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
@@ -116,18 +114,18 @@
           </div>
           <!-- 内容 -->
           <div style="font-size:9px;letter-spacing:4px;color:#C9A84C;text-transform:uppercase;margin-bottom:16px;">CLIENT QUOTATION · 客户报价书</div>
-          <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:10px;">${esc(vm.projectName || '—')}</div>
-          <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:32px;">${destLine}</div>
-          <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:24px;"></div>
-          <div style="font-size:8px;letter-spacing:3px;color:#9AACCC;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
-          <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:24px;">${esc(vm.clientName || '—')}</div>
+          <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:4px;">${esc(vm.projectName || '—')}</div>
+          <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:26px;">${destLine}</div>
+          <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:20px;"></div>
+          <div style="font-size:8px;letter-spacing:3px;color:#7B8FAD;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
+          <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:18px;">${esc(vm.clientName || '—')}</div>
           <div style="display:flex;gap:36px;">
             <div>
-              <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
+              <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
               <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${contactDetail}</div>
             </div>
             <div>
-              <div style="font-size:8px;letter-spacing:2px;color:#9AACCC;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
+              <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
               <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
             </div>
           </div>
@@ -136,10 +134,10 @@
 
         <!-- 深蓝 meta 腰带 -->
         <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;position:relative;z-index:2;">
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">报价日期</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.quoteDate || '—')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">有效期至</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.validUntil || '—')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">币种</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${esc(vm.currency || 'EUR')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">服务模块</div><div style="font-size:12px;color:#F5F2EC;font-weight:500;">${vm.groups.length} 个</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">报价日期</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${esc(vm.quoteDate || '—')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">有效期至</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${esc(vm.validUntil || '—')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">币种</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${esc(vm.currency || 'EUR')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">服务模块</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${vm.groups.length} 个</div></div>
         </div>
 
         <!-- 金色总价栏 -->
@@ -153,8 +151,8 @@
 
         <!-- 页脚 -->
         <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE;position:relative;z-index:2;">
-          <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(company.legal)}</span>
-          <span style="font-size:9px;color:#9AACCC;letter-spacing:1px;">${esc(vm.quoteNumber || '')}</span>
+          <span style="font-size:9px;color:#7B8FAD;letter-spacing:1px;">${esc(company.legal)}</span>
+          <span style="font-size:9px;color:#7B8FAD;letter-spacing:1px;">${esc(vm.quoteNumber || '')}</span>
         </div>
 
       </div>
@@ -167,7 +165,7 @@
     const totalItems = vm.groups.reduce((sum, g) => sum + g.items.length, 0);
     const hasNotes = Boolean(vm.notes && vm.notes.trim());
     const notesCard = hasNotes ? `
-      <article class="qp-narrative-card">
+      <article class="qp-narrative-card" style="margin-bottom:12px;">
         <div class="qp-card-title">
           <h3>${biTitle('项目说明', 'Project Description', 'Opis projekta')}</h3>
         </div>
@@ -180,18 +178,18 @@
       const titleObj = { zh: group.projectTitle || labels.zh, en: labels.en, sr: labels.sr };
       return `
         <tr>
-          <td style="padding:16px 14px">${getText(titleObj)}</td>
-          <td style="padding:16px 14px;text-align:center;color:var(--qp-ink-muted)">${group.items.length}</td>
-          <td class="qp-money" style="padding:16px 14px">${money(group.groupSalesTotal, vm.currency)}</td>
+          <td style="padding:20px 14px">${getText(titleObj)}</td>
+          <td style="padding:20px 14px;text-align:center;color:var(--qp-ink-muted)">${group.items.length}</td>
+          <td class="qp-money" style="padding:20px 14px">${money(group.groupSalesTotal, vm.currency)}</td>
         </tr>
       `;
     }).join('');
 
     const totalRow = `
       <tr style="border-top:2px solid var(--qp-line-strong)">
-        <td style="font-weight:600;padding:14px 14px 16px">${biTitle('合计', 'Total', 'Ukupno')}</td>
-        <td style="text-align:center;font-weight:600;padding:14px 14px 16px">${totalItems}</td>
-        <td class="qp-money" style="font-weight:700;font-size:16px;padding:14px 14px 16px">${money(vm.totalSales, vm.currency)}</td>
+        <td style="font-weight:600;padding:20px 14px">${biTitle('合计', 'Total', 'Ukupno')}</td>
+        <td style="text-align:center;font-weight:600;padding:20px 14px">${totalItems}</td>
+        <td class="qp-money" style="font-weight:700;font-size:17px;padding:20px 14px">${money(vm.totalSales, vm.currency)}</td>
       </tr>
     `;
 
@@ -211,7 +209,7 @@
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:10px;color:#9AACCC;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
+          <div style="font-size:10px;color:#7B8FAD;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
           <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">SERVICE OVERVIEW</div>
         </div>
       </div>
@@ -256,7 +254,7 @@
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:10px;color:#9AACCC;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
+          <div style="font-size:10px;color:#7B8FAD;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
           <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">DETAILED QUOTATION</div>
         </div>
       </div>
@@ -267,7 +265,7 @@
     const { utils } = getRuntime(runtime);
     const { esc, getText, money } = utils;
     if (!items || items.length === 0) {
-      return '<tr><td colspan="7" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>';
+      return '<tr><td colspan="6" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>';
     }
 
     return items.map((item) => `
@@ -278,7 +276,6 @@
         <td>${esc(item.unit)}</td>
         <td class="qp-money">${money(item.salesUnitPrice, currency)}</td>
         <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
-        <td>${item.remarks ? esc(item.remarks) : ''}</td>
       </tr>
     `).join('');
   }
@@ -294,6 +291,7 @@
           </div>
         </div>
         <table class="qp-table">
+          <colgroup><col style="width:35%"><col style="width:25%"><col style="width:7%"><col style="width:7%"><col style="width:13%"><col style="width:13%"></colgroup>
           <thead>
             <tr>
               ${tableHead('项目名称', 'Item Name', 'Naziv stavke')}
@@ -302,7 +300,6 @@
               ${tableHead('单位', 'Unit', 'Jedinica')}
               ${tableHead('销售单价', 'Unit Price', 'Jedinicna cena', 'qp-money')}
               ${tableHead('小计', 'Subtotal', 'Medjuzbir', 'qp-money')}
-              ${tableHead('备注', 'Remarks', 'Napomena')}
             </tr>
           </thead>
           <tbody>${renderItemRows(group.items, runtime, vm.currency)}</tbody>
@@ -327,7 +324,6 @@
         <td>${esc(item.unit)}</td>
         <td class="qp-money">${money(item.salesUnitPrice, currency)}</td>
         <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
-        <td>${item.remarks ? esc(item.remarks) : ''}</td>
       </tr>
     `;
   }
@@ -361,7 +357,7 @@
       : '';
 
     const bodyRows = rowsHtml.length === 0
-      ? '<tr><td colspan="7" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>'
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>'
       : rowsHtml.join('');
 
     const contClass = isFirst ? '' : ' qp-detail-card-cont';
@@ -369,6 +365,7 @@
       <article class="qp-detail-card${contClass}">
         ${headHtml}
         <table class="qp-table">
+          <colgroup><col style="width:35%"><col style="width:25%"><col style="width:7%"><col style="width:7%"><col style="width:13%"><col style="width:13%"></colgroup>
           <thead>
             <tr>
               ${tableHead('项目名称', 'Item Name', 'Naziv stavke')}
@@ -377,7 +374,6 @@
               ${tableHead('单位', 'Unit', 'Jedinica')}
               ${tableHead('销售单价', 'Unit Price', 'Jedinicna cena', 'qp-money')}
               ${tableHead('小计', 'Subtotal', 'Medjuzbir', 'qp-money')}
-              ${tableHead('备注', 'Remarks', 'Napomena')}
             </tr>
           </thead>
           <tbody>${bodyRows}</tbody>
@@ -393,6 +389,7 @@
     return `
       <article class="qp-detail-card">
         <table class="qp-table">
+          <colgroup><col style="width:35%"><col style="width:25%"><col style="width:7%"><col style="width:7%"><col style="width:13%"><col style="width:13%"></colgroup>
           <thead>
             <tr>
               ${tableHead('项目名称', 'Item Name', 'Naziv stavke')}
@@ -401,7 +398,6 @@
               ${tableHead('单位', 'Unit', 'Jedinica')}
               ${tableHead('销售单价', 'Unit Price', 'Jedinicna cena', 'qp-money')}
               ${tableHead('小计', 'Subtotal', 'Medjuzbir', 'qp-money')}
-              ${tableHead('备注', 'Remarks', 'Napomena')}
             </tr>
           </thead>
           <tbody>${renderItemRows(items, runtime, vm.currency)}</tbody>
@@ -495,7 +491,7 @@
           </div>
         </div>
         <div style="text-align:right;">
-          <div style="font-size:10px;color:#9AACCC;">以下条款请双方签署前仔细阅读</div>
+          <div style="font-size:10px;color:#7B8FAD;">以下条款请双方签署前仔细阅读</div>
           <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">COMMERCIAL TERMS</div>
         </div>
       </div>
