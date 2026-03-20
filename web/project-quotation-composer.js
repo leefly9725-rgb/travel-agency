@@ -23,8 +23,6 @@
         left: config.footer && config.footer.left ? config.footer.left : '',
         right: config.footer && config.footer.right ? config.footer.right : '',
       },
-      headerType: config.headerType || 'inner',
-      headerData: config.headerData || {},
     };
   }
 
@@ -54,7 +52,6 @@
     const root = getMeasureRoot();
     root.innerHTML = `
       <section class="qp-page ${pageClassName || ''} qp-measure-page">
-        <div class="qp-page-header qp-measure-header"></div>
         <div class="qp-page-inner">
           <div class="qp-page-body ${bodyClassName || ''}"></div>
           <div class="qp-page-footer"><span></span><span></span></div>
@@ -88,8 +85,6 @@
       bodyClassName: section.bodyClassName,
       blocks: section.blocks,
       footer: section.footer,
-      headerType: section.headerType || 'inner',
-      headerData: section.headerData || {},
     })];
   }
 
@@ -121,8 +116,6 @@
         bodyClassName: section.bodyClassName,
         blocks: currentBlocks.slice(),
         footer: section.footer,
-        headerType: section.headerType || 'inner',
-        headerData: section.headerData || {},
       }));
       currentBlocks = leadBlocks.slice();
       placedCount = 0;
@@ -282,8 +275,6 @@
         left: page.footer && page.footer.left ? page.footer.left : '',
         right: page.footer && page.footer.right ? page.footer.right : `${String(index + 1).padStart(2, '0')} / ${String(totalPages).padStart(2, '0')}`,
       },
-      headerType: page.headerType || 'inner',
-      headerData: page.headerData || {},
     }));
   }
 
@@ -320,25 +311,19 @@
   function renderPages(result) {
     const pages = result && Array.isArray(result.pages) ? result.pages : [];
     return {
-      html: pages.map((page) => {
-        const headerHtml = typeof window.buildQpPageHeader === 'function'
-          ? window.buildQpPageHeader(page)
-          : '';
-        return `
-          <section class="qp-page ${page.className || ''}" data-page-no="${page.pageNo}" data-page-total="${page.totalPages}">
-            ${headerHtml}
-            <div class="qp-page-inner">
-              <div class="qp-page-body ${page.bodyClassName || ''}">
-                ${page.blocks.map((block) => block.html).join('')}
-              </div>
-              <div class="qp-page-footer">
-                <span>${page.footer.left || ''}</span>
-                <span>${page.footer.right || ''}</span>
-              </div>
+      html: pages.map((page) => `
+        <section class="qp-page ${page.className || ''}" data-page-no="${page.pageNo}" data-page-total="${page.totalPages}">
+          <div class="qp-page-inner">
+            <div class="qp-page-body ${page.bodyClassName || ''}">
+              ${page.blocks.map((block) => block.html).join('')}
             </div>
-          </section>
-        `;
-      }).join(''),
+            <div class="qp-page-footer">
+              <span>${page.footer.left || ''}</span>
+              <span>${page.footer.right || ''}</span>
+            </div>
+          </div>
+        </section>
+      `).join(''),
       totalPages: Number(result && result.totalPages ? result.totalPages : 0),
       pages,
     };

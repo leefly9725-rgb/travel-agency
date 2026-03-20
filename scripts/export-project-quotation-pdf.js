@@ -95,7 +95,7 @@ async function main() {
       args: ['--disable-gpu', '--no-sandbox'],
     });
     const page = await browser.newPage({
-      viewport: { width: 1280, height: 900 },
+      viewport: { width: 1600, height: 2200 },
       deviceScaleFactor: 1,
     });
     const url = `${serverUrl}/project-quotation.html?id=${encodeURIComponent(quoteId)}&lang=${encodeURIComponent(lang)}&mode=${encodeURIComponent(mode)}&grouping=${encodeURIComponent(grouping)}&overview=${overview}&sign=${sign}&composer=${composer}`;
