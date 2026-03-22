@@ -1,9 +1,9 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>报价管理</title>
+  <title>标准报价</title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
 </head>
@@ -13,7 +13,6 @@
       <a class="topbar-link" href="/">← 首页</a>
       <div class="topbar-actions">
         <a class="button-link" href="/quote-new.html">新建标准报价</a>
-        <a class="button-link" href="/quote-new.html?mode=project_based">新建项目型报价</a>
       </div>
     </header>
 
@@ -42,25 +41,9 @@
       <div id="quote-message" class="message-box hidden"></div>
       <div id="quote-list" class="stack quote-list-stack"></div>
     </section>
-
-    <section class="panel section-spacing quote-list-section quote-list-section-project">
-      <div class="panel-head list-section-head">
-        <div>
-          <p class="section-kicker">项目型报价</p>
-          <div class="list-title-row">
-            <h1>项目型报价列表</h1>
-            <span id="project-quote-count" class="count-pill">0 条</span>
-          </div>
-          <span class="list-section-subtitle">用于活动、会议、展会等按项目组拆分的复杂报价。</span>
-        </div>
-      </div>
-      <div id="project-quote-message" class="message-box hidden"></div>
-      <div id="project-quote-list" class="stack quote-list-stack"></div>
-    </section>
   </div>
-  <script>window.location.href = '/standard-quotes.html';</script>
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
-  <script src="/quotes.js"></script>
+  <script src="/standard-quotes.js"></script>
 </body>
 </html>
