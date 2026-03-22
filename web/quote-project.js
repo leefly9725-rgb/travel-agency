@@ -293,6 +293,8 @@ async function loadProject(projectId) {
   renderItemsTable(project.items || []);
   document.getElementById("page-title").textContent = project.name || "项目型报价";
   document.getElementById("btn-delete").classList.remove("hidden");
+  const termsBtn = document.getElementById("btn-terms");
+  if (termsBtn) termsBtn.href = `/terms-editor.html?quote_id=${encodeURIComponent(project.id)}`;
 }
 
 async function saveProject() {

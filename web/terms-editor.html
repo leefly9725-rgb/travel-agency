@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>商务条款编辑器</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* ── Terms Editor Layout ──────────────────────────────────────────── */
+    .te-layout {
+      display: grid;
+      grid-template-columns: 220px 1fr;
+      gap: 16px;
+      align-items: start;
+      margin-top: 20px;
+    }
+
+    .te-nav {
+      position: sticky;
+      top: 24px;
+      padding: 16px;
+    }
+
+    .te-nav-header {
+      margin-bottom: 12px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .te-nav-list {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .te-nav-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+
+    .te-nav-item:hover { background: rgba(27, 42, 74, 0.06); }
+    .te-nav-item.active { background: rgba(27, 42, 74, 0.12); }
+    .te-nav-item.drag-over { background: rgba(201, 168, 76, 0.18); outline: 2px dashed #C9A84C; }
+    .te-nav-item.dragging { opacity: 0.45; }
+
+    .te-nav-icon { font-size: 15px; width: 20px; text-align: center; flex-shrink: 0; }
+    .te-nav-label { font-size: 13px; font-weight: 600; flex: 1; }
+    .te-nav-disabled { color: var(--muted); text-decoration: line-through; }
+
+    /* ── Toggle Switch ─────────────────────────────────────────────────── */
+    .te-toggle {
+      position: relative;
+      display: inline-block;
+      width: 34px;
+      height: 18px;
+      flex-shrink: 0;
+    }
+    .te-toggle input { opacity: 0; width: 0; height: 0; position: absolute; }
+    .te-toggle-knob {
+      position: absolute;
+      inset: 0;
+      background: #d0d5db;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .te-toggle-knob::after {
+      content: '';
+      position: absolute;
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: white;
+      top: 3px; left: 3px;
+      transition: transform 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+    .te-toggle input:checked + .te-toggle-knob { background: #1B2A4A; }
+    .te-toggle input:checked + .te-toggle-knob::after { transform: translateX(16px); }
+
+    /* ── Main Editor Panel ─────────────────────────────────────────────── */
+    .te-editor {
+      padding: 24px;
+      min-height: 400px;
+    }
+
+    .te-block-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .te-block-icon { font-size: 20px; }
+    .te-block-title { margin: 0; font-size: 18px; }
+    .te-disabled-badge {
+      padding: 3px 10px;
+      border-radius: 999px;
+      background: #f2f3f4;
+      color: #888;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    /* ── Language Tabs ─────────────────────────────────────────────────── */
+    .te-lang-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .te-lang-tab {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 600;
+      width: auto;
+      transition: background 0.15s;
+    }
+    .te-lang-tab.active { background: #1B2A4A; color: white; border-color: #1B2A4A; }
+    .te-lang-tab:not(.active):hover { background: var(--accent-soft); }
+
+    .te-lang-area { display: none; }
+    .te-lang-area.active { display: block; }
+
+    /* ── Translation Status Badge ──────────────────────────────────────── */
+    .te-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 3px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+    .te-badge.auto   { background: #edf8ef; color: #24613b; }
+    .te-badge.manual { background: #e8f0fe; color: #1a56d4; }
+    .te-badge.stale  { background: #fff7e6; color: #8a5d11; }
+    .te-badge.empty  { background: #f2f3f4; color: #777; }
+
+    /* ── Bullet List Editor ────────────────────────────────────────────── */
+    .te-bullet-list { display: flex; flex-direction: column; gap: 8px; }
+
+    .te-bullet-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .te-drag-handle {
+      cursor: grab;
+      color: var(--muted);
+      font-size: 13px;
+      width: 16px;
+      flex-shrink: 0;
+      user-select: none;
+    }
+    .te-drag-handle:active { cursor: grabbing; }
+
+    .te-bullet-dot {
+      width: 16px;
+      flex-shrink: 0;
+      color: var(--muted);
+      text-align: center;
+    }
+
+    .te-bullet-input {
+      flex: 1;
+      min-height: 44px;
+      font-size: 14px;
+    }
+
+    .te-bullet-del {
+      background: none;
+      color: var(--muted);
+      font-size: 18px;
+      width: auto;
+      padding: 0 8px;
+      min-height: auto;
+      border-radius: 6px;
+      flex-shrink: 0;
+      line-height: 1;
+    }
+    .te-bullet-del:hover { background: var(--error-bg); color: var(--error-text); }
+
+    .te-bullet-add {
+      margin-top: 6px;
+      background: var(--accent-soft);
+      color: var(--accent);
+      width: auto;
+      padding: 8px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .te-bullet-row.drag-over { outline: 2px dashed #C9A84C; border-radius: 8px; }
+    .te-bullet-row.dragging { opacity: 0.4; }
+
+    /* ── Re-translate button inside lang area ──────────────────────────── */
+    .te-retranslate-row {
+      display: flex;
+      justify-content: flex-end;
+      margin-bottom: 10px;
+    }
+    .te-retranslate-btn {
+      width: auto;
+      padding: 6px 12px;
+      font-size: 12px;
+      border-radius: 8px;
+      background: var(--accent-soft);
+      color: var(--accent);
+    }
+
+    /* ── Translate Action Bar ──────────────────────────────────────────── */
+    .te-translate-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 18px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      align-items: center;
+    }
+
+    .te-btn-translate-all {
+      background: #1B2A4A;
+      color: white;
+      width: auto;
+      padding: 9px 16px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .te-btn-translate {
+      background: var(--accent-soft);
+      color: var(--accent);
+      width: auto;
+      padding: 9px 14px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    /* ── Structured Form ───────────────────────────────────────────────── */
+    .te-structured-form { display: flex; flex-direction: column; gap: 18px; }
+
+    .te-field-group { display: grid; gap: 8px; }
+
+    .te-field-label {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    .te-radio-group,
+    .te-checkbox-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 20px;
+    }
+
+    .te-radio-opt,
+    .te-checkbox-opt {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .te-radio-opt input,
+    .te-checkbox-opt input {
+      width: auto;
+      min-height: auto;
+      cursor: pointer;
+    }
+
+    /* ── Structured Preview ────────────────────────────────────────────── */
+    .te-preview-box {
+      margin-top: 20px;
+      background: rgba(27, 42, 74, 0.04);
+      border: 1px solid rgba(27, 42, 74, 0.1);
+      border-radius: 14px;
+      padding: 16px;
+    }
+
+    .te-preview-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    .te-preview-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      align-items: flex-start;
+    }
+    .te-preview-row:last-child { margin-bottom: 0; }
+
+    .te-preview-lang {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      min-width: 54px;
+      padding-top: 3px;
+      flex-shrink: 0;
+    }
+
+    .te-preview-text {
+      font-size: 14px;
+      line-height: 1.65;
+      color: var(--ink);
+      white-space: pre-wrap;
+    }
+
+    /* ── Deposit slider ────────────────────────────────────────────────── */
+    .te-slider-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .te-slider-row input[type="range"] {
+      flex: 1;
+      min-height: auto;
+      height: 6px;
+      cursor: pointer;
+      accent-color: #1B2A4A;
+    }
+
+    /* ── Dirty Badge ───────────────────────────────────────────────────── */
+    .te-dirty-badge {
+      padding: 5px 12px;
+      background: #fff7e6;
+      color: #8a5d11;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 600;
+      border: 1px solid rgba(138, 93, 17, 0.2);
+    }
+
+    /* ── Quote Name in Topbar ──────────────────────────────────────────── */
+    .te-quote-name {
+      font-size: 14px;
+      color: var(--muted);
+      font-weight: 500;
+    }
+
+    /* ── Mobile Accordion ──────────────────────────────────────────────── */
+    .te-accordion-wrap { margin-top: 16px; }
+
+    .te-acc-item { margin-bottom: 10px; }
+
+    .te-acc-toggle {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      width: 100%;
+      padding: 13px 16px;
+      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      cursor: pointer;
+      text-align: left;
+      font-weight: 600;
+      font-size: 14px;
+    }
+
+    .te-acc-toggle-label { flex: 1; }
+
+    .te-acc-chevron {
+      font-size: 10px;
+      color: var(--muted);
+      transition: transform 0.2s;
+    }
+    .te-acc-toggle.open .te-acc-chevron { transform: rotate(180deg); }
+
+    .te-acc-body {
+      display: none;
+      padding: 16px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-top: none;
+      border-radius: 0 0 14px 14px;
+    }
+    .te-acc-body.open { display: block; }
+
+    /* ── Responsive ────────────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .te-layout { display: none; }
+      .te-accordion-wrap { display: block; }
+    }
+
+    @media (min-width: 769px) {
+      .te-accordion-wrap { display: none; }
+    }
+
+    /* ── Notes textarea ────────────────────────────────────────────────── */
+    .te-notes-textarea {
+      width: 100%;
+      min-height: 120px;
+      font-size: 14px;
+      line-height: 1.65;
+    }
+
+    /* ── Disabled translate buttons ───────────────────────────────────── */
+    .te-btn-translate-all:disabled,
+    .te-btn-translate:disabled,
+    .te-retranslate-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    /* ── Loading & Empty ───────────────────────────────────────────────── */
+    .te-loading {
+      padding: 40px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    /* ── Save button overrides ─────────────────────────────────────────── */
+    #btn-save {
+      width: auto;
+      padding: 10px 18px;
+      border-radius: 12px;
+      font-size: 14px;
+    }
+  </style>
+</head>
+<body>
+  <div class="page-shell">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <a id="back-link" class="topbar-link" href="/quotes.html">← 返回报价</a>
+      <span class="te-quote-name" id="te-quote-name"></span>
+      <div class="topbar-actions">
+        <span id="dirty-badge" class="te-dirty-badge hidden">有未保存更改</span>
+        <button id="btn-save">保存商务条款</button>
+      </div>
+    </header>
+
+    <div id="msg-box" class="message-box hidden"></div>
+
+    <!-- Desktop: two-column layout -->
+    <div class="te-layout">
+
+      <!-- Left nav panel -->
+      <aside class="te-nav panel">
+        <div class="te-nav-header">
+          <span class="eyebrow">模块导航</span>
+          <p class="meta" style="margin:4px 0 0;font-size:12px">拖拽可调整顺序</p>
+        </div>
+        <div id="te-nav-list" class="te-nav-list">
+          <div class="te-loading">加载中…</div>
+        </div>
+      </aside>
+
+      <!-- Right editor panel -->
+      <main class="te-editor panel" id="te-editor">
+        <div class="te-loading">加载中…</div>
+      </main>
+    </div>
+
+    <!-- Mobile: accordion -->
+    <div class="te-accordion-wrap" id="te-accordion">
+      <div class="te-loading">加载中…</div>
+    </div>
+
+  </div>
+
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script src="/terms-editor.js"></script>
+</body>
+</html>

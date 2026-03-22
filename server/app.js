@@ -24,6 +24,9 @@ const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
 const { createProjectQuoteStore } = require("./services/projectQuoteStore");
+const { getTermsSnapshot, saveTermsSnapshot } = require("./services/termsStore");
+const { validateSnapshot, applyTranslationResult, renderValidityBlock, renderPaymentBlock } = require("./services/termsService");
+const { translateContent } = require("./services/claudeTranslateService");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
@@ -1177,6 +1180,91 @@ async function handleApi(request, response, url) {
       sendJson(response, 200, { message: "类型已删除。" });
       return true;
     }
+  }
+
+  // ─── 商务条款 API ─────────────────────────────────────────────────────────
+
+  // GET /api/terms/snapshot?quote_id=xxx
+  if (request.method === "GET" && url.pathname === "/api/terms/snapshot") {
+    const quoteId = url.searchParams.get("quote_id");
+    if (!quoteId) { sendJson(response, 400, { error: "缺少 quote_id 参数。" }); return true; }
+    const snapshot = await getTermsSnapshot(quoteId);
+    // Enrich structured blocks with rendered text (computed on-the-fly, not stored)
+    const enriched = JSON.parse(JSON.stringify(snapshot));
+    for (const block of (enriched.blocks || [])) {
+      if (block.type === "structured" && block.fields) {
+        if (block.key === "validity") {
+          block.rendered = renderValidityBlock(block.fields);
+        } else if (block.key === "payment") {
+          block.rendered = {
+            zh: renderPaymentBlock(block.fields, "zh"),
+            en: renderPaymentBlock(block.fields, "en"),
+            sr: renderPaymentBlock(block.fields, "sr"),
+          };
+        }
+      }
+    }
+    sendJson(response, 200, enriched);
+    return true;
+  }
+
+  // POST /api/terms/snapshot — 保存快照
+  if (request.method === "POST" && url.pathname === "/api/terms/snapshot") {
+    const { quote_id, snapshot } = parseJsonBody(await readRequestBody(request));
+    if (!quote_id) { sendJson(response, 400, { error: "缺少 quote_id。" }); return true; }
+    validateSnapshot(snapshot);
+    await saveTermsSnapshot(quote_id, snapshot);
+    sendJson(response, 200, { ok: true });
+    return true;
+  }
+
+  // POST /api/terms/translate — 翻译单个 block
+  if (request.method === "POST" && url.pathname === "/api/terms/translate") {
+    const { quote_id, block_key, target_lang } = parseJsonBody(await readRequestBody(request));
+    if (!quote_id || !block_key || !target_lang) {
+      sendJson(response, 400, { error: "缺少必填字段：quote_id / block_key / target_lang。" });
+      return true;
+    }
+    if (!["en", "sr"].includes(target_lang)) {
+      sendJson(response, 400, { error: "target_lang 仅支持 en 或 sr。" });
+      return true;
+    }
+    const snapshot = await getTermsSnapshot(quote_id);
+    const block = (snapshot.blocks || []).find((b) => b.key === block_key);
+    if (!block) { sendJson(response, 404, { error: `block[${block_key}] 不存在。` }); return true; }
+    if (block.type !== "rich_text") {
+      sendJson(response, 400, { error: `block[${block_key}] 是结构化字段，不需要 AI 翻译。` });
+      return true;
+    }
+    const translated = await translateContent(block.content.zh, target_lang);
+    applyTranslationResult(snapshot, block_key, target_lang, translated);
+    await saveTermsSnapshot(quote_id, snapshot);
+    sendJson(response, 200, { block_key, target_lang, translated });
+    return true;
+  }
+
+  // POST /api/terms/translate-all — 翻译所有 rich_text block
+  if (request.method === "POST" && url.pathname === "/api/terms/translate-all") {
+    const { quote_id, target_lang } = parseJsonBody(await readRequestBody(request));
+    if (!quote_id || !target_lang) {
+      sendJson(response, 400, { error: "缺少必填字段：quote_id / target_lang。" });
+      return true;
+    }
+    if (!["en", "sr"].includes(target_lang)) {
+      sendJson(response, 400, { error: "target_lang 仅支持 en 或 sr。" });
+      return true;
+    }
+    const snapshot = await getTermsSnapshot(quote_id);
+    const richBlocks = (snapshot.blocks || []).filter((b) => b.type === "rich_text" && b.enabled);
+    const results = [];
+    for (const block of richBlocks) {
+      const translated = await translateContent(block.content.zh, target_lang);
+      applyTranslationResult(snapshot, block.key, target_lang, translated);
+      results.push({ block_key: block.key, translated });
+    }
+    await saveTermsSnapshot(quote_id, snapshot);
+    sendJson(response, 200, { target_lang, results });
+    return true;
   }
 
   return false;

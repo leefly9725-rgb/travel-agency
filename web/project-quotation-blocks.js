@@ -43,6 +43,7 @@
       state: ctx.state || {},
       company: ctx.company || {},
       staticTerms: ctx.staticTerms || {},
+      termsSnapshot: ctx.termsSnapshot || null,
       groupLabels: ctx.groupLabels || {},
       utils: {
         esc: utils.esc,
@@ -646,19 +647,108 @@
     });
   }
 
+  // ── Snapshot block renderer ──────────────────────────────────────────────────
+  // Converts a single terms_snapshot block into a renderTermsCard HTML string.
+  // Structured blocks read block.rendered (enriched by /api/terms/snapshot).
+  // Rich-text array blocks zip content[lang] arrays into {zh,en,sr} objects for getText().
+  function renderSnapshotBlockHtml(block, runtime) {
+    const { utils } = getRuntime(runtime);
+    const { getText, biTitle } = utils;
+
+    const titleHtml = biTitle(
+      (block.title && block.title.zh) || block.key,
+      (block.title && block.title.en) || '',
+      (block.title && block.title.sr) || ''
+    );
+
+    let bodyHtml = '';
+
+    if (block.type === 'structured') {
+      const r = block.rendered || {};
+      const text = { zh: r.zh || '', en: r.en || '', sr: r.sr || '' };
+      bodyHtml = `<p>${getText(text)}</p>`;
+    } else if (block.type === 'rich_text') {
+      const c = block.content || {};
+      if (block.key === 'notes') {
+        // notes: string content
+        const text = { zh: c.zh || '', en: c.en || '', sr: c.sr || '' };
+        bodyHtml = `<p>${getText(text)}</p>`;
+      } else {
+        // included / excluded: string-array content — zip per-item for bilingual bullets
+        const zhArr = Array.isArray(c.zh) ? c.zh : [];
+        const enArr = Array.isArray(c.en) ? c.en : [];
+        const srArr = Array.isArray(c.sr) ? c.sr : [];
+        const listItems = zhArr.map((item, i) =>
+          `<li>${getText({ zh: item || '', en: enArr[i] || '', sr: srArr[i] || '' })}</li>`
+        ).join('');
+        bodyHtml = `<ul>${listItems || '<li>—</li>'}</ul>`;
+      }
+    }
+
+    if (!bodyHtml) return '';
+    return renderTermsCard(runtime, titleHtml, bodyHtml);
+  }
+
+  // ── buildTermsBlocks ──────────────────────────────────────────────────────────
   function buildTermsBlocks(vm, runtime) {
     void vm;
-    const { staticTerms, utils } = getRuntime(runtime);
+    const { staticTerms, termsSnapshot, utils } = getRuntime(runtime);
     const { getText, biTitle } = utils;
-    const included = staticTerms.included.map((item) => `<li>${getText(item)}</li>`).join('');
-    const excluded = staticTerms.excluded.map((item) => `<li>${getText(item)}</li>`).join('');
-    const notes = staticTerms.notes.map((item) => `<li>${getText(item)}</li>`).join('');
 
     // Signature is rendered first so we know if it exists before wiring keepWithNext.
     const signatureHtml = renderSignatureBlock(runtime);
 
+    // ── Snapshot path ──────────────────────────────────────────────────────────
+    const enabledBlocks = termsSnapshot &&
+      Array.isArray(termsSnapshot.blocks) &&
+      termsSnapshot.blocks.filter(b => b.enabled);
+
+    if (enabledBlocks && enabledBlocks.length > 0) {
+      enabledBlocks.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+
+      const result = [
+        createBlock('terms-header', 'terms-header', {
+          html: renderTermsHeader(runtime),
+          className: 'qp-terms-span-full qp-block-terms-header',
+          keepWithNext: true,
+          measureMode: 'natural',
+          minHeight: 0,
+        }),
+      ];
+
+      enabledBlocks.forEach((block, i) => {
+  const isLast = i === enabledBlocks.length - 1;
+  const cardHtml = renderSnapshotBlockHtml(block, runtime);
+  if (!cardHtml) return;
+  result.push(createBlock(`terms-${block.key}`, 'terms-card', {
+    html: cardHtml,
+    className: 'qp-block-terms-card',
+    // 非最后一张卡片：keepWithNext=true 防止分页
+    // 最后一张卡片：有签字页时 keepWithNext=true 绑定签字页
+    keepWithNext: isLast ? Boolean(signatureHtml) : true,
+    measureMode: 'natural',
+    minHeight: 0,
+  }));
+});
+
+      if (signatureHtml) {
+        result.push(createBlock('terms-signature', 'terms-signature', {
+          html: signatureHtml,
+          className: 'qp-terms-span-full qp-block-terms-signature',
+          measureMode: 'natural',
+          minHeight: 0,
+        }));
+      }
+
+      return result;
+    }
+
+    // ── Fallback: static terms ─────────────────────────────────────────────────
+    const included = staticTerms.included.map((item) => `<li>${getText(item)}</li>`).join('');
+    const excluded = staticTerms.excluded.map((item) => `<li>${getText(item)}</li>`).join('');
+    const notes = staticTerms.notes.map((item) => `<li>${getText(item)}</li>`).join('');
+
     const blocks = [
-      // terms-header: never left alone at page bottom.
       createBlock('terms-header', 'terms-header', {
         html: renderTermsHeader(runtime),
         className: 'qp-terms-span-full qp-block-terms-header',
@@ -672,7 +762,6 @@
         measureMode: 'natural',
         minHeight: 0,
       }),
-      // terms-excluded stays with terms-notes (the next block).
       createBlock('terms-excluded', 'terms-card', {
         html: renderTermsCard(runtime, biTitle('费用不含', 'Excluded', 'Nije ukljuceno'), `<ul>${excluded}</ul>`),
         className: 'qp-block-terms-card',
@@ -680,7 +769,6 @@
         measureMode: 'natural',
         minHeight: 0,
       }),
-      // terms-notes stays with terms-payment.
       createBlock('terms-notes', 'terms-card', {
         html: renderTermsCard(runtime, biTitle('特别说明', 'Notes', 'Napomene'), `<ul>${notes}</ul>`),
         className: 'qp-block-terms-card',
@@ -688,7 +776,6 @@
         measureMode: 'natural',
         minHeight: 0,
       }),
-      // terms-payment: stays with signature if shown.
       createBlock('terms-payment', 'terms-card', {
         html: renderTermsCard(runtime, biTitle('付款方式与节点', 'Payment Terms', 'Uslovi placanja'), `<p>${getText(staticTerms.payment)}</p>`),
         className: 'qp-block-terms-card',
@@ -698,8 +785,6 @@
       }),
     ];
 
-    // Signature is its own span-full atomic block (~160px tall).
-    // Small enough to always fit on any page — no overflow risk.
     if (signatureHtml) {
       blocks.push(createBlock('terms-signature', 'terms-signature', {
         html: signatureHtml,

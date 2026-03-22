@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(grep -o 'getElementById\\(\"[^\"]*\"\\)' /d/LDS-OPS-v1/web/*.js | cut -d'\"' -f2 | sort | uniq)",
+      "Bash(grep -oh 'id=\"[^\"]*\"' /d/LDS-OPS-v1/web/*.html | cut -d'\"' -f2 | sort | uniq)",
+      "Bash(npm test:*)",
+      "Bash(node -e \"\nconst { getSupabaseConfig } = require\\('./server/supabaseConfig'\\);\nconst { supabaseRequest } = require\\('./server/supabaseClient'\\);\nconst config = getSupabaseConfig\\(\\);\nconsole.log\\('enabled:', config.enabled\\);\nsupabaseRequest\\(config, 'templates?select=*,template_items\\(*\\)\\\\&order=name.asc', { headers: { Prefer: 'return=representation' } }\\)\n  .then\\(r => console.log\\('OK, count:', Array.isArray\\(r\\) ? r.length : r\\)\\)\n  .catch\\(e => console.error\\('ERROR:', e.message\\)\\);\n\" 2>&1)",
+      "Bash(node -e \"\nrequire\\('./server/env'\\).loadEnvFile\\(\\);\nconst { getSupabaseConfig } = require\\('./server/supabaseConfig'\\);\nconst { supabaseRequest } = require\\('./server/supabaseClient'\\);\nconst config = getSupabaseConfig\\(\\);\nconsole.log\\('enabled:', config.enabled, '| url:', config.url ? 'set' : 'missing'\\);\nsupabaseRequest\\(config, 'templates?select=*,template_items\\(*\\)\\\\&order=name.asc', { headers: { Prefer: 'return=representation' } }\\)\n  .then\\(r => console.log\\('OK, count:', Array.isArray\\(r\\) ? r.length : typeof r\\)\\)\n  .catch\\(e => console.error\\('ERROR:', e.message, e.stack\\)\\);\n\" 2>&1)",
+      "Bash(curl -s http://localhost:3000/api/meta)",
+      "Bash(cd \"D:\\\\LDS-OPS-v1\" && node -e \"\nconst { createServer } = require\\('./server/app'\\);\nconst server = createServer\\(\\);\nserver.listen\\(3099, async \\(\\) => {\n  try {\n    // Test list \\(empty\\)\n    let r = await fetch\\('http://localhost:3099/api/project-quotes'\\);\n    console.log\\('GET list:', r.status, JSON.stringify\\(await r.json\\(\\)\\)\\);\n\n    // Test create\n    r = await fetch\\('http://localhost:3099/api/project-quotes', {\n      method: 'POST',\n      headers: { 'Content-Type': 'application/json' },\n      body: JSON.stringify\\({\n        name: '测试活动',\n        client: '测试客户',\n        eventDate: '2026-06-01',\n        venue: '贝尔格莱德',\n        paxCount: 100,\n        currency: 'EUR',\n        status: 'draft',\n        notes: '',\n        items: [\n          { groupName: '舞台结构', nameZh: '主舞台', nameEn: 'Main Stage', unit: '套', quantity: 1, costPrice: 9800, sellPrice: 12000, supplier: 'Watchout', notes: '' }\n        ]\n      }\\)\n    }\\);\n    const created = await r.json\\(\\);\n    console.log\\('POST create:', r.status, 'id:', created.id, 'items:', created.items?.length\\);\n\n    // Test get by id\n    r = await fetch\\('http://localhost:3099/api/project-quotes/' + created.id\\);\n    const got = await r.json\\(\\);\n    console.log\\('GET by id:', r.status, 'name:', got.name, 'items:', got.items?.length\\);\n\n    // Test delete\n    r = await fetch\\('http://localhost:3099/api/project-quotes/' + created.id, { method: 'DELETE' }\\);\n    console.log\\('DELETE:', r.status, JSON.stringify\\(await r.json\\(\\)\\)\\);\n\n  } finally {\n    server.close\\(\\);\n  }\n}\\);\n\" 2>&1)",
+      "Bash(node --test --test-isolation=none tests/)",
+      "Bash(node --test --test-isolation=none tests/quoteService.test.js tests/api.test.js tests/dataStore.test.js tests/templateStore.test.js)",
+      "Bash(npm start:*)",
+      "Bash(git commit:*)",
+      "Bash(git checkout:*)",
+      "Bash(node -e \":*)",
+      "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
+      "Read(//c/Program Files/Microsoft/Edge/**)",
+      "Bash(node -e \"require\\(''''./server/app.js''''\\)\")"
+    ]
+  }
+}

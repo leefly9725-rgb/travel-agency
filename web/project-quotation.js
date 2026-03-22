@@ -71,6 +71,9 @@ const STATIC_TERMS = {
 
 const params = new URLSearchParams(location.search);
 const quoteId = params.get('id') || '';
+let termsSnapshot = null;  // loaded in bootstrap(), injected into Composer runtime
+const editTermsBtn = document.getElementById('btn-edit-terms');
+if (editTermsBtn && quoteId) editTermsBtn.href = `/terms-editor.html?quote_id=${encodeURIComponent(quoteId)}`;
 
 const state = {
   lang: params.get('lang') || 'zh',
@@ -711,6 +714,7 @@ function buildComposerRuntime() {
     state,
     company: COMPANY,
     staticTerms: STATIC_TERMS,
+    termsSnapshot,
     groupLabels: GROUP_TYPE_LABELS,
     utils: {
       esc,
@@ -910,7 +914,14 @@ async function bootstrap() {
           return res.json();
         };
 
-    const quote = await fetchFn(`/api/quotes/${encodeURIComponent(quoteId)}`);
+    const [quote, snapshotRaw] = await Promise.all([
+      fetchFn(`/api/quotes/${encodeURIComponent(quoteId)}`),
+      fetch(`/api/terms/snapshot?quote_id=${encodeURIComponent(quoteId)}`)
+        .then(r => r.ok ? r.json() : null)
+        .catch(() => null),
+    ]);
+    termsSnapshot = snapshotRaw || null;
+
     if (!quote || quote.pricingMode !== 'project_based') {
       showError('该报价不是项目型报价，无法生成客户报价单。请确认报价 ID 正确。');
       return;
