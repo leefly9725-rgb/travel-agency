@@ -81,11 +81,22 @@ async function init() {
 // ── API helpers ────────────────────────────────────────────────────────────────
 
 async function apiFetch(url, opts = {}) {
+  const token = localStorage.getItem('app_token');
+  const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(url, {
     ...opts,
-    headers: { 'Content-Type': 'application/json', ...(opts.headers || {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...authHeaders,
+      ...(opts.headers || {}),
+    },
   });
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('app_token');
+      window.location.href = '/login.html';
+      return;
+    }
     const err = await res.json().catch(() => ({ error: res.statusText }));
     throw new Error(err.error || `HTTP ${res.status}`);
   }

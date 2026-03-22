@@ -27,6 +27,7 @@ const { createProjectQuoteStore } = require("./services/projectQuoteStore");
 const { getTermsSnapshot, saveTermsSnapshot } = require("./services/termsStore");
 const { validateSnapshot, applyTranslationResult, renderValidityBlock, renderPaymentBlock } = require("./services/termsService");
 const { translateContent } = require("./services/claudeTranslateService");
+const { resolveAuthContext, requireRoutePermission, filterSupplierCatalogFields } = require("./services/authMiddleware");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
@@ -59,6 +60,21 @@ function sendFile(response, filePath) {
     ".json": "application/json; charset=utf-8",
   };
 
+  // HTML 文件：读取全文，注入 window.__ENV__，再响应
+  if (ext === ".html") {
+    const envScript = `<script>\nwindow.__ENV__ = {\n  SUPABASE_URL: ${JSON.stringify(process.env.SUPABASE_URL || "")},\n  SUPABASE_ANON_KEY: ${JSON.stringify(process.env.SUPABASE_ANON_KEY || "")}\n};\n</script>`;
+    let html = fs.readFileSync(filePath, "utf8");
+    if (html.includes("</head>")) {
+      html = html.replace("</head>", envScript + "\n</head>");
+    } else {
+      html = html.replace("<body>", envScript + "\n<body>");
+    }
+    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    response.end(html);
+    return;
+  }
+
+  // 其他静态资源：保持原有流式返回
   response.writeHead(200, { "Content-Type": contentTypeMap[ext] || "text/plain; charset=utf-8" });
   fs.createReadStream(filePath).pipe(response);
 }
@@ -723,6 +739,10 @@ async function handleApi(request, response, url) {
   const templateResult = await templateStore.listTemplates();
   const templates = templateResult.templates;
 
+  // ── 统一认证 & 路由权限拦截 ──────────────────────────────────────────────
+  const authCtx = await resolveAuthContext(request, getSupabaseConfig());
+  requireRoutePermission(authCtx, request.method, url.pathname);
+
   if (request.method === "GET" && url.pathname === "/api/health") {
     sendJson(response, 200, { ok: true, timestamp: new Date().toISOString() });
     return true;
@@ -730,6 +750,95 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/meta") {
     sendJson(response, 200, getMetaPayload(data, templates, templateResult.source));
+    return true;
+  }
+
+  // GET /api/auth/me — 返回当前登录用户信息、角色、权限列表
+  if (request.method === "GET" && url.pathname === "/api/auth/me") {
+    const userId = authCtx.userId;
+    if (!userId) { sendJson(response, 401, { error: "未登录。" }); return true; }
+
+    // dev bypass：直接返回管理员信息，不查 Supabase
+    if (userId === "dev-user") {
+      sendJson(response, 200, {
+        userId: "dev-user",
+        display_name: authCtx.user?.display_name || "本地开发管理员",
+        email: authCtx.user?.email || "dev@localhost",
+        is_active: true,
+        roles: ["admin"],
+        permissions: ["*"],
+      });
+      return true;
+    }
+
+    const supabase = getSupabaseConfig();
+    if (!supabase.enabled) {
+      sendJson(response, 200, {
+        userId,
+        display_name: authCtx.user?.email || userId,
+        email: authCtx.user?.email || "",
+        is_active: true,
+        roles: [],
+        permissions: [...authCtx.permissions],
+      });
+      return true;
+    }
+
+    // 查用户基本信息
+    const profiles = await supabaseRequest(
+      supabase,
+      `user_profiles?id=eq.${encodeURIComponent(userId)}&select=display_name,email,is_active`,
+      { method: "GET" }
+    );
+    const profile = profiles?.[0];
+    if (profile && !profile.is_active) {
+      sendJson(response, 403, { error: "账号已被停用。" });
+      return true;
+    }
+
+    // 查角色 code 列表
+    const urRows = await supabaseRequest(
+      supabase,
+      `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(code)`,
+      { method: "GET" }
+    );
+    const roleCodes = (urRows || []).map((ur) => ur.roles?.code).filter(Boolean);
+
+    // admin 角色直接返回通配权限
+    if (roleCodes.includes("admin")) {
+      sendJson(response, 200, {
+        userId,
+        display_name: profile?.display_name || "",
+        email: profile?.email || "",
+        is_active: profile?.is_active ?? true,
+        roles: roleCodes,
+        permissions: ["*"],
+      });
+      return true;
+    }
+
+    // 普通角色：查所有权限 code（去重）
+    const permRows = await supabaseRequest(
+      supabase,
+      `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(role_permissions(permissions(code)))`,
+      { method: "GET" }
+    );
+    const permSet = new Set();
+    for (const ur of (permRows || [])) {
+      for (const rp of (ur.roles?.role_permissions || [])) {
+        const code = rp.permissions?.code;
+        if (code) permSet.add(code);
+      }
+    }
+
+    sendJson(response, 200, {
+      userId,
+      display_name: profile?.display_name || "",
+      email: profile?.email || "",
+      is_active: profile?.is_active ?? true,
+      roles: roleCodes,
+      permissions: [...permSet],
+    });
     return true;
   }
 
@@ -1034,7 +1143,8 @@ async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/supplier-items") {
     const category = url.searchParams.get("category") || "";
     const supplierId = url.searchParams.get("supplier_id") || "";
-    const { items } = await supplierStore.listSupplierItems({ category, supplierId });
+    const { items: rawItems } = await supplierStore.listSupplierItems({ category, supplierId });
+    const items = filterSupplierCatalogFields(authCtx, rawItems);
     sendJson(response, 200, items);
     return true;
   }
@@ -1267,6 +1377,167 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  // GET /api/admin/bootstrap-status — 公开，检查系统是否已完成初始化
+  if (request.method === "GET" && url.pathname === "/api/admin/bootstrap-status") {
+    const supabase = getSupabaseConfig();
+    if (!supabase.enabled) {
+      sendJson(response, 200, { initialized: false, admin_count: 0 });
+      return true;
+    }
+    const rows = await supabaseRequest(
+      supabase,
+      "user_roles?select=user_id&role_id=eq.(select id from roles where code=eq.admin)",
+      { method: "GET" }
+    ).catch(() => null);
+    // Supabase REST 不支持子查询，用两步查询代替
+    const roleRows = await supabaseRequest(supabase, "roles?code=eq.admin&select=id", { method: "GET" }).catch(() => null);
+    const adminRoleId = roleRows?.[0]?.id;
+    let adminCount = 0;
+    if (adminRoleId) {
+      const urRows = await supabaseRequest(
+        supabase,
+        `user_roles?role_id=eq.${encodeURIComponent(adminRoleId)}&select=user_id`,
+        { method: "GET" }
+      ).catch(() => null);
+      adminCount = Array.isArray(urRows) ? urRows.length : 0;
+    }
+    sendJson(response, 200, { initialized: adminCount > 0, admin_count: adminCount });
+    return true;
+  }
+
+  // ─── 用户权限管理 API（/api/admin/*）────────────────────────────────────────
+  // 所有 /api/admin/* 接口额外要求 user.view 权限（仅系统管理员）
+  if (url.pathname.startsWith("/api/admin/")) {
+    const supabase = getSupabaseConfig();
+    requirePermission(authCtx, "user.view");
+    if (!supabase.enabled) {
+      sendJson(response, 503, { error: "管理功能需要 Supabase，当前未配置。" });
+      return true;
+    }
+
+    // GET /api/admin/users — 用户列表及角色
+    if (request.method === "GET" && url.pathname === "/api/admin/users") {
+      const rows = await supabaseRequest(
+        supabase,
+        "user_profiles?select=id,display_name,email,is_active,user_roles(roles(id,code,name_zh))&order=display_name.asc",
+        { method: "GET" }
+      );
+      const users = (rows || []).map((u) => ({
+        id: u.id,
+        display_name: u.display_name,
+        email: u.email,
+        is_active: u.is_active,
+        roles: (u.user_roles || []).map((ur) => ur.roles).filter(Boolean),
+      }));
+      sendJson(response, 200, users);
+      return true;
+    }
+
+    // GET /api/admin/roles — 角色列表
+    if (request.method === "GET" && url.pathname === "/api/admin/roles") {
+      const rows = await supabaseRequest(
+        supabase,
+        "roles?select=id,code,name_zh,description,is_system&order=name_zh.asc",
+        { method: "GET" }
+      );
+      sendJson(response, 200, rows || []);
+      return true;
+    }
+
+    // GET /api/admin/users/:userId/permissions — 用户权限明细
+    const permMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/permissions$/);
+    if (request.method === "GET" && permMatch) {
+      const userId = decodeURIComponent(permMatch[1]);
+      const rows = await supabaseRequest(
+        supabase,
+        `user_roles?select=roles(name_zh,role_permissions(permissions(code,action,resources(group_name,name_zh))))&user_id=eq.${encodeURIComponent(userId)}`,
+        { method: "GET" }
+      );
+      const permsMap = new Map();
+      for (const ur of (rows || [])) {
+        const role = ur.roles;
+        if (!role) continue;
+        for (const rp of (role.role_permissions || [])) {
+          const perm = rp.permissions;
+          if (!perm) continue;
+          const key = perm.code;
+          if (!permsMap.has(key)) {
+            permsMap.set(key, {
+              permission_code: perm.code,
+              resource_group: perm.resources?.group_name || "其他",
+              resource_name_zh: perm.resources?.name_zh || perm.code,
+              action: perm.action,
+              granted_by_roles: [],
+            });
+          }
+          permsMap.get(key).granted_by_roles.push(role.name_zh);
+        }
+      }
+      const result = [...permsMap.values()].sort((a, b) =>
+        a.resource_group.localeCompare(b.resource_group, "zh")
+      );
+      sendJson(response, 200, result);
+      return true;
+    }
+
+    // POST /api/admin/users/:userId/roles — 分配角色
+    const userRolesPostMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/roles$/);
+    if (request.method === "POST" && userRolesPostMatch) {
+      const userId = decodeURIComponent(userRolesPostMatch[1]);
+      const { role_id } = parseJsonBody(await readRequestBody(request));
+      if (!role_id) { sendJson(response, 400, { error: "缺少 role_id。" }); return true; }
+      const roles = await supabaseRequest(supabase, `roles?id=eq.${encodeURIComponent(role_id)}&select=id,code`, { method: "GET" });
+      const role = roles?.[0];
+      if (!role) { sendJson(response, 404, { error: "角色不存在。" }); return true; }
+      await supabaseRequest(supabase, "user_roles", {
+        method: "POST",
+        headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+        body: JSON.stringify({ user_id: userId, role_id }),
+      });
+      await supabaseRequest(supabase, "audit_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          operator_id: authCtx.userId,
+          action: "assign_role",
+          target_type: "user",
+          target_id: userId,
+          detail: { role_id, role_code: role.code },
+        }),
+      });
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+
+    // DELETE /api/admin/users/:userId/roles/:roleId — 取消角色
+    const userRoleDeleteMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/roles\/([^/]+)$/);
+    if (request.method === "DELETE" && userRoleDeleteMatch) {
+      const userId = decodeURIComponent(userRoleDeleteMatch[1]);
+      const roleId = decodeURIComponent(userRoleDeleteMatch[2]);
+      const roles = await supabaseRequest(supabase, `roles?id=eq.${encodeURIComponent(roleId)}&select=id,code`, { method: "GET" });
+      const role = roles?.[0];
+      if (!role) { sendJson(response, 404, { error: "角色不存在。" }); return true; }
+      await supabaseRequest(
+        supabase,
+        `user_roles?user_id=eq.${encodeURIComponent(userId)}&role_id=eq.${encodeURIComponent(roleId)}`,
+        { method: "DELETE", headers: { Prefer: "return=minimal" } }
+      );
+      await supabaseRequest(supabase, "audit_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          operator_id: authCtx.userId,
+          action: "revoke_role",
+          target_type: "user",
+          target_id: userId,
+          detail: { role_id: roleId, role_code: role.code },
+        }),
+      });
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+  }
+
   return false;
 }
 
@@ -1288,8 +1559,9 @@ async function handleRequest(request, response) {
     const filePath = path.join(publicDir, safePath);
     sendFile(response, filePath);
   } catch (error) {
-    sendJson(response, 500, {
-      error: "服务器处理失败，请稍后重试。",
+    const statusCode = error.statusCode === 401 || error.statusCode === 403 ? error.statusCode : 500;
+    sendJson(response, statusCode, {
+      error: statusCode === 500 ? "服务器处理失败，请稍后重试。" : error.message,
       message: error.message,
     });
   }

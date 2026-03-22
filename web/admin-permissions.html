@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>权限管理</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <style>
+    /* ── Layout ──────────────────────────────────────────────────────────────── */
+    .admin-shell {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .admin-topbar {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+
+    .admin-topbar h1 {
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      color: var(--ink);
+    }
+
+    .admin-layout {
+      flex: 1 1 auto;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ── Left panel ──────────────────────────────────────────────────────────── */
+    .admin-left {
+      flex: 0 0 300px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      overflow: hidden;
+    }
+
+    .admin-left-header {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 16px 12px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .admin-left-header h2 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+      margin: 0;
+    }
+
+    .btn-new-user {
+      font-size: 12px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      border: 1.5px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .btn-new-user:hover { background: var(--accent-soft); }
+
+    .user-list {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 8px 0;
+    }
+
+    .user-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      cursor: pointer;
+      transition: background 0.12s;
+      border-left: 3px solid transparent;
+    }
+    .user-item:hover { background: var(--accent-soft); }
+    .user-item.selected {
+      background: var(--accent-soft);
+      border-left-color: var(--accent);
+    }
+
+    .user-avatar {
+      flex: 0 0 36px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      font-weight: 700;
+      color: #fff;
+      text-transform: uppercase;
+    }
+
+    .user-item-info {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+
+    .user-item-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .user-item-roles {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 3px;
+    }
+
+    .role-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 10px;
+      background: rgba(194, 106, 46, 0.12);
+      color: var(--accent);
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      flex: 0 0 8px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      opacity: 0.4;
+    }
+    .status-dot.active { background: #2e7d32; opacity: 1; }
+
+    /* ── Right panel ─────────────────────────────────────────────────────────── */
+    .admin-right {
+      flex: 1 1 auto;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--bg, #f4efe7);
+    }
+
+    .empty-state-page {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      gap: 8px;
+    }
+    .empty-state-page svg { opacity: 0.25; }
+    .empty-state-page p { font-size: 14px; }
+
+    /* ── User detail header ──────────────────────────────────────────────────── */
+    .detail-header {
+      flex: 0 0 auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .detail-avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .detail-meta { flex: 1; }
+    .detail-meta .name { font-size: 16px; font-weight: 700; color: var(--ink); }
+    .detail-meta .email { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+    /* ── Tabs ────────────────────────────────────────────────────────────────── */
+    .tab-nav {
+      flex: 0 0 auto;
+      display: flex;
+      padding: 0 24px;
+      background: var(--panel);
+      border-bottom: 1px solid var(--line);
+    }
+
+    .tab-btn {
+      padding: 12px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      margin-bottom: -1px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .tab-btn:hover { color: var(--ink); }
+    .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+
+    .tab-content {
+      flex: 1 1 auto;
+      overflow-y: auto;
+      padding: 24px;
+    }
+    .tab-content.hidden { display: none; }
+
+    /* ── Role cards ──────────────────────────────────────────────────────────── */
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+    }
+
+    .role-card {
+      background: var(--panel);
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      padding: 14px 16px;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .role-card.assigned {
+      border-color: #1a3a5c;
+      box-shadow: 0 0 0 3px rgba(26, 58, 92, 0.08);
+    }
+
+    .role-card-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .role-card-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--ink);
+    }
+
+    .system-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 6px;
+      border-radius: 8px;
+      background: rgba(30, 36, 48, 0.08);
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    .role-card-desc {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* ── Toggle switch ───────────────────────────────────────────────────────── */
+    .toggle-label { display: flex; align-items: center; cursor: pointer; }
+
+    .toggle-label input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
+
+    .toggle-track {
+      width: 36px;
+      height: 20px;
+      border-radius: 10px;
+      background: var(--line);
+      position: relative;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+    .toggle-track::after {
+      content: '';
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+      transition: left 0.2s;
+    }
+    .toggle-label input:checked + .toggle-track { background: #1a3a5c; }
+    .toggle-label input:checked + .toggle-track::after { left: 19px; }
+    .toggle-label input:disabled + .toggle-track { opacity: 0.5; }
+
+    /* ── Permission detail ───────────────────────────────────────────────────── */
+    .perm-note {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 16px;
+      padding: 8px 12px;
+      background: var(--panel);
+      border-radius: 6px;
+      border-left: 3px solid var(--accent);
+    }
+
+    .perm-group {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+
+    .perm-group-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 16px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.12s;
+    }
+    .perm-group-header:hover { background: var(--accent-soft); }
+
+    .perm-group-arrow { font-size: 10px; color: var(--muted); width: 12px; }
+    .perm-group-name { flex: 1; font-size: 13px; font-weight: 700; color: var(--ink); }
+    .perm-group-count { font-size: 11px; color: var(--muted); }
+
+    .perm-group-body { border-top: 1px solid var(--line); }
+    .perm-group-body.collapsed { display: none; }
+
+    .perm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+    .perm-table th {
+      text-align: left;
+      padding: 8px 16px;
+      font-weight: 600;
+      color: var(--muted);
+      background: rgba(30, 36, 48, 0.03);
+      border-bottom: 1px solid var(--line);
+    }
+    .perm-table td {
+      padding: 8px 16px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      vertical-align: middle;
+    }
+    .perm-table tr:last-child td { border-bottom: none; }
+    .perm-table code {
+      font-family: "Cascadia Code", "Fira Code", monospace;
+      font-size: 11px;
+      background: rgba(30, 36, 48, 0.06);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+
+    .role-badge-sm {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 1px 5px;
+      border-radius: 8px;
+      background: rgba(26, 58, 92, 0.08);
+      color: #1a3a5c;
+      margin: 1px 2px 1px 0;
+    }
+
+    /* ── Toast ───────────────────────────────────────────────────────────────── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 1000;
+      white-space: nowrap;
+    }
+    .toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .toast-success { background: var(--success-bg); color: var(--success-text); }
+    .toast-error   { background: var(--error-bg); color: var(--error-text); }
+    .toast-info    { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
+
+    /* ── Misc ────────────────────────────────────────────────────────────────── */
+    .loading-text { color: var(--muted); font-size: 13px; padding: 24px 0; }
+    .empty-inner  { color: var(--muted); font-size: 13px; padding: 24px 0; }
+    .error-inline { color: var(--error-text); font-size: 13px; padding: 12px; background: var(--error-bg); border-radius: 8px; }
+    .hidden { display: none !important; }
+
+    /* ── Mobile ──────────────────────────────────────────────────────────────── */
+    .mobile-user-wrap { display: none; }
+
+    @media (max-width: 768px) {
+      .admin-left { display: none; }
+      .mobile-user-wrap {
+        display: block;
+        padding: 12px 16px;
+        background: var(--panel);
+        border-bottom: 1px solid var(--line);
+      }
+      .mobile-user-wrap select {
+        width: 100%;
+        padding: 8px 10px;
+        border: 1.5px solid var(--line);
+        border-radius: 8px;
+        font-size: 14px;
+        background: var(--bg, #f4efe7);
+        color: var(--ink);
+      }
+      .tab-content { padding: 16px; }
+      .roles-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+  <script src="/auth-guard.js"></script>
+</head>
+<body style="visibility: hidden">
+  <div class="admin-shell">
+
+    <!-- Top bar -->
+    <header class="admin-topbar">
+      <a class="topbar-link" href="/">← 首页</a>
+      <h1>权限管理</h1>
+    </header>
+
+    <!-- Mobile user select -->
+    <div class="mobile-user-wrap">
+      <select id="mobile-user-dropdown">
+        <option value="">— 请选择用户 —</option>
+      </select>
+    </div>
+
+    <div class="admin-layout">
+
+      <!-- Left: user list -->
+      <aside class="admin-left">
+        <div class="admin-left-header">
+          <h2>用户管理</h2>
+          <button class="btn-new-user" id="btn-new-user">＋ 新建用户</button>
+        </div>
+        <div class="user-list" id="user-list">
+          <p class="loading-text" style="padding-left:14px">加载中…</p>
+        </div>
+      </aside>
+
+      <!-- Right: detail -->
+      <main class="admin-right" id="admin-right">
+
+        <!-- Empty state -->
+        <div class="empty-state-page" id="empty-state">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <p>请从左侧选择用户</p>
+        </div>
+
+        <!-- User detail (hidden until user selected) -->
+        <div id="user-detail" class="hidden" style="display:flex;flex-direction:column;flex:1;overflow:hidden">
+
+          <div class="detail-header">
+            <div class="detail-avatar" id="detail-avatar"></div>
+            <div class="detail-meta">
+              <div class="name" id="detail-name"></div>
+              <div class="email" id="detail-email"></div>
+            </div>
+          </div>
+
+          <div class="tab-nav">
+            <button class="tab-btn active" data-tab="roles">角色分配</button>
+            <button class="tab-btn" data-tab="permissions">权限明细</button>
+          </div>
+
+          <div id="tab-roles" class="tab-content"></div>
+          <div id="tab-permissions" class="tab-content hidden"></div>
+
+        </div>
+
+      </main>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script>
+    'use strict';
+
+    // ── State ────────────────────────────────────────────────────────────────────
+    let allUsers = [];
+    let allRoles = [];
+    let selectedUserId = null;
+    let cachedPermissions = null;   // reset on user switch
+
+    // ── Utilities ────────────────────────────────────────────────────────────────
+    function esc(str) {
+      return String(str == null ? '' : str)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function firstLetter(str) {
+      return String(str || '?').charAt(0).toUpperCase();
+    }
+
+    const AVATAR_COLORS = [
+      '#1a3a5c','#2e6b3e','#7b1fa2','#b71c1c',
+      '#0277bd','#558b2f','#ad1457','#00695c',
+    ];
+    function avatarColor(str) {
+      let hash = 0;
+      for (const c of String(str || '')) hash = (hash * 31 + c.charCodeAt(0)) & 0xffffffff;
+      return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
+    }
+
+    let toastTimer = null;
+    function showToast(msg, type = 'success') {
+      const el = document.getElementById('toast');
+      el.textContent = msg;
+      el.className = `toast toast-${type} visible`;
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove('visible'), 2800);
+    }
+
+    // ── Boot ─────────────────────────────────────────────────────────────────────
+    async function init() {
+      try {
+        [allUsers, allRoles] = await Promise.all([
+          window.AppUtils.fetchJson('/api/admin/users', null, '加载用户列表失败'),
+          window.AppUtils.fetchJson('/api/admin/roles', null, '加载角色列表失败'),
+        ]);
+        renderUserList();
+        renderMobileDropdown();
+      } catch (e) {
+        document.getElementById('user-list').innerHTML =
+          `<p class="error-inline" style="margin:12px">${esc(e.message)}</p>`;
+      }
+    }
+
+    // ── User list ────────────────────────────────────────────────────────────────
+    function renderUserList() {
+      const el = document.getElementById('user-list');
+      if (!allUsers.length) {
+        el.innerHTML = '<p class="empty-inner" style="padding-left:14px">暂无用户</p>';
+        return;
+      }
+      el.innerHTML = allUsers.map(u => `
+        <div class="user-item${u.id === selectedUserId ? ' selected' : ''}" data-id="${esc(u.id)}">
+          <div class="user-avatar" style="background:${avatarColor(u.display_name)}">
+            ${esc(firstLetter(u.display_name))}
+          </div>
+          <div class="user-item-info">
+            <div class="user-item-name">${esc(u.display_name)}</div>
+            <div class="user-item-roles">
+              ${(u.roles || []).map(r => `<span class="role-badge">${esc(r.name_zh)}</span>`).join('')}
+            </div>
+          </div>
+          <span class="status-dot${u.is_active ? ' active' : ''}"></span>
+        </div>
+      `).join('');
+      el.querySelectorAll('.user-item').forEach(row =>
+        row.addEventListener('click', () => selectUser(row.dataset.id))
+      );
+    }
+
+    function renderMobileDropdown() {
+      const sel = document.getElementById('mobile-user-dropdown');
+      sel.innerHTML = '<option value="">— 请选择用户 —</option>' +
+        allUsers.map(u =>
+          `<option value="${esc(u.id)}"${u.id === selectedUserId ? ' selected' : ''}>${esc(u.display_name)}</option>`
+        ).join('');
+    }
+
+    // ── Select user ──────────────────────────────────────────────────────────────
+    function selectUser(userId) {
+      selectedUserId = userId;
+      cachedPermissions = null;
+      renderUserList();
+      renderMobileDropdown();
+
+      const user = allUsers.find(u => u.id === userId);
+      if (!user) return;
+
+      document.getElementById('empty-state').classList.add('hidden');
+      const detail = document.getElementById('user-detail');
+      detail.classList.remove('hidden');
+      detail.style.display = 'flex';
+
+      const color = avatarColor(user.display_name);
+      const avatar = document.getElementById('detail-avatar');
+      avatar.textContent = firstLetter(user.display_name);
+      avatar.style.background = color;
+      document.getElementById('detail-name').textContent = user.display_name;
+      document.getElementById('detail-email').textContent = user.email;
+
+      switchTab('roles');
+    }
+
+    // ── Tabs ─────────────────────────────────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab-btn').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.tab === tab)
+      );
+      document.getElementById('tab-roles').classList.toggle('hidden', tab !== 'roles');
+      document.getElementById('tab-permissions').classList.toggle('hidden', tab !== 'permissions');
+
+      if (tab === 'roles') renderRoleTab();
+      else renderPermissionsTab();
+    }
+
+    // ── Role tab ─────────────────────────────────────────────────────────────────
+    function renderRoleTab() {
+      const user = allUsers.find(u => u.id === selectedUserId);
+      if (!user) return;
+      const assigned = new Set((user.roles || []).map(r => r.id));
+
+      document.getElementById('tab-roles').innerHTML = `
+        <div class="roles-grid">
+          ${allRoles.map(role => `
+            <div class="role-card${assigned.has(role.id) ? ' assigned' : ''}" data-role-id="${esc(role.id)}">
+              <div class="role-card-header">
+                <div>
+                  <div class="role-card-name">${esc(role.name_zh)}</div>
+                  ${role.is_system ? '<span class="system-badge">系统角色</span>' : ''}
+                </div>
+                <label class="toggle-label" title="${assigned.has(role.id) ? '点击取消角色' : '点击分配角色'}">
+                  <input type="checkbox" class="role-checkbox"
+                    data-role-id="${esc(role.id)}"
+                    ${assigned.has(role.id) ? 'checked' : ''}>
+                  <span class="toggle-track"></span>
+                </label>
+              </div>
+              ${role.description ? `<div class="role-card-desc">${esc(role.description)}</div>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+
+      document.querySelectorAll('.role-checkbox').forEach(cb => {
+        cb.addEventListener('change', async (e) => {
+          const roleId = e.target.dataset.roleId;
+          const toAssign = e.target.checked;
+          e.target.disabled = true;
+          try {
+            await toggleRole(roleId, toAssign);
+          } catch (err) {
+            e.target.checked = !toAssign;         // revert
+            showToast(err.message, 'error');
+          } finally {
+            e.target.disabled = false;
+          }
+        });
+      });
+    }
+
+    async function toggleRole(roleId, assign) {
+      if (assign) {
+        await window.AppUtils.fetchJson(
+          `/api/admin/users/${encodeURIComponent(selectedUserId)}/roles`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ role_id: roleId }) },
+          '分配角色失败'
+        );
+      } else {
+        await window.AppUtils.fetchJson(
+          `/api/admin/users/${encodeURIComponent(selectedUserId)}/roles/${encodeURIComponent(roleId)}`,
+          { method: 'DELETE' },
+          '取消角色失败'
+        );
+      }
+
+      // Update local state
+      const user = allUsers.find(u => u.id === selectedUserId);
+      const role = allRoles.find(r => r.id === roleId);
+      if (user && role) {
+        if (assign) {
+          if (!user.roles.some(r => r.id === roleId)) {
+            user.roles.push({ id: role.id, code: role.code, name_zh: role.name_zh });
+          }
+        } else {
+          user.roles = user.roles.filter(r => r.id !== roleId);
+        }
+      }
+
+      // Sync card state
+      const card = document.querySelector(`.role-card[data-role-id="${esc(roleId)}"]`);
+      if (card) card.classList.toggle('assigned', assign);
+
+      // Sync left panel badges
+      renderUserList();
+      cachedPermissions = null;   // permissions may have changed
+
+      showToast(assign ? '角色已分配' : '角色已取消', 'success');
+    }
+
+    // ── Permissions tab ──────────────────────────────────────────────────────────
+    async function renderPermissionsTab() {
+      const container = document.getElementById('tab-permissions');
+      if (!cachedPermissions) {
+        container.innerHTML = '<p class="loading-text">加载中…</p>';
+        try {
+          cachedPermissions = await window.AppUtils.fetchJson(
+            `/api/admin/users/${encodeURIComponent(selectedUserId)}/permissions`,
+            null,
+            '加载权限明细失败'
+          );
+        } catch (e) {
+          container.innerHTML = `<div class="error-inline">${esc(e.message)}</div>`;
+          return;
+        }
+      }
+
+      if (!cachedPermissions.length) {
+        container.innerHTML = '<p class="empty-inner">该用户暂无任何权限，请先在「角色分配」Tab 分配角色。</p>';
+        return;
+      }
+
+      // Group by resource_group
+      const groups = {};
+      for (const p of cachedPermissions) {
+        const g = p.resource_group || '其他';
+        if (!groups[g]) groups[g] = [];
+        groups[g].push(p);
+      }
+
+      container.innerHTML = `
+        <p class="perm-note">以下权限由用户角色自动继承，如需调整请修改角色分配。</p>
+        ${Object.entries(groups).map(([groupName, perms]) => `
+          <div class="perm-group">
+            <div class="perm-group-header" onclick="togglePermGroup(this)">
+              <span class="perm-group-arrow">▼</span>
+              <span class="perm-group-name">${esc(groupName)}</span>
+              <span class="perm-group-count">${perms.length} 个权限</span>
+            </div>
+            <div class="perm-group-body">
+              <table class="perm-table">
+                <thead>
+                  <tr><th>权限码</th><th>操作</th><th>来源角色</th></tr>
+                </thead>
+                <tbody>
+                  ${perms.map(p => `
+                    <tr>
+                      <td><code>${esc(p.permission_code)}</code></td>
+                      <td>${esc(p.action)}</td>
+                      <td>${(p.granted_by_roles || []).map(r => `<span class="role-badge-sm">${esc(r)}</span>`).join('')}</td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        `).join('')}
+      `;
+    }
+
+    function togglePermGroup(header) {
+      const body = header.nextElementSibling;
+      const arrow = header.querySelector('.perm-group-arrow');
+      const collapsed = body.classList.toggle('collapsed');
+      arrow.textContent = collapsed ? '▶' : '▼';
+    }
+
+    // ── Event bindings ───────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('btn-new-user').addEventListener('click', () =>
+        showToast('新建用户功能即将上线，敬请期待。', 'info')
+      );
+
+      document.getElementById('mobile-user-dropdown').addEventListener('change', (e) => {
+        if (e.target.value) selectUser(e.target.value);
+      });
+
+      document.querySelectorAll('.tab-btn').forEach(btn =>
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab))
+      );
+
+      init();
+    });
+  </script>
+</body>
+</html>

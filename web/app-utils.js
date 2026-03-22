@@ -18,7 +18,19 @@
   },
 
   async fetchJson(url, options, fallbackMessage) {
-    const response = await fetch(url, options);
+    const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const token = isDev
+      ? (localStorage.getItem('app_token') || 'dev-bypass-token')
+      : localStorage.getItem('app_token');
+    const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
+    const mergedOptions = {
+      ...options,
+      headers: {
+        ...authHeaders,
+        ...(options?.headers || {}),
+      },
+    };
+    const response = await fetch(url, mergedOptions);
     let payload;
     try {
       payload = await response.json();
@@ -26,6 +38,11 @@
       throw new Error(fallbackMessage || "服务器响应格式错误，请稍后重试。");
     }
     if (!response.ok) {
+      if (response.status === 401) {
+        localStorage.removeItem('app_token');
+        window.location.href = '/login.html';
+        return;
+      }
       throw new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
     }
     return payload;

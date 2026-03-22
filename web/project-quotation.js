@@ -914,9 +914,12 @@ async function bootstrap() {
           return res.json();
         };
 
+    const _snapToken = localStorage.getItem('app_token');
     const [quote, snapshotRaw] = await Promise.all([
       fetchFn(`/api/quotes/${encodeURIComponent(quoteId)}`),
-      fetch(`/api/terms/snapshot?quote_id=${encodeURIComponent(quoteId)}`)
+      fetch(`/api/terms/snapshot?quote_id=${encodeURIComponent(quoteId)}`, {
+        headers: _snapToken ? { Authorization: `Bearer ${_snapToken}` } : {},
+      })
         .then(r => r.ok ? r.json() : null)
         .catch(() => null),
     ]);
