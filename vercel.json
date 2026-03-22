@@ -1,21 +1,10 @@
 {
   "functions": {
     "api/[[...route]].js": {
-      "includeFiles": "data/**"
+      "includeFiles": "data/**,web/**,server/**"
     }
   },
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/[[...route]]?route=$1"
-    },
-    {
-      "source": "/",
-      "destination": "/web/index.html"
-    },
-    {
-      "source": "/((?!api/).*)",
-      "destination": "/web/$1"
-    }
+    { "source": "/(.*)", "destination": "/api/[[...route]]" }
   ]
 }
