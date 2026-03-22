@@ -65,6 +65,11 @@
         <span>维护项目型报价的录入类型、显示名称与分类出口。</span>
         <span class="nav-card-foot">管理类型 <span aria-hidden="true">→</span></span>
       </a>
+      <a class="nav-card nav-card-entry" href="/admin-permissions.html">
+        <strong>🔐 权限管理</strong>
+        <span>用户与角色配置，分配权限点，管理系统访问控制。</span>
+        <span class="nav-card-foot">进入管理 <span aria-hidden="true">→</span></span>
+      </a>
     </nav>
   </div>
 
@@ -80,7 +85,8 @@
         { href: '/documents.html',  perms: ['document.view'] },
         { href: '/projects.html',   perms: ['standard_quote.view'] },
         { href: '/suppliers.html',  perms: ['supplier.view', 'supplier_catalog.view'], any: true },
-        { href: '/item-types.html', perms: ['project_type.view'] },
+        { href: '/item-types.html',          perms: ['project_type.view'] },
+        { href: '/admin-permissions.html',   perms: ['user.view'] },
       ];
       rules.forEach(function (rule) {
         var el = document.querySelector('a[href="' + rule.href + '"]');
