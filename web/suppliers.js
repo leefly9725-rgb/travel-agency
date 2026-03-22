@@ -54,8 +54,8 @@ function renderSupplierList() {
             <p class="meta">${sup.phone || sup.email || sup.contact || "暂无联系方式"} · ${itemCount} 条物料</p>
           </div>
           <div class="action-row">
-            <button class="mini-button" data-edit-supplier="${sup.id}">编辑</button>
-            <button class="ghost mini-button" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>
+            ${window.can('supplier.edit') ? `<button class="mini-button" data-edit-supplier="${sup.id}">编辑</button>` : ''}
+            ${window.can('supplier.delete') ? `<button class="ghost mini-button" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ''}
           </div>
         </div>
       </article>
@@ -100,8 +100,8 @@ function renderItemList() {
             </div>
             <div class="item-price-actions">
               <span class="item-price">${item.costPrice > 0 ? window.AppUtils.formatCurrency(item.costPrice, "EUR") : "—"}</span>
-              <button class="mini-button" data-edit-item="${item.id}">编辑</button>
-              <button class="ghost mini-button" data-delete-item="${item.id}" data-name="${item.nameZh}">删除</button>
+              ${window.can('supplier.edit') ? `<button class="mini-button" data-edit-item="${item.id}">编辑</button>` : ''}
+              ${window.can('supplier.delete') ? `<button class="ghost mini-button" data-delete-item="${item.id}" data-name="${item.nameZh}">删除</button>` : ''}
             </div>
           </div>
         `).join("")}
@@ -358,4 +358,14 @@ async function bootstrap() {
 
 bootstrap().catch((error) => {
   window.AppUtils.showMessage("supplier-message", error.message, "error");
+});
+
+document.addEventListener('authReady', () => {
+  if (!window.can('supplier.create')) {
+    const btn = document.getElementById('btn-new-supplier');
+    if (btn) btn.style.display = 'none';
+  }
+  // Re-render lists so inline permission checks use correct can() state
+  renderSupplierList();
+  renderItemList();
 });

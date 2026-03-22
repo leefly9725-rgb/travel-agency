@@ -1003,6 +1003,12 @@
 
       init();
     });
+
+    document.addEventListener('authReady', () => {
+      if (!window.can('user.view')) {
+        window.location.href = '/index.html';
+      }
+    });
   </script>
 </body>
 </html>

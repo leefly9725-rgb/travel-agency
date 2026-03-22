@@ -27,8 +27,8 @@ function renderTypeList() {
               <p class="meta">代码：${t.code} · 分组：${t.categoryGroup || "—"} · 排序：${t.sortOrder ?? 0}</p>
             </div>
             <div class="action-row">
-              <button class="mini-button" data-edit-type="${t.id}">编辑</button>
-              ${t.isSystem ? "" : `<button class="ghost mini-button" data-delete-type="${t.id}" data-name="${t.nameZh}">删除</button>`}
+              ${window.can('project_type.manage') ? `<button class="mini-button" data-edit-type="${t.id}">编辑</button>` : ''}
+              ${t.isSystem ? "" : (window.can('project_type.manage') ? `<button class="ghost mini-button" data-delete-type="${t.id}" data-name="${t.nameZh}">删除</button>` : '')}
             </div>
           </div>
         </article>
@@ -125,4 +125,13 @@ async function bootstrap() {
 
 bootstrap().catch((error) => {
   window.AppUtils.showMessage("item-types-message", error.message, "error");
+});
+
+document.addEventListener('authReady', () => {
+  if (!window.can('project_type.manage')) {
+    const btn = document.getElementById('btn-new-type');
+    if (btn) btn.style.display = 'none';
+  }
+  // Re-render so inline permission checks use correct can() state
+  renderTypeList();
 });
