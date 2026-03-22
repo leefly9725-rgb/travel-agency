@@ -3,6 +3,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { loadSeedData, saveSeedData } = require('./dataStore');
 const { getSupabaseConfig } = require('./supabaseConfig');
+const { supabaseRequest } = require('./supabaseClient');
 const {
   addDays,
   calculateInclusiveDays,
