@@ -43,7 +43,9 @@
         window.location.href = '/login.html';
         return;
       }
-      throw new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
+      const err = new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
+      err.status = response.status;
+      throw err;
     }
     return payload;
   },

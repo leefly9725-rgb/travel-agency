@@ -413,6 +413,48 @@
     .toast-error   { background: var(--error-bg); color: var(--error-text); }
     .toast-info    { background: var(--panel); color: var(--ink); border: 1px solid var(--line); }
 
+    /* ── Create-user modal ───────────────────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.4);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000;
+    }
+    .modal-card {
+      background: var(--panel); border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      padding: 28px 28px 24px; width: 420px;
+      max-width: calc(100vw - 32px);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin: 0 0 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 4px; }
+    .modal-field input {
+      width: 100%; padding: 8px 10px; box-sizing: border-box;
+      border: 1.5px solid var(--line); border-radius: 8px;
+      font-size: 13px; background: var(--bg, #f4efe7); color: var(--ink);
+    }
+    .modal-field input:focus { outline: none; border-color: var(--accent); }
+    .modal-roles-label { display: block; font-size: 12px; font-weight: 600; color: var(--muted); margin-bottom: 6px; }
+    .modal-roles-list { display: flex; flex-direction: column; gap: 6px; }
+    .modal-roles-list label { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; font-weight: normal; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 22px; }
+    .modal-btn-cancel {
+      padding: 8px 18px; border-radius: 8px;
+      border: 1.5px solid var(--line); background: transparent;
+      color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .modal-btn-submit {
+      padding: 8px 18px; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .modal-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-error {
+      font-size: 12px; color: var(--error-text); background: var(--error-bg);
+      border-radius: 6px; padding: 6px 10px; margin-top: 10px;
+    }
+
     /* ── Misc ────────────────────────────────────────────────────────────────── */
     .loading-text { color: var(--muted); font-size: 13px; padding: 24px 0; }
     .empty-inner  { color: var(--muted); font-size: 13px; padding: 24px 0; }
@@ -516,6 +558,34 @@
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
+  <!-- 新建用户 modal -->
+  <div class="modal-overlay hidden" id="modal-create-user">
+    <div class="modal-card">
+      <h2 class="modal-title">新建用户</h2>
+      <div class="modal-field">
+        <label for="new-user-name">显示名称 <span style="color:var(--error-text)">*</span></label>
+        <input type="text" id="new-user-name" placeholder="请输入显示名称" autocomplete="off" />
+      </div>
+      <div class="modal-field">
+        <label for="new-user-email">邮箱 <span style="color:var(--error-text)">*</span></label>
+        <input type="email" id="new-user-email" placeholder="请输入登录邮箱" autocomplete="off" />
+      </div>
+      <div class="modal-field">
+        <label for="new-user-password">初始密码 <span style="color:var(--error-text)">*</span>（至少 6 位）</label>
+        <input type="password" id="new-user-password" placeholder="请输入初始密码" autocomplete="new-password" />
+      </div>
+      <div>
+        <span class="modal-roles-label">分配角色（可选）</span>
+        <div class="modal-roles-list" id="modal-roles-list"></div>
+      </div>
+      <div id="modal-error" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" id="modal-cancel">取消</button>
+        <button class="modal-btn-submit" id="modal-submit">确认创建</button>
+      </div>
+    </div>
+  </div>
+
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
   <script>
@@ -567,8 +637,78 @@
         renderUserList();
         renderMobileDropdown();
       } catch (e) {
+        const status = e.status || 0;
+        let msg = '加载失败，请刷新页面';
+        if (status === 403) msg = '您没有访问权限';
+        else if (status === 500) msg = '服务器错误，请稍后重试';
         document.getElementById('user-list').innerHTML =
-          `<p class="error-inline" style="margin:12px">${esc(e.message)}</p>`;
+          `<p class="error-inline" style="margin:12px">${esc(msg)}</p>`;
+      }
+    }
+
+    // ── Create-user modal ────────────────────────────────────────────────────────
+    function openCreateUserModal() {
+      document.getElementById('new-user-name').value = '';
+      document.getElementById('new-user-email').value = '';
+      document.getElementById('new-user-password').value = '';
+      document.getElementById('modal-error').classList.add('hidden');
+      document.getElementById('modal-submit').disabled = false;
+      // 动态渲染角色复选框（从已加载的 allRoles）
+      const list = document.getElementById('modal-roles-list');
+      list.innerHTML = allRoles.length
+        ? allRoles.map(r => `
+            <label>
+              <input type="checkbox" value="${esc(r.id)}" />
+              ${esc(r.name_zh)}${r.description ? ` <span style="color:var(--muted);font-size:12px">— ${esc(r.description)}</span>` : ''}
+            </label>`).join('')
+        : '<span style="color:var(--muted);font-size:13px">暂无可用角色</span>';
+      document.getElementById('modal-create-user').classList.remove('hidden');
+      document.getElementById('new-user-name').focus();
+    }
+
+    function closeCreateUserModal() {
+      document.getElementById('modal-create-user').classList.add('hidden');
+    }
+
+    async function submitCreateUser() {
+      const display_name = document.getElementById('new-user-name').value.trim();
+      const email        = document.getElementById('new-user-email').value.trim();
+      const password     = document.getElementById('new-user-password').value;
+      const role_ids     = [...document.querySelectorAll('#modal-roles-list input:checked')].map(cb => cb.value);
+
+      const errEl = document.getElementById('modal-error');
+      const submitBtn = document.getElementById('modal-submit');
+
+      if (!display_name || !email || !password) {
+        errEl.textContent = '请填写所有必填项';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (password.length < 6) {
+        errEl.textContent = '密码至少 6 位';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      errEl.classList.add('hidden');
+      try {
+        const newUser = await window.AppUtils.fetchJson(
+          '/api/admin/create-user',
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ display_name, email, password, role_ids }) },
+          '创建用户失败，请稍后重试'
+        );
+        closeCreateUserModal();
+        // 刷新用户列表
+        allUsers = await window.AppUtils.fetchJson('/api/admin/users', null, '');
+        renderUserList();
+        renderMobileDropdown();
+        showToast(`用户 ${newUser.display_name} 创建成功`, 'success');
+      } catch (e) {
+        errEl.textContent = e.message || '创建失败，请稍后重试';
+        errEl.classList.remove('hidden');
+        submitBtn.disabled = false;
       }
     }
 
@@ -796,9 +936,12 @@
 
     // ── Event bindings ───────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
-      document.getElementById('btn-new-user').addEventListener('click', () =>
-        showToast('新建用户功能即将上线，敬请期待。', 'info')
-      );
+      document.getElementById('btn-new-user').addEventListener('click', openCreateUserModal);
+      document.getElementById('modal-cancel').addEventListener('click', closeCreateUserModal);
+      document.getElementById('modal-submit').addEventListener('click', submitCreateUser);
+      document.getElementById('modal-create-user').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeCreateUserModal();
+      });
 
       document.getElementById('mobile-user-dropdown').addEventListener('change', (e) => {
         if (e.target.value) selectUser(e.target.value);

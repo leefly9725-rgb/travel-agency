@@ -1519,6 +1519,67 @@ async function handleApi(request, response, url) {
       return true;
     }
 
+    // POST /api/admin/create-user — 创建新用户账号（Auth + profile + roles + audit）
+    if (request.method === "POST" && url.pathname === "/api/admin/create-user") {
+      if (!supabase.hasServiceRoleKey) {
+        sendJson(response, 503, { error: "创建用户需要 service_role key，当前未配置。" });
+        return true;
+      }
+      const { email, password, display_name, role_ids = [] } = parseJsonBody(await readRequestBody(request));
+      if (!email || !password || !display_name) {
+        sendJson(response, 400, { error: "email、password、display_name 为必填项。" });
+        return true;
+      }
+      if (String(password).length < 6) {
+        sendJson(response, 400, { error: "密码至少 6 位。" });
+        return true;
+      }
+      // 1. Supabase Auth Admin API 创建账号
+      const createRes = await fetch(`${supabase.url}/auth/v1/admin/users`, {
+        method: "POST",
+        headers: {
+          apikey: supabase.serviceRoleKey,
+          Authorization: `Bearer ${supabase.serviceRoleKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email, password, email_confirm: true }),
+      });
+      if (!createRes.ok) {
+        const errText = await createRes.text();
+        throw new Error(`Supabase 创建账号失败：${createRes.status} ${errText}`);
+      }
+      const authUser = await createRes.json();
+      const newUserId = authUser.id;
+      // 2. 插入 user_profiles
+      await supabaseRequest(supabase, "user_profiles", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ id: newUserId, display_name, email, is_active: true }),
+      });
+      // 3. 批量插入 user_roles
+      if (Array.isArray(role_ids) && role_ids.length > 0) {
+        await supabaseRequest(supabase, "user_roles", {
+          method: "POST",
+          headers: { Prefer: "resolution=ignore-duplicates,return=minimal" },
+          body: JSON.stringify(role_ids.map((rid) => ({ user_id: newUserId, role_id: rid }))),
+        });
+      }
+      // 4. 审计日志
+      await supabaseRequest(supabase, "audit_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          operator_id: authCtx.userId,
+          action: "create_user",
+          target_type: "user",
+          target_id: newUserId,
+          detail: { email, display_name, role_ids },
+        }),
+      });
+      sendJson(response, 200, { id: newUserId, display_name, email, is_active: true, roles: [] });
+      return true;
+    }
+
     // DELETE /api/admin/users/:userId/roles/:roleId — 取消角色
     const userRoleDeleteMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/roles\/([^/]+)$/);
     if (request.method === "DELETE" && userRoleDeleteMatch) {
