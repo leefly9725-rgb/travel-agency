@@ -1,108 +1,463 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>泷鼎晟国际旅行社运营系统 V1.0</title>
+  <title>飞扬国际旅行社运营系统 V1.0</title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f5f4f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
+
+    /* ── Topbar ── */
+    #fy-topbar {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      height: 56px; background: #1B2A4A;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 20px;
+    }
+    .fy-topbar-left { display: flex; align-items: center; gap: 10px; }
+    .fy-logo-wrap {
+      width: 32px; height: 32px; border-radius: 6px; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .fy-logo-wrap img { height: 32px; width: auto; display: block; }
+    .fy-brand-wrap { display: flex; flex-direction: column; gap: 1px; }
+    .fy-brand-name { color: #fff; font-size: 13px; font-weight: 500; line-height: 1.3; }
+    .fy-brand-sub  { color: #C9A84C; font-size: 10px; line-height: 1.3; }
+    .fy-topbar-right { display: flex; align-items: center; gap: 10px; }
+    .fy-user-avatar {
+      width: 30px; height: 30px; border-radius: 50%;
+      background: #C9A84C; color: #1B2A4A;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 13px; font-weight: 700; flex-shrink: 0; user-select: none;
+    }
+    .fy-user-info { display: flex; flex-direction: column; gap: 1px; }
+    .fy-user-name { color: #fff; font-size: 12px; font-weight: 500; line-height: 1.3; }
+    .fy-user-role { color: #C9A84C; font-size: 10px; line-height: 1.3; }
+    .fy-divider   { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
+    .fy-logout-btn {
+      background: transparent; color: #fff; cursor: pointer;
+      border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+      padding: 5px 11px; font-size: 12px; transition: border-color 0.2s;
+    }
+    .fy-logout-btn:hover { border-color: rgba(255,255,255,0.7); }
+
+    /* ── Hero ── */
+    #fy-hero {
+      background: #1B2A4A; padding: 28px 24px;
+      margin-top: 56px;
+    }
+    .fy-hero-eyebrow { color: #C9A84C; font-size: 11px; letter-spacing: 0.6px; margin-bottom: 6px; }
+    .fy-hero-greeting { color: #fff; font-size: 20px; font-weight: 500; margin-bottom: 20px; min-height: 28px; }
+    .fy-stat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .fy-stat-card {
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(201,168,76,0.25);
+      border-radius: 10px; padding: 14px 16px;
+    }
+    .fy-stat-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 6px; }
+    .fy-stat-value { color: #fff; font-size: 22px; font-weight: 600; line-height: 1; }
+    .fy-stat-value.gold { color: #C9A84C; font-size: 16px; }
+
+    /* ── Workspace ── */
+    #fy-workspace {
+      padding: 24px;
+      display: grid;
+      grid-template-columns: 1fr 360px;
+      gap: 20px;
+      max-width: 1400px;
+      margin: 0 auto;
+      align-items: start;
+    }
+
+    /* ── Panel card ── */
+    .fy-panel {
+      background: #fff;
+      border: 0.5px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .fy-panel:last-child { margin-bottom: 0; }
+    .fy-panel-head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: 14px;
+    }
+    .fy-panel-title { font-size: 14px; font-weight: 600; color: #1B2A4A; }
+    .fy-panel-link  { font-size: 12px; color: #1B2A4A; text-decoration: none; opacity: 0.6; }
+    .fy-panel-link:hover { opacity: 1; text-decoration: underline; }
+    .fy-soon-badge {
+      background: #f3f4f6; color: #9ca3af;
+      font-size: 10px; border-radius: 99px; padding: 2px 8px;
+    }
+
+    /* ── Quote rows ── */
+    .fy-quote-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 9px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;
+    }
+    .fy-quote-row:last-child { border-bottom: none; }
+    .fy-q-name { font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+    .fy-q-meta { font-size: 11px; color: #888; margin-top: 2px; }
+    .fy-q-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
+    .fy-q-amount { font-weight: 600; color: #1B2A4A; font-size: 13px; }
+    .fy-q-date   { font-size: 11px; color: #bbb; margin-top: 2px; }
+    .fy-empty    { font-size: 13px; color: #aaa; padding: 10px 0; }
+
+    /* ── Calendar ── */
+    .fy-cal-month  { font-size: 12px; font-weight: 600; color: #1B2A4A; margin-bottom: 8px; }
+    .fy-cal-grid   { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+    .fy-cal-hdr    { font-size: 10px; color: #aaa; text-align: center; padding: 3px 0; }
+    .fy-cal-cell   { height: 26px; border-radius: 4px; background: #f9fafb; border: 0.5px solid #e5e7eb; }
+    .fy-cal-blank  { height: 26px; }
+
+    /* ── Sparkline ── */
+    .fy-chart-note { font-size: 10px; color: #bbb; margin-top: 6px; }
+
+    /* ── Shortcuts (right panel) ── */
+    .fy-section-label {
+      font-size: 11px; color: #9ca3af; font-weight: 500;
+      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
+    }
+    .fy-shortcut {
+      display: flex; align-items: center; gap: 12px;
+      padding: 11px 14px;
+      background: #fff; border: 0.5px solid #e5e7eb; border-radius: 10px;
+      margin-bottom: 8px; cursor: pointer;
+      transition: box-shadow 0.15s, border-color 0.15s;
+    }
+    .fy-shortcut:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-color: #d1d5db; }
+    .fy-shortcut:last-child { margin-bottom: 0; }
+    .fy-sc-icon {
+      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
+      background: #1B2A4A; display: flex; align-items: center; justify-content: center;
+    }
+    .fy-sc-icon.gold { background: #C9A84C; }
+    .fy-sc-icon svg  { width: 15px; height: 15px; }
+    .fy-sc-body { flex: 1; min-width: 0; }
+    .fy-sc-label { font-size: 13px; font-weight: 500; color: #111; }
+    .fy-sc-desc  { font-size: 11px; color: #888; margin-top: 2px; }
+    .fy-sc-arrow { color: #ccc; font-size: 14px; flex-shrink: 0; }
+
+    @media (max-width: 820px) {
+      .fy-stat-grid  { grid-template-columns: repeat(2, 1fr); }
+      #fy-workspace  { grid-template-columns: 1fr; }
+      .fy-user-info, .fy-divider { display: none; }
+    }
+  </style>
 </head>
 <body style="visibility: hidden">
-  <div class="page-shell home-shell">
-    <header class="hero compact-hero home-hero">
-      <div>
-        <p class="eyebrow">LDS International Travel</p>
-        <h1>泷鼎晟国际旅行社运营系统 V1.0</h1>
-        <p class="hero-copy">面向日常运营场景的轻量工作台，集中处理报价、接待、文档、项目主档和供应商价格信息。</p>
-      </div>
-      <div class="hero-card hero-card-ops">
-        <div id="runtime-info" class="runtime-box"></div>
-        <div id="metrics"></div>
-      </div>
-    </header>
 
-    <section class="home-entry-heading section-spacing-sm">
-      <div>
-        <p class="section-kicker">运营入口</p>
-        <h2 class="section-title-lg">常用模块</h2>
+  <!-- ── Fixed Topbar ──────────────────────────────────────────── -->
+  <nav id="fy-topbar">
+    <div class="fy-topbar-left">
+      <div class="fy-logo-wrap">
+        <img src="/assets/logo.png" alt="飞扬">
       </div>
-      <p class="section-lead">从这里进入日常最常用的工作页。卡片按运营频率排列，便于快速切换。</p>
-    </section>
+      <div class="fy-brand-wrap">
+        <span class="fy-brand-name">飞扬国际旅行社</span>
+        <span class="fy-brand-sub">FEIYANG TRIP · 运营系统 V1.0</span>
+      </div>
+    </div>
+    <div class="fy-topbar-right">
+      <div class="fy-user-avatar" id="fy-avatar">…</div>
+      <div class="fy-user-info">
+        <span class="fy-user-name" id="fy-uname">—</span>
+        <span class="fy-user-role" id="fy-urole">—</span>
+      </div>
+      <div class="fy-divider"></div>
+      <button class="fy-logout-btn" id="fy-logout">退出登录</button>
+    </div>
+  </nav>
 
-    <nav class="nav-grid home-nav-grid section-spacing-sm">
-      <a class="nav-card nav-card-entry" href="/standard-quotes.html">
-        <strong>标准报价</strong>
-        <span>查看标准报价列表，完成新建、编辑与删除。</span>
-        <span class="nav-card-foot">进入模块 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/project-quotes.html">
-        <strong>项目型报价</strong>
-        <span>查看活动、会议、展会等项目型报价列表，完成新建、编辑与删除。</span>
-        <span class="nav-card-foot">进入模块 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/templates.html">
-        <strong>报价模板</strong>
-        <span>维护常用报价项目模板，减少重复录入，支持快速插入。</span>
-        <span class="nav-card-foot">维护模板 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/receptions.html">
-        <strong>接待任务</strong>
-        <span>新建、编辑、筛选与删除接待任务，跟踪负责人和截止时间。</span>
-        <span class="nav-card-foot">查看任务 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/documents.html">
-        <strong>文档源数据</strong>
-        <span>预览报价单、行程单、接送机确认等文档所需源数据。</span>
-        <span class="nav-card-foot">查看预览 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/projects.html">
-        <strong>项目主档中心</strong>
-        <span>查看项目概览、档案信息及其关联报价、任务与文档。</span>
-        <span class="nav-card-foot">进入主档 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/suppliers.html">
-        <strong>供应商价格库</strong>
-        <span>集中管理活动物料成本，支持按类别筛选与最低价查询。</span>
-        <span class="nav-card-foot">查看价格库 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/item-types.html">
-        <strong>项目类型管理</strong>
-        <span>维护项目型报价的录入类型、显示名称与分类出口。</span>
-        <span class="nav-card-foot">管理类型 <span aria-hidden="true">→</span></span>
-      </a>
-      <a class="nav-card nav-card-entry" href="/admin-permissions.html">
-        <strong>🔐 权限管理</strong>
-        <span>用户与角色配置，分配权限点，管理系统访问控制。</span>
-        <span class="nav-card-foot">进入管理 <span aria-hidden="true">→</span></span>
-      </a>
-    </nav>
+  <!-- ── Hero ─────────────────────────────────────────────────── -->
+  <section id="fy-hero">
+    <p class="fy-hero-eyebrow">FEIYANG TRIP · 贝尔格莱德运营中心</p>
+    <p class="fy-hero-greeting" id="fy-greeting">加载中…</p>
+    <div class="fy-stat-grid">
+      <div class="fy-stat-card">
+        <div class="fy-stat-label">标准报价</div>
+        <div class="fy-stat-value" id="stat-std">—</div>
+      </div>
+      <div class="fy-stat-card">
+        <div class="fy-stat-label">项目型报价</div>
+        <div class="fy-stat-value" id="stat-proj">—</div>
+      </div>
+      <div class="fy-stat-card">
+        <div class="fy-stat-label">接待任务</div>
+        <div class="fy-stat-value" id="stat-recep">—</div>
+      </div>
+      <div class="fy-stat-card">
+        <div class="fy-stat-label">累计毛利</div>
+        <div class="fy-stat-value gold" id="stat-profit">—</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Workspace ─────────────────────────────────────────────── -->
+  <div id="fy-workspace">
+
+    <!-- Left: role-based content -->
+    <div id="fy-left">
+
+      <!-- Recent quotes (all roles) -->
+      <div class="fy-panel">
+        <div class="fy-panel-head">
+          <span class="fy-panel-title" id="recent-title">近期报价</span>
+          <a class="fy-panel-link" id="recent-link" href="/standard-quotes.html">查看全部 →</a>
+        </div>
+        <div id="recent-list"><p class="fy-empty">加载中…</p></div>
+      </div>
+
+      <!-- admin / manager extra panels (hidden until authReady) -->
+      <div id="extra-admin" style="display:none">
+
+        <div class="fy-panel">
+          <div class="fy-panel-head">
+            <span class="fy-panel-title">待审批报价单</span>
+            <span class="fy-soon-badge">即将上线</span>
+          </div>
+          <p class="fy-empty">审批功能开发中</p>
+        </div>
+
+        <div class="fy-panel">
+          <div class="fy-panel-head">
+            <span class="fy-panel-title">近期项目执行情况</span>
+            <span class="fy-soon-badge">即将上线</span>
+          </div>
+          <p class="fy-empty">项目状态跟踪开发中</p>
+        </div>
+
+        <div class="fy-panel">
+          <div class="fy-panel-head">
+            <span class="fy-panel-title">展会 / 会议节点日历</span>
+            <span class="fy-soon-badge">即将上线</span>
+          </div>
+          <div id="fy-cal"></div>
+        </div>
+
+        <div class="fy-panel">
+          <div class="fy-panel-head">
+            <span class="fy-panel-title">本月毛利走势</span>
+            <span class="fy-soon-badge">即将上线</span>
+          </div>
+          <svg viewBox="0 0 300 80" width="100%" height="80" xmlns="http://www.w3.org/2000/svg" style="display:block;margin-top:8px">
+            <polyline
+              points="0,65 37,52 75,56 112,40 150,30 187,43 225,22 262,18 300,12"
+              fill="none" stroke="#C9A84C" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+            <polyline
+              points="0,65 37,52 75,56 112,40 150,30 187,43 225,22 262,18 300,12 300,80 0,80"
+              fill="rgba(201,168,76,0.08)" stroke="none"/>
+          </svg>
+          <p class="fy-chart-note">示意数据，仅供参考</p>
+        </div>
+
+      </div>
+
+      <!-- project_quote_specialist extra panel (hidden until authReady) -->
+      <div id="extra-pqs" style="display:none">
+        <div class="fy-panel">
+          <div class="fy-panel-head">
+            <span class="fy-panel-title">商务条款待完善</span>
+            <span class="fy-soon-badge">即将上线</span>
+          </div>
+          <p class="fy-empty">条款完善度追踪开发中</p>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Right: quick shortcuts -->
+    <div id="fy-right">
+      <p class="fy-section-label">快捷入口</p>
+      <div id="fy-shortcuts"><p class="fy-empty">加载中…</p></div>
+    </div>
+
   </div>
 
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
-  <script src="/home.js"></script>
   <script>
-    document.addEventListener('authReady', function () {
-      var rules = [
-        { href: '/standard-quotes.html', perms: ['standard_quote.view'] },
-        { href: '/project-quotes.html',  perms: ['project_quote.view'] },
-        { href: '/templates.html',  perms: ['standard_quote.view'] },
-        { href: '/receptions.html', perms: ['reception.view'] },
-        { href: '/documents.html',  perms: ['document.view'] },
-        { href: '/projects.html',   perms: ['standard_quote.view'] },
-        { href: '/suppliers.html',  perms: ['supplier.view', 'supplier_catalog.view'], any: true },
-        { href: '/item-types.html',          perms: ['project_type.view'] },
-        { href: '/admin-permissions.html',   perms: ['user.view'] },
-      ];
-      rules.forEach(function (rule) {
-        var el = document.querySelector('a[href="' + rule.href + '"]');
-        if (!el) return;
-        var ok = rule.any
-          ? rule.perms.some(function (p) { return window.can(p); })
-          : rule.perms.every(function (p) { return window.can(p); });
-        if (!ok) el.style.display = 'none';
-      });
+    'use strict';
+
+    /* ── Constants ─────────────────────────────────────────────── */
+    const ROLE_LABELS = {
+      admin:                      '系统管理员',
+      manager:                    '经理/主管',
+      standard_quote_specialist:  '标准报价专员',
+      project_quote_specialist:   '项目型报价专员',
+    };
+
+    const MODULES = [
+      { label: '标准报价',   desc: '查看与管理标准报价',      href: '/standard-quotes.html',  perm: 'standard_quote.view', gold: false },
+      { label: '项目型报价', desc: '管理活动/会议/展会报价',   href: '/project-quotes.html',   perm: 'project_quote.view',  gold: false },
+      { label: '接待管理',   desc: '新建与跟踪接待任务',      href: '/receptions.html',        perm: 'reception.view',      gold: false },
+      { label: '文档管理',   desc: '报价单、行程单等文档预览', href: '/documents.html',         perm: 'document.view',       gold: false },
+      { label: '供应商管理', desc: '物料成本与价格库管理',     href: '/suppliers.html',         perm: 'supplier.view',       gold: false },
+      { label: '模板管理',   desc: '维护常用报价项目模板',     href: '/templates.html',         perm: 'standard_quote.view', gold: false },
+      { label: '项目主档',   desc: '项目概览与档案信息',       href: '/projects.html',          perm: 'project_quote.view',  gold: false },
+      { label: '权限管理',   desc: '用户、角色与权限配置',     href: '/admin-permissions.html', perm: 'user.view',           gold: true  },
+    ];
+
+    /* ── Helpers ───────────────────────────────────────────────── */
+    function getGreeting(name) {
+      const h = new Date().getHours();
+      const g = h >= 6 && h < 12  ? '早上好'
+              : h >= 12 && h < 14 ? '中午好'
+              : h >= 14 && h < 18 ? '下午好'
+              :                     '晚上好';
+      return name ? `${g}，${name}` : g;
+    }
+
+    function parseRoles(rolesArr) {
+      if (!Array.isArray(rolesArr)) return [];
+      return rolesArr.map(r => (typeof r === 'string' ? r : (r.id || r.name || '')));
+    }
+
+    function buildCalendar() {
+      const now = new Date();
+      const y = now.getFullYear(), mo = now.getMonth();
+      const firstDow = new Date(y, mo, 1).getDay();
+      const daysInMonth = new Date(y, mo + 1, 0).getDate();
+      const MON = ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'];
+      const DOW = ['日','一','二','三','四','五','六'];
+      const hdrs = DOW.map(d => `<div class="fy-cal-hdr">${d}</div>`).join('');
+      const blanks = Array(firstDow).fill('<div class="fy-cal-blank"></div>').join('');
+      const cells  = Array.from({length: daysInMonth}, () => '<div class="fy-cal-cell"></div>').join('');
+      return `<div class="fy-cal-month">${y}年${MON[mo]}</div>
+              <div class="fy-cal-grid">${hdrs}${blanks}${cells}</div>`;
+    }
+
+    /* ── Render shortcuts ──────────────────────────────────────── */
+    function renderShortcuts() {
+      const ICON_SVG = `<svg viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
+        <path d="M8 1.5L1 7h2v6.5h4V10h2v3.5h4V7h2L8 1.5z"/>
+      </svg>`;
+      const html = MODULES
+        .filter(m => window.can(m.perm))
+        .map(m => `
+          <div class="fy-shortcut" onclick="window.open('${m.href}','_blank')">
+            <div class="fy-sc-icon${m.gold ? ' gold' : ''}">${ICON_SVG}</div>
+            <div class="fy-sc-body">
+              <div class="fy-sc-label">${m.label}</div>
+              <div class="fy-sc-desc">${m.desc}</div>
+            </div>
+            <span class="fy-sc-arrow">→</span>
+          </div>`)
+        .join('');
+      document.getElementById('fy-shortcuts').innerHTML = html || '<p class="fy-empty">暂无可用模块</p>';
+    }
+
+    /* ── Render recent quote list ──────────────────────────────── */
+    function renderRecentList(quotes, isProject) {
+      const el = document.getElementById('recent-list');
+      if (!quotes || quotes.length === 0) {
+        el.innerHTML = '<p class="fy-empty">暂无数据</p>';
+        return;
+      }
+      el.innerHTML = quotes.slice(0, 5).map(q => {
+        const name   = q.projectName || '未命名';
+        const client = q.clientName  || '未填写客户';
+        const amount = isProject
+          ? window.AppUtils.formatCurrency(
+              q.totalSales != null
+                ? q.totalSales
+                : (q.projectGroups || []).reduce((s, g) => s + (g.projectSalesTotal || 0), 0),
+              q.currency || 'EUR')
+          : window.AppUtils.formatCurrency(q.totalPrice || 0, q.currency || 'EUR');
+        const date = (q.updatedAt || q.createdAt || '').slice(0, 10) || '—';
+        return `
+          <div class="fy-quote-row">
+            <div>
+              <div class="fy-q-name" title="${name}">${name}</div>
+              <div class="fy-q-meta">${client}</div>
+            </div>
+            <div class="fy-q-right">
+              <div class="fy-q-amount">${amount}</div>
+              <div class="fy-q-date">${date}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    /* ── Logout ────────────────────────────────────────────────── */
+    document.getElementById('fy-logout').addEventListener('click', function () {
+      localStorage.removeItem('app_token');
+      window.location.href = '/login.html';
     });
+
+    /* ── Auth ready: inject user info & permissions ────────────── */
+    document.addEventListener('authReady', function () {
+      const user  = window.__CURRENT_USER__ || {};
+      const name  = user.display_name || user.name || '用户';
+      const roles = parseRoles(user.roles);
+      const primaryRole = roles[0] || '';
+
+      // Topbar user info
+      document.getElementById('fy-avatar').textContent = name.charAt(0) || '?';
+      document.getElementById('fy-uname').textContent  = name;
+      document.getElementById('fy-urole').textContent  = ROLE_LABELS[primaryRole] || primaryRole || '—';
+
+      // Greeting
+      document.getElementById('fy-greeting').textContent = getGreeting(name);
+
+      // Shortcut entries (filtered by can())
+      renderShortcuts();
+
+      // Role-specific panels
+      const isAdminOrManager = roles.includes('admin') || roles.includes('manager');
+      const isPQS = roles.includes('project_quote_specialist') && !isAdminOrManager;
+
+      if (isAdminOrManager) {
+        document.getElementById('extra-admin').style.display = '';
+        document.getElementById('fy-cal').innerHTML = buildCalendar();
+      }
+
+      if (isPQS) {
+        document.getElementById('extra-pqs').style.display = '';
+        document.getElementById('recent-title').textContent = '我的项目型报价';
+        document.getElementById('recent-link').href = '/project-quotes.html';
+      } else if (primaryRole === 'standard_quote_specialist') {
+        document.getElementById('recent-title').textContent = '我的标准报价';
+      }
+    });
+
+    /* ── Data loading ──────────────────────────────────────────── */
+    (async function loadData() {
+      const safe = fn => fn().catch(() => null);
+      const [allQuotes, dashboard] = await Promise.all([
+        safe(() => window.AppUtils.fetchJson('/api/quotes', null, '')),
+        safe(() => window.AppUtils.fetchJson('/api/dashboard', null, '')),
+      ]);
+
+      const quotes   = Array.isArray(allQuotes) ? allQuotes : [];
+      const stdQ     = quotes.filter(q => (q.pricingMode || 'standard') !== 'project_based');
+      const projQ    = quotes.filter(q => q.pricingMode === 'project_based');
+
+      document.getElementById('stat-std').textContent    = stdQ.length;
+      document.getElementById('stat-proj').textContent   = projQ.length;
+      document.getElementById('stat-recep').textContent  = dashboard?.metrics?.receptionTaskCount ?? '—';
+      document.getElementById('stat-profit').textContent = dashboard
+        ? window.AppUtils.formatCurrency(dashboard.metrics?.totalGrossProfit || 0, 'EUR')
+        : '—';
+
+      // Sort by updatedAt desc
+      const sorted = arr => [...arr].sort((a, b) =>
+        (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
+
+      // Determine role at render time (authReady likely already fired)
+      const roles = parseRoles((window.__CURRENT_USER__ || {}).roles);
+      const isPQS = roles.includes('project_quote_specialist')
+                 && !roles.includes('admin') && !roles.includes('manager');
+
+      if (isPQS) {
+        renderRecentList(sorted(projQ), true);
+      } else {
+        renderRecentList(sorted(stdQ), false);
+      }
+    })();
   </script>
 </body>
 </html>
