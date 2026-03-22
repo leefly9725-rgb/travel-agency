@@ -30,8 +30,9 @@ const PUBLIC_HTML = new Set([
 ]);
 
 // 静态资源后缀（无需登录）
+// .html 也在此列：HTML 页面由前端 auth-guard.js 负责鉴权跳转，服务端不拦截
 const STATIC_EXTS = new Set([
-  '.js', '.css', '.png', '.jpg', '.jpeg', '.svg',
+  '.html', '.js', '.css', '.png', '.jpg', '.jpeg', '.svg',
   '.ico', '.woff', '.woff2', '.ttf', '.gif', '.webp',
 ]);
 
