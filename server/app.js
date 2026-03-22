@@ -28,7 +28,7 @@ const { createProjectQuoteStore } = require("./services/projectQuoteStore");
 const { getTermsSnapshot, saveTermsSnapshot } = require("./services/termsStore");
 const { validateSnapshot, applyTranslationResult, renderValidityBlock, renderPaymentBlock } = require("./services/termsService");
 const { translateContent } = require("./services/claudeTranslateService");
-const { resolveAuthContext, requireRoutePermission, filterSupplierCatalogFields } = require("./services/authMiddleware");
+const { resolveAuthContext, requirePermission, requireRoutePermission, filterSupplierCatalogFields } = require("./services/authMiddleware");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
