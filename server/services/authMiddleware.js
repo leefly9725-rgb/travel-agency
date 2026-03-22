@@ -12,14 +12,39 @@
 const { supabaseRequest } = require('../supabaseClient');
 
 // ─── 免验证白名单 ──────────────────────────────────────────────
-// 这些接口不需要登录，直接放行
+// 注意：/api/auth/me 不在白名单，需要有效 token 才可访问
+
+// 精确匹配的公开 API 路径
 const PUBLIC_PATHS = new Set([
   '/api/health',
   '/api/auth/login',
   '/api/auth/logout',
-  '/api/admin/bootstrap-status',  // 公开：登录页用于检查系统是否已初始化
-  // 注意：/api/auth/me 不在白名单，需要有效 token 才可访问
+  '/api/auth/refresh',
+  '/api/admin/bootstrap-status',
 ]);
+
+// 公开 HTML 页面（无需登录）
+const PUBLIC_HTML = new Set([
+  '/login.html',
+  '/error.html',
+]);
+
+// 静态资源后缀（无需登录）
+const STATIC_EXTS = new Set([
+  '.js', '.css', '.png', '.jpg', '.jpeg', '.svg',
+  '.ico', '.woff', '.woff2', '.ttf', '.gif', '.webp',
+]);
+
+/**
+ * 判断路径是否为公开路径（无需鉴权）
+ */
+function isPublicPath(pathname) {
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  if (PUBLIC_HTML.has(pathname)) return true;
+  const dot = pathname.lastIndexOf('.');
+  if (dot !== -1 && STATIC_EXTS.has(pathname.slice(dot).toLowerCase())) return true;
+  return false;
+}
 
 // ─── 资源路径 → 权限点映射表 ──────────────────────────────────
 // 格式：[method, pathname_pattern, permission_code]
@@ -172,7 +197,7 @@ async function resolveAuthContext(request, supabaseConfig) {
   })();
 
   // 白名单路径不需要鉴权
-  if (PUBLIC_PATHS.has(pathname)) {
+  if (isPublicPath(pathname)) {
     return { userId: null, user: null, permissions: new Set(), isPublicPath: true };
   }
 
