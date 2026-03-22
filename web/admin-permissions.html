@@ -597,6 +597,55 @@
     let selectedUserId = null;
     let cachedPermissions = null;   // reset on user switch
 
+    // ── Permission display labels ─────────────────────────────────────────────
+    const ACTION_LABELS = {
+      view:    '查看',
+      create:  '新建',
+      edit:    '编辑',
+      delete:  '删除',
+      export:  '导出',
+      import:  '导入',
+      manage:  '管理',
+      approve: '审批',
+    };
+
+    const PERMISSION_LABELS = {
+      'standard_quote.view':        '标准报价 · 查看',
+      'standard_quote.create':      '标准报价 · 新建',
+      'standard_quote.edit':        '标准报价 · 编辑',
+      'standard_quote.delete':      '标准报价 · 删除',
+      'project_quote.view':         '项目型报价 · 查看',
+      'project_quote.create':       '项目型报价 · 新建',
+      'project_quote.edit':         '项目型报价 · 编辑',
+      'project_quote.delete':       '项目型报价 · 删除',
+      'project_quote_terms.edit':   '项目型报价 · 条款编辑',
+      'reception.view':             '接待任务 · 查看',
+      'reception.create':           '接待任务 · 新建',
+      'reception.edit':             '接待任务 · 编辑',
+      'reception.delete':           '接待任务 · 删除',
+      'document.view':              '文档源数据 · 查看',
+      'supplier.view':              '供应商 · 查看',
+      'supplier.create':            '供应商 · 新建',
+      'supplier.edit':              '供应商 · 编辑',
+      'supplier.delete':            '供应商 · 删除',
+      'supplier_catalog.view':      '价格库 · 查看',
+      'supplier_catalog.create':    '价格库 · 新建',
+      'supplier_catalog.edit':      '价格库 · 编辑',
+      'supplier_catalog.delete':    '价格库 · 删除',
+      'project_type.view':          '项目类型 · 查看',
+      'project_type.create':        '项目类型 · 新建',
+      'project_type.edit':          '项目类型 · 编辑',
+      'project_type.delete':        '项目类型 · 删除',
+      'user.view':                  '用户管理 · 查看',
+      'user.create':                '用户管理 · 新建',
+      'user.edit':                  '用户管理 · 编辑',
+      'user.delete':                '用户管理 · 删除',
+      'role.view':                  '角色管理 · 查看',
+      'role.create':                '角色管理 · 新建',
+      'role.edit':                  '角色管理 · 编辑',
+      'role.delete':                '角色管理 · 删除',
+    };
+
     // ── Utilities ────────────────────────────────────────────────────────────────
     function esc(str) {
       return String(str == null ? '' : str)
@@ -656,10 +705,11 @@
       // 动态渲染角色复选框（从已加载的 allRoles）
       const list = document.getElementById('modal-roles-list');
       list.innerHTML = allRoles.length
-        ? allRoles.map(r => `
-            <label>
-              <input type="checkbox" value="${esc(r.id)}" />
-              ${esc(r.name_zh)}${r.description ? ` <span style="color:var(--muted);font-size:12px">— ${esc(r.description)}</span>` : ''}
+        ? allRoles.map((r, i) => `
+            <label style="display:flex;align-items:center;gap:12px;padding:8px 0;cursor:pointer;${i < allRoles.length - 1 ? 'border-bottom:1px solid #f0f0f0;' : ''}">
+              <input type="checkbox" value="${esc(r.id)}" style="width:18px;height:18px;flex-shrink:0;cursor:pointer;">
+              <span style="font-weight:600;font-size:14px;min-width:90px;">${esc(r.name_zh)}</span>
+              <span style="font-size:12px;color:#888;flex:1;">${esc(r.description || '')}</span>
             </label>`).join('')
         : '<span style="color:var(--muted);font-size:13px">暂无可用角色</span>';
       document.getElementById('modal-create-user').classList.remove('hidden');
@@ -909,13 +959,13 @@
             <div class="perm-group-body">
               <table class="perm-table">
                 <thead>
-                  <tr><th>权限码</th><th>操作</th><th>来源角色</th></tr>
+                  <tr><th>权限项目</th><th>操作类型</th><th>来源角色</th></tr>
                 </thead>
                 <tbody>
                   ${perms.map(p => `
                     <tr>
-                      <td><code>${esc(p.permission_code)}</code></td>
-                      <td>${esc(p.action)}</td>
+                      <td>${esc(PERMISSION_LABELS[p.permission_code] ?? p.permission_code)}</td>
+                      <td>${esc(ACTION_LABELS[p.action] ?? p.action)}</td>
                       <td>${(p.granted_by_roles || []).map(r => `<span class="role-badge-sm">${esc(r)}</span>`).join('')}</td>
                     </tr>
                   `).join('')}
