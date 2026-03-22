@@ -1145,7 +1145,8 @@ async function handleApi(request, response, url) {
   // ── Supplier Items ─────────────────────────────────────────────────────────
 
   if (request.method === "GET" && url.pathname === "/api/supplier-items/best-price") {
-    const { items } = await supplierStore.getBestPriceItems();
+    const { items: rawBestItems } = await supplierStore.getBestPriceItems();
+    const items = filterSupplierCatalogFields(authCtx, rawBestItems);
     sendJson(response, 200, items);
     return true;
   }
