@@ -9,7 +9,7 @@
  *   requirePermission(ctx, 'project_quote.edit');   // 不满足则直接抛出
  */
 
-const { supabaseRequest } = require('./supabaseClient');
+const { supabaseRequest } = require('../supabaseClient');
 
 // ─── 免验证白名单 ──────────────────────────────────────────────
 // 这些接口不需要登录，直接放行
