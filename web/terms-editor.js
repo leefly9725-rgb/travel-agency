@@ -428,6 +428,8 @@ function renderBlockEditor() {
   if (block.type === 'rich_text') attachRichTextEvents(block);
   else if (block.key === 'validity') attachValidityEvents(block);
   else if (block.key === 'payment') attachPaymentEvents(block);
+
+  applyTermsViewMode();
 }
 
 // ── Rich Text ──────────────────────────────────────────────────────────────────
@@ -911,3 +913,44 @@ function renderAccordion() {
     });
   });
 }
+
+// ── 权限控制：只读模式 ─────────────────────────────────────────────────────────
+var _termsEditAllowed = true; // authReady 后由 window.can() 更新
+
+function applyTermsViewMode() {
+  if (_termsEditAllowed) return;
+
+  // 隐藏保存按钮
+  var saveBtn = document.getElementById('btn-save');
+  if (saveBtn) saveBtn.style.display = 'none';
+
+  // 隐藏翻译按钮
+  document.querySelectorAll('.te-btn-translate-all, .te-btn-translate, .te-retranslate-btn').forEach(function (b) {
+    b.style.display = 'none';
+  });
+
+  // 文本输入框设为只读
+  document.querySelectorAll('input[type="text"], input[type="number"], input[type="date"], textarea').forEach(function (el) {
+    el.setAttribute('readonly', '');
+  });
+
+  // 选择控件设为禁用
+  document.querySelectorAll('input[type="checkbox"], input[type="radio"], input[type="range"]').forEach(function (el) {
+    el.disabled = true;
+  });
+
+  // 顶部只读提示（幂等：已存在则跳过）
+  if (!document.getElementById('te-readonly-notice')) {
+    var notice = document.createElement('div');
+    notice.id = 'te-readonly-notice';
+    notice.style.cssText = 'padding:10px 16px;background:#fff3cd;color:#856404;font-size:13px;border-bottom:1px solid #ffc107;';
+    notice.textContent = '您当前没有编辑权限，仅供查看。';
+    var msgBox = document.getElementById('msg-box');
+    if (msgBox && msgBox.parentNode) msgBox.parentNode.insertBefore(notice, msgBox);
+  }
+}
+
+document.addEventListener('authReady', function () {
+  _termsEditAllowed = window.can('project_quote_terms.edit');
+  applyTermsViewMode();
+});

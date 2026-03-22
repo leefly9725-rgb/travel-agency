@@ -71,5 +71,26 @@
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
   <script src="/home.js"></script>
+  <script>
+    document.addEventListener('authReady', function () {
+      var rules = [
+        { href: '/quotes.html',     perms: ['standard_quote.view', 'project_quote.view'], any: true },
+        { href: '/templates.html',  perms: ['standard_quote.view'] },
+        { href: '/receptions.html', perms: ['reception.view'] },
+        { href: '/documents.html',  perms: ['document.view'] },
+        { href: '/projects.html',   perms: ['standard_quote.view'] },
+        { href: '/suppliers.html',  perms: ['supplier.view', 'supplier_catalog.view'], any: true },
+        { href: '/item-types.html', perms: ['project_type.view'] },
+      ];
+      rules.forEach(function (rule) {
+        var el = document.querySelector('a[href="' + rule.href + '"]');
+        if (!el) return;
+        var ok = rule.any
+          ? rule.perms.some(function (p) { return window.can(p); })
+          : rule.perms.every(function (p) { return window.can(p); });
+        if (!ok) el.style.display = 'none';
+      });
+    });
+  </script>
 </body>
 </html>

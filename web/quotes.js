@@ -86,8 +86,8 @@ function renderProjectQuotes(quotes) {
             <p class="quote-card-hint">按项目组汇总的活动 / 会展 / 综合服务报价，可直接进入编辑页继续维护。</p>
           </div>
           <div class="action-row quote-card-actions">
-            <a class="button-link small-link action-link-primary" href="${cardHref}">编辑</a>
-            <button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>
+            ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-primary" href="${cardHref}">编辑</a>` : ''}
+            ${window.can('project_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>` : ''}
           </div>
         </div>
         <div class="detail-grid quote-card-metrics">
@@ -130,9 +130,9 @@ function renderQuotes(quotes) {
             <p class="meta quote-card-meta">${esc(quote.quoteNumber || "无编号")} · ${esc(quote.clientName || "未填写客户")}</p>
           </div>
           <div class="action-row quote-card-actions">
-            <a class="button-link small-link action-link-primary" href="/quote-new.html?id=${encodeURIComponent(quote.id)}">编辑</a>
+            ${window.can('standard_quote.edit') ? `<a class="button-link small-link action-link-primary" href="/quote-new.html?id=${encodeURIComponent(quote.id)}">编辑</a>` : ''}
             <a class="button-link small-link action-link-secondary" href="${cardHref}">查看详情</a>
-            <button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${esc(quote.projectName || '该报价')}">删除</button>
+            ${window.can('standard_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${esc(quote.projectName || '该报价')}">删除</button>` : ''}
           </div>
         </div>
         <div class="detail-grid quote-card-metrics">
@@ -206,3 +206,14 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+document.addEventListener('authReady', function () {
+  // 顶部「新建」按钮可见性
+  var newStd  = document.querySelector('a[href="/quote-new.html"]');
+  var newProj = document.querySelector('a[href="/quote-new.html?mode=project_based"]');
+  if (newStd  && !window.can('standard_quote.create')) newStd.style.display  = 'none';
+  if (newProj && !window.can('project_quote.create'))  newProj.style.display = 'none';
+
+  // 权限就绪后重渲染卡片（body 变可见前），确保编辑/删除按钮状态正确
+  if (cachedQuotes.length > 0) splitAndRender(cachedQuotes);
+});
