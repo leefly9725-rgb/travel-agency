@@ -784,61 +784,70 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    // 查用户基本信息
-    const profiles = await supabaseRequest(
-      supabase,
-      `user_profiles?id=eq.${encodeURIComponent(userId)}&select=display_name,email,is_active`,
-      { method: "GET" }
-    );
-    const profile = profiles?.[0];
-    if (profile && !profile.is_active) {
-      sendJson(response, 403, { error: "账号已被停用。" });
-      return true;
-    }
+    try {
+      // 查用户基本信息
+      const profiles = await supabaseRequest(
+        supabase,
+        `user_profiles?id=eq.${encodeURIComponent(userId)}&select=display_name,email,is_active`,
+        { method: "GET" }
+      );
+      const profile = profiles?.[0];
+      if (profile && !profile.is_active) {
+        sendJson(response, 403, { error: "账号已被停用。" });
+        return true;
+      }
 
-    // 查角色 code 列表
-    const urRows = await supabaseRequest(
-      supabase,
-      `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(code)`,
-      { method: "GET" }
-    );
-    const roleCodes = (urRows || []).map((ur) => ur.roles?.code).filter(Boolean);
+      // 查角色 code 列表
+      const urRows = await supabaseRequest(
+        supabase,
+        `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(code)`,
+        { method: "GET" }
+      );
+      const roleCodes = (urRows || []).map((ur) => ur.roles?.code).filter(Boolean);
 
-    // admin 角色直接返回通配权限
-    if (roleCodes.includes("admin")) {
+      // admin 角色直接返回通配权限
+      if (roleCodes.includes("admin")) {
+        sendJson(response, 200, {
+          userId,
+          display_name: profile?.display_name || "",
+          email: profile?.email || "",
+          is_active: profile?.is_active ?? true,
+          roles: roleCodes,
+          permissions: ["*"],
+        });
+        return true;
+      }
+
+      // 普通角色：查所有权限 code（去重）
+      const permRows = await supabaseRequest(
+        supabase,
+        `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(role_permissions(permissions(code)))`,
+        { method: "GET" }
+      );
+      const permSet = new Set();
+      for (const ur of (permRows || [])) {
+        for (const rp of (ur.roles?.role_permissions || [])) {
+          const code = rp.permissions?.code;
+          if (code) permSet.add(code);
+        }
+      }
+
       sendJson(response, 200, {
         userId,
         display_name: profile?.display_name || "",
         email: profile?.email || "",
         is_active: profile?.is_active ?? true,
         roles: roleCodes,
-        permissions: ["*"],
+        permissions: [...permSet],
       });
-      return true;
+    } catch (err) {
+      console.error('[api/auth/me] error:', {
+        message: err.message,
+        statusCode: err.statusCode,
+        stack: err.stack?.split('\n').slice(0, 5).join('\n'),
+      });
+      throw err;
     }
-
-    // 普通角色：查所有权限 code（去重）
-    const permRows = await supabaseRequest(
-      supabase,
-      `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(role_permissions(permissions(code)))`,
-      { method: "GET" }
-    );
-    const permSet = new Set();
-    for (const ur of (permRows || [])) {
-      for (const rp of (ur.roles?.role_permissions || [])) {
-        const code = rp.permissions?.code;
-        if (code) permSet.add(code);
-      }
-    }
-
-    sendJson(response, 200, {
-      userId,
-      display_name: profile?.display_name || "",
-      email: profile?.email || "",
-      is_active: profile?.is_active ?? true,
-      roles: roleCodes,
-      permissions: [...permSet],
-    });
     return true;
   }
 
