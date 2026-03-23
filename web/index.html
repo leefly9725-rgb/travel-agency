@@ -56,9 +56,10 @@
       border: 1px solid rgba(201,168,76,0.25);
       border-radius: 10px; padding: 14px 16px;
     }
-    .fy-stat-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 6px; }
-    .fy-stat-value { color: #fff; font-size: 22px; font-weight: 600; line-height: 1; }
-    .fy-stat-value.gold { color: #C9A84C; font-size: 16px; }
+    .fy-stat-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 4px; }
+    .fy-stat-icon  { font-size: 18px; margin-bottom: 4px; line-height: 1; }
+    .fy-stat-value { color: #fff; font-size: 26px; font-weight: 700; line-height: 1; }
+    .fy-stat-value.loading { font-size: 16px; opacity: 0.5; }
 
     /* ── Workspace ── */
     #fy-workspace {
@@ -104,6 +105,27 @@
     .fy-q-amount { font-weight: 600; color: #1B2A4A; font-size: 13px; }
     .fy-q-date   { font-size: 11px; color: #bbb; margin-top: 2px; }
     .fy-empty    { font-size: 13px; color: #aaa; padding: 10px 0; }
+
+    /* ── Dashboard action button ── */
+    .fy-q-btn {
+      flex-shrink: 0; margin-left: 10px;
+      padding: 4px 10px; border-radius: 6px; border: 1px solid #1B2A4A;
+      background: transparent; color: #1B2A4A; font-size: 11px; font-weight: 600;
+      cursor: pointer; white-space: nowrap; transition: background 0.15s;
+      text-decoration: none; display: inline-block;
+    }
+    .fy-q-btn:hover { background: #1B2A4A; color: #fff; }
+    .fy-q-btn.gold { border-color: #C9A84C; color: #C9A84C; }
+    .fy-q-btn.gold:hover { background: #C9A84C; color: #fff; }
+
+    /* ── exec status badge (inline in dashboard) ── */
+    .fy-exec-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 1px 6px; border-radius: 10px; white-space: nowrap; border: 1px solid;
+    }
+    .fy-exec-badge.e-preparing { background: rgba(2,119,189,0.08); border-color: rgba(2,119,189,0.2); color: #0277bd; }
+    .fy-exec-badge.e-executing { background: rgba(123,31,162,0.08); border-color: rgba(123,31,162,0.2); color: #7b1fa2; }
+    .fy-exec-badge.e-completed { background: rgba(36,97,59,0.08); border-color: rgba(36,97,59,0.2); color: #24613b; }
 
     /* ── Shortcuts (right panel) ── */
     .fy-section-label {
@@ -167,20 +189,24 @@
     <p class="fy-hero-greeting" id="fy-greeting">加载中…</p>
     <div class="fy-stat-grid">
       <div class="fy-stat-card">
-        <div class="fy-stat-label">标准报价</div>
-        <div class="fy-stat-value" id="stat-std">—</div>
+        <div class="fy-stat-icon">📋</div>
+        <div class="fy-stat-label">全部报价单</div>
+        <div class="fy-stat-value loading" id="stat-total">…</div>
       </div>
       <div class="fy-stat-card">
-        <div class="fy-stat-label">项目型报价</div>
-        <div class="fy-stat-value" id="stat-proj">—</div>
+        <div class="fy-stat-icon">⏳</div>
+        <div class="fy-stat-label">待审批</div>
+        <div class="fy-stat-value loading" id="stat-pending">…</div>
       </div>
       <div class="fy-stat-card">
-        <div class="fy-stat-label">接待任务</div>
-        <div class="fy-stat-value" id="stat-recep">—</div>
+        <div class="fy-stat-icon">🗓️</div>
+        <div class="fy-stat-label">本月新增</div>
+        <div class="fy-stat-value loading" id="stat-month">…</div>
       </div>
       <div class="fy-stat-card">
-        <div class="fy-stat-label">累计毛利</div>
-        <div class="fy-stat-value gold" id="stat-profit">—</div>
+        <div class="fy-stat-icon">🚀</div>
+        <div class="fy-stat-label">执行中项目</div>
+        <div class="fy-stat-value loading" id="stat-executing">…</div>
       </div>
     </div>
   </section>
@@ -188,27 +214,34 @@
   <!-- ── Workspace ─────────────────────────────────────────────── -->
   <div id="fy-workspace">
 
-    <!-- Left: role-based content -->
+    <!-- Left: dashboard panels -->
     <div id="fy-left">
 
-      <!-- Recent quotes (all roles) -->
-      <div class="fy-panel">
+      <!-- 待我审批（仅 manager/admin 可见，authReady 前隐藏） -->
+      <div class="fy-panel" id="panel-approvals" style="display:none">
         <div class="fy-panel-head">
-          <span class="fy-panel-title" id="recent-title">近期报价</span>
-          <a class="fy-panel-link" id="recent-link" href="/standard-quotes.html">查看全部 →</a>
+          <span class="fy-panel-title">⏳ 待我审批</span>
+          <a class="fy-panel-link" href="/standard-quotes.html?filter=pending">查看全部 →</a>
         </div>
-        <div id="recent-list"><p class="fy-empty">加载中…</p></div>
+        <div id="approvals-list"><p class="fy-empty">加载中…</p></div>
       </div>
 
-      <!-- project_quote_specialist extra panel (hidden until authReady) -->
-      <div id="extra-pqs" style="display:none">
-        <div class="fy-panel">
-          <div class="fy-panel-head">
-            <span class="fy-panel-title">商务条款待完善</span>
-            <span class="fy-soon-badge">即将上线</span>
-          </div>
-          <p class="fy-empty">条款完善度追踪开发中</p>
+      <!-- 我的草稿 -->
+      <div class="fy-panel">
+        <div class="fy-panel-head">
+          <span class="fy-panel-title">📝 我的草稿</span>
+          <a class="fy-panel-link" href="/standard-quotes.html">查看全部 →</a>
         </div>
+        <div id="drafts-list"><p class="fy-empty">加载中…</p></div>
+      </div>
+
+      <!-- 最近审批通过 -->
+      <div class="fy-panel">
+        <div class="fy-panel-head">
+          <span class="fy-panel-title">✅ 最近审批通过</span>
+          <a class="fy-panel-link" href="/standard-quotes.html">查看全部 →</a>
+        </div>
+        <div id="approved-list"><p class="fy-empty">加载中…</p></div>
       </div>
 
     </div>
@@ -234,6 +267,9 @@
       project_quote_specialist:   '项目型报价专员',
     };
 
+    const EXEC_LABEL = { preparing: '筹备中', executing: '执行中', completed: '已完成' };
+    const EXEC_CLS   = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
+
     const MODULES = [
       { key: 'standard-quotes',   label: '标准报价',   desc: '查看与管理标准报价',      href: '/standard-quotes.html',  perm: 'standard_quote.view', gold: false },
       { key: 'project-quotes',    label: '项目型报价', desc: '管理活动/会议/展会报价',   href: '/project-quotes.html',   perm: 'project_quote.view',  gold: false },
@@ -246,6 +282,11 @@
     ];
 
     /* ── Helpers ───────────────────────────────────────────────── */
+    function esc(s) {
+      return String(s == null ? '' : s)
+        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
     function getGreeting(name) {
       const h = new Date().getHours();
       const g = h >= 6 && h < 12  ? '早上好'
@@ -257,59 +298,125 @@
 
     function parseRoles(rolesArr) {
       if (!Array.isArray(rolesArr)) return [];
-      return rolesArr.map(r => (typeof r === 'string' ? r : (r.id || r.name || '')));
+      return rolesArr.map(r => (typeof r === 'string' ? r : (r.code || r.id || r.name || '')));
     }
 
-    /* ── Render shortcuts ──────────────────────────────────────── */
+    // "2024-03-21T08:30:00Z" → "03-21 08:30"
+    function fmtDatetime(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      if (isNaN(d)) return '—';
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mi = String(d.getMinutes()).padStart(2, '0');
+      return `${mm}-${dd} ${hh}:${mi}`;
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '—';
+      return String(iso).slice(0, 10) || '—';
+    }
+
+    /* ── KPI cards ─────────────────────────────────────────────── */
+    function renderKpi(kpi) {
+      const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = val;
+        el.classList.remove('loading');
+      };
+      set('stat-total',     kpi.total     ?? '—');
+      set('stat-pending',   kpi.pending   ?? '—');
+      set('stat-month',     kpi.monthNew  ?? '—');
+      set('stat-executing', kpi.executing ?? '—');
+    }
+
+    /* ── 待我审批 ──────────────────────────────────────────────── */
+    function renderApprovalList(list) {
+      const el = document.getElementById('approvals-list');
+      if (!list || list.length === 0) {
+        el.innerHTML = '<p class="fy-empty">暂无待审批报价单</p>';
+        return;
+      }
+      el.innerHTML = list.map(q => `
+        <div class="fy-quote-row">
+          <div style="min-width:0;flex:1">
+            <div class="fy-q-name" title="${esc(q.clientName)}">${esc(q.quoteNumber || q.clientName || '—')}</div>
+            <div class="fy-q-meta">${esc(q.clientName)} · ${esc(q.destination || '—')}</div>
+            <div class="fy-q-meta">提交：${fmtDatetime(q.date)}</div>
+          </div>
+          <a class="fy-q-btn gold" href="/quote-detail.html?id=${esc(q.id)}">去审批</a>
+        </div>`).join('');
+    }
+
+    /* ── 我的草稿 ──────────────────────────────────────────────── */
+    function renderDraftList(list) {
+      const el = document.getElementById('drafts-list');
+      if (!list || list.length === 0) {
+        el.innerHTML = '<p class="fy-empty">暂无草稿</p>';
+        return;
+      }
+      el.innerHTML = list.map(q => `
+        <div class="fy-quote-row">
+          <div style="min-width:0;flex:1">
+            <div class="fy-q-name" title="${esc(q.clientName)}">${esc(q.quoteNumber || q.clientName || '—')}</div>
+            <div class="fy-q-meta">${esc(q.clientName)} · ${esc(q.destination || '—')}</div>
+            <div class="fy-q-date">更新：${fmtDate(q.date)}</div>
+          </div>
+          <a class="fy-q-btn" href="/quote-detail.html?id=${esc(q.id)}">继续编辑</a>
+        </div>`).join('');
+    }
+
+    /* ── 最近审批通过 ───────────────────────────────────────────── */
+    function renderApprovedList(list) {
+      const el = document.getElementById('approved-list');
+      if (!list || list.length === 0) {
+        el.innerHTML = '<p class="fy-empty">暂无已审批通过的报价单</p>';
+        return;
+      }
+      el.innerHTML = list.map(q => {
+        const ec = q.executionStatus || 'preparing';
+        const badge = `<span class="fy-exec-badge ${esc(EXEC_CLS[ec] || 'e-preparing')}">${esc(EXEC_LABEL[ec] || ec)}</span>`;
+        return `
+          <div class="fy-quote-row">
+            <div style="min-width:0;flex:1">
+              <div class="fy-q-name" title="${esc(q.clientName)}">${esc(q.quoteNumber || q.clientName || '—')}</div>
+              <div class="fy-q-meta">${esc(q.clientName)} · ${esc(q.destination || '—')} · ${badge}</div>
+              <div class="fy-q-date">审批：${fmtDate(q.date)}</div>
+            </div>
+            <a class="fy-q-btn" href="/quote-detail.html?id=${esc(q.id)}">查看</a>
+          </div>`;
+      }).join('');
+    }
+
+    /* ── Shortcuts ─────────────────────────────────────────────── */
     function renderShortcuts() {
       const ICON_SVG = `<svg viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
         <path d="M8 1.5L1 7h2v6.5h4V10h2v3.5h4V7h2L8 1.5z"/>
       </svg>`;
+      const ROLE_MODULES = {
+        standard_quote_specialist: ['standard-quotes', 'receptions', 'documents', 'templates'],
+        project_quote_specialist:  ['project-quotes', 'receptions', 'documents', 'projects'],
+        manager:                   ['standard-quotes', 'project-quotes', 'suppliers', 'projects', 'templates'],
+        admin:                     null,
+      };
+      const roles = parseRoles((window.__CURRENT_USER__ || {}).roles);
+      const primaryRole = roles[0] || '';
+      const allowed = ROLE_MODULES[primaryRole] || null;
       const html = MODULES
         .filter(m => window.can(m.perm))
+        .filter(m => !allowed || allowed.includes(m.key))
         .map(m => `
-          <div class="fy-shortcut" data-module="${m.key}" onclick="window.open('${m.href}','_blank')">
+          <div class="fy-shortcut" onclick="location.href='${m.href}'">
             <div class="fy-sc-icon${m.gold ? ' gold' : ''}">${ICON_SVG}</div>
             <div class="fy-sc-body">
               <div class="fy-sc-label">${m.label}</div>
               <div class="fy-sc-desc">${m.desc}</div>
             </div>
             <span class="fy-sc-arrow">→</span>
-          </div>`)
-        .join('');
+          </div>`).join('');
       document.getElementById('fy-shortcuts').innerHTML = html || '<p class="fy-empty">暂无可用模块</p>';
-    }
-
-    /* ── Render recent quote list ──────────────────────────────── */
-    function renderRecentList(quotes, isProject) {
-      const el = document.getElementById('recent-list');
-      if (!quotes || quotes.length === 0) {
-        el.innerHTML = '<p class="fy-empty">暂无数据</p>';
-        return;
-      }
-      el.innerHTML = quotes.slice(0, 5).map(q => {
-        const name   = q.projectName || '未命名';
-        const client = q.clientName  || '未填写客户';
-        const amount = isProject
-          ? window.AppUtils.formatCurrency(
-              q.totalSales != null
-                ? q.totalSales
-                : (q.projectGroups || []).reduce((s, g) => s + (g.projectSalesTotal || 0), 0),
-              q.currency || 'EUR')
-          : window.AppUtils.formatCurrency(q.totalPrice || 0, q.currency || 'EUR');
-        const date = (q.updatedAt || q.createdAt || '').slice(0, 10) || '—';
-        return `
-          <div class="fy-quote-row">
-            <div>
-              <div class="fy-q-name" title="${name}">${name}</div>
-              <div class="fy-q-meta">${client}</div>
-            </div>
-            <div class="fy-q-right">
-              <div class="fy-q-amount">${amount}</div>
-              <div class="fy-q-date">${date}</div>
-            </div>
-          </div>`;
-      }).join('');
     }
 
     /* ── Logout ────────────────────────────────────────────────── */
@@ -318,83 +425,51 @@
       window.location.href = '/login.html';
     });
 
-    /* ── Auth ready: inject user info & permissions ────────────── */
+    /* ── Auth ready ────────────────────────────────────────────── */
     document.addEventListener('authReady', function () {
       const user  = window.__CURRENT_USER__ || {};
       const name  = user.display_name || user.name || '用户';
       const roles = parseRoles(user.roles);
       const primaryRole = roles[0] || '';
 
-      // Topbar user info
       document.getElementById('fy-avatar').textContent = name.charAt(0) || '?';
       document.getElementById('fy-uname').textContent  = name;
       document.getElementById('fy-urole').textContent  = ROLE_LABELS[primaryRole] || primaryRole || '—';
-
-      // Greeting
       document.getElementById('fy-greeting').textContent = getGreeting(name);
 
-      // Shortcut entries (filtered by can())
       renderShortcuts();
 
-      // Role-based shortcut visibility
-      const ROLE_MODULES = {
-        standard_quote_specialist: ['standard-quotes', 'receptions', 'documents', 'templates'],
-        project_quote_specialist:  ['project-quotes', 'receptions', 'documents', 'projects'],
-        manager:                   ['standard-quotes', 'project-quotes', 'suppliers', 'projects', 'templates'],
-        admin:                     null, // show all
-      };
-      const allowed = ROLE_MODULES[primaryRole];
-      if (allowed) {
-        document.querySelectorAll('#fy-shortcuts .fy-shortcut').forEach(function (el) {
-          if (!allowed.includes(el.dataset.module)) el.style.display = 'none';
-        });
-      }
-
-      // Role-specific panels
-      const isAdminOrManager = roles.includes('admin') || roles.includes('manager');
-      const isPQS = roles.includes('project_quote_specialist') && !isAdminOrManager;
-
-      if (isPQS) {
-        document.getElementById('extra-pqs').style.display = '';
-        document.getElementById('recent-title').textContent = '我的项目型报价';
-        document.getElementById('recent-link').href = '/project-quotes.html';
-      } else if (primaryRole === 'standard_quote_specialist') {
-        document.getElementById('recent-title').textContent = '我的标准报价';
+      // 展示"待我审批"面板（仅 manager/admin）
+      const isManagerOrAdmin = roles.includes('admin') || roles.includes('manager');
+      if (isManagerOrAdmin) {
+        document.getElementById('panel-approvals').style.display = '';
       }
     });
 
-    /* ── Data loading ──────────────────────────────────────────── */
+    /* ── Data loading（各模块独立 loading，Promise.all 并行）──── */
     (async function loadData() {
-      const safe = fn => fn().catch(() => null);
-      const [allQuotes, dashboard] = await Promise.all([
-        safe(() => window.AppUtils.fetchJson('/api/quotes', null, '')),
-        safe(() => window.AppUtils.fetchJson('/api/dashboard', null, '')),
-      ]);
+      const safe = fn => fn().catch(err => { console.error('[dashboard]', err); return null; });
 
-      const quotes   = Array.isArray(allQuotes) ? allQuotes : [];
-      const stdQ     = quotes.filter(q => (q.pricingMode || 'standard') !== 'project_based');
-      const projQ    = quotes.filter(q => q.pricingMode === 'project_based');
+      const statsPromise = safe(() => window.AppUtils.fetchJson('/api/dashboard/stats', null, ''));
 
-      document.getElementById('stat-std').textContent    = stdQ.length;
-      document.getElementById('stat-proj').textContent   = projQ.length;
-      document.getElementById('stat-recep').textContent  = dashboard?.metrics?.receptionTaskCount ?? '—';
-      document.getElementById('stat-profit').textContent = dashboard
-        ? window.AppUtils.formatCurrency(dashboard.metrics?.totalGrossProfit || 0, 'EUR')
-        : '—';
+      // 等待 stats 一次返回所有数据（后端已并行查询）
+      const stats = await statsPromise;
 
-      // Sort by updatedAt desc
-      const sorted = arr => [...arr].sort((a, b) =>
-        (b.updatedAt || b.createdAt || '').localeCompare(a.updatedAt || a.createdAt || ''));
-
-      // Determine role at render time (authReady likely already fired)
-      const roles = parseRoles((window.__CURRENT_USER__ || {}).roles);
-      const isPQS = roles.includes('project_quote_specialist')
-                 && !roles.includes('admin') && !roles.includes('manager');
-
-      if (isPQS) {
-        renderRecentList(sorted(projQ), true);
+      if (stats) {
+        renderKpi(stats.kpi || {});
+        renderApprovalList(stats.pendingApprovals || []);
+        renderDraftList(stats.myDrafts || []);
+        renderApprovedList(stats.recentApproved || []);
       } else {
-        renderRecentList(sorted(stdQ), false);
+        // 接口失败时清空 loading 状态
+        ['stat-total','stat-pending','stat-month','stat-executing'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) { el.textContent = '—'; el.classList.remove('loading'); }
+        });
+        ['approvals-list','drafts-list','approved-list'].forEach(id => {
+          const el = document.getElementById(id);
+          if (el) el.innerHTML = '<p class="fy-empty">数据加载失败，请刷新页面</p>';
+        });
       }
     })();
   </script>

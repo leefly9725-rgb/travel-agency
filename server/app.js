@@ -852,6 +852,89 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  // GET /api/dashboard/stats — 首页工作台 KPI 统计 & 列表数据
+  if (request.method === "GET" && url.pathname === "/api/dashboard/stats") {
+    const supabaseCfg = getSupabaseConfig();
+    const userId = authCtx.userId;
+
+    if (!supabaseCfg.enabled) {
+      // 本地模式：仅能计算 total 和本月新增
+      const { quotes } = await quoteStore.listQuotes();
+      const monthStart = new Date();
+      monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+      const monthStartStr = monthStart.toISOString().slice(0, 10);
+      sendJson(response, 200, {
+        kpi: {
+          total:     quotes.length,
+          pending:   0,
+          monthNew:  quotes.filter(q => (q.createdAt || "").slice(0, 10) >= monthStartStr).length,
+          executing: 0,
+        },
+        pendingApprovals: [],
+        myDrafts:         [],
+        recentApproved:   [],
+      });
+      return true;
+    }
+
+    // Supabase 模式
+    const monthStart = new Date();
+    monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+    const monthStartIso = monthStart.toISOString();
+
+    // 检查 manager/admin 角色（有 * 权限直接判定）
+    let isManagerOrAdmin = authCtx.permissions.has("*");
+    if (!isManagerOrAdmin) {
+      try {
+        const urRows = await supabaseRequest(
+          supabaseCfg,
+          `user_roles?user_id=eq.${encodeURIComponent(userId)}&select=roles(code)`,
+          { method: "GET" }
+        );
+        const roleCodes = (urRows || []).map(ur => ur.roles?.code).filter(Boolean);
+        isManagerOrAdmin = roleCodes.includes("admin") || roleCodes.includes("manager");
+      } catch (_) { /* 角色查询失败不阻塞，降级为普通用户 */ }
+    }
+
+    // 并行发起所有查询
+    const safeQuery = q => supabaseRequest(supabaseCfg, q, { method: "GET" }).catch(() => []);
+
+    const [allIds, pendingIds, monthIds, executingIds, myDraftsRaw, recentApprovedRaw, pendingApprovalRaw] =
+      await Promise.all([
+        safeQuery("quotes?select=id"),
+        safeQuery("quotes?select=id&status=eq.pending"),
+        safeQuery(`quotes?select=id&created_at=gte.${encodeURIComponent(monthStartIso)}`),
+        safeQuery("quotes?select=id&execution_status=eq.executing"),
+        safeQuery(`quotes?select=id,quote_number,client_name,destination,updated_at&status=eq.draft&owner_id=eq.${encodeURIComponent(userId)}&order=updated_at.desc&limit=5`),
+        safeQuery("quotes?select=id,quote_number,client_name,destination,reviewed_at,execution_status&status=eq.approved&order=reviewed_at.desc&limit=5"),
+        isManagerOrAdmin
+          ? safeQuery("quotes?select=id,quote_number,client_name,destination,submitted_at&status=eq.pending&order=submitted_at.asc&limit=10")
+          : Promise.resolve([]),
+      ]);
+
+    const mapQuote = (q, dateField) => ({
+      id:             q.id,
+      quoteNumber:    q.quote_number  || "",
+      clientName:     q.client_name   || "",
+      destination:    q.destination   || "",
+      executionStatus:q.execution_status || "",
+      date:           q[dateField]    || "",
+    });
+
+    sendJson(response, 200, {
+      kpi: {
+        total:     (allIds     || []).length,
+        pending:   (pendingIds || []).length,
+        monthNew:  (monthIds   || []).length,
+        executing: (executingIds || []).length,
+      },
+      pendingApprovals: (pendingApprovalRaw || []).map(q => mapQuote(q, "submitted_at")),
+      myDrafts:         (myDraftsRaw        || []).map(q => mapQuote(q, "updated_at")),
+      recentApproved:   (recentApprovedRaw  || []).map(q => mapQuote(q, "reviewed_at")),
+    });
+    return true;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/dashboard") {
     const [qr, rr, dr] = await Promise.all([
       quoteStore.listQuotes(),
