@@ -1043,7 +1043,7 @@ async function handleApi(request, response, url) {
   {
     const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/submit$/);
     if (request.method === "POST" && m) {
-      requirePermission(authCtx, "");
+      requirePermission(authCtx, "standard_quote.edit");
       const quoteId = decodeURIComponent(m[1]);
       const supabaseCfg = getSupabaseConfig();
       if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
@@ -1051,6 +1051,54 @@ async function handleApi(request, response, url) {
         method: "POST", body: JSON.stringify({ p_quote_id: quoteId }),
       });
       sendJson(response, 200, { ok: true });
+      return true;
+    }
+  }
+
+  // POST /api/quotes/:id/approve — 审批通过 (pending → approved)
+  {
+    const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/approve$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "standard_quote.approve");
+      const quoteId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      const now = new Date().toISOString();
+      const rows = await supabaseRequest(supabaseCfg,
+        `quotes?id=eq.${encodeURIComponent(quoteId)}`,
+        { method: "PATCH", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status: "approved", reviewer_id: authCtx.userId, reviewed_at: now }) }
+      );
+      await supabaseRequest(supabaseCfg, "audit_log", {
+        method: "POST", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ operator_id: authCtx.userId, action: "approve_quote", target_type: "quote", target_id: quoteId, detail: {} }),
+      });
+      sendJson(response, 200, Array.isArray(rows) ? rows[0] : { ok: true });
+      return true;
+    }
+  }
+
+  // POST /api/quotes/:id/reject — 拒绝审批 (pending → rejected)
+  {
+    const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/reject$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "standard_quote.approve");
+      const quoteId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      const { reason = "" } = parseJsonBody(await readRequestBody(request));
+      if (!String(reason).trim()) { sendJson(response, 400, { error: "拒绝时必须填写原因。" }); return true; }
+      const now = new Date().toISOString();
+      const rows = await supabaseRequest(supabaseCfg,
+        `quotes?id=eq.${encodeURIComponent(quoteId)}`,
+        { method: "PATCH", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status: "rejected", reviewer_id: authCtx.userId, reviewed_at: now, review_note: reason }) }
+      );
+      await supabaseRequest(supabaseCfg, "audit_log", {
+        method: "POST", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ operator_id: authCtx.userId, action: "reject_quote", target_type: "quote", target_id: quoteId, detail: { reason } }),
+      });
+      sendJson(response, 200, Array.isArray(rows) ? rows[0] : { ok: true });
       return true;
     }
   }
@@ -1451,6 +1499,72 @@ async function handleApi(request, response, url) {
         return true;
       }
       sendJson(response, 200, { message: "项目型报价已删除。" });
+      return true;
+    }
+  }
+
+  // POST /api/project-quotes/:id/submit — 项目型报价提交审批 (draft → pending)
+  {
+    const m = url.pathname.match(/^\/api\/project-quotes\/([^/]+)\/submit$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "project_quote.edit");
+      const projectId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      const rows = await supabaseRequest(supabaseCfg,
+        `quotation_projects?id=eq.${encodeURIComponent(projectId)}`,
+        { method: "PATCH", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status: "pending", submitted_at: new Date().toISOString() }) }
+      );
+      sendJson(response, 200, Array.isArray(rows) ? rows[0] : { ok: true });
+      return true;
+    }
+  }
+
+  // POST /api/project-quotes/:id/approve — 项目型报价审批通过 (pending → approved)
+  {
+    const m = url.pathname.match(/^\/api\/project-quotes\/([^/]+)\/approve$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "project_quote.approve");
+      const projectId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      const now = new Date().toISOString();
+      const rows = await supabaseRequest(supabaseCfg,
+        `quotation_projects?id=eq.${encodeURIComponent(projectId)}`,
+        { method: "PATCH", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status: "approved", reviewer_id: authCtx.userId, reviewed_at: now }) }
+      );
+      await supabaseRequest(supabaseCfg, "audit_log", {
+        method: "POST", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ operator_id: authCtx.userId, action: "approve_quote", target_type: "project_quote", target_id: projectId, detail: {} }),
+      });
+      sendJson(response, 200, Array.isArray(rows) ? rows[0] : { ok: true });
+      return true;
+    }
+  }
+
+  // POST /api/project-quotes/:id/reject — 项目型报价拒绝 (pending → rejected)
+  {
+    const m = url.pathname.match(/^\/api\/project-quotes\/([^/]+)\/reject$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "project_quote.approve");
+      const projectId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      const { reason = "" } = parseJsonBody(await readRequestBody(request));
+      if (!String(reason).trim()) { sendJson(response, 400, { error: "拒绝时必须填写原因。" }); return true; }
+      const now = new Date().toISOString();
+      const rows = await supabaseRequest(supabaseCfg,
+        `quotation_projects?id=eq.${encodeURIComponent(projectId)}`,
+        { method: "PATCH", headers: { Prefer: "return=representation" },
+          body: JSON.stringify({ status: "rejected", reviewer_id: authCtx.userId, reviewed_at: now, review_note: reason }) }
+      );
+      await supabaseRequest(supabaseCfg, "audit_log", {
+        method: "POST", headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ operator_id: authCtx.userId, action: "reject_quote", target_type: "project_quote", target_id: projectId, detail: { reason } }),
+      });
+      sendJson(response, 200, Array.isArray(rows) ? rows[0] : { ok: true });
       return true;
     }
   }
