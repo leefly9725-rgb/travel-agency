@@ -1,4 +1,4 @@
-﻿function createOptionList(values, selectedValue, groupName) {
+function createOptionList(values, selectedValue, groupName) {
   return values.map((value) => {
     const label = groupName ? window.AppUi.getLabel(groupName, value) : value;
     const selected = value === selectedValue ? "selected" : "";
@@ -66,6 +66,9 @@ function validateTemplateForm(form) {
 
 async function bootstrap() {
   const params = new URLSearchParams(window.location.search);
+  if (window.AppReturn) {
+    window.AppReturn.applyReturnLink("#template-back-link", "/templates.html");
+  }
   const editingId = params.get("id");
   const meta = await window.AppUtils.fetchJson("/api/meta", null, "页面初始化失败，请稍后重试。");
   const form = document.getElementById("template-form");
@@ -102,6 +105,10 @@ async function bootstrap() {
   `;
 
   window.AppUtils.setChineseValidity(form);
+  if (window.AppReturn) {
+    const listLink = form.querySelector(".ghost-link");
+    if (listLink) listLink.href = window.AppReturn.getReturnUrl("/templates.html");
+  }
   const itemsContainer = document.getElementById("template-items-container");
 
   function addTemplateItem(defaults) {
@@ -152,7 +159,7 @@ async function bootstrap() {
       }, requestMethod === "PUT" ? "更新模板失败，请稍后重试。" : "保存模板失败，请稍后重试。");
 
       window.AppUtils.setFlash(requestMethod === "PUT" ? "模板已更新。" : "模板已保存。", "success");
-      window.location.href = "/templates.html";
+      window.location.href = window.AppReturn ? window.AppReturn.getReturnUrl("/templates.html") : "/templates.html";
     } catch (error) {
       window.AppUtils.showMessage("template-message", error.message, "error");
     }

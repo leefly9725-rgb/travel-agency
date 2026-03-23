@@ -63,7 +63,9 @@ async function init() {
     if (proj && proj.name) {
       document.getElementById('te-quote-name').textContent = `— ${proj.name}`;
     }
-    document.getElementById('back-link').href = `/quote-project.html?id=${encodeURIComponent(quoteId)}`;
+    if (!window.AppReturn || !window.AppReturn.getReturnParam()) {
+      document.getElementById('back-link').href = `/quote-project.html?id=${encodeURIComponent(quoteId)}`;
+    }
   } catch (_) { /* display only, ignore */ }
 
   // Load snapshot

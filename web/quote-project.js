@@ -294,7 +294,9 @@ async function loadProject(projectId) {
   document.getElementById("page-title").textContent = project.name || "项目型报价";
   document.getElementById("btn-delete").classList.remove("hidden");
   const termsBtn = document.getElementById("btn-terms");
-  if (termsBtn) termsBtn.href = `/terms-editor.html?quote_id=${encodeURIComponent(project.id)}`;
+  if (termsBtn) termsBtn.href = window.AppReturn
+    ? window.AppReturn.withReturn(`/terms-editor.html?quote_id=${encodeURIComponent(project.id)}`, window.AppReturn.getCurrentPath())
+    : `/terms-editor.html?quote_id=${encodeURIComponent(project.id)}`;
 }
 
 async function saveProject() {
@@ -331,7 +333,10 @@ async function saveProject() {
 
     if (!projectId) {
       // Redirect to edit URL after create
-      window.location.href = `/quote-project.html?id=${encodeURIComponent(saved.id)}`;
+      const editUrl = `/quote-project.html?id=${encodeURIComponent(saved.id)}`;
+      window.location.href = window.AppReturn
+        ? window.AppReturn.withReturn(editUrl, window.AppReturn.getReturnUrl("/project-quotes.html"))
+        : editUrl;
       return;
     }
     window.AppUtils.showMessage("pq-message", "项目型报价已保存。", "success");
@@ -354,7 +359,7 @@ async function deleteProject() {
       "删除失败",
     );
     window.AppUtils.setFlash("项目型报价已删除。");
-    window.location.href = "/quotes.html";
+    window.location.href = window.AppReturn ? window.AppReturn.getReturnUrl("/project-quotes.html") : "/project-quotes.html";
   } catch (error) {
     window.AppUtils.showMessage("pq-message", error.message, "error");
   }

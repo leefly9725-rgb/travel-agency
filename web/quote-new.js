@@ -1,8 +1,21 @@
-﻿const state = {
+const state = {
   templates: [],
   meta: null,
   pricingMode: "standard",
 };
+
+function getListFallbackForMode(mode) {
+  return mode === "project_based" ? "/project-quotes.html" : "/standard-quotes.html";
+}
+
+function syncReturnLinks(form) {
+  const fallback = getListFallbackForMode(state.pricingMode);
+  if (window.AppReturn) {
+    window.AppReturn.applyReturnLink('#quote-back-link', fallback);
+    const cancelLink = form ? form.querySelector('.ghost-link') : null;
+    if (cancelLink) cancelLink.href = window.AppReturn.getReturnUrl(fallback);
+  }
+}
 
 const vehicleDetailTypeOptions = ["pickup", "dropoff", "full_day"];
 const vehiclePricingUnitOptions = ["trip", "full_day"];
@@ -784,7 +797,7 @@ function buildForm(meta) {
     <section class="form-section"><div class="form-section-head"><div><h2>\u8054\u7cfb\u4fe1\u606f</h2><p class="meta">\u586b\u5199\u5ba2\u6237\u8054\u7cfb\u4eba\uff0c\u4fbf\u4e8e\u540e\u7eed\u786e\u8ba4\u548c\u4fee\u6539\u62a5\u4ef7\u3002</p></div></div><div class="form-grid form-grid-wide section-grid section-grid-wide"><label><span>\u8054\u7cfb\u4eba\u59d3\u540d</span><input name="contactName" placeholder="\u586b\u5199\u5bf9\u63a5\u4eba\u59d3\u540d" required /></label><label><span>\u8054\u7cfb\u4eba\u7535\u8bdd / WhatsApp</span><input name="contactPhone" placeholder="\u4f8b\u5982\uff1a+381 60 123 4567" /></label></div></section>
     <section class="form-section"><div class="form-section-head"><div><h2>\u884c\u7a0b\u4fe1\u606f</h2><p class="meta">\u5f55\u5165\u8d77\u6b62\u65e5\u671f\u540e\uff0c\u7cfb\u7edf\u4f1a\u81ea\u52a8\u8ba1\u7b97\u884c\u7a0b\u5929\u6570\u3002</p></div></div><div class="form-grid form-grid-wide section-grid section-grid-wide"><label><span>\u884c\u7a0b\u5f00\u59cb\u65e5\u671f</span><input type="date" name="startDate" required /></label><label><span>\u884c\u7a0b\u7ed3\u675f\u65e5\u671f</span><input type="date" name="endDate" required /></label><label><span>\u884c\u7a0b\u5929\u6570</span><input type="number" name="travelDays" readonly /></label><label><span>\u4e3b\u8981\u76ee\u7684\u5730</span><input name="destination" value="Belgrade" required /></label><label><span>\u51fa\u884c\u4eba\u6570\uff08PAX\uff09</span><input type="number" name="paxCount" min="1" value="2" placeholder="\u4f8b\u5982\uff1a12" required /></label></div><label><span>\u7279\u6b8a\u9700\u6c42 / \u5907\u6ce8</span><textarea name="notes" rows="4" placeholder="\u4f8b\u5982\uff1a\u9700\u4e2d\u82f1\u53cc\u8bed\u63a5\u5f85\u3001VIP \u63a5\u673a\u3001\u5b89\u6392\u7d20\u98df\u9910\u98df\u7b49"></textarea></label></section>
     <section class="form-section quote-items-section"><div class="form-section-head form-section-head-row"><div><h2>报价项目</h2><p class="meta">酒店、用车、导游和翻译项目支持明细录入，系统会自动汇总成本和销售金额。</p></div><div class="template-actions"><a class="button-link small-link" href="/templates.html">管理模板</a><button type="button" class="add-item-trigger">新增报价项目</button></div></div><div class="template-toolbar"><label class="template-selector"><span>快速插入模板</span><select id="template-select" name="templateKey">${createTemplateOptionList(selectedTemplateId)}</select></label><div class="template-actions"><button type="button" id="apply-template" class="ghost">插入模板项目</button></div></div><p id="template-description" class="meta template-description">${defaultTemplate ? defaultTemplate.description : "暂无模板说明。"}</p><div id="items-container" class="stack"></div><div class="quote-items-footer"><button type="button" class="add-item-trigger secondary-add-button">继续新增报价项目</button><p class="meta">当前报价项目较多时，可直接在底部继续追加。</p></div></section>
-    <div class="button-row"><button type="submit">\u4fdd\u5b58\u62a5\u4ef7</button><a class="button-link ghost-link" href="/quotes.html">\u8fd4\u56de\u5217\u8868</a></div>
+    <div class="button-row"><button type="submit">\u4fdd\u5b58\u62a5\u4ef7</button><a class="button-link ghost-link" href="/standard-quotes.html">\u8fd4\u56de\u5217\u8868</a></div>
   `;
   return form;
 }
@@ -892,6 +905,7 @@ async function bootstrap() {
 
   const form = buildForm(meta);
   const itemsContainer = document.getElementById("items-container");
+  syncReturnLinks(form);
 
   // ── 报价模式切换 ─────────────────────────────────────────────────────────────
   const standardEditorGrid = document.getElementById("standard-editor-grid");
@@ -1557,10 +1571,15 @@ async function bootstrap() {
       }, isEditing ? "报价更新失败，请稍后重试。" : "报价保存失败，请稍后重试。");
 
       window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
-      if (isProjectMode) {
-        window.location.href = "/quotes.html";
+      const fallback = getListFallbackForMode(state.pricingMode);
+      const explicitReturn = window.AppReturn ? window.AppReturn.getReturnParam() : "";
+      if (explicitReturn) {
+        window.location.href = explicitReturn;
+      } else if (isProjectMode) {
+        window.location.href = fallback;
       } else {
-        window.location.href = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
+        const detailUrl = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
+        window.location.href = window.AppReturn ? window.AppReturn.withReturn(detailUrl, fallback) : detailUrl;
       }
     } catch (error) {
       window.AppUtils.showMessage("quote-message", error.message, "error");

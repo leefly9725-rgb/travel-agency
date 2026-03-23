@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>商务条款编辑器</title>
+  <title>閸熷棗濮熼弶鈩冾儥缂傛牞绶崳?/title>
   <link rel="stylesheet" href="/styles.css" />
   <style>
-    /* ── Terms Editor Layout ──────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Terms Editor Layout 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-layout {
       display: grid;
       grid-template-columns: 220px 1fr;
@@ -53,7 +53,7 @@
     .te-nav-label { font-size: 13px; font-weight: 600; flex: 1; }
     .te-nav-disabled { color: var(--muted); text-decoration: line-through; }
 
-    /* ── Toggle Switch ─────────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Toggle Switch 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-toggle {
       position: relative;
       display: inline-block;
@@ -83,7 +83,7 @@
     .te-toggle input:checked + .te-toggle-knob { background: #1B2A4A; }
     .te-toggle input:checked + .te-toggle-knob::after { transform: translateX(16px); }
 
-    /* ── Main Editor Panel ─────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Main Editor Panel 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-editor {
       padding: 24px;
       min-height: 400px;
@@ -109,7 +109,7 @@
       font-weight: 600;
     }
 
-    /* ── Language Tabs ─────────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Language Tabs 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-lang-tabs {
       display: flex;
       gap: 6px;
@@ -138,7 +138,7 @@
     .te-lang-area { display: none; }
     .te-lang-area.active { display: block; }
 
-    /* ── Translation Status Badge ──────────────────────────────────────── */
+    /* 閳光偓閳光偓 Translation Status Badge 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-badge {
       display: inline-flex;
       align-items: center;
@@ -154,7 +154,7 @@
     .te-badge.stale  { background: #fff7e6; color: #8a5d11; }
     .te-badge.empty  { background: #f2f3f4; color: #777; }
 
-    /* ── Bullet List Editor ────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Bullet List Editor 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-bullet-list { display: flex; flex-direction: column; gap: 8px; }
 
     .te-bullet-row {
@@ -212,7 +212,7 @@
     .te-bullet-row.drag-over { outline: 2px dashed #C9A84C; border-radius: 8px; }
     .te-bullet-row.dragging { opacity: 0.4; }
 
-    /* ── Re-translate button inside lang area ──────────────────────────── */
+    /* 閳光偓閳光偓 Re-translate button inside lang area 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-retranslate-row {
       display: flex;
       justify-content: flex-end;
@@ -227,7 +227,7 @@
       color: var(--accent);
     }
 
-    /* ── Translate Action Bar ──────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Translate Action Bar 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-translate-bar {
       display: flex;
       flex-wrap: wrap;
@@ -256,7 +256,7 @@
       font-size: 13px;
     }
 
-    /* ── Structured Form ───────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Structured Form 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-structured-form { display: flex; flex-direction: column; gap: 18px; }
 
     .te-field-group { display: grid; gap: 8px; }
@@ -290,7 +290,7 @@
       cursor: pointer;
     }
 
-    /* ── Structured Preview ────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Structured Preview 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-preview-box {
       margin-top: 20px;
       background: rgba(27, 42, 74, 0.04);
@@ -333,7 +333,7 @@
       white-space: pre-wrap;
     }
 
-    /* ── Deposit slider ────────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Deposit slider 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-slider-row {
       display: flex;
       align-items: center;
@@ -348,7 +348,7 @@
       accent-color: #1B2A4A;
     }
 
-    /* ── Dirty Badge ───────────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Dirty Badge 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-dirty-badge {
       padding: 5px 12px;
       background: #fff7e6;
@@ -359,14 +359,14 @@
       border: 1px solid rgba(138, 93, 17, 0.2);
     }
 
-    /* ── Quote Name in Topbar ──────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Quote Name in Topbar 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-quote-name {
       font-size: 14px;
       color: var(--muted);
       font-weight: 500;
     }
 
-    /* ── Mobile Accordion ──────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Mobile Accordion 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-accordion-wrap { margin-top: 16px; }
 
     .te-acc-item { margin-bottom: 10px; }
@@ -405,7 +405,7 @@
     }
     .te-acc-body.open { display: block; }
 
-    /* ── Responsive ────────────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Responsive 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     @media (max-width: 768px) {
       .te-layout { display: none; }
       .te-accordion-wrap { display: block; }
@@ -415,7 +415,7 @@
       .te-accordion-wrap { display: none; }
     }
 
-    /* ── Notes textarea ────────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Notes textarea 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-notes-textarea {
       width: 100%;
       min-height: 120px;
@@ -423,7 +423,7 @@
       line-height: 1.65;
     }
 
-    /* ── Disabled translate buttons ───────────────────────────────────── */
+    /* 閳光偓閳光偓 Disabled translate buttons 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-btn-translate-all:disabled,
     .te-btn-translate:disabled,
     .te-retranslate-btn:disabled {
@@ -432,7 +432,7 @@
       pointer-events: none;
     }
 
-    /* ── Loading & Empty ───────────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Loading & Empty 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     .te-loading {
       padding: 40px 20px;
       text-align: center;
@@ -440,7 +440,7 @@
       font-size: 15px;
     }
 
-    /* ── Save button overrides ─────────────────────────────────────────── */
+    /* 閳光偓閳光偓 Save button overrides 閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓閳光偓 */
     #btn-save {
       width: auto;
       padding: 10px 18px;
@@ -455,11 +455,11 @@
 
     <!-- Topbar -->
     <header class="topbar">
-      <a id="back-link" class="topbar-link" href="/quotes.html">← 返回报价</a>
+      <a id="back-link" class="topbar-link" href="/project-quotes.html">← 返回项目报价列表</a>
       <span class="te-quote-name" id="te-quote-name"></span>
       <div class="topbar-actions">
-        <span id="dirty-badge" class="te-dirty-badge hidden">有未保存更改</span>
-        <button id="btn-save">保存商务条款</button>
+        <span id="dirty-badge" class="te-dirty-badge hidden">閺堝婀穱婵嗙摠閺囧瓨鏁?/span>
+        <button id="btn-save">娣囨繂鐡ㄩ崯鍡楀閺夆剝顑?/button>
       </div>
     </header>
 
@@ -471,29 +471,30 @@
       <!-- Left nav panel -->
       <aside class="te-nav panel">
         <div class="te-nav-header">
-          <span class="eyebrow">模块导航</span>
-          <p class="meta" style="margin:4px 0 0;font-size:12px">拖拽可调整顺序</p>
+          <span class="eyebrow">濡€虫健鐎佃壈鍩?/span>
+          <p class="meta" style="margin:4px 0 0;font-size:12px">閹锋牗瀚块崣顖濈殶閺佹挳銆庢惔?/p>
         </div>
         <div id="te-nav-list" class="te-nav-list">
-          <div class="te-loading">加载中…</div>
+          <div class="te-loading">閸旂姾娴囨稉顓涒偓?/div>
         </div>
       </aside>
 
       <!-- Right editor panel -->
       <main class="te-editor panel" id="te-editor">
-        <div class="te-loading">加载中…</div>
+        <div class="te-loading">閸旂姾娴囨稉顓涒偓?/div>
       </main>
     </div>
 
     <!-- Mobile: accordion -->
     <div class="te-accordion-wrap" id="te-accordion">
-      <div class="te-loading">加载中…</div>
+      <div class="te-loading">閸旂姾娴囨稉顓涒偓?/div>
     </div>
 
   </div>
 
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
+  <script src="/return-utils.js"></script>
   <script src="/terms-editor.js"></script>
 </body>
 </html>

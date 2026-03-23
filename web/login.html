@@ -1,283 +1,405 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>登录 — 泷鼎晟国际旅行社运营系统</title>
+  <title>&#39134;&#25196;&#22269;&#38469;&#26053;&#34892;&#31038; | &#36816;&#33829;&#20013;&#21488;&#30331;&#24405;</title>
   <style>
-    /* ── Reset & base ─────────────────────────────────────────────── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
     :root {
-      --brand:        #1a3a5c;
-      --brand-hover:  #15304e;
-      --brand-focus:  rgba(26, 58, 92, 0.25);
-      --bg-page:      #f0f4f8;
-      --bg-card:      #ffffff;
-      --text-primary: #1e2430;
-      --text-muted:   #5f6b7a;
-      --border:       #d4dbe3;
-      --error-bg:     #fff1ef;
-      --error-text:   #a33d2f;
-      --error-border: #f5c6c1;
-      --radius:       12px;
-      --shadow:       0 8px 32px rgba(26, 58, 92, 0.12), 0 2px 8px rgba(26, 58, 92, 0.06);
+      --fy-bg: #f6f0e5;
+      --fy-bg-soft: #fffaf2;
+      --fy-panel: rgba(255, 252, 247, 0.94);
+      --fy-line: rgba(20, 32, 51, 0.1);
+      --fy-ink: #142033;
+      --fy-muted: #667180;
+      --fy-navy: #102346;
+      --fy-navy-strong: #0d1f3d;
+      --fy-gold: #c7a056;
+      --fy-gold-soft: rgba(199, 160, 86, 0.16);
+      --fy-focus: rgba(16, 35, 70, 0.14);
+      --fy-error-bg: #fff4f1;
+      --fy-error-line: #f1c6be;
+      --fy-error-text: #a14a39;
+      --fy-shadow: 0 28px 54px rgba(20, 32, 51, 0.12);
+      --fy-radius-xl: 32px;
+      --fy-radius-lg: 20px;
+      --fy-radius-md: 14px;
     }
-
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg-page:      #0f1923;
-        --bg-card:      #1a2535;
-        --text-primary: #e8edf3;
-        --text-muted:   #8a97a6;
-        --border:       #2c3a4a;
-        --error-bg:     #2a1a18;
-        --error-text:   #f08070;
-        --error-border: #5a2e28;
-        --shadow:       0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.3);
-      }
-    }
-
     body {
-      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
-      background-color: var(--bg-page);
-      color: var(--text-primary);
       min-height: 100vh;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--fy-ink);
+      background:
+        radial-gradient(circle at top left, rgba(199, 160, 86, 0.18), transparent 24%),
+        radial-gradient(circle at right center, rgba(16, 35, 70, 0.1), transparent 26%),
+        linear-gradient(180deg, #fbf7f0 0%, #f3ece1 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      padding: 24px 16px;
+      padding: 28px 18px;
     }
-
-    /* ── Card ─────────────────────────────────────────────────────── */
-    .login-card {
-      background: var(--bg-card);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 40px 36px 36px;
-      width: 100%;
-      max-width: 400px;
+    .fy-login-shell {
+      width: min(1080px, 100%);
+      display: grid;
+      grid-template-columns: minmax(0, 1.05fr) minmax(360px, 420px);
+      gap: 22px;
+      align-items: stretch;
     }
-
-    @media (max-width: 440px) {
-      .login-card { padding: 32px 20px 28px; }
+    .fy-login-brand,
+    .fy-login-card {
+      position: relative;
+      overflow: hidden;
+      border-radius: var(--fy-radius-xl);
+      border: 1px solid var(--fy-line);
+      background: var(--fy-panel);
+      box-shadow: var(--fy-shadow);
+      backdrop-filter: blur(16px);
     }
-
-    /* ── Header ───────────────────────────────────────────────────── */
-    .login-header { text-align: center; margin-bottom: 32px; }
-
-    .login-brand {
-      font-size: 18px;
+    .fy-login-brand {
+      padding: 34px 34px 30px;
+      background:
+        radial-gradient(circle at top right, rgba(199, 160, 86, 0.2), transparent 22%),
+        linear-gradient(135deg, rgba(255,255,255,0.95), rgba(247,240,229,0.96));
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 620px;
+    }
+    .fy-login-brand::after {
+      content: "";
+      position: absolute;
+      right: 26px;
+      bottom: 24px;
+      width: 180px;
+      height: 180px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(16, 35, 70, 0.08), transparent 68%);
+      pointer-events: none;
+    }
+    .fy-login-brand-top { position: relative; z-index: 1; }
+    .fy-login-mark {
+      width: 58px;
+      height: 58px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--fy-navy-strong), #1b3b69);
+      box-shadow: 0 18px 28px rgba(16, 35, 70, 0.2);
+      margin-bottom: 20px;
+    }
+    .fy-login-mark img {
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+      display: block;
+    }
+    .fy-login-kicker {
+      display: inline-flex;
+      align-items: center;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: var(--fy-gold-soft);
+      border: 1px solid rgba(199, 160, 86, 0.22);
+      color: #9b6f1d;
+      font-size: 11px;
       font-weight: 700;
-      color: var(--brand);
-      letter-spacing: 0.02em;
-      line-height: 1.4;
+      letter-spacing: 0.08em;
+      margin-bottom: 14px;
     }
-
-    @media (prefers-color-scheme: dark) {
-      .login-brand { color: #5b9bd5; }
+    .fy-login-brand h1 {
+      font-size: clamp(30px, 4vw, 44px);
+      line-height: 1.08;
+      letter-spacing: -0.03em;
+      color: var(--fy-navy);
+      margin-bottom: 14px;
+      max-width: 520px;
     }
-
-    .login-subtitle {
-      font-size: 13px;
-      color: var(--text-muted);
-      margin-top: 4px;
+    .fy-login-brand p {
+      max-width: 520px;
+      color: var(--fy-muted);
+      font-size: 15px;
+      line-height: 1.8;
     }
-
-    /* ── Form fields ──────────────────────────────────────────────── */
-    .field { margin-bottom: 20px; }
-
-    .field label {
+    .fy-login-brand-list {
+      position: relative;
+      z-index: 1;
+      display: grid;
+      gap: 14px;
+      margin-top: 34px;
+    }
+    .fy-login-brand-item {
+      display: grid;
+      grid-template-columns: 28px minmax(0, 1fr);
+      gap: 12px;
+      align-items: start;
+      padding: 14px 0;
+      border-top: 1px solid rgba(20, 32, 51, 0.08);
+    }
+    .fy-login-brand-item:first-child { border-top: none; }
+    .fy-login-brand-index {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #9b6f1d;
+      background: rgba(199, 160, 86, 0.14);
+      border: 1px solid rgba(199, 160, 86, 0.24);
+    }
+    .fy-login-brand-item strong {
       display: block;
       font-size: 13px;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-      letter-spacing: 0.02em;
+      color: var(--fy-navy);
+      margin-bottom: 4px;
     }
-
-    .field input {
-      width: 100%;
-      padding: 10px 12px;
-      font-size: 15px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      background: var(--bg-card);
-      color: var(--text-primary);
-      outline: none;
-      transition: border-color 0.15s, box-shadow 0.15s;
-      -webkit-appearance: none;
+    .fy-login-brand-item span {
+      display: block;
+      font-size: 12px;
+      color: var(--fy-muted);
+      line-height: 1.7;
     }
-
-    .field input:focus {
-      border-color: var(--brand);
-      box-shadow: 0 0 0 3px var(--brand-focus);
+    .fy-login-card {
+      padding: 32px 30px 28px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
     }
-
-    @media (prefers-color-scheme: dark) {
-      .field input:focus { box-shadow: 0 0 0 3px rgba(91, 155, 213, 0.25); }
-    }
-
-    /* ── Password wrapper ─────────────────────────────────────────── */
-    .password-wrapper { position: relative; }
-
-    .password-wrapper input { padding-right: 44px; }
-
-    .toggle-password {
+    .fy-login-card::before {
+      content: "";
       position: absolute;
-      right: 0;
-      top: 0;
-      bottom: 0;
-      width: 44px;
+      inset: 0 auto auto 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(90deg, var(--fy-navy) 0%, var(--fy-gold) 100%);
+    }
+    .fy-login-card-head {
+      margin-bottom: 28px;
+    }
+    .fy-login-card-head h2 {
+      font-size: 28px;
+      line-height: 1.15;
+      color: var(--fy-navy);
+      margin-bottom: 10px;
+      letter-spacing: -0.02em;
+    }
+    .fy-login-card-head p {
+      color: var(--fy-muted);
+      font-size: 14px;
+      line-height: 1.8;
+    }
+    .fy-login-form { display: grid; gap: 18px; }
+    .fy-field { display: grid; gap: 8px; }
+    .fy-field label {
+      font-size: 13px;
+      font-weight: 700;
+      color: #435168;
+    }
+    .fy-field input {
+      width: 100%;
+      height: 52px;
+      padding: 0 15px;
+      border: 1px solid rgba(20, 32, 51, 0.12);
+      border-radius: var(--fy-radius-md);
+      background: rgba(255,255,255,0.9);
+      color: var(--fy-ink);
+      font-size: 15px;
+      outline: none;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease, background 0.18s ease;
+    }
+    .fy-field input::placeholder { color: #9aa3af; }
+    .fy-field input:focus {
+      border-color: rgba(16, 35, 70, 0.28);
+      box-shadow: 0 0 0 4px var(--fy-focus);
+      background: #fff;
+    }
+    .fy-password-wrap { position: relative; }
+    .fy-password-wrap input { padding-right: 48px; }
+    .fy-toggle {
+      position: absolute;
+      inset: 0 0 0 auto;
+      width: 48px;
       border: none;
       background: transparent;
-      cursor: pointer;
+      color: #6f7a88;
       display: flex;
       align-items: center;
       justify-content: center;
-      color: var(--text-muted);
-      border-radius: 0 8px 8px 0;
-      transition: color 0.15s;
-    }
-
-    .toggle-password:hover { color: var(--brand); }
-
-    @media (prefers-color-scheme: dark) {
-      .toggle-password:hover { color: #5b9bd5; }
-    }
-
-    /* ── Error ────────────────────────────────────────────────────── */
-    .error-box {
-      display: none;
-      background: var(--error-bg);
-      color: var(--error-text);
-      border: 1px solid var(--error-border);
-      border-radius: 8px;
-      padding: 10px 14px;
-      font-size: 13px;
-      margin-bottom: 20px;
-      line-height: 1.5;
-    }
-
-    .error-box.visible { display: block; }
-
-    /* ── Submit button ────────────────────────────────────────────── */
-    .btn-login {
-      width: 100%;
-      padding: 12px;
-      font-size: 15px;
-      font-weight: 600;
-      color: #ffffff;
-      background: var(--brand);
-      border: none;
-      border-radius: 8px;
       cursor: pointer;
-      transition: background 0.15s, opacity 0.15s;
-      letter-spacing: 0.03em;
+      border-radius: 0 var(--fy-radius-md) var(--fy-radius-md) 0;
     }
-
-    .btn-login:hover:not(:disabled) { background: var(--brand-hover); }
-
-    .btn-login:disabled {
-      opacity: 0.65;
+    .fy-toggle:hover { color: var(--fy-navy); }
+    .fy-error {
+      display: none;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid var(--fy-error-line);
+      background: var(--fy-error-bg);
+      color: var(--fy-error-text);
+      font-size: 13px;
+      line-height: 1.7;
+    }
+    .fy-error.visible { display: block; }
+    .fy-login-btn {
+      width: 100%;
+      height: 52px;
+      border: none;
+      border-radius: 999px;
+      background: linear-gradient(135deg, var(--fy-navy-strong), #1e4678);
+      color: #fff;
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      box-shadow: 0 18px 28px rgba(16, 35, 70, 0.2);
+      transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+    }
+    .fy-login-btn:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 22px 30px rgba(16, 35, 70, 0.24);
+    }
+    .fy-login-btn:disabled {
+      opacity: 0.68;
       cursor: not-allowed;
+      transform: none;
+    }
+    .fy-login-note {
+      margin-top: 14px;
+      color: #7a8490;
+      font-size: 12px;
+      line-height: 1.8;
+      text-align: center;
+    }
+    @media (max-width: 960px) {
+      .fy-login-shell { grid-template-columns: 1fr; }
+      .fy-login-brand { min-height: auto; }
+    }
+    @media (max-width: 520px) {
+      body { padding: 18px 12px; }
+      .fy-login-brand,
+      .fy-login-card { padding: 24px 20px; border-radius: 24px; }
+      .fy-login-card-head h2 { font-size: 24px; }
     }
   </style>
 </head>
 <body>
-  <div class="login-card">
-    <div class="login-header">
-      <div class="login-brand">泷鼎晟国际旅行社运营系统</div>
-      <div class="login-subtitle">管理后台</div>
-    </div>
-
-    <form id="login-form" novalidate>
-      <div class="field">
-        <label for="account">账号</label>
-        <input
-          id="account"
-          type="email"
-          autocomplete="username"
-          placeholder="请输入账号"
-          required
-        />
+  <div class="fy-login-shell">
+    <section class="fy-login-brand" aria-label="&#21697;&#29260;&#20449;&#24687;">
+      <div class="fy-login-brand-top">
+        <div class="fy-login-mark">
+          <img src="/assets/logo.png" alt="&#39134;&#25196;&#22269;&#38469;&#26053;&#34892;&#31038;" />
+        </div>
+        <span class="fy-login-kicker">Feiyang Travel Operations Desk</span>
+        <h1>&#39134;&#25196;&#22269;&#38469;&#26053;&#34892;&#31038;<br />&#39640;&#31471;&#21830;&#21153;&#26053;&#34892;&#36816;&#33829;&#20013;&#21488;</h1>
+        <p>&#29992;&#26356;&#20811;&#21046;&#12289;&#26356;&#28165;&#26224;&#30340;&#26041;&#24335;&#31649;&#29702;&#25253;&#20215;&#12289;&#23457;&#25209;&#19982;&#25191;&#34892;&#36319;&#36827;&#12290;&#30331;&#24405;&#21518;&#21363;&#21487;&#36827;&#20837;&#26032;&#29256;&#24037;&#20316;&#21488;&#12290;</p>
       </div>
-
-      <div class="field">
-        <label for="password">密码</label>
-        <div class="password-wrapper">
-          <input
-            id="password"
-            type="password"
-            autocomplete="current-password"
-            placeholder="请输入密码"
-            required
-          />
-          <button type="button" class="toggle-password" id="toggle-pw" aria-label="显示/隐藏密码">
-            <svg id="icon-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-              <circle cx="12" cy="12" r="3"/>
-            </svg>
-            <svg id="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-          </button>
+      <div class="fy-login-brand-list">
+        <div class="fy-login-brand-item">
+          <span class="fy-login-brand-index">1</span>
+          <div>
+            <strong>&#19994;&#21153;&#32447;&#32034;&#26356;&#28165;&#26224;</strong>
+            <span>&#32858;&#28966;&#25253;&#20215;&#12289;&#23457;&#25209;&#19982;&#25191;&#34892;&#19977;&#26465;&#20027;&#32447;&#65292;&#36991;&#20813;&#36827;&#20837;&#31995;&#32479;&#21518;&#20449;&#24687;&#21457;&#25955;&#12290;</span>
+          </div>
+        </div>
+        <div class="fy-login-brand-item">
+          <span class="fy-login-brand-index">2</span>
+          <div>
+            <strong>&#21697;&#29260;&#19982;&#24037;&#20316;&#21488;&#32479;&#19968;</strong>
+            <span>&#30331;&#24405;&#39029;&#19982;&#26032;&#39318;&#39029;&#20445;&#25345;&#21516;&#19968;&#22871;&#26262;&#30333;&#12289;&#28145;&#34013;&#12289;&#37329;&#33394;&#28857;&#32512;&#30340;&#21830;&#21153;&#35270;&#35273;&#35821;&#35328;&#12290;</span>
+          </div>
+        </div>
+        <div class="fy-login-brand-item">
+          <span class="fy-login-brand-index">3</span>
+          <div>
+            <strong>&#30331;&#24405;&#27969;&#31243;&#20445;&#25345;&#19981;&#21464;</strong>
+            <span>&#26412;&#39029;&#21482;&#25910;&#21475;&#35270;&#35273;&#21697;&#29260;&#19982;&#25991;&#26696;&#23618;&#65292;Supabase &#39564;&#35777;&#19982; token &#23384;&#20648;&#36923;&#36753;&#20445;&#25345;&#20860;&#23481;&#12290;</span>
+          </div>
         </div>
       </div>
+    </section>
 
-      <div class="error-box" id="error-box" role="alert"></div>
+    <section class="fy-login-card" aria-label="&#30331;&#24405;&#34920;&#21333;">
+      <div class="fy-login-card-head">
+        <h2>&#31995;&#32479;&#30331;&#24405;</h2>
+        <p>&#35831;&#20351;&#29992;&#24050;&#24320;&#36890;&#30340;&#24080;&#21495;&#30331;&#24405;&#65292;&#36827;&#20837;&#39134;&#25196;&#36816;&#33829;&#20013;&#21488;&#24037;&#20316;&#21488;&#12290;</p>
+      </div>
 
-      <button type="submit" class="btn-login" id="btn-login">登录</button>
-    </form>
+      <form id="login-form" class="fy-login-form" novalidate>
+        <div class="fy-field">
+          <label for="account">&#36134;&#21495;</label>
+          <input id="account" type="email" autocomplete="username" placeholder="&#35831;&#36755;&#20837;&#36134;&#21495;" required />
+        </div>
+
+        <div class="fy-field">
+          <label for="password">&#23494;&#30721;</label>
+          <div class="fy-password-wrap">
+            <input id="password" type="password" autocomplete="current-password" placeholder="&#35831;&#36755;&#20837;&#23494;&#30721;" required />
+            <button type="button" class="fy-toggle" id="toggle-pw" aria-label="&#26174;&#31034;&#25110;&#38544;&#34255;&#23494;&#30721;">
+              <svg id="icon-eye" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              <svg id="icon-eye-off" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+                <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+                <line x1="1" y1="1" x2="23" y2="23"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="fy-error" id="error-box" role="alert"></div>
+
+        <button type="submit" class="fy-login-btn" id="btn-login">&#30331;&#24405;</button>
+      </form>
+
+      <p class="fy-login-note">&#26412;&#39029;&#21482;&#32479;&#19968;&#21697;&#29260;&#19982;&#35270;&#35273;&#65292;&#30331;&#24405;&#39564;&#35777;&#27969;&#31243;&#20445;&#25345;&#29616;&#26377;&#23454;&#29616;&#12290;</p>
+    </section>
   </div>
 
   <script>
-    // ── Supabase config（由服务端注入，或部署时替换占位符）──────────
-    const SUPABASE_URL      = window.__ENV__?.SUPABASE_URL      || '';
+    const SUPABASE_URL = window.__ENV__?.SUPABASE_URL || '';
     const SUPABASE_ANON_KEY = window.__ENV__?.SUPABASE_ANON_KEY || '';
 
-    // ── Toggle password visibility ──────────────────────────────────
     document.getElementById('toggle-pw').addEventListener('click', () => {
-      const input   = document.getElementById('password');
-      const iconOn  = document.getElementById('icon-eye');
+      const input = document.getElementById('password');
+      const iconOn = document.getElementById('icon-eye');
       const iconOff = document.getElementById('icon-eye-off');
       const isHidden = input.type === 'password';
-      input.type        = isHidden ? 'text' : 'password';
-      iconOn.style.display  = isHidden ? 'none'  : '';
-      iconOff.style.display = isHidden ? ''      : 'none';
+      input.type = isHidden ? 'text' : 'password';
+      iconOn.style.display = isHidden ? 'none' : '';
+      iconOff.style.display = isHidden ? '' : 'none';
     });
 
-    // ── Login form submit ───────────────────────────────────────────
-    document.getElementById('login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
+    document.getElementById('login-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
 
-      const btn      = document.getElementById('btn-login');
+      const btn = document.getElementById('btn-login');
       const errorBox = document.getElementById('error-box');
-      const account  = document.getElementById('account').value.trim();
+      const account = document.getElementById('account').value.trim();
       const password = document.getElementById('password').value;
 
-      // Clear previous error
       errorBox.textContent = '';
       errorBox.classList.remove('visible');
 
-      // Basic client-side check
       if (!account || !password) {
-        errorBox.textContent = '请填写账号和密码。';
+        errorBox.textContent = '\u8bf7\u586b\u5199\u8d26\u53f7\u548c\u5bc6\u7801\u3002';
         errorBox.classList.add('visible');
         return;
       }
 
       if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        errorBox.textContent = '系统配置异常，请联系管理员。';
+        errorBox.textContent = '\u7cfb\u7edf\u914d\u7f6e\u5f02\u5e38\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458\u3002';
         errorBox.classList.add('visible');
         return;
       }
 
-      // Loading state
-      btn.disabled    = true;
-      btn.textContent = '登录中...';
+      btn.disabled = true;
+      btn.textContent = '\u767b\u5f55\u4e2d...';
 
       try {
         const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -292,32 +414,31 @@
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          // 不区分"账号不存在"与"密码错误"，统一提示
-          throw new Error('账号或密码错误。');
+          throw new Error('\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef\u3002');
         }
 
         if (!data.access_token) {
-          throw new Error('登录响应异常，请稍后重试。');
+          throw new Error('\u767b\u5f55\u54cd\u5e94\u5f02\u5e38\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002');
         }
 
         localStorage.setItem('app_token', data.access_token);
 
-        // 检查系统是否已初始化（存在至少一个 admin 用户）
         let initialized = true;
         try {
-          const status = await fetch('/api/admin/bootstrap-status').then(r => r.json());
+          const status = await fetch('/api/admin/bootstrap-status').then((r) => r.json());
           initialized = status.initialized !== false;
-        } catch (_) { /* 网络异常时默认放行，避免阻断登录 */ }
+        } catch (_) {
+          initialized = true;
+        }
 
         window.location.href = initialized
           ? '/index.html'
           : '/error.html?reason=not_initialized';
-
-      } catch (err) {
-        errorBox.textContent = err.message || '登录失败，请稍后重试。';
+      } catch (error) {
+        errorBox.textContent = error.message || '\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002';
         errorBox.classList.add('visible');
-        btn.disabled    = false;
-        btn.textContent = '登录';
+        btn.disabled = false;
+        btn.textContent = '\u767b\u5f55';
       }
     });
   </script>

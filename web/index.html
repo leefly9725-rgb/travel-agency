@@ -3,255 +3,226 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>飞扬国际旅行社运营系统 V1.0</title>
+  <title>Feiyang International Travel | High-End Business Travel Operations Desk</title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #f5f4f0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif; }
-
-    /* ── Topbar ── */
-    #fy-topbar {
-      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
-      height: 56px; background: #1B2A4A;
-      display: flex; align-items: center; justify-content: space-between;
-      padding: 0 20px;
-    }
-    .fy-topbar-left { display: flex; align-items: center; gap: 10px; }
-    .fy-logo-wrap {
-      height: 32px; border-radius: 6px;
-      display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-    }
-    .fy-brand-wrap { display: flex; flex-direction: column; gap: 1px; }
-    .fy-brand-name { color: #fff; font-size: 13px; font-weight: 500; line-height: 1.3; }
-    .fy-brand-sub  { color: #C9A84C; font-size: 10px; line-height: 1.3; }
-    .fy-topbar-right { display: flex; align-items: center; gap: 10px; }
-    .fy-user-avatar {
-      width: 30px; height: 30px; border-radius: 50%;
-      background: #C9A84C; color: #1B2A4A;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 13px; font-weight: 700; flex-shrink: 0; user-select: none;
-    }
-    .fy-user-info { display: flex; flex-direction: column; gap: 1px; }
-    .fy-user-name { color: #fff; font-size: 12px; font-weight: 500; line-height: 1.3; }
-    .fy-user-role { color: #C9A84C; font-size: 10px; line-height: 1.3; }
-    .fy-divider   { width: 1px; height: 20px; background: rgba(255,255,255,0.2); }
-    .fy-logout-btn {
-      background: transparent; color: #fff; cursor: pointer;
-      border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
-      padding: 5px 11px; font-size: 12px; transition: border-color 0.2s;
-    }
-    .fy-logout-btn:hover { border-color: rgba(255,255,255,0.7); }
-
-    /* ── Hero ── */
-    #fy-hero {
-      background: #1B2A4A; padding: 28px 24px;
-      margin-top: 56px;
-    }
-    .fy-hero-eyebrow { color: #C9A84C; font-size: 11px; letter-spacing: 0.6px; margin-bottom: 6px; }
-    .fy-hero-greeting { color: #fff; font-size: 20px; font-weight: 500; margin-bottom: 20px; min-height: 28px; }
-    .fy-stat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
-    .fy-stat-card {
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(201,168,76,0.25);
-      border-radius: 10px; padding: 14px 16px;
-    }
-    .fy-stat-label { color: rgba(255,255,255,0.6); font-size: 11px; margin-bottom: 4px; }
-    .fy-stat-icon  { font-size: 18px; margin-bottom: 4px; line-height: 1; }
-    .fy-stat-value { color: #fff; font-size: 26px; font-weight: 700; line-height: 1; }
-    .fy-stat-value.loading { font-size: 16px; opacity: 0.5; }
-
-    /* ── Workspace ── */
-    #fy-workspace {
-      padding: 24px;
-      display: grid;
-      grid-template-columns: 1fr 360px;
-      gap: 20px;
-      max-width: 1400px;
-      margin: 0 auto;
-      align-items: start;
-    }
-
-    /* ── Panel card ── */
-    .fy-panel {
-      background: #fff;
-      border: 0.5px solid #e5e7eb;
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 16px;
-    }
-    .fy-panel:last-child { margin-bottom: 0; }
-    .fy-panel-head {
-      display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: 14px;
-    }
-    .fy-panel-title { font-size: 14px; font-weight: 600; color: #1B2A4A; }
-    .fy-panel-link  { font-size: 12px; color: #1B2A4A; text-decoration: none; opacity: 0.6; }
-    .fy-panel-link:hover { opacity: 1; text-decoration: underline; }
-    .fy-soon-badge {
-      background: #f3f4f6; color: #9ca3af;
-      font-size: 10px; border-radius: 99px; padding: 2px 8px;
-    }
-
-    /* ── Quote rows ── */
-    .fy-quote-row {
-      display: flex; justify-content: space-between; align-items: center;
-      padding: 9px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px;
-    }
-    .fy-quote-row:last-child { border-bottom: none; }
-    .fy-q-name { font-weight: 500; color: #111; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-    .fy-q-meta { font-size: 11px; color: #888; margin-top: 2px; }
-    .fy-q-right { text-align: right; flex-shrink: 0; margin-left: 12px; }
-    .fy-q-amount { font-weight: 600; color: #1B2A4A; font-size: 13px; }
-    .fy-q-date   { font-size: 11px; color: #bbb; margin-top: 2px; }
-    .fy-empty    { font-size: 13px; color: #aaa; padding: 10px 0; }
-
-    /* ── Dashboard action button ── */
-    .fy-q-btn {
-      flex-shrink: 0; margin-left: 10px;
-      padding: 4px 10px; border-radius: 6px; border: 1px solid #1B2A4A;
-      background: transparent; color: #1B2A4A; font-size: 11px; font-weight: 600;
-      cursor: pointer; white-space: nowrap; transition: background 0.15s;
-      text-decoration: none; display: inline-block;
-    }
-    .fy-q-btn:hover { background: #1B2A4A; color: #fff; }
-    .fy-q-btn.gold { border-color: #C9A84C; color: #C9A84C; }
-    .fy-q-btn.gold:hover { background: #C9A84C; color: #fff; }
-
-    /* ── exec status badge (inline in dashboard) ── */
-    .fy-exec-badge {
-      display: inline-block; font-size: 10px; font-weight: 600;
-      padding: 1px 6px; border-radius: 10px; white-space: nowrap; border: 1px solid;
-    }
-    .fy-exec-badge.e-preparing { background: rgba(2,119,189,0.08); border-color: rgba(2,119,189,0.2); color: #0277bd; }
-    .fy-exec-badge.e-executing { background: rgba(123,31,162,0.08); border-color: rgba(123,31,162,0.2); color: #7b1fa2; }
-    .fy-exec-badge.e-completed { background: rgba(36,97,59,0.08); border-color: rgba(36,97,59,0.2); color: #24613b; }
-
-    /* ── Shortcuts (right panel) ── */
-    .fy-section-label {
-      font-size: 11px; color: #9ca3af; font-weight: 500;
-      text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px;
-    }
-    .fy-shortcut {
-      display: flex; align-items: center; gap: 12px;
-      padding: 11px 14px;
-      background: #fff; border: 0.5px solid #e5e7eb; border-radius: 10px;
-      margin-bottom: 8px; cursor: pointer;
-      transition: box-shadow 0.15s, border-color 0.15s;
-    }
-    .fy-shortcut:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.08); border-color: #d1d5db; }
-    .fy-shortcut:last-child { margin-bottom: 0; }
-    .fy-sc-icon {
-      width: 32px; height: 32px; border-radius: 8px; flex-shrink: 0;
-      background: #1B2A4A; display: flex; align-items: center; justify-content: center;
-    }
-    .fy-sc-icon.gold { background: #C9A84C; }
-    .fy-sc-icon svg  { width: 15px; height: 15px; }
-    .fy-sc-body { flex: 1; min-width: 0; }
-    .fy-sc-label { font-size: 13px; font-weight: 500; color: #111; }
-    .fy-sc-desc  { font-size: 11px; color: #888; margin-top: 2px; }
-    .fy-sc-arrow { color: #ccc; font-size: 14px; flex-shrink: 0; }
-
+    body { min-height: 100vh; color: #142033; font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif; background: radial-gradient(circle at top right, rgba(198,162,89,0.14), transparent 24%), radial-gradient(circle at top left, rgba(16,42,82,0.08), transparent 28%), linear-gradient(180deg, #fbf7f1 0%, #f3ede3 100%); }
+    a { color: inherit; }
+    .fy-home-shell { width: min(1440px, calc(100% - 40px)); margin: 0 auto; padding: 24px 0 40px; }
+    .fy-home-topbar { position: sticky; top: 16px; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 12px 18px; margin-bottom: 24px; border: 1px solid rgba(20,32,51,0.08); border-radius: 20px; background: rgba(255,252,247,0.86); backdrop-filter: blur(16px); box-shadow: 0 18px 38px rgba(20,32,51,0.08); }
+    .fy-home-brand { display: flex; align-items: center; gap: 14px; min-width: 0; }
+    .fy-home-brand-mark { width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: linear-gradient(135deg, rgba(15,40,76,0.98), rgba(27,57,101,0.92)); box-shadow: inset 0 1px 0 rgba(255,255,255,0.16); flex-shrink: 0; }
+    .fy-home-brand-mark img { width: 28px; height: 28px; object-fit: contain; display: block; }
+    .fy-home-brand-copy { display: grid; gap: 2px; min-width: 0; }
+    .fy-home-brand-title { font-size: 15px; font-weight: 700; color: #102346; letter-spacing: 0.02em; }
+    .fy-home-brand-subtitle { color: #6a7280; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; white-space: nowrap; }
+    .fy-home-topbar-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; justify-content: flex-end; }
+    .fy-home-user-chip { display: flex; align-items: center; gap: 12px; padding: 8px 10px 8px 8px; border-radius: 16px; background: rgba(16,35,70,0.05); border: 1px solid rgba(16,35,70,0.06); min-width: 0; }
+    .fy-home-avatar { width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: 12px; background: linear-gradient(135deg, #12335f 0%, #1f4f85 100%); color: #fff; font-size: 15px; font-weight: 700; flex-shrink: 0; box-shadow: 0 10px 24px rgba(18,51,95,0.24); }
+    .fy-home-user-copy { display: grid; gap: 4px; min-width: 0; }
+    .fy-home-user-name { font-size: 13px; font-weight: 700; color: #15233c; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 180px; }
+    .fy-home-role-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .fy-home-role-tag, .fy-home-date-badge, .fy-home-pill, .fy-home-side-tag { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 1; white-space: nowrap; }
+    .fy-home-role-tag { color: #9b6e13; background: rgba(212,178,109,0.16); border: 1px solid rgba(198,162,89,0.22); }
+    .fy-home-date-badge { color: #556174; background: rgba(255,255,255,0.92); border: 1px solid rgba(20,32,51,0.07); }
+    .fy-home-logout-btn, .fy-home-ghost-link, .fy-home-task-link { display: inline-flex; align-items: center; justify-content: center; gap: 8px; text-decoration: none; border-radius: 999px; cursor: pointer; transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, background 0.18s ease; }
+    .fy-home-logout-btn { padding: 10px 14px; border: 1px solid rgba(16,35,70,0.12); background: rgba(255,255,255,0.94); color: #132642; font-size: 12px; font-weight: 700; }
+    .fy-home-logout-btn:hover, .fy-home-ghost-link:hover, .fy-home-task-link:hover { transform: translateY(-1px); }
+    .fy-home-hero { display: grid; grid-template-columns: minmax(0,1.65fr) minmax(320px,0.95fr); gap: 18px; margin-bottom: 20px; }
+    .fy-home-surface { position: relative; overflow: hidden; border: 1px solid rgba(20,32,51,0.08); border-radius: 28px; background: rgba(255,252,247,0.96); box-shadow: 0 24px 48px rgba(20,32,51,0.08); }
+    .fy-home-hero-main { padding: 34px 34px 30px; background: radial-gradient(circle at top right, rgba(198,162,89,0.18), transparent 24%), linear-gradient(135deg, rgba(255,255,255,0.94), rgba(247,240,229,0.96)); }
+    .fy-home-hero-main::after { content: ""; position: absolute; inset: auto 24px 18px auto; width: 180px; height: 180px; border-radius: 50%; background: radial-gradient(circle, rgba(16,35,70,0.07), transparent 68%); pointer-events: none; }
+    .fy-home-kicker { margin-bottom: 10px; color: #9b6e13; font-size: 11px; font-weight: 700; letter-spacing: 0.18em; text-transform: uppercase; }
+    .fy-home-hero-title { display: grid; gap: 8px; font-size: clamp(30px, 4.3vw, 48px); line-height: 1.08; letter-spacing: -0.03em; color: #102346; max-width: 620px; margin-bottom: 18px; }
+    .fy-home-hero-title strong { display: inline-block; color: #0d1f3d; font-size: clamp(22px, 2.6vw, 30px); font-weight: 700; }
+    .fy-home-hero-subtitle { max-width: 620px; color: #5f6977; font-size: 15px; line-height: 1.8; margin-bottom: 22px; }
+    .fy-home-hero-meta { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 28px; }
+    .fy-home-hero-highlights { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 12px; }
+    .fy-home-highlight-card { min-width: 0; padding: 16px 16px 14px; border-radius: 20px; border: 1px solid rgba(20,32,51,0.07); background: rgba(255,255,255,0.82); box-shadow: inset 0 1px 0 rgba(255,255,255,0.46); }
+    .fy-home-highlight-label { display: block; color: #7d8794; font-size: 11px; margin-bottom: 10px; }
+    .fy-home-highlight-value { display: block; color: #102346; font-size: 26px; font-weight: 700; line-height: 1.1; margin-bottom: 8px; }
+    .fy-home-highlight-note { color: #5f6977; font-size: 12px; line-height: 1.6; }
+    .fy-home-hero-side { padding: 26px; background: linear-gradient(180deg, rgba(17,42,77,0.98) 0%, rgba(16,32,51,0.96) 100%); color: #f6f2e7; }
+    .fy-home-side-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; margin-bottom: 18px; }
+    .fy-home-side-title { font-size: 18px; font-weight: 700; line-height: 1.35; margin-bottom: 6px; }
+    .fy-home-side-copy { color: rgba(246,242,231,0.72); font-size: 13px; line-height: 1.7; }
+    .fy-home-side-tag { color: #f5dfab; background: rgba(255,255,255,0.08); border: 1px solid rgba(245,223,171,0.18); }
+    .fy-home-focus-list, .fy-home-note-list { display: grid; gap: 12px; list-style: none; }
+    .fy-home-focus-item, .fy-home-note-item { display: grid; grid-template-columns: 28px minmax(0,1fr); gap: 12px; align-items: start; }
+    .fy-home-focus-index, .fy-home-note-bullet { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: #f7e7bf; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.08); }
+    .fy-home-focus-item strong, .fy-home-note-item strong { display: block; margin-bottom: 4px; font-size: 13px; font-weight: 700; color: #fff5db; }
+    .fy-home-focus-item span, .fy-home-note-item span { display: block; color: rgba(246,242,231,0.72); font-size: 12px; line-height: 1.7; }
+    .fy-home-kpi-grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 16px; margin-bottom: 22px; }
+    .fy-home-kpi-card { padding: 20px 20px 18px; border-radius: 24px; border: 1px solid rgba(20,32,51,0.08); background: rgba(255,252,247,0.95); box-shadow: 0 18px 36px rgba(20,32,51,0.06); min-height: 164px; }
+    .fy-home-kpi-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 18px; }
+    .fy-home-kpi-label { display: block; color: #7a8390; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; margin-bottom: 8px; }
+    .fy-home-kpi-title { font-size: 18px; font-weight: 700; color: #102346; line-height: 1.35; }
+    .fy-home-kpi-icon { width: 42px; height: 42px; display: flex; align-items: center; justify-content: center; border-radius: 14px; color: #fff; background: linear-gradient(135deg, #163560 0%, #284f7f 100%); box-shadow: 0 12px 22px rgba(17,52,96,0.18); flex-shrink: 0; }
+    .fy-home-kpi-icon.gold { background: linear-gradient(135deg, #b28733 0%, #d1aa5c 100%); box-shadow: 0 12px 22px rgba(178,135,51,0.2); }
+    .fy-home-kpi-icon svg { width: 20px; height: 20px; display: block; }
+    .fy-home-kpi-value { color: #0d1f3d; font-size: 42px; font-weight: 800; letter-spacing: -0.04em; line-height: 1; margin-bottom: 10px; }
+    .fy-home-kpi-value.loading { opacity: 0.44; font-size: 30px; }
+    .fy-home-kpi-note { color: #697383; font-size: 12px; line-height: 1.6; }
+    .fy-home-workspace { display: grid; grid-template-columns: minmax(0,1.8fr) minmax(320px,0.92fr); gap: 18px; align-items: start; }
+    .fy-home-main-column, .fy-home-side-column { display: grid; gap: 18px; min-width: 0; }
+    .fy-home-panel { padding: 24px; border-radius: 28px; border: 1px solid rgba(20,32,51,0.08); background: rgba(255,252,247,0.95); box-shadow: 0 18px 38px rgba(20,32,51,0.06); }
+    .fy-home-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 18px; }
+    .fy-home-panel-kicker { display: inline-block; margin-bottom: 8px; color: #9b6e13; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+    .fy-home-panel-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+    .fy-home-panel-title { font-size: 22px; font-weight: 700; line-height: 1.2; color: #102346; }
+    .fy-home-pill { color: #5d6a7b; background: rgba(16,35,70,0.05); border: 1px solid rgba(16,35,70,0.08); }
+    .fy-home-panel-subtitle { color: #697383; font-size: 13px; line-height: 1.7; max-width: 560px; }
+    .fy-home-ghost-link { padding: 10px 14px; border: 1px solid rgba(20,32,51,0.1); background: rgba(255,255,255,0.92); color: #132642; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+    .fy-home-list { display: grid; gap: 14px; }
+    .fy-home-task-card { display: block; text-decoration: none; padding: 18px; border-radius: 22px; border: 1px solid rgba(20,32,51,0.08); background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(248,244,236,0.92)); box-shadow: 0 14px 30px rgba(20,32,51,0.05); transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+    .fy-home-task-card:hover { transform: translateY(-2px); border-color: rgba(22,53,96,0.18); box-shadow: 0 22px 36px rgba(20,32,51,0.09); }
+    .fy-home-task-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; margin-bottom: 16px; }
+    .fy-home-task-code { display: inline-block; margin-bottom: 8px; color: #9b6e13; font-size: 11px; font-weight: 700; letter-spacing: 0.16em; text-transform: uppercase; }
+    .fy-home-task-title { font-size: 18px; font-weight: 700; color: #132642; line-height: 1.35; margin-bottom: 8px; }
+    .fy-home-task-summary { color: #465367; font-size: 13px; line-height: 1.7; font-weight: 600; }
+    .fy-home-task-support { color: #7b8491; font-size: 12px; line-height: 1.7; margin-top: 4px; }
+    .fy-home-task-note { color: #6a7483; font-size: 12px; line-height: 1.7; margin-top: 14px; }
+    .fy-home-task-meta { display: flex; flex-wrap: wrap; gap: 8px; color: #7f8894; font-size: 12px; line-height: 1.6; margin-top: 14px; }
+    .fy-home-task-meta span { display: inline-flex; align-items: center; gap: 6px; padding: 5px 9px; border-radius: 999px; background: rgba(20,32,51,0.04); border: 1px solid rgba(20,32,51,0.05); }
+    .fy-home-task-link { margin-top: 18px; padding: 10px 14px; background: rgba(16,35,70,0.95); color: #fff; font-size: 12px; font-weight: 700; }
+    .fy-home-task-link.gold { background: linear-gradient(135deg, #bb8d36 0%, #d8b167 100%); color: #fff9ea; }
+    .fy-home-empty-state { display: grid; gap: 10px; padding: 20px; border-radius: 22px; border: 1px dashed rgba(20,32,51,0.12); background: linear-gradient(180deg, rgba(255,255,255,0.88), rgba(248,244,236,0.82)); }
+    .fy-home-empty-badge { display: inline-flex; align-items: center; width: fit-content; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; color: #9b6e13; background: rgba(212,178,109,0.14); border: 1px solid rgba(212,178,109,0.22); }
+    .fy-home-empty-state strong { color: #122341; font-size: 15px; font-weight: 700; }
+    .fy-home-empty-state span { color: #697383; font-size: 13px; line-height: 1.7; }
+    .fy-home-side-panel { padding: 22px; border-radius: 28px; border: 1px solid rgba(20,32,51,0.08); background: rgba(255,252,247,0.95); box-shadow: 0 18px 38px rgba(20,32,51,0.06); }
+    .fy-home-side-panel.dark { background: linear-gradient(180deg, rgba(17,42,77,0.98), rgba(16,32,51,0.98)); color: #f6f2e7; box-shadow: 0 24px 40px rgba(16,32,51,0.16); }
+    .fy-home-side-panel-title { font-size: 18px; font-weight: 700; color: #122341; margin-bottom: 8px; }
+    .fy-home-side-panel.dark .fy-home-side-panel-title { color: #fff2cf; }
+    .fy-home-side-panel-copy { color: #697383; font-size: 13px; line-height: 1.7; margin-bottom: 16px; }
+    .fy-home-side-panel.dark .fy-home-side-panel-copy { color: rgba(246,242,231,0.72); }
+    .fy-home-shortcuts { display: grid; gap: 12px; }
+    .fy-home-shortcut-card { display: grid; grid-template-columns: 48px minmax(0,1fr) auto; align-items: center; gap: 14px; padding: 16px 16px 16px 15px; border-radius: 22px; text-decoration: none; background: linear-gradient(180deg, rgba(255,255,255,0.94), rgba(249,244,236,0.92)); border: 1px solid rgba(20,32,51,0.08); transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease; }
+    .fy-home-shortcut-card:hover { transform: translateY(-2px); border-color: rgba(16,35,70,0.16); box-shadow: 0 18px 32px rgba(20,32,51,0.08); }
+    .fy-home-shortcut-icon { width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; border-radius: 16px; background: linear-gradient(135deg, rgba(17,53,96,0.96), rgba(42,86,136,0.94)); color: #fff; box-shadow: 0 14px 24px rgba(18,51,95,0.18); }
+    .fy-home-shortcut-icon.gold { background: linear-gradient(135deg, rgba(179,136,51,0.98), rgba(217,178,103,0.96)); box-shadow: 0 14px 24px rgba(179,136,51,0.18); }
+    .fy-home-shortcut-icon svg { width: 22px; height: 22px; display: block; }
+    .fy-home-shortcut-copy { min-width: 0; }
+    .fy-home-shortcut-title { font-size: 14px; font-weight: 700; color: #132642; margin-bottom: 4px; }
+    .fy-home-shortcut-desc { color: #6a7483; font-size: 12px; line-height: 1.65; }
+    .fy-home-shortcut-arrow { justify-self: end; color: #7c8490; font-size: 11px; font-weight: 700; padding: 5px 10px; border-radius: 999px; background: rgba(20,32,51,0.05); border: 1px solid rgba(20,32,51,0.06); white-space: nowrap; }
+    .fy-home-status { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 999px; font-size: 11px; font-weight: 700; border: 1px solid transparent; line-height: 1; }
+    .fy-home-status::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: 0.9; }
+    .fy-home-status.preparing { color: #1e6693; background: rgba(30,102,147,0.08); border-color: rgba(30,102,147,0.16); }
+    .fy-home-status.executing { color: #7c4b16; background: rgba(196,150,70,0.14); border-color: rgba(196,150,70,0.2); }
+    .fy-home-status.completed { color: #266147; background: rgba(38,97,71,0.08); border-color: rgba(38,97,71,0.16); }
+    .fy-home-hidden { display: none !important; }
+    @media (max-width: 1220px) { .fy-home-hero, .fy-home-workspace { grid-template-columns: 1fr; } .fy-home-kpi-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
     @media (max-width: 820px) {
-      .fy-stat-grid  { grid-template-columns: repeat(2, 1fr); }
-      #fy-workspace  { grid-template-columns: 1fr; }
-      .fy-user-info, .fy-divider { display: none; }
+      .fy-home-shell { width: min(100%, calc(100% - 24px)); padding-top: 14px; }
+      .fy-home-topbar { top: 10px; padding: 12px 14px; border-radius: 18px; }
+      .fy-home-user-name { max-width: 110px; }
+      .fy-home-hero-main, .fy-home-panel, .fy-home-side-panel, .fy-home-hero-side { padding: 20px; }
+      .fy-home-hero-highlights, .fy-home-kpi-grid { grid-template-columns: 1fr; }
+      .fy-home-shortcut-card { grid-template-columns: 44px minmax(0,1fr); }
+      .fy-home-shortcut-arrow { display: none; }
+    }
+    @media (max-width: 560px) {
+      .fy-home-topbar, .fy-home-topbar-right, .fy-home-panel-header, .fy-home-task-top { align-items: stretch; flex-direction: column; }
+      .fy-home-ghost-link, .fy-home-logout-btn, .fy-home-task-link { width: 100%; }
     }
   </style>
 </head>
 <body style="visibility: hidden">
-
-  <!-- ── Fixed Topbar ──────────────────────────────────────────── -->
-  <nav id="fy-topbar">
-    <div class="fy-topbar-left">
-      <div class="fy-logo-wrap">
-        <img src="/assets/logo.png" alt="飞扬" style="height: 32px; width: auto; display: block;">
-      </div>
-      <div class="fy-brand-wrap">
-        <span class="fy-brand-name">飞扬国际旅行社</span>
-        <span class="fy-brand-sub">FEIYANG TRIP · 运营系统 V1.0</span>
-      </div>
-    </div>
-    <div class="fy-topbar-right">
-      <div class="fy-user-avatar" id="fy-avatar">…</div>
-      <div class="fy-user-info">
-        <span class="fy-user-name" id="fy-uname">—</span>
-        <span class="fy-user-role" id="fy-urole">—</span>
-      </div>
-      <div class="fy-divider"></div>
-      <button class="fy-logout-btn" id="fy-logout">退出登录</button>
-    </div>
-  </nav>
-
-  <!-- ── Hero ─────────────────────────────────────────────────── -->
-  <section id="fy-hero">
-    <p class="fy-hero-eyebrow">FEIYANG TRIP · 贝尔格莱德运营中心</p>
-    <p class="fy-hero-greeting" id="fy-greeting">加载中…</p>
-    <div class="fy-stat-grid">
-      <div class="fy-stat-card">
-        <div class="fy-stat-icon">📋</div>
-        <div class="fy-stat-label">全部报价单</div>
-        <div class="fy-stat-value loading" id="stat-total">…</div>
-      </div>
-      <div class="fy-stat-card">
-        <div class="fy-stat-icon">⏳</div>
-        <div class="fy-stat-label">待审批</div>
-        <div class="fy-stat-value loading" id="stat-pending">…</div>
-      </div>
-      <div class="fy-stat-card">
-        <div class="fy-stat-icon">🗓️</div>
-        <div class="fy-stat-label">本月新增</div>
-        <div class="fy-stat-value loading" id="stat-month">…</div>
-      </div>
-      <div class="fy-stat-card">
-        <div class="fy-stat-icon">🚀</div>
-        <div class="fy-stat-label">执行中项目</div>
-        <div class="fy-stat-value loading" id="stat-executing">…</div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ── Workspace ─────────────────────────────────────────────── -->
-  <div id="fy-workspace">
-
-    <!-- Left: dashboard panels -->
-    <div id="fy-left">
-
-      <!-- 待我审批（仅 manager/admin 可见，authReady 前隐藏） -->
-      <div class="fy-panel" id="panel-approvals" style="display:none">
-        <div class="fy-panel-head">
-          <span class="fy-panel-title">⏳ 待我审批</span>
-          <a class="fy-panel-link" href="/standard-quotes.html?filter=pending">查看全部 →</a>
+  <div class="fy-home-shell">
+    <nav class="fy-home-topbar">
+      <div class="fy-home-brand">
+        <div class="fy-home-brand-mark">
+          <img src="/assets/logo.png" alt="&#39134;&#25196;&#22269;&#38469;&#26053;&#34892;&#31038;" />
         </div>
-        <div id="approvals-list"><p class="fy-empty">加载中…</p></div>
-      </div>
-
-      <!-- 我的草稿 -->
-      <div class="fy-panel">
-        <div class="fy-panel-head">
-          <span class="fy-panel-title">📝 我的草稿</span>
-          <a class="fy-panel-link" href="/standard-quotes.html">查看全部 →</a>
+        <div class="fy-home-brand-copy">
+          <span class="fy-home-brand-title">&#39134;&#25196;&#22269;&#38469;&#26053;&#34892;&#31038;</span>
+          <span class="fy-home-brand-subtitle">Feiyang Trip Operations Desk</span>
         </div>
-        <div id="drafts-list"><p class="fy-empty">加载中…</p></div>
       </div>
-
-      <!-- 最近审批通过 -->
-      <div class="fy-panel">
-        <div class="fy-panel-head">
-          <span class="fy-panel-title">✅ 最近审批通过</span>
-          <a class="fy-panel-link" href="/standard-quotes.html">查看全部 →</a>
+      <div class="fy-home-topbar-right">
+        <div class="fy-home-user-chip">
+          <div class="fy-home-avatar" id="fy-home-avatar">?</div>
+          <div class="fy-home-user-copy">
+            <span class="fy-home-user-name" id="fy-home-uname">&#36816;&#33829;&#25104;&#21592;</span>
+            <div class="fy-home-role-row">
+              <span class="fy-home-role-tag" id="fy-home-urole">&#36890;&#29992;&#24037;&#20316;&#21488;</span>
+              <span class="fy-home-date-badge" id="fy-home-topbar-date">--</span>
+            </div>
+          </div>
         </div>
-        <div id="approved-list"><p class="fy-empty">加载中…</p></div>
+        <button class="fy-home-logout-btn" id="fy-home-logout">&#36864;&#20986;&#30331;&#24405;</button>
       </div>
+    </nav>
 
-    </div>
+    <section class="fy-home-hero">
+      <article class="fy-home-hero-main fy-home-surface">
+        <p class="fy-home-kicker">&#39640;&#31471;&#21830;&#21153;&#26053;&#34892;&#36816;&#33829;&#20013;&#21488;</p>
+        <h1 class="fy-home-hero-title"><span id="fy-home-greeting-text">&#27426;&#36814;&#22238;&#21040;&#24037;&#20316;&#21488;</span><strong id="fy-home-greeting-accent">&#20170;&#22825;&#20174;&#20851;&#38190;&#20219;&#21153;&#24320;&#22987;&#12290;</strong></h1>
+        <p class="fy-home-hero-subtitle" id="fy-home-hero-note">&#20197;&#23457;&#25209;&#12289;&#25253;&#20215;&#19982;&#25191;&#34892;&#36319;&#36827;&#20026;&#20013;&#24515;&#65292;&#29992;&#26356;&#20811;&#21046;&#12289;&#26356;&#28165;&#26224;&#30340;&#24037;&#20316;&#21488;&#35270;&#22270;&#24320;&#22987;&#19968;&#22825;&#24037;&#20316;&#12290;</p>
+        <div class="fy-home-hero-meta">
+          <span class="fy-home-date-badge" id="fy-home-hero-date">--</span>
+          <span class="fy-home-role-tag" id="fy-home-hero-role">&#36890;&#29992;&#24037;&#20316;&#21488;</span>
+        </div>
+        <div class="fy-home-hero-highlights">
+          <div class="fy-home-highlight-card">
+            <span class="fy-home-highlight-label">&#20170;&#26085;&#20219;&#21153;&#28966;&#28857;</span>
+            <strong class="fy-home-highlight-value" id="fy-home-focus-count">0</strong>
+            <span class="fy-home-highlight-note" id="fy-home-focus-note">&#24037;&#20316;&#21488;&#20250;&#26681;&#25454;&#23457;&#25209;&#19982;&#33609;&#31295;&#24773;&#20917;&#32473;&#20986;&#24403;&#19979;&#26368;&#24212;&#20808;&#22788;&#29702;&#30340;&#24037;&#20316;&#26041;&#21521;&#12290;</span>
+          </div>
+          <div class="fy-home-highlight-card">
+            <span class="fy-home-highlight-label">&#24403;&#21069;&#35270;&#22270;&#23450;&#20301;</span>
+            <strong class="fy-home-highlight-value" id="fy-home-focus-role">&#36890;&#29992;&#24037;&#20316;&#21488;</strong>
+            <span class="fy-home-highlight-note" id="fy-home-role-note">&#26681;&#25454;&#35282;&#33394;&#19982;&#26435;&#38480;&#32858;&#28966;&#24403;&#21069;&#26368;&#30456;&#20851;&#30340;&#20219;&#21153;&#19982;&#20837;&#21475;&#12290;</span>
+          </div>
+          <div class="fy-home-highlight-card">
+            <span class="fy-home-highlight-label">&#20219;&#21153;&#24314;&#35758;</span>
+            <strong class="fy-home-highlight-value" id="fy-home-focus-action">&#20808;&#30475;&#24037;&#20316;&#38431;&#21015;</strong>
+            <span class="fy-home-highlight-note" id="fy-home-action-note">&#22312;&#20445;&#25345;&#29256;&#38754;&#20811;&#21046;&#30340;&#21069;&#25552;&#19979;&#65292;&#20248;&#20808;&#21576;&#29616;&#20170;&#22825;&#26368;&#20540;&#24471;&#20851;&#27880;&#30340;&#20107;&#39033;&#12290;</span>
+          </div>
+        </div>
+      </article>
 
-    <!-- Right: quick shortcuts -->
-    <div id="fy-right">
-      <p class="fy-section-label">快捷入口</p>
-      <div id="fy-shortcuts"><p class="fy-empty">加载中…</p></div>
-    </div>
+      <aside class="fy-home-hero-side fy-home-surface">
+        <div class="fy-home-side-top">
+          <div>
+            <div class="fy-home-side-title">&#20170;&#26085;&#24037;&#20316;&#20248;&#20808;&#32423;</div>
+            <p class="fy-home-side-copy">&#22312;&#30331;&#24405;&#21518; 5 &#31186;&#20869;&#30475;&#28165;&#20170;&#22825;&#20808;&#20570;&#20160;&#20040;&#65292;&#24182;&#25226;&#37325;&#24515;&#25918;&#22312;&#23457;&#25209;&#12289;&#33609;&#31295;&#25512;&#36827;&#21644;&#25191;&#34892;&#38381;&#29615;&#19978;&#12290;</p>
+          </div>
+          <span class="fy-home-side-tag" id="fy-home-side-tag">&#31283;&#23450;&#36890;&#29992;&#35270;&#22270;</span>
+        </div>
+        <ul class="fy-home-focus-list" id="fy-home-focus-list">
+          <li class="fy-home-focus-item">
+            <span class="fy-home-focus-index">1</span>
+            <div>
+              <strong>&#24037;&#20316;&#21488;&#24050;&#20934;&#22791;&#22909;</strong>
+              <span>&#31561;&#24453;&#36733;&#20837;&#30495;&#23454;&#25968;&#25454;&#21518;&#65292;&#20250;&#33258;&#21160;&#26356;&#26032;&#20170;&#22825;&#30340;&#24037;&#20316;&#28966;&#28857;&#12290;</span>
+            </div>
+          </li>
+        </ul>
+      </aside>
+    </section>
 
+    <section class="fy-home-kpi-grid" aria-label="&#24037;&#20316;&#21488;&#20851;&#38190;&#25351;&#26631;">
+      <article class="fy-home-kpi-card"><div class="fy-home-kpi-head"><div><span class="fy-home-kpi-label">&#19994;&#21153;&#24635;&#35272;</span><div class="fy-home-kpi-title">&#24635;&#25253;&#20215;&#37327;</div></div><div class="fy-home-kpi-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 7.5h12M6 12h12M6 16.5h7" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" stroke-width="1.8"/></svg></div></div><div class="fy-home-kpi-value loading" id="fy-home-stat-total">--</div><p class="fy-home-kpi-note">&#23545;&#24212;&#24403;&#21069;&#24050;&#25509;&#20837;&#30340;&#25253;&#20215;&#24635;&#37327;&#65292;&#29992;&#20110;&#24555;&#36895;&#21028;&#26029;&#19994;&#21153;&#30424;&#23376;&#22823;&#23567;&#12290;</p></article>
+      <article class="fy-home-kpi-card"><div class="fy-home-kpi-head"><div><span class="fy-home-kpi-label">&#23457;&#25209;&#38431;&#21015;</span><div class="fy-home-kpi-title">&#24453;&#23457;&#25209;</div></div><div class="fy-home-kpi-icon gold"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l2.7 5.46 6.03.88-4.36 4.25 1.03 6.01L12 16.76 6.6 19.6l1.03-6.01L3.27 9.34l6.03-.88L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg></div></div><div class="fy-home-kpi-value loading" id="fy-home-stat-pending">--</div><p class="fy-home-kpi-note">&#31649;&#29702;&#35282;&#33394;&#21487;&#20248;&#20808;&#26597;&#30475;&#23457;&#25209;&#38431;&#21015;&#65292;&#30830;&#20445;&#25253;&#20215;&#25512;&#36827;&#33410;&#22863;&#12290;</p></article>
+      <article class="fy-home-kpi-card"><div class="fy-home-kpi-head"><div><span class="fy-home-kpi-label">&#26412;&#26376;&#33410;&#22863;</span><div class="fy-home-kpi-title">&#26412;&#26376;&#26032;&#22686;</div></div><div class="fy-home-kpi-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 17l4.5-4.5 3 3L19 9" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M15 9h4v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div><div class="fy-home-kpi-value loading" id="fy-home-stat-month">--</div><p class="fy-home-kpi-note">&#21487;&#29992;&#20110;&#35266;&#23519;&#26376;&#24230;&#19994;&#21153;&#24320;&#21457;&#33410;&#22863;&#19982;&#25253;&#20215;&#26032;&#22686;&#21387;&#21147;&#12290;</p></article>
+      <article class="fy-home-kpi-card"><div class="fy-home-kpi-head"><div><span class="fy-home-kpi-label">&#25191;&#34892;&#36319;&#36827;</span><div class="fy-home-kpi-title">&#25191;&#34892;&#20013;&#39033;&#30446;</div></div><div class="fy-home-kpi-icon"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3v18M7 8l5-5 5 5M7 16l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></div></div><div class="fy-home-kpi-value loading" id="fy-home-stat-executing">--</div><p class="fy-home-kpi-note">&#23558;&#25209;&#20934;&#21518;&#30340;&#19994;&#21153;&#36319;&#36827;&#21040;&#25191;&#34892;&#38454;&#27573;&#65292;&#24110;&#21161;&#20445;&#25345;&#38381;&#29615;&#12290;</p></article>
+    </section>
+
+    <section class="fy-home-workspace">
+      <div class="fy-home-main-column">
+        <section class="fy-home-panel fy-home-hidden" id="fy-home-panel-approvals"><div class="fy-home-panel-header"><div><span class="fy-home-panel-kicker">&#23457;&#25209;&#20219;&#21153;</span><div class="fy-home-panel-title-row"><h2 class="fy-home-panel-title">&#24453;&#25105;&#23457;&#25209;</h2><span class="fy-home-pill" id="fy-home-approvals-count">0 &#26465;</span></div><p class="fy-home-panel-subtitle">&#38754;&#21521;&#32463;&#29702;&#19982;&#31649;&#29702;&#35282;&#33394;&#30340;&#20219;&#21153;&#38431;&#21015;&#65292;&#20248;&#20808;&#28165;&#29702;&#25552;&#20132;&#24453;&#23457;&#25209;&#30340;&#25253;&#20215;&#12290;</p></div><a class="fy-home-ghost-link" href="/standard-quotes.html?filter=pending">&#26597;&#30475;&#24453;&#23457;&#25209;&#25253;&#20215;</a></div><div class="fy-home-list" id="fy-home-approvals-list"></div></section>
+        <section class="fy-home-panel"><div class="fy-home-panel-header"><div><span class="fy-home-panel-kicker">&#33609;&#31295;&#25512;&#36827;</span><div class="fy-home-panel-title-row"><h2 class="fy-home-panel-title">&#25105;&#30340;&#33609;&#31295;</h2><span class="fy-home-pill" id="fy-home-drafts-count">0 &#26465;</span></div><p class="fy-home-panel-subtitle">&#32858;&#28966;&#24403;&#21069;&#26368;&#20540;&#24471;&#32487;&#32493;&#25512;&#36827;&#30340;&#25253;&#20215;&#33609;&#31295;&#65292;&#19981;&#35753;&#24050;&#24320;&#22987;&#30340;&#24037;&#20316;&#20013;&#26029;&#12290;</p></div><a class="fy-home-ghost-link" id="fy-home-drafts-link" href="/standard-quotes.html">&#36827;&#20837;&#25253;&#20215;&#21015;&#34920;</a></div><div class="fy-home-list" id="fy-home-drafts-list"></div></section>
+        <section class="fy-home-panel"><div class="fy-home-panel-header"><div><span class="fy-home-panel-kicker">&#23457;&#25209;&#38381;&#29615;</span><div class="fy-home-panel-title-row"><h2 class="fy-home-panel-title">&#26368;&#36817;&#23457;&#25209;&#36890;&#36807;</h2><span class="fy-home-pill" id="fy-home-approved-count">0 &#26465;</span></div><p class="fy-home-panel-subtitle">&#23637;&#31034;&#26368;&#36817;&#24050;&#36890;&#36807;&#30340;&#25253;&#20215;&#19982;&#25191;&#34892;&#29366;&#24577;&#65292;&#26041;&#20415;&#32487;&#32493;&#36319;&#36827;&#21518;&#32493;&#33853;&#22320;&#12290;</p></div><a class="fy-home-ghost-link" href="/standard-quotes.html">&#26597;&#30475;&#25152;&#26377;&#25253;&#20215;</a></div><div class="fy-home-list" id="fy-home-approved-list"></div></section>
+      </div>
+      <aside class="fy-home-side-column">
+        <section class="fy-home-side-panel"><h2 class="fy-home-side-panel-title">&#24555;&#25463;&#20837;&#21475;</h2><p class="fy-home-side-panel-copy">&#26681;&#25454;&#35282;&#33394;&#19982;&#26435;&#38480;&#21482;&#20445;&#30041;&#23569;&#32780;&#31934;&#30340;&#26680;&#24515;&#20837;&#21475;&#65292;&#36991;&#20813;&#39318;&#39029;&#36864;&#21270;&#25104;&#20256;&#32479;&#33756;&#21333;&#39029;&#12290;</p><div class="fy-home-shortcuts" id="fy-home-shortcuts"></div></section>
+        <section class="fy-home-side-panel dark"><h2 class="fy-home-side-panel-title">&#24037;&#20316;&#21488;&#25552;&#37266;</h2><p class="fy-home-side-panel-copy">&#29992;&#26356;&#36731;&#30340;&#26041;&#24335;&#25226;&#20170;&#22825;&#26368;&#37325;&#35201;&#30340;&#20107;&#32447;&#32034;&#25910;&#26463;&#21040;&#19968;&#23631;&#20869;&#65292;&#36991;&#20813;&#22823;&#29255;&#31354;&#30333;&#21644;&#26080;&#25928;&#21344;&#20301;&#12290;</p><ul class="fy-home-note-list" id="fy-home-note-list"><li class="fy-home-note-item"><span class="fy-home-note-bullet">1</span><div><strong>&#24037;&#20316;&#21488;&#24050;&#20934;&#22791;&#22909;</strong><span>&#31561;&#24453;&#30495;&#23454;&#25968;&#25454;&#21152;&#36733;&#23436;&#25104;&#21518;&#65292;&#25552;&#37266;&#20869;&#23481;&#20250;&#33258;&#21160;&#26356;&#26032;&#12290;</span></div></li></ul></section>
+      </aside>
+    </section>
   </div>
 
   <script src="/ui-labels.js"></script>
@@ -259,217 +230,354 @@
   <script>
     'use strict';
 
-    /* ── Constants ─────────────────────────────────────────────── */
     const ROLE_LABELS = {
-      admin:                      '系统管理员',
-      manager:                    '经理/主管',
-      standard_quote_specialist:  '标准报价专员',
-      project_quote_specialist:   '项目型报价专员',
+      admin: '\u7cfb\u7edf\u7ba1\u7406\u5458',
+      manager: '\u7ecf\u7406 / \u4e3b\u7ba1',
+      standard_quote_specialist: '\u6807\u51c6\u62a5\u4ef7\u4e13\u5458',
+      project_quote_specialist: '\u9879\u76ee\u578b\u62a5\u4ef7\u4e13\u5458'
     };
 
-    const EXEC_LABEL = { preparing: '筹备中', executing: '执行中', completed: '已完成' };
-    const EXEC_CLS   = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
+    const STATUS_LABELS = {
+      preparing: '\u7b79\u5907\u4e2d',
+      executing: '\u6267\u884c\u4e2d',
+      completed: '\u5df2\u5b8c\u6210'
+    };
 
-    const MODULES = [
-      { key: 'standard-quotes',   label: '标准报价',   desc: '查看与管理标准报价',      href: '/standard-quotes.html',  perm: 'standard_quote.view', gold: false },
-      { key: 'project-quotes',    label: '项目型报价', desc: '管理活动/会议/展会报价',   href: '/project-quotes.html',   perm: 'project_quote.view',  gold: false },
-      { key: 'receptions',        label: '接待管理',   desc: '新建与跟踪接待任务',      href: '/receptions.html',        perm: 'reception.view',      gold: false },
-      { key: 'documents',         label: '文档管理',   desc: '报价单、行程单等文档预览', href: '/documents.html',         perm: 'document.view',       gold: false },
-      { key: 'suppliers',         label: '供应商管理', desc: '物料成本与价格库管理',     href: '/suppliers.html',         perm: 'supplier.view',       gold: false },
-      { key: 'templates',         label: '模板管理',   desc: '维护常用报价项目模板',     href: '/templates.html',         perm: 'standard_quote.view', gold: false },
-      { key: 'projects',          label: '项目主档',   desc: '项目概览与档案信息',       href: '/projects.html',          perm: 'project_quote.view',  gold: false },
-      { key: 'admin-permissions', label: '权限管理',   desc: '用户、角色与权限配置',     href: '/admin-permissions.html', perm: 'user.view',           gold: true  },
+    const SHORTCUTS = [
+      { key: 'quote-create', label: '\u65b0\u5efa\u6807\u51c6\u62a5\u4ef7', desc: '\u76f4\u63a5\u8fdb\u5165\u6807\u51c6\u62a5\u4ef7\u521b\u5efa\u6d41\u7a0b\u3002', href: '/quote-new.html', perm: 'standard_quote.create', roles: ['standard_quote_specialist', 'manager', 'admin'], tone: 'gold', priorities: { standard_quote_specialist: 1, manager: 4, admin: 4, default: 8 }, badge: '\u4f18\u5148\u5165\u53e3', icon: 'plus' },
+      { key: 'standard-quotes', label: '\u6807\u51c6\u62a5\u4ef7\u5217\u8868', desc: '\u67e5\u770b\u3001\u8ffd\u8e2a\u5e76\u5904\u7406\u6807\u51c6\u62a5\u4ef7\u3002', href: '/standard-quotes.html', perm: 'standard_quote.view', roles: ['standard_quote_specialist', 'manager', 'admin'], tone: 'navy', priorities: { standard_quote_specialist: 2, manager: 1, admin: 1, default: 2 }, badge: '\u4e1a\u52a1\u6838\u5fc3', icon: 'clipboard' },
+      { key: 'project-create', label: '\u65b0\u5efa\u9879\u76ee\u578b\u62a5\u4ef7', desc: '\u8fdb\u5165\u6d3b\u52a8\u3001\u4f1a\u8bae\u3001\u5c55\u4f1a\u9879\u76ee\u62a5\u4ef7\u6d41\u7a0b\u3002', href: '/quote-new.html?mode=project_based', perm: 'project_quote.create', roles: ['project_quote_specialist', 'manager', 'admin'], tone: 'gold', priorities: { project_quote_specialist: 1, manager: 5, admin: 5, default: 9 }, badge: '\u9879\u76ee\u62a5\u4ef7', icon: 'spark' },
+      { key: 'project-quotes', label: '\u9879\u76ee\u578b\u62a5\u4ef7', desc: '\u96c6\u4e2d\u7ba1\u7406\u590d\u6742\u9879\u76ee\u62a5\u4ef7\u4e0e\u8fdb\u5c55\u3002', href: '/project-quotes.html', perm: 'project_quote.view', roles: ['project_quote_specialist', 'manager', 'admin'], tone: 'navy', priorities: { project_quote_specialist: 2, manager: 2, admin: 2, default: 3 }, badge: '\u9879\u76ee\u4e3b\u7ebf', icon: 'briefcase' },
+      { key: 'projects', label: '\u9879\u76ee\u4e3b\u6863', desc: '\u67e5\u770b\u9879\u76ee\u6863\u6848\u4e0e\u6267\u884c\u6982\u51b5\u3002', href: '/projects.html', perm: 'project_quote.view', roles: ['project_quote_specialist', 'manager', 'admin'], tone: 'navy', priorities: { project_quote_specialist: 3, manager: 6, admin: 6, default: 6 }, badge: '\u9879\u76ee\u89c6\u89d2', icon: 'building' },
+      { key: 'documents', label: '\u6587\u6863\u7ba1\u7406', desc: '\u67e5\u770b\u62a5\u4ef7\u5355\u3001\u884c\u7a0b\u5355\u7b49\u6587\u6863\u6e90\u6570\u636e\u3002', href: '/documents.html', perm: 'document.view', roles: ['standard_quote_specialist', 'project_quote_specialist', 'manager', 'admin'], tone: 'navy', priorities: { standard_quote_specialist: 3, project_quote_specialist: 4, manager: 7, admin: 7, default: 4 }, badge: '\u6587\u6863\u534f\u540c', icon: 'document' },
+      { key: 'templates', label: '\u6a21\u677f\u7ba1\u7406', desc: '\u7ef4\u62a4\u5e38\u7528\u62a5\u4ef7\u6a21\u677f\uff0c\u63d0\u5347\u590d\u7528\u6548\u7387\u3002', href: '/templates.html', perm: 'standard_quote.view', roles: ['standard_quote_specialist', 'manager', 'admin'], tone: 'navy', priorities: { standard_quote_specialist: 4, manager: 8, admin: 8, default: 7 }, badge: '\u6548\u7387\u5de5\u5177', icon: 'layers' },
+      { key: 'suppliers', label: '\u4f9b\u5e94\u5546\u7ba1\u7406', desc: '\u67e5\u770b\u4ef7\u683c\u5e93\u4e0e\u4f9b\u5e94\u5546\u8d44\u6599\u3002', href: '/suppliers.html', perm: 'supplier.view', roles: ['manager', 'admin'], tone: 'navy', priorities: { manager: 3, admin: 3, default: 10 }, badge: '\u6210\u672c\u534f\u540c', icon: 'globe' },
+      { key: 'admin-permissions', label: '\u6743\u9650\u7ba1\u7406', desc: '\u7ba1\u7406\u7528\u6237\u3001\u89d2\u8272\u4e0e\u6743\u9650\u914d\u7f6e\u3002', href: '/admin-permissions.html', perm: 'user.view', roles: ['admin'], tone: 'gold', priorities: { admin: 5, default: 11 }, badge: '\u7cfb\u7edf\u7ba1\u7406', icon: 'shield' }
     ];
 
-    /* ── Helpers ───────────────────────────────────────────────── */
-    function esc(s) {
-      return String(s == null ? '' : s)
-        .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    const ICONS = {
+      plus: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+      clipboard: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="6" y="5" width="12" height="15" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M9 9.5h6M9 13h6M9 16.5h4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><path d="M9.5 5V4.5A1.5 1.5 0 0 1 11 3h2a1.5 1.5 0 0 1 1.5 1.5V5" stroke="currentColor" stroke-width="1.8"/></svg>',
+      spark: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l2.2 5.6L20 11l-5.8 2.4L12 19l-2.2-5.6L4 11l5.8-2.4L12 3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+      briefcase: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="4" y="7" width="16" height="12" rx="3" stroke="currentColor" stroke-width="1.8"/><path d="M9 7V6a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="1.8"/><path d="M4 12h16" stroke="currentColor" stroke-width="1.8"/></svg>',
+      building: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 20V7.5A1.5 1.5 0 0 1 6.5 6H10v14M10 20h9V4.5A1.5 1.5 0 0 0 17.5 3H11.5A1.5 1.5 0 0 0 10 4.5" stroke="currentColor" stroke-width="1.8"/><path d="M8 10h.01M8 13h.01M8 16h.01M14 8h.01M14 11h.01M14 14h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+      document: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8 3h6l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" stroke="currentColor" stroke-width="1.8"/><path d="M14 3v5h5M9 12h6M9 16h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      layers: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 4l8 4-8 4-8-4 8-4zM4 12l8 4 8-4M4 16l8 4 8-4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+      globe: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><circle cx="12" cy="12" r="8" stroke="currentColor" stroke-width="1.8"/><path d="M4.5 9.5h15M4.5 14.5h15M12 4a13.5 13.5 0 0 1 3 8 13.5 13.5 0 0 1-3 8 13.5 13.5 0 0 1-3-8 13.5 13.5 0 0 1 3-8z" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      shield: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l7 3v5c0 4.6-2.8 8.8-7 10-4.2-1.2-7-5.4-7-10V6l7-3z" stroke="currentColor" stroke-width="1.8"/><path d="M9.5 12l1.7 1.7 3.8-4.2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    };
+
+    const state = {
+      stats: {
+        kpi: { total: 0, pending: 0, monthNew: 0, executing: 0 },
+        pendingApprovals: [],
+        myDrafts: [],
+        recentApproved: []
+      }
+    };
+
+    function esc(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function parseRoles(roles) {
+      if (!Array.isArray(roles)) return [];
+      return roles.map((role) => typeof role === 'string' ? role : (role && (role.code || role.id || role.name) || '')).filter(Boolean);
+    }
+
+    function getPrimaryRole(roles) {
+      const ordered = ['admin', 'manager', 'standard_quote_specialist', 'project_quote_specialist'];
+      for (const role of ordered) {
+        if (roles.includes(role)) return role;
+      }
+      return roles[0] || '';
+    }
+
+    function canAccess(permissionCode) {
+      if (!permissionCode) return true;
+      return typeof window.can === 'function' ? window.can(permissionCode) : true;
+    }
+
+    function isManagerView(roles) {
+      return roles.includes('admin') || roles.includes('manager');
+    }
+
+    function getUserName(user) {
+      return user.display_name || user.name || user.email || '\u8fd0\u8425\u6210\u5458';
+    }
+
+    function getInitial(name) {
+      return String(name || '').trim().charAt(0).toUpperCase() || '?';
+    }
+
+    function formatDateLabel(date) {
+      return new Intl.DateTimeFormat('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'long' }).format(date);
+    }
+
+    function formatPanelDate(value) {
+      if (!value) return '\u65f6\u95f4\u5f85\u66f4\u65b0';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '\u65f6\u95f4\u5f85\u66f4\u65b0';
+      return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' }).format(date);
+    }
+
+    function formatShortDate(value) {
+      if (!value) return '\u65e5\u671f\u5f85\u66f4\u65b0';
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return '\u65e5\u671f\u5f85\u66f4\u65b0';
+      return new Intl.DateTimeFormat('zh-CN', { month: 'numeric', day: 'numeric' }).format(date);
     }
 
     function getGreeting(name) {
-      const h = new Date().getHours();
-      const g = h >= 6 && h < 12  ? '早上好'
-              : h >= 12 && h < 14 ? '中午好'
-              : h >= 14 && h < 18 ? '下午好'
-              :                     '晚上好';
-      return name ? `${g}，${name}` : g;
+      const hour = new Date().getHours();
+      const prefix = hour >= 6 && hour < 12 ? '\u65e9\u4e0a\u597d' : hour >= 12 && hour < 14 ? '\u4e2d\u5348\u597d' : hour >= 14 && hour < 18 ? '\u4e0b\u5348\u597d' : '\u665a\u4e0a\u597d';
+      return `${prefix}\uff0c${name}`;
     }
 
-    function parseRoles(rolesArr) {
-      if (!Array.isArray(rolesArr)) return [];
-      return rolesArr.map(r => (typeof r === 'string' ? r : (r.code || r.id || r.name || '')));
+    function getRoleLabel(role) {
+      return ROLE_LABELS[role] || '\u901a\u7528\u5de5\u4f5c\u53f0';
     }
 
-    // "2024-03-21T08:30:00Z" → "03-21 08:30"
-    function fmtDatetime(iso) {
-      if (!iso) return '—';
-      const d = new Date(iso);
-      if (isNaN(d)) return '—';
-      const mm = String(d.getMonth() + 1).padStart(2, '0');
-      const dd = String(d.getDate()).padStart(2, '0');
-      const hh = String(d.getHours()).padStart(2, '0');
-      const mi = String(d.getMinutes()).padStart(2, '0');
-      return `${mm}-${dd} ${hh}:${mi}`;
+    function getRoleTheme(role, stats) {
+      const pending = Number(stats.kpi.pending || 0);
+      const drafts = stats.myDrafts.length;
+      const executing = Number(stats.kpi.executing || 0);
+      if (role === 'admin' || role === 'manager') {
+        return {
+          focusRole: '\u5ba1\u6279\u89c6\u89d2',
+          heroNote: pending > 0 ? `\u4eca\u5929\u6709 ${pending} \u4efd\u5f85\u5ba1\u6279\u62a5\u4ef7\u9700\u8981\u4f18\u5148\u5904\u7406\uff0c\u5efa\u8bae\u5148\u6e05\u7406\u5ba1\u6279\u961f\u5217\uff0c\u518d\u56de\u770b\u6267\u884c\u4e2d\u7684\u9879\u76ee\u3002` : '\u5f53\u524d\u6ca1\u6709\u79ef\u538b\u5ba1\u6279\uff0c\u53ef\u4f18\u5148\u68c0\u67e5\u6267\u884c\u4e2d\u9879\u76ee\u4e0e\u4f9b\u5e94\u5546\u534f\u540c\u60c5\u51b5\u3002',
+          roleNote: '\u9762\u5411\u5ba1\u6279\u3001\u5168\u5c40\u6982\u89c8\u4e0e\u5173\u952e\u4e8b\u9879\u7684\u8fd0\u8425\u89c6\u89d2\u3002',
+          focusAction: pending > 0 ? '\u5148\u770b\u5ba1\u6279' : '\u5de1\u68c0\u5168\u5c40',
+          actionNote: pending > 0 ? '\u4f18\u5148\u5904\u7406\u5f85\u5ba1\u6279\u62a5\u4ef7\uff0c\u786e\u4fdd\u63a8\u8fdb\u8282\u594f\u3002' : '\u5ba1\u6279\u5e73\u7a33\uff0c\u53ef\u8f6c\u5411\u9879\u76ee\u4e0e\u6210\u672c\u534f\u540c\u3002'
+        };
+      }
+      if (role === 'standard_quote_specialist') {
+        return {
+          focusRole: '\u6807\u51c6\u62a5\u4ef7',
+          heroNote: drafts > 0 ? `\u4f60\u5f53\u524d\u6709 ${drafts} \u4efd\u8349\u7a3f\u5f85\u63a8\u8fdb\uff0c\u5efa\u8bae\u5148\u5b8c\u6210\u6807\u51c6\u62a5\u4ef7\u6574\u7406\uff0c\u518d\u8865\u9f50\u6587\u6863\u4e0e\u6a21\u677f\u590d\u7528\u3002` : '\u5f53\u524d\u8349\u7a3f\u538b\u529b\u8f83\u8f7b\uff0c\u53ef\u4f18\u5148\u8fdb\u5165\u6807\u51c6\u62a5\u4ef7\u65b0\u5efa\u6216\u68c0\u67e5\u6587\u6863\u51c6\u5907\u60c5\u51b5\u3002',
+          roleNote: '\u4ee5\u6807\u51c6\u62a5\u4ef7\u63a8\u8fdb\u3001\u6587\u6863\u534f\u540c\u4e0e\u6a21\u677f\u590d\u7528\u4e3a\u91cd\u70b9\u3002',
+          focusAction: drafts > 0 ? '\u7ee7\u7eed\u8349\u7a3f' : '\u65b0\u5efa\u62a5\u4ef7',
+          actionNote: drafts > 0 ? '\u4f18\u5148\u5b8c\u6210\u73b0\u6709\u8349\u7a3f\uff0c\u907f\u514d\u62a5\u4ef7\u94fe\u8def\u4e2d\u65ad\u3002' : '\u8349\u7a3f\u5df2\u6e05\u7a7a\uff0c\u53ef\u76f4\u63a5\u8fdb\u5165\u65b0\u5efa\u6d41\u7a0b\u3002'
+        };
+      }
+      if (role === 'project_quote_specialist') {
+        return {
+          focusRole: '\u9879\u76ee\u62a5\u4ef7',
+          heroNote: drafts > 0 ? `\u4f60\u5f53\u524d\u6709 ${drafts} \u4efd\u9879\u76ee\u8349\u7a3f\u5f85\u63a8\u8fdb\uff0c\u5efa\u8bae\u4f18\u5148\u8ddf\u8fdb\u9879\u76ee\u62a5\u4ef7\u4e0e\u4e3b\u6863\u4fe1\u606f\u3002` : '\u5f53\u524d\u8349\u7a3f\u538b\u529b\u8f83\u8f7b\uff0c\u53ef\u56de\u5230\u9879\u76ee\u578b\u62a5\u4ef7\u4e0e\u9879\u76ee\u4e3b\u6863\uff0c\u4fdd\u6301\u9879\u76ee\u7ebf\u7d22\u5b8c\u6574\u3002',
+          roleNote: '\u4ee5\u9879\u76ee\u62a5\u4ef7\u63a8\u8fdb\u3001\u9879\u76ee\u4e3b\u6863\u4e0e\u6267\u884c\u8854\u63a5\u4e3a\u91cd\u70b9\u3002',
+          focusAction: drafts > 0 ? '\u63a8\u8fdb\u9879\u76ee\u8349\u7a3f' : '\u56de\u5230\u9879\u76ee\u7ebf',
+          actionNote: drafts > 0 ? '\u4f18\u5148\u6574\u7406\u9879\u76ee\u62a5\u4ef7\u8349\u7a3f\uff0c\u907f\u514d\u9879\u76ee\u4fe1\u606f\u5206\u6563\u3002' : '\u8349\u7a3f\u8f83\u5c11\uff0c\u53ef\u68c0\u67e5\u9879\u76ee\u8fdb\u5c55\u548c\u65b0\u589e\u7ebf\u7d22\u3002'
+        };
+      }
+      return {
+        focusRole: '\u901a\u7528\u89c6\u56fe',
+        heroNote: `\u5f53\u524d\u5df2\u63a5\u5165 ${executing} \u4e2a\u6267\u884c\u4e2d\u9879\u76ee\u4e0e ${pending} \u4efd\u5f85\u5ba1\u6279\u62a5\u4ef7\uff0c\u5de5\u4f5c\u53f0\u4f1a\u6309\u5df2\u8bc6\u522b\u6743\u9650\u7a33\u5b9a\u5c55\u793a\u6838\u5fc3\u5185\u5bb9\u3002`,
+        roleNote: '\u5f53\u89d2\u8272\u4fe1\u606f\u4e0d\u5b8c\u6574\u65f6\uff0c\u4fdd\u6301\u4e00\u4e2a\u7a33\u5b9a\u4e14\u5b89\u5168\u7684\u901a\u7528\u89c6\u56fe\u3002',
+        focusAction: drafts > 0 ? '\u5148\u770b\u8349\u7a3f' : '\u67e5\u770b\u603b\u89c8',
+        actionNote: drafts > 0 ? '\u4f18\u5148\u5904\u7406\u5df2\u6709\u8349\u7a3f\uff0c\u9010\u6b65\u63a8\u8fdb\u4efb\u52a1\u3002' : '\u5148\u67e5\u770b\u6574\u4f53\u4e1a\u52a1\u6982\u51b5\uff0c\u518d\u8fdb\u5165\u5177\u4f53\u6a21\u5757\u3002'
+      };
     }
 
-    function fmtDate(iso) {
-      if (!iso) return '—';
-      return String(iso).slice(0, 10) || '—';
+    function getFocusItems(role, stats) {
+      const items = [];
+      if ((role === 'admin' || role === 'manager') && stats.kpi.pending > 0) items.push({ title: `\u4f18\u5148\u6e05\u7406 ${stats.kpi.pending} \u4efd\u5f85\u5ba1\u6279\u62a5\u4ef7`, note: '\u8fd9\u662f\u5f53\u524d\u6700\u76f4\u63a5\u5f71\u54cd\u63a8\u8fdb\u8282\u594f\u7684\u961f\u5217\uff0c\u5efa\u8bae\u5148\u4ece\u5ba1\u6279\u5f00\u59cb\u3002' });
+      if (stats.myDrafts.length > 0) items.push({ title: `\u8ddf\u8fdb ${stats.myDrafts.length} \u4efd\u6211\u7684\u8349\u7a3f`, note: '\u628a\u8349\u7a3f\u63a8\u8fdb\u5230\u53ef\u63d0\u4ea4\u72b6\u6001\uff0c\u80fd\u6700\u5feb\u63d0\u5347\u4eca\u65e5\u5b8c\u6210\u5ea6\u3002' });
+      items.push({ title: `\u672c\u6708\u5df2\u65b0\u5efa ${stats.kpi.monthNew} \u4efd\u62a5\u4ef7`, note: '\u7528\u65b0\u589e\u8282\u594f\u5224\u65ad\u5f53\u524d\u4e1a\u52a1\u63a8\u8fdb\u538b\u529b\u3002' });
+      items.push({ title: `${stats.kpi.executing} \u4e2a\u9879\u76ee\u5904\u4e8e\u6267\u884c\u4e2d`, note: '\u9002\u5408\u5feb\u901f\u56de\u987e\u6267\u884c\u72b6\u6001\uff0c\u907f\u514d\u6279\u51c6\u540e\u5931\u53bb\u8ddf\u8e2a\u3002' });
+      return items.slice(0, 3);
     }
 
-    /* ── KPI cards ─────────────────────────────────────────────── */
-    function renderKpi(kpi) {
-      const set = (id, val) => {
+    function getNoteItems(role, stats) {
+      const notes = [];
+      if ((role === 'admin' || role === 'manager') && stats.kpi.pending > 0) notes.push({ title: '\u5ba1\u6279\u4f18\u5148', note: `\u5f53\u524d\u6709 ${stats.kpi.pending} \u4efd\u5f85\u5ba1\u6279\u62a5\u4ef7\uff0c\u5efa\u8bae\u4f18\u5148\u6e05\u7406\u5ba1\u6279\u961f\u5217\u3002` });
+      notes.push(stats.myDrafts.length > 0 ? { title: '\u8349\u7a3f\u63a8\u8fdb', note: `\u4f60\u6709 ${stats.myDrafts.length} \u4efd\u8349\u7a3f\u5f85\u7ee7\u7eed\u5904\u7406\uff0c\u9002\u5408\u96c6\u4e2d\u5b8c\u6210\u3002` } : { title: '\u8349\u7a3f\u538b\u529b\u8f83\u8f7b', note: '\u5f53\u524d\u6ca1\u6709\u660e\u663e\u7684\u8349\u7a3f\u79ef\u538b\uff0c\u53ef\u628a\u65f6\u95f4\u7559\u7ed9\u65b0\u5efa\u6216\u590d\u6838\u3002' });
+      notes.push(stats.recentApproved.length > 0 ? { title: '\u8fd1\u671f\u95ed\u73af', note: `\u6700\u8fd1\u5df2\u5b8c\u6210 ${stats.recentApproved.length} \u6761\u5ba1\u6279\u901a\u8fc7\u8bb0\u5f55\uff0c\u53ef\u7ee7\u7eed\u8ddf\u8fdb\u6267\u884c\u3002` } : { title: '\u8fd1\u671f\u95ed\u73af', note: '\u8fd1\u671f\u6682\u65e0\u65b0\u7684\u5ba1\u6279\u901a\u8fc7\u8bb0\u5f55\uff0c\u5de5\u4f5c\u53f0\u4fdd\u6301\u514b\u5236\u5c55\u793a\u3002' });
+      return notes.slice(0, 3);
+    }
+
+    function getEmptyStateHtml(title, note) {
+      return `<div class="fy-home-empty-state"><span class="fy-home-empty-badge">\u5f53\u524d\u6e05\u723d</span><strong>${esc(title)}</strong><span>${esc(note)}</span></div>`;
+    }
+
+    function getStatusBadge(status, fallbackLabel) {
+      const safeStatus = ['preparing', 'executing', 'completed'].includes(status) ? status : '';
+      const label = fallbackLabel || STATUS_LABELS[safeStatus] || safeStatus;
+      if (!label) return '';
+      return `<span class="fy-home-status ${safeStatus || 'preparing'}">${esc(label)}</span>`;
+    }
+
+    function getListLink(primaryRole) {
+      return primaryRole === 'project_quote_specialist' ? '/project-quotes.html' : '/standard-quotes.html';
+    }
+
+    function buildTaskCard(item, options) {
+      const title = item.quoteNumber || item.clientName || '\u672a\u547d\u540d\u62a5\u4ef7';
+      const client = item.clientName || '\u5ba2\u6237\u5f85\u8865\u5145';
+      const destination = item.destination || '\u76ee\u7684\u5730\u5f85\u8865\u5145';
+      const dateText = `${options.dateLabel} ${options.dateFormatter(item.date)}`;
+      const statusBadge = options.statusResolver ? options.statusResolver(item) : '';
+      const noteText = options.noteText ? options.noteText(item) : '';
+      return `
+        <a class="fy-home-task-card" href="/quote-detail.html?id=${encodeURIComponent(item.id || '')}">
+          <div class="fy-home-task-top">
+            <div style="min-width:0">
+              <span class="fy-home-task-code">${esc(options.eyebrow)}</span>
+              <h3 class="fy-home-task-title">${esc(title)}</h3>
+              <p class="fy-home-task-summary">\u5ba2\u6237\uff1a${esc(client)}</p>
+              <p class="fy-home-task-support">\u76ee\u7684\u5730\uff1a${esc(destination)}</p>
+            </div>
+            ${statusBadge}
+          </div>
+          <div class="fy-home-task-meta">
+            <span>${esc(dateText)}</span>
+            <span>${esc(options.metaText)}</span>
+          </div>
+          ${noteText ? `<p class="fy-home-task-note">${esc(noteText)}</p>` : ''}
+          <span class="fy-home-task-link${options.ctaTone === 'gold' ? ' gold' : ''}">${esc(options.ctaLabel)}</span>
+        </a>
+      `;
+    }
+
+    function renderTaskSection(sectionId, countId, list, options) {
+      const container = document.getElementById(sectionId);
+      const countEl = document.getElementById(countId);
+      const safeList = Array.isArray(list) ? list.filter(Boolean) : [];
+      if (countEl) countEl.textContent = `${safeList.length} \u6761`;
+      if (!container) return;
+      container.innerHTML = safeList.length ? safeList.map((item) => buildTaskCard(item, options)).join('') : getEmptyStateHtml(options.emptyTitle, options.emptyNote);
+    }
+
+    function getShortcutList(role) {
+      return SHORTCUTS.filter((item) => canAccess(item.perm)).filter((item) => !item.roles || !item.roles.length || item.roles.includes(role) || !role).sort((a, b) => (a.priorities[role] || a.priorities.default || 999) - (b.priorities[role] || b.priorities.default || 999)).slice(0, 5);
+    }
+
+    function renderShortcuts(role) {
+      const container = document.getElementById('fy-home-shortcuts');
+      if (!container) return;
+      const shortcuts = getShortcutList(role);
+      container.innerHTML = shortcuts.length ? shortcuts.map((item) => `
+        <a class="fy-home-shortcut-card" href="${esc(item.href)}">
+          <div class="fy-home-shortcut-icon${item.tone === 'gold' ? ' gold' : ''}">${ICONS[item.icon] || ICONS.clipboard}</div>
+          <div class="fy-home-shortcut-copy">
+            <div class="fy-home-shortcut-title">${esc(item.label)}</div>
+            <div class="fy-home-shortcut-desc">${esc(item.desc)}</div>
+          </div>
+          <span class="fy-home-shortcut-arrow">${esc(item.badge || '\u8fdb\u5165')}</span>
+        </a>
+      `).join('') : getEmptyStateHtml('\u5f53\u524d\u6682\u65e0\u53ef\u7528\u5165\u53e3', '\u6743\u9650\u8bc6\u522b\u5b8c\u6210\u540e\uff0c\u5de5\u4f5c\u53f0\u4f1a\u81ea\u52a8\u5448\u73b0\u4e0e\u4f60\u6700\u76f8\u5173\u7684\u6a21\u5757\u5165\u53e3\u3002');
+    }
+
+    function renderFocusList(role, stats) {
+      document.getElementById('fy-home-focus-list').innerHTML = getFocusItems(role, stats).map((item, index) => `
+        <li class="fy-home-focus-item">
+          <span class="fy-home-focus-index">${index + 1}</span>
+          <div>
+            <strong>${esc(item.title)}</strong>
+            <span>${esc(item.note)}</span>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function renderNoteList(role, stats) {
+      document.getElementById('fy-home-note-list').innerHTML = getNoteItems(role, stats).map((item, index) => `
+        <li class="fy-home-note-item">
+          <span class="fy-home-note-bullet">${index + 1}</span>
+          <div>
+            <strong>${esc(item.title)}</strong>
+            <span>${esc(item.note)}</span>
+          </div>
+        </li>
+      `).join('');
+    }
+
+    function renderKpi(stats) {
+      const map = { 'fy-home-stat-total': Number(stats.kpi.total || 0), 'fy-home-stat-pending': Number(stats.kpi.pending || 0), 'fy-home-stat-month': Number(stats.kpi.monthNew || 0), 'fy-home-stat-executing': Number(stats.kpi.executing || 0) };
+      Object.entries(map).forEach(([id, value]) => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.textContent = val;
+        el.textContent = String(value);
         el.classList.remove('loading');
-      };
-      set('stat-total',     kpi.total     ?? '—');
-      set('stat-pending',   kpi.pending   ?? '—');
-      set('stat-month',     kpi.monthNew  ?? '—');
-      set('stat-executing', kpi.executing ?? '—');
+      });
     }
 
-    /* ── 待我审批 ──────────────────────────────────────────────── */
-    function renderApprovalList(list) {
-      const el = document.getElementById('approvals-list');
-      if (!list || list.length === 0) {
-        el.innerHTML = '<p class="fy-empty">暂无待审批报价单</p>';
-        return;
-      }
-      el.innerHTML = list.map(q => `
-        <div class="fy-quote-row">
-          <div style="min-width:0;flex:1">
-            <div class="fy-q-name" title="${esc(q.clientName)}">${esc(q.quoteNumber || q.clientName || '—')}</div>
-            <div class="fy-q-meta">${esc(q.clientName)} · ${esc(q.destination || '—')}</div>
-            <div class="fy-q-meta">提交：${fmtDatetime(q.date)}</div>
-          </div>
-          <a class="fy-q-btn gold" href="/quote-detail.html?id=${esc(q.id)}">去审批</a>
-        </div>`).join('');
+    function renderDashboard(stats) {
+      const user = window.__CURRENT_USER__ || {};
+      const roles = parseRoles(user.roles);
+      const primaryRole = getPrimaryRole(roles);
+      const name = getUserName(user);
+      const roleLabel = getRoleLabel(primaryRole);
+      const theme = getRoleTheme(primaryRole, stats);
+      const todayLabel = formatDateLabel(new Date());
+      document.getElementById('fy-home-avatar').textContent = getInitial(name);
+      document.getElementById('fy-home-uname').textContent = name;
+      document.getElementById('fy-home-urole').textContent = roleLabel;
+      document.getElementById('fy-home-topbar-date').textContent = todayLabel;
+      document.getElementById('fy-home-greeting-text').textContent = getGreeting(name);
+      document.getElementById('fy-home-greeting-accent').textContent = '\u4eca\u5929\u4ece\u5173\u952e\u4efb\u52a1\u5f00\u59cb\u3002';
+      document.getElementById('fy-home-hero-note').textContent = theme.heroNote;
+      document.getElementById('fy-home-hero-date').textContent = todayLabel;
+      document.getElementById('fy-home-hero-role').textContent = roleLabel;
+      document.getElementById('fy-home-focus-count').textContent = String(isManagerView(roles) ? stats.kpi.pending : stats.myDrafts.length);
+      document.getElementById('fy-home-focus-role').textContent = theme.focusRole;
+      document.getElementById('fy-home-role-note').textContent = theme.roleNote;
+      document.getElementById('fy-home-focus-action').textContent = theme.focusAction;
+      document.getElementById('fy-home-action-note').textContent = theme.actionNote;
+      document.getElementById('fy-home-side-tag').textContent = primaryRole ? roleLabel : '\u7a33\u5b9a\u901a\u7528\u89c6\u56fe';
+      document.getElementById('fy-home-focus-note').textContent = isManagerView(roles) ? '\u5ba1\u6279\u4f18\u5148\u7ea7\u4f1a\u968f\u7740\u961f\u5217\u53d8\u5316\u5b9e\u65f6\u66f4\u65b0\u3002' : '\u8349\u7a3f\u6570\u91cf\u4f1a\u51b3\u5b9a\u4f60\u4eca\u5929\u7684\u7b2c\u4e00\u5de5\u4f5c\u91cd\u5fc3\u3002';
+      document.getElementById('fy-home-panel-approvals').classList.toggle('fy-home-hidden', !isManagerView(roles));
+      const draftsLink = document.getElementById('fy-home-drafts-link');
+      draftsLink.href = getListLink(primaryRole);
+      draftsLink.textContent = primaryRole === 'project_quote_specialist' ? '\u8fdb\u5165\u9879\u76ee\u62a5\u4ef7\u5217\u8868' : '\u8fdb\u5165\u6807\u51c6\u62a5\u4ef7\u5217\u8868';
+      renderShortcuts(primaryRole);
+      renderFocusList(primaryRole, stats);
+      renderNoteList(primaryRole, stats);
+      renderKpi(stats);
+      renderTaskSection('fy-home-approvals-list', 'fy-home-approvals-count', stats.pendingApprovals, { eyebrow: '\u5ba1\u6279\u4efb\u52a1', metaText: '\u5efa\u8bae\u4f18\u5148\u5904\u7406\uff0c\u907f\u514d\u6d41\u7a0b\u79ef\u538b', ctaLabel: '\u53bb\u5ba1\u6279', ctaTone: 'gold', dateLabel: '\u63d0\u4ea4\u4e8e', dateFormatter: formatPanelDate, statusResolver: () => getStatusBadge('preparing', '\u5f85\u5ba1\u6279'), noteText: () => '\u8fdb\u5165\u8be6\u60c5\u9875\u5373\u53ef\u67e5\u770b\u62a5\u4ef7\u5185\u5bb9\u4e0e\u63d0\u4ea4\u4e0a\u4e0b\u6587\u3002', emptyTitle: '\u5f53\u524d\u6ca1\u6709\u5f85\u5ba1\u6279\u62a5\u4ef7', emptyNote: '\u5ba1\u6279\u961f\u5217\u5df2\u6e05\u7a7a\uff0c\u53ef\u4ee5\u8f6c\u5411\u8349\u7a3f\u63a8\u8fdb\u6216\u67e5\u770b\u6267\u884c\u4e2d\u7684\u9879\u76ee\u3002' });
+      renderTaskSection('fy-home-drafts-list', 'fy-home-drafts-count', stats.myDrafts, { eyebrow: primaryRole === 'project_quote_specialist' ? '\u9879\u76ee\u8349\u7a3f' : '\u6211\u7684\u8349\u7a3f', metaText: '\u7ee7\u7eed\u8865\u9f50\u5185\u5bb9\u5e76\u63a8\u8fdb\u63d0\u4ea4', ctaLabel: '\u7ee7\u7eed\u5904\u7406', ctaTone: 'navy', dateLabel: '\u6700\u8fd1\u66f4\u65b0', dateFormatter: formatPanelDate, statusResolver: () => getStatusBadge('preparing', '\u8349\u7a3f\u4e2d'), noteText: () => primaryRole === 'project_quote_specialist' ? '\u5efa\u8bae\u4f18\u5148\u5bf9\u9f50\u9879\u76ee\u4fe1\u606f\u4e0e\u62a5\u4ef7\u5185\u5bb9\u3002' : '\u8865\u9f50\u62a5\u4ef7\u8981\u70b9\u540e\uff0c\u53ef\u5c3d\u5feb\u63d0\u4ea4\u8fdb\u5165\u4e0b\u4e00\u73af\u8282\u3002', emptyTitle: '\u5f53\u524d\u6ca1\u6709\u5f85\u7ee7\u7eed\u7684\u8349\u7a3f', emptyNote: `\u53ef\u76f4\u63a5\u524d\u5f80${primaryRole === 'project_quote_specialist' ? '\u9879\u76ee\u578b' : '\u6807\u51c6'}\u62a5\u4ef7\u65b0\u5efa\u6d41\u7a0b\uff0c\u5f00\u59cb\u65b0\u7684\u5de5\u4f5c\u4efb\u52a1\u3002` });
+      renderTaskSection('fy-home-approved-list', 'fy-home-approved-count', stats.recentApproved, { eyebrow: '\u5ba1\u6279\u95ed\u73af', metaText: '\u5ba1\u6279\u5b8c\u6210\u540e\u7ee7\u7eed\u8ddf\u8fdb\u6267\u884c\u72b6\u6001', ctaLabel: '\u67e5\u770b\u8be6\u60c5', ctaTone: 'navy', dateLabel: '\u5ba1\u6279\u4e8e', dateFormatter: formatShortDate, statusResolver: (item) => getStatusBadge(item.executionStatus || 'preparing'), noteText: (item) => item.executionStatus ? ('\u5f53\u524d\u6267\u884c\u72b6\u6001\uff1a' + (STATUS_LABELS[item.executionStatus] || item.executionStatus)) : '\u5df2\u5b8c\u6210\u5ba1\u6279\uff0c\u53ef\u7ee7\u7eed\u8ddf\u8fdb\u6267\u884c\u5b89\u6392\u3002', emptyTitle: '\u8fd1\u671f\u6682\u65e0\u5ba1\u6279\u901a\u8fc7\u8bb0\u5f55', emptyNote: '\u5de5\u4f5c\u53f0\u4e0d\u4f1a\u4e3a\u4e86\u586b\u6ee1\u7248\u9762\u800c\u5f3a\u884c\u5c55\u793a\u65e0\u771f\u5b9e\u6570\u636e\u652f\u6491\u7684\u6a21\u5757\u3002' });
     }
 
-    /* ── 我的草稿 ──────────────────────────────────────────────── */
-    function renderDraftList(list) {
-      const el = document.getElementById('drafts-list');
-      if (!list || list.length === 0) {
-        el.innerHTML = '<p class="fy-empty">暂无草稿</p>';
-        return;
-      }
-      el.innerHTML = list.map(q => `
-        <div class="fy-quote-row">
-          <div style="min-width:0;flex:1">
-            <div class="fy-q-name" title="${esc(q.clientName)}">${esc(q.quoteNumber || q.clientName || '—')}</div>
-            <div class="fy-q-meta">${esc(q.clientName)} · ${esc(q.destination || '—')}</div>
-            <div class="fy-q-date">更新：${fmtDate(q.date)}</div>
-          </div>
-          <a class="fy-q-btn" href="/quote-detail.html?id=${esc(q.id)}">继续编辑</a>
-        </div>`).join('');
+    function renderDashboardError() {
+      ['fy-home-stat-total', 'fy-home-stat-pending', 'fy-home-stat-month', 'fy-home-stat-executing'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.textContent = '--';
+        el.classList.remove('loading');
+      });
+      document.getElementById('fy-home-focus-list').innerHTML = '<li class="fy-home-focus-item"><span class="fy-home-focus-index">!</span><div><strong>\u9996\u9875\u6570\u636e\u6682\u65f6\u4e0d\u53ef\u7528</strong><span>\u63a5\u53e3\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u5237\u65b0\u9875\u9762\u540e\u91cd\u8bd5\u3002</span></div></li>';
+      document.getElementById('fy-home-note-list').innerHTML = '<li class="fy-home-note-item"><span class="fy-home-note-bullet">1</span><div><strong>\u8bf7\u5237\u65b0\u9875\u9762</strong><span>\u5982\u679c\u95ee\u9898\u6301\u7eed\u5b58\u5728\uff0c\u8bf7\u68c0\u67e5\u63a5\u53e3\u670d\u52a1\u72b6\u6001\u3002</span></div></li>';
+      document.getElementById('fy-home-approvals-list').innerHTML = getEmptyStateHtml('\u6570\u636e\u52a0\u8f7d\u5931\u8d25', '\u5ba1\u6279\u6570\u636e\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u5237\u65b0\u91cd\u8bd5\u3002');
+      document.getElementById('fy-home-drafts-list').innerHTML = getEmptyStateHtml('\u6570\u636e\u52a0\u8f7d\u5931\u8d25', '\u8349\u7a3f\u6570\u636e\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u5237\u65b0\u91cd\u8bd5\u3002');
+      document.getElementById('fy-home-approved-list').innerHTML = getEmptyStateHtml('\u6570\u636e\u52a0\u8f7d\u5931\u8d25', '\u8fd1\u671f\u8bb0\u5f55\u6682\u65f6\u4e0d\u53ef\u7528\uff0c\u8bf7\u7a0d\u540e\u5237\u65b0\u91cd\u8bd5\u3002');
     }
 
-    /* ── 最近审批通过 ───────────────────────────────────────────── */
-    function renderApprovedList(list) {
-      const el = document.getElementById('approved-list');
-      if (!list || list.length === 0) {
-        el.innerHTML = '<p class="fy-empty">暂无已审批通过的报价单</p>';
-        return;
-      }
-      el.innerHTML = list.map(q => {
-        const ec = q.executionStatus || 'preparing';
-        const badge = `<span class="fy-exec-badge ${esc(EXEC_CLS[ec] || 'e-preparing')}">${esc(EXEC_LABEL[ec] || ec)}</span>`;
-        return `
-          <div class="fy-quote-row">
-            <div style="min-width:0;flex:1">
-              <div class="fy-q-name" title="${esc(q.clientName)}">${esc(q.quoteNumber || q.clientName || '—')}</div>
-              <div class="fy-q-meta">${esc(q.clientName)} · ${esc(q.destination || '—')} · ${badge}</div>
-              <div class="fy-q-date">审批：${fmtDate(q.date)}</div>
-            </div>
-            <a class="fy-q-btn" href="/quote-detail.html?id=${esc(q.id)}">查看</a>
-          </div>`;
-      }).join('');
-    }
-
-    /* ── Shortcuts ─────────────────────────────────────────────── */
-    function renderShortcuts() {
-      const ICON_SVG = `<svg viewBox="0 0 16 16" fill="white" xmlns="http://www.w3.org/2000/svg">
-        <path d="M8 1.5L1 7h2v6.5h4V10h2v3.5h4V7h2L8 1.5z"/>
-      </svg>`;
-      const ROLE_MODULES = {
-        standard_quote_specialist: ['standard-quotes', 'receptions', 'documents', 'templates'],
-        project_quote_specialist:  ['project-quotes', 'receptions', 'documents', 'projects'],
-        manager:                   ['standard-quotes', 'project-quotes', 'suppliers', 'projects', 'templates'],
-        admin:                     null,
-      };
-      const roles = parseRoles((window.__CURRENT_USER__ || {}).roles);
-      const primaryRole = roles[0] || '';
-      const allowed = ROLE_MODULES[primaryRole] || null;
-      const html = MODULES
-        .filter(m => window.can(m.perm))
-        .filter(m => !allowed || allowed.includes(m.key))
-        .map(m => `
-          <div class="fy-shortcut" onclick="location.href='${m.href}'">
-            <div class="fy-sc-icon${m.gold ? ' gold' : ''}">${ICON_SVG}</div>
-            <div class="fy-sc-body">
-              <div class="fy-sc-label">${m.label}</div>
-              <div class="fy-sc-desc">${m.desc}</div>
-            </div>
-            <span class="fy-sc-arrow">→</span>
-          </div>`).join('');
-      document.getElementById('fy-shortcuts').innerHTML = html || '<p class="fy-empty">暂无可用模块</p>';
-    }
-
-    /* ── Logout ────────────────────────────────────────────────── */
-    document.getElementById('fy-logout').addEventListener('click', function () {
+    document.getElementById('fy-home-logout').addEventListener('click', function () {
       localStorage.removeItem('app_token');
       window.location.href = '/login.html';
     });
 
-    /* ── Auth ready ────────────────────────────────────────────── */
     document.addEventListener('authReady', function () {
-      const user  = window.__CURRENT_USER__ || {};
-      const name  = user.display_name || user.name || '用户';
-      const roles = parseRoles(user.roles);
-      const primaryRole = roles[0] || '';
-
-      document.getElementById('fy-avatar').textContent = name.charAt(0) || '?';
-      document.getElementById('fy-uname').textContent  = name;
-      document.getElementById('fy-urole').textContent  = ROLE_LABELS[primaryRole] || primaryRole || '—';
-      document.getElementById('fy-greeting').textContent = getGreeting(name);
-
-      renderShortcuts();
-
-      // 展示"待我审批"面板（仅 manager/admin）
-      const isManagerOrAdmin = roles.includes('admin') || roles.includes('manager');
-      if (isManagerOrAdmin) {
-        document.getElementById('panel-approvals').style.display = '';
-      }
+      renderDashboard(state.stats);
     });
 
-    /* ── Data loading（各模块独立 loading，Promise.all 并行）──── */
-    (async function loadData() {
-      const safe = fn => fn().catch(err => { console.error('[dashboard]', err); return null; });
-
-      const statsPromise = safe(() => window.AppUtils.fetchJson('/api/dashboard/stats', null, ''));
-
-      // 等待 stats 一次返回所有数据（后端已并行查询）
-      const stats = await statsPromise;
-
-      if (stats) {
-        renderKpi(stats.kpi || {});
-        renderApprovalList(stats.pendingApprovals || []);
-        renderDraftList(stats.myDrafts || []);
-        renderApprovedList(stats.recentApproved || []);
-      } else {
-        // 接口失败时清空 loading 状态
-        ['stat-total','stat-pending','stat-month','stat-executing'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) { el.textContent = '—'; el.classList.remove('loading'); }
-        });
-        ['approvals-list','drafts-list','approved-list'].forEach(id => {
-          const el = document.getElementById(id);
-          if (el) el.innerHTML = '<p class="fy-empty">数据加载失败，请刷新页面</p>';
-        });
+    (async function bootstrapDashboard() {
+      try {
+        const stats = await window.AppUtils.fetchJson('/api/dashboard/stats', null, '\u9996\u9875\u6570\u636e\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002');
+        state.stats = {
+          kpi: stats && stats.kpi ? { total: Number(stats.kpi.total || 0), pending: Number(stats.kpi.pending || 0), monthNew: Number(stats.kpi.monthNew || 0), executing: Number(stats.kpi.executing || 0) } : { total: 0, pending: 0, monthNew: 0, executing: 0 },
+          pendingApprovals: Array.isArray(stats && stats.pendingApprovals) ? stats.pendingApprovals : [],
+          myDrafts: Array.isArray(stats && stats.myDrafts) ? stats.myDrafts : [],
+          recentApproved: Array.isArray(stats && stats.recentApproved) ? stats.recentApproved : []
+        };
+        renderDashboard(state.stats);
+      } catch (error) {
+        console.error('[fy-home-dashboard]', error);
+        renderDashboardError();
       }
     })();
   </script>

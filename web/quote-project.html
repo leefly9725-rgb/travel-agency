@@ -3,18 +3,18 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>项目型报价</title>
+  <title>妞ゅ湱娲伴崹瀣Г娴?/title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
 </head>
 <body style="visibility: hidden">
   <div class="page-shell">
     <header class="topbar">
-      <a class="topbar-link" href="/quotes.html">← 报价列表</a>
+      <a id="project-quote-back-link" class="topbar-link" href="/project-quotes.html">← 返回项目报价列表</a>
       <div class="topbar-actions">
-        <button id="btn-toggle-view" class="ghost mini-button">切换客户视图</button>
-        <a id="btn-terms" class="ghost mini-button" href="/terms-editor.html" style="text-decoration:none">商务条款</a>
-        <button id="btn-delete" class="ghost mini-button hidden" data-confirm="确定删除此项目型报价吗？">删除报价</button>
+        <button id="btn-toggle-view" class="ghost mini-button">閸掑洦宕茬€广垺鍩涚憴鍡楁禈</button>
+        <a id="btn-terms" class="ghost mini-button" href="/terms-editor.html" style="text-decoration:none">閸熷棗濮熼弶鈩冾儥</a>
+        <button id="btn-delete" class="ghost mini-button hidden" data-confirm="绾喖鐣鹃崚鐘绘珟濮濄倝銆嶉惄顔肩€烽幎銉ょ幆閸氭绱?>閸掔娀娅庨幎銉ょ幆</button>
       </div>
     </header>
 
@@ -22,54 +22,54 @@
       <!-- Main editor panel -->
       <section class="panel">
         <div class="panel-head">
-          <h1 id="page-title">新建项目型报价</h1>
-          <span id="page-subtitle">大型活动 / 会议 / 展会报价</span>
+          <h1 id="page-title">閺傛澘缂撴い鍦窗閸ㄥ濮ゆ禒?/h1>
+          <span id="page-subtitle">婢堆冪€峰ú璇插З / 娴兼俺顔?/ 鐏炴洑绱伴幎銉ょ幆</span>
         </div>
         <div id="pq-message" class="message-box hidden"></div>
 
         <!-- Project header form -->
         <form id="project-header-form" class="form-stack section-spacing-sm">
           <div class="inline-form">
-            <label><span>项目名称</span><input name="name" placeholder="例如：2024年开业庆典活动" required /></label>
-            <label><span>客户名称</span><input name="client" placeholder="例如：泷鼎晟科技公司" /></label>
+            <label><span>妞ゅ湱娲伴崥宥囆?/span><input name="name" placeholder="娓氬顩ч敍?024楠炴潙绱戞稉姘啊閸忓憡妞块崝? required /></label>
+            <label><span>鐎广垺鍩涢崥宥囆?/span><input name="client" placeholder="娓氬顩ч敍姘挙姒у孩娅夌粔鎴炲Η閸忣剙寰? /></label>
           </div>
           <div class="inline-form">
-            <label><span>活动日期</span><input name="eventDate" type="date" /></label>
-            <label><span>活动地点</span><input name="venue" placeholder="例如：贝尔格莱德商务中心" /></label>
-            <label><span>参与人数</span><input name="paxCount" type="number" min="0" step="1" placeholder="0" value="0" /></label>
-            <label><span>报价币种</span>
+            <label><span>濞茶濮╅弮銉︽埂</span><input name="eventDate" type="date" /></label>
+            <label><span>濞茶濮╅崷鎵仯</span><input name="venue" placeholder="娓氬顩ч敍姘崇鐏忔梹鐗搁懢鍗炵棄閸熷棗濮熸稉顓炵妇" /></label>
+            <label><span>閸欏倷绗屾禍鐑樻殶</span><input name="paxCount" type="number" min="0" step="1" placeholder="0" value="0" /></label>
+            <label><span>閹躲儰鐜敮浣侯潚</span>
               <select name="currency">
-                <option value="EUR">EUR 欧元</option>
-                <option value="RSD">RSD 第纳尔</option>
-                <option value="RMB">RMB 人民币</option>
+                <option value="EUR">EUR 濞喲冨帗</option>
+                <option value="RSD">RSD 缁楊剛鎾肩亸?/option>
+                <option value="RMB">RMB 娴滅儤鐨敮?/option>
               </select>
             </label>
-            <label><span>状态</span>
+            <label><span>閻樿埖鈧?/span>
               <select name="status">
-                <option value="draft">草稿</option>
-                <option value="sent">已发送</option>
-                <option value="confirmed">已确认</option>
-                <option value="cancelled">已取消</option>
+                <option value="draft">閼藉顭?/option>
+                <option value="sent">瀹告彃褰傞柅?/option>
+                <option value="confirmed">瀹歌尙鈥樼拋?/option>
+                <option value="cancelled">瀹告彃褰囧☉?/option>
               </select>
             </label>
           </div>
-          <label><span>备注说明</span><textarea name="notes" rows="2" placeholder="活动特殊要求、注意事项等"></textarea></label>
+          <label><span>婢跺洦鏁炵拠瀛樻</span><textarea name="notes" rows="2" placeholder="濞茶濮╅悧瑙勭暕鐟曚焦鐪伴妴浣规暈閹板繋绨ㄦい鍦搼"></textarea></label>
         </form>
 
         <!-- Items section -->
         <div class="section-spacing-sm">
           <div class="list-row">
-            <h2 class="section-title">报价物料明细</h2>
+            <h2 class="section-title">閹躲儰鐜悧鈺傛灐閺勫海绮?/h2>
             <div class="action-row">
               <select id="template-select" class="mini-select">
-                <option value="">— 加载活动模板 —</option>
-                <option value="opening_ceremony">开业庆典</option>
-                <option value="large_conference">大型会议</option>
-                <option value="product_launch">发布会</option>
-                <option value="exhibition_reception">展会接待</option>
+                <option value="">閳?閸旂姾娴囧ú璇插З濡剝婢?閳?/option>
+                <option value="opening_ceremony">瀵偓娑撴艾绨￠崗?/option>
+                <option value="large_conference">婢堆冪€锋导姘愁唴</option>
+                <option value="product_launch">閸欐垵绔锋导?/option>
+                <option value="exhibition_reception">鐏炴洑绱伴幒銉ョ窡</option>
               </select>
-              <button id="btn-apply-template" class="mini-button">应用模板</button>
-              <button id="btn-add-row" class="mini-button">+ 添加物料行</button>
+              <button id="btn-apply-template" class="mini-button">鎼存梻鏁ゅΟ鈩冩緲</button>
+              <button id="btn-add-row" class="mini-button">+ 濞ｈ濮為悧鈺傛灐鐞?/button>
             </div>
           </div>
 
@@ -77,24 +77,24 @@
             <table class="pq-table" id="items-table">
               <thead>
                 <tr>
-                  <th class="col-group">组别</th>
-                  <th class="col-name">中文名称</th>
-                  <th class="col-name-en view-internal">英文名称</th>
-                  <th class="col-unit">单位</th>
-                  <th class="col-qty">数量</th>
-                  <th class="col-price view-internal">成本单价</th>
-                  <th class="col-price">销售单价</th>
-                  <th class="col-subtotal view-internal">成本小计</th>
-                  <th class="col-subtotal">销售小计</th>
-                  <th class="col-margin view-internal">毛利率</th>
-                  <th class="col-supplier view-internal">供应商</th>
-                  <th class="col-notes">备注</th>
+                  <th class="col-group">缂佸嫬鍩?/th>
+                  <th class="col-name">娑擃厽鏋冮崥宥囆?/th>
+                  <th class="col-name-en view-internal">閼昏鲸鏋冮崥宥囆?/th>
+                  <th class="col-unit">閸楁洑缍?/th>
+                  <th class="col-qty">閺佷即鍣?/th>
+                  <th class="col-price view-internal">閹存劖婀伴崡鏇氱幆</th>
+                  <th class="col-price">闁库偓閸烆喖宕熸禒?/th>
+                  <th class="col-subtotal view-internal">閹存劖婀扮亸蹇氼吀</th>
+                  <th class="col-subtotal">闁库偓閸烆喖鐨拋?/th>
+                  <th class="col-margin view-internal">濮ｆ稑鍩勯悳?/th>
+                  <th class="col-supplier view-internal">娓氭稑绨查崯?/th>
+                  <th class="col-notes">婢跺洦鏁?/th>
                   <th class="col-actions"></th>
                 </tr>
               </thead>
               <tbody id="items-tbody">
                 <tr class="empty-row">
-                  <td colspan="13" class="empty">暂无物料，点击「添加物料行」或选择活动模板开始录入。</td>
+                  <td colspan="13" class="empty">閺嗗倹妫ら悧鈺傛灐閿涘瞼鍋ｉ崙姹団偓灞惧潑閸旂姷澧块弬娆掝攽閵嗗秵鍨ㄩ柅澶嬪濞茶濮╁Ο鈩冩緲瀵偓婵缍嶉崗銉ｂ偓?/td>
                 </tr>
               </tbody>
             </table>
@@ -105,24 +105,24 @@
       <!-- Right sticky panel: summary + save -->
       <aside class="panel sticky-panel wide-preview-panel">
         <div class="panel-head">
-          <h2>报价汇总</h2>
-          <span id="view-label">内部视图</span>
+          <h2>閹躲儰鐜Ч鍥ㄢ偓?/h2>
+          <span id="view-label">閸愬懘鍎寸憴鍡楁禈</span>
         </div>
 
         <div class="pq-summary">
-          <div class="metric"><span>物料行数</span><strong id="sum-count">0 条</strong></div>
-          <div class="metric view-internal"><span>成本合计</span><strong id="sum-cost">—</strong></div>
-          <div class="metric"><span>报价合计</span><strong id="sum-sell">—</strong></div>
-          <div class="metric view-internal"><span>毛利润</span><strong id="sum-profit">—</strong></div>
-          <div class="metric view-internal"><span>综合毛利率</span><strong id="sum-margin">—</strong></div>
+          <div class="metric"><span>閻椻晜鏋＄悰灞炬殶</span><strong id="sum-count">0 閺?/strong></div>
+          <div class="metric view-internal"><span>閹存劖婀伴崥鍫ｎ吀</span><strong id="sum-cost">閳?/strong></div>
+          <div class="metric"><span>閹躲儰鐜崥鍫ｎ吀</span><strong id="sum-sell">閳?/strong></div>
+          <div class="metric view-internal"><span>濮ｆ稑鍩勫☉?/span><strong id="sum-profit">閳?/strong></div>
+          <div class="metric view-internal"><span>缂佺厧鎮庡В娑樺焺閻?/span><strong id="sum-margin">閳?/strong></div>
         </div>
 
         <!-- Group breakdown -->
         <div id="group-breakdown" class="pq-group-breakdown section-spacing-sm"></div>
 
         <div class="button-row section-spacing-sm">
-          <button id="btn-save" type="button">保存报价</button>
-          <a class="ghost button-link" href="/quotes.html">取消</a>
+          <button id="btn-save" type="button">娣囨繂鐡ㄩ幎銉ょ幆</button>
+          <a id="project-quote-cancel-link" class="ghost button-link" href="/project-quotes.html">取消</a>
         </div>
       </aside>
     </div>
@@ -130,6 +130,7 @@
 
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
+  <script src="/return-utils.js"></script>
   <script src="/quote-project.js"></script>
 </body>
 </html>
