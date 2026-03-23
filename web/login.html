@@ -330,8 +330,8 @@
 
       <form id="login-form" class="fy-login-form" novalidate>
         <div class="fy-field">
-          <label for="account">&#36134;&#21495;</label>
-          <input id="account" type="email" autocomplete="username" placeholder="&#35831;&#36755;&#20837;&#36134;&#21495;" required />
+          <label for="account">用户名</label>
+          <input id="account" type="text" name="username" autocomplete="username" placeholder="请输入用户名" required />
         </div>
 
         <div class="fy-field">
@@ -380,45 +380,41 @@
 
       const btn = document.getElementById('btn-login');
       const errorBox = document.getElementById('error-box');
-      const account = document.getElementById('account').value.trim();
+      const username = document.getElementById('account').value.trim();
       const password = document.getElementById('password').value;
 
       errorBox.textContent = '';
       errorBox.classList.remove('visible');
 
-      if (!account || !password) {
-        errorBox.textContent = '\u8bf7\u586b\u5199\u8d26\u53f7\u548c\u5bc6\u7801\u3002';
-        errorBox.classList.add('visible');
-        return;
-      }
-
-      if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-        errorBox.textContent = '\u7cfb\u7edf\u914d\u7f6e\u5f02\u5e38\uff0c\u8bf7\u8054\u7cfb\u7ba1\u7406\u5458\u3002';
+      if (!username || !password) {
+        errorBox.textContent = '请填写用户名和密码。';
         errorBox.classList.add('visible');
         return;
       }
 
       btn.disabled = true;
-      btn.textContent = '\u767b\u5f55\u4e2d...';
+      btn.textContent = '登录中...';
 
       try {
-        const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+        const res = await fetch('/api/auth/login', {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'apikey': SUPABASE_ANON_KEY,
-          },
-          body: JSON.stringify({ email: account, password }),
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username, password }),
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok) {
-          throw new Error('\u8d26\u53f7\u6216\u5bc6\u7801\u9519\u8bef\u3002');
+          let msg;
+          if (res.status === 401) msg = '用户名或密码错误。';
+          else if (res.status === 403) msg = '账号已被停用，请联系管理员。';
+          else if (res.status === 429) msg = '登录失败次数过多，请15分钟后再试。';
+          else msg = data.error || '登录失败，请稍后重试。';
+          throw new Error(msg);
         }
 
         if (!data.access_token) {
-          throw new Error('\u767b\u5f55\u54cd\u5e94\u5f02\u5e38\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002');
+          throw new Error('登录响应异常，请稍后重试。');
         }
 
         localStorage.setItem('app_token', data.access_token);
@@ -435,10 +431,10 @@
           ? '/index.html'
           : '/error.html?reason=not_initialized';
       } catch (error) {
-        errorBox.textContent = error.message || '\u767b\u5f55\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5\u3002';
+        errorBox.textContent = error.message || '登录失败，请稍后重试。';
         errorBox.classList.add('visible');
         btn.disabled = false;
-        btn.textContent = '\u767b\u5f55';
+        btn.textContent = '登录';
       }
     });
   </script>

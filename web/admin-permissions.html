@@ -587,12 +587,14 @@
         <input type="text" id="new-user-name" placeholder="请输入显示名称" autocomplete="off" />
       </div>
       <div class="modal-field">
-        <label for="new-user-email">邮箱 <span style="color:var(--error-text)">*</span></label>
-        <input type="email" id="new-user-email" placeholder="请输入登录邮箱" autocomplete="off" />
+        <label for="new-user-username">用户名 <span style="color:var(--error-text)">*</span></label>
+        <input type="text" id="new-user-username" placeholder="支持中文或英文，如：张三 或 zhangsan" autocomplete="off" />
+        <span style="font-size:11px;color:var(--muted);margin-top:3px;display:block">用户将用此用户名登录系统</span>
       </div>
       <div class="modal-field">
-        <label for="new-user-password">初始密码 <span style="color:var(--error-text)">*</span>（至少 6 位）</label>
+        <label for="new-user-password">初始密码 <span style="color:var(--error-text)">*</span></label>
         <input type="password" id="new-user-password" placeholder="请输入初始密码" autocomplete="new-password" />
+        <span style="font-size:11px;color:var(--muted);margin-top:3px;display:block">至少8位，不能是纯数字</span>
       </div>
       <div>
         <span class="modal-roles-label">分配角色（可选）</span>
@@ -718,7 +720,7 @@
     // ── Create-user modal ────────────────────────────────────────────────────────
     function openCreateUserModal() {
       document.getElementById('new-user-name').value = '';
-      document.getElementById('new-user-email').value = '';
+      document.getElementById('new-user-username').value = '';
       document.getElementById('new-user-password').value = '';
       document.getElementById('modal-error').classList.add('hidden');
       document.getElementById('modal-submit').disabled = false;
@@ -742,20 +744,30 @@
 
     async function submitCreateUser() {
       const display_name = document.getElementById('new-user-name').value.trim();
-      const email        = document.getElementById('new-user-email').value.trim();
+      const username     = document.getElementById('new-user-username').value.trim();
       const password     = document.getElementById('new-user-password').value;
       const role_ids     = [...document.querySelectorAll('#modal-roles-list input:checked')].map(cb => cb.value);
 
       const errEl = document.getElementById('modal-error');
       const submitBtn = document.getElementById('modal-submit');
 
-      if (!display_name || !email || !password) {
+      if (!display_name || !username || !password) {
         errEl.textContent = '请填写所有必填项';
         errEl.classList.remove('hidden');
         return;
       }
-      if (password.length < 6) {
-        errEl.textContent = '密码至少 6 位';
+      if (username.length < 2 || username.length > 20) {
+        errEl.textContent = '用户名长度需在 2-20 字符之间';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (password.length < 8) {
+        errEl.textContent = '密码至少需要8位';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (/^\d+$/.test(password)) {
+        errEl.textContent = '密码不能是纯数字';
         errEl.classList.remove('hidden');
         return;
       }
@@ -766,7 +778,7 @@
         const newUser = await window.AppUtils.fetchJson(
           '/api/admin/create-user',
           { method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ display_name, email, password, role_ids }) },
+            body: JSON.stringify({ display_name, username, password, role_ids }) },
           '创建用户失败，请稍后重试'
         );
         closeCreateUserModal();
@@ -778,16 +790,16 @@
       } catch (e) {
         const errorMsg = e?.message || '';
         let friendlyMsg;
-        if (errorMsg.includes('email_exists') || errorMsg.includes('already been registered')) {
-          friendlyMsg = '该邮箱已被注册，请更换其他邮箱';
-        } else if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
-          friendlyMsg = '邮箱格式不正确，请重新输入';
-        } else if (errorMsg.includes('password') && errorMsg.includes('weak')) {
-          friendlyMsg = '密码强度不足，请使用至少6位包含字母和数字的密码';
+        if (errorMsg.includes('用户名已被使用') || errorMsg.includes('409')) {
+          friendlyMsg = '用户名已被使用，请换一个';
+        } else if (errorMsg.includes('密码至少') || errorMsg.includes('8位')) {
+          friendlyMsg = '密码至少需要8位';
+        } else if (errorMsg.includes('纯数字')) {
+          friendlyMsg = '密码不能是纯数字';
         } else if (errorMsg.includes('422')) {
           friendlyMsg = '用户信息格式有误，请检查后重试';
         } else {
-          friendlyMsg = '创建失败，请稍后重试';
+          friendlyMsg = errorMsg || '创建失败，请稍后重试';
         }
         errEl.textContent = friendlyMsg;
         errEl.classList.remove('hidden');
@@ -809,6 +821,7 @@
           </div>
           <div class="user-item-info">
             <div class="user-item-name">${esc(u.display_name)}</div>
+            ${u.username ? `<div style="font-size:11px;color:#999;margin-bottom:2px">@${esc(u.username)}</div>` : ''}
             <div class="user-item-roles">
               ${!u.is_active ? '<span class="deactivated-badge">已停用</span>' : (u.roles || []).map(r => `<span class="role-badge">${esc(r.name_zh)}</span>`).join('')}
             </div>

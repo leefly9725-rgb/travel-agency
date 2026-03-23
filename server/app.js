@@ -1,6 +1,7 @@
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const { pinyin } = require("pinyin-pro");
 const { loadSeedData, saveSeedData } = require('./dataStore');
 const { getSupabaseConfig } = require('./supabaseConfig');
 const { supabaseRequest } = require('./supabaseClient');
@@ -107,6 +108,20 @@ function assertOneOf(value, allowed, fieldName) {
     throw new Error(`${fieldName}不在支持范围内。`);
   }
   return value;
+}
+
+function usernameToEmail(username) {
+  if (/^[a-zA-Z0-9_]+$/.test(username)) {
+    return username.toLowerCase() + '@fytravel.internal';
+  }
+  const py = pinyin(username, { toneType: 'none', separator: '' });
+  const base = py.replace(/[^a-z0-9]/gi, '').toLowerCase() || 'user';
+  return base + '@fytravel.internal';
+}
+
+function generateUniqueEmail(baseUsername) {
+  const suffix = Math.floor(1000 + Math.random() * 9000);
+  return usernameToEmail(baseUsername).replace('@', `_${suffix}@`);
 }
 
 function createId(prefix) {
@@ -1738,6 +1753,87 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  // POST /api/auth/login — 用户名登录（公开接口，无需 token）
+  if (request.method === "POST" && url.pathname === "/api/auth/login") {
+    const supabase = getSupabaseConfig();
+    if (!supabase.enabled) {
+      sendJson(response, 503, { error: "登录功能需要 Supabase，当前未配置。" });
+      return true;
+    }
+    const { username, password } = parseJsonBody(await readRequestBody(request));
+    if (!username || !password) {
+      sendJson(response, 400, { error: "请填写用户名和密码。" });
+      return true;
+    }
+    // 1. 查 user_profiles 找到对应 email
+    const profiles = await supabaseRequest(
+      supabase,
+      `user_profiles?username=eq.${encodeURIComponent(username)}&select=id,email,username,display_name,is_active&limit=1`,
+      { method: "GET" }
+    ).catch(() => null);
+    const profile = profiles?.[0];
+    if (!profile) {
+      sendJson(response, 401, { error: "用户名或密码错误。" });
+      return true;
+    }
+    if (!profile.is_active) {
+      sendJson(response, 403, { error: "账号已被停用，请联系管理员。" });
+      return true;
+    }
+    // 2. 检查近15分钟内失败次数（防暴力破解）
+    try {
+      const fifteenMinAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+      const failRows = await supabaseRequest(
+        supabase,
+        `login_attempts?username=eq.${encodeURIComponent(username)}&success=eq.false&attempted_at=gte.${encodeURIComponent(fifteenMinAgo)}&select=id`,
+        { method: "GET" }
+      );
+      if (Array.isArray(failRows) && failRows.length >= 5) {
+        sendJson(response, 429, { error: "登录失败次数过多，请15分钟后再试。" });
+        return true;
+      }
+    } catch (_) {
+      // login_attempts 表不存在或查询失败，跳过限速检查
+    }
+    // 3. 用 email + password 调用 Supabase Auth
+    const authRes = await fetch(
+      `${supabase.url}/auth/v1/token?grant_type=password`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabase.anonKey,
+        },
+        body: JSON.stringify({ email: profile.email, password }),
+      }
+    );
+    const authData = await authRes.json().catch(() => ({}));
+    // 4. 记录登录尝试
+    try {
+      await supabaseRequest(supabase, "login_attempts", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({ username, success: authRes.ok }),
+      });
+    } catch (_) {
+      // 记录失败不影响主流程
+    }
+    if (!authRes.ok || !authData.access_token) {
+      sendJson(response, 401, { error: "用户名或密码错误。" });
+      return true;
+    }
+    sendJson(response, 200, {
+      access_token: authData.access_token,
+      refresh_token: authData.refresh_token,
+      user: {
+        id: profile.id,
+        username: profile.username,
+        display_name: profile.display_name,
+      },
+    });
+    return true;
+  }
+
   // ─── 用户权限管理 API（/api/admin/*）────────────────────────────────────────
   // 所有 /api/admin/* 接口额外要求 user.view 权限（仅系统管理员）
   if (url.pathname.startsWith("/api/admin/")) {
@@ -1752,13 +1848,14 @@ async function handleApi(request, response, url) {
     if (request.method === "GET" && url.pathname === "/api/admin/users") {
       const rows = await supabaseRequest(
         supabase,
-        "user_profiles?select=id,display_name,email,is_active,user_roles(roles(id,code,name_zh))&order=display_name.asc",
+        "user_profiles?select=id,display_name,email,username,is_active,user_roles(roles(id,code,name_zh))&order=display_name.asc",
         { method: "GET" }
       );
       const users = (rows || []).map((u) => ({
         id: u.id,
         display_name: u.display_name,
         email: u.email,
+        username: u.username || null,
         is_active: u.is_active,
         roles: (u.user_roles || []).map((ur) => ur.roles).filter(Boolean),
       }));
@@ -1918,14 +2015,43 @@ async function handleApi(request, response, url) {
         sendJson(response, 503, { error: "创建用户需要 service_role key，当前未配置。" });
         return true;
       }
-      const { email, password, display_name, role_ids = [] } = parseJsonBody(await readRequestBody(request));
-      if (!email || !password || !display_name) {
-        sendJson(response, 400, { error: "email、password、display_name 为必填项。" });
+      const { username, password, display_name, role_ids = [] } = parseJsonBody(await readRequestBody(request));
+      if (!username || !password || !display_name) {
+        sendJson(response, 400, { error: "username、password、display_name 为必填项。" });
         return true;
       }
-      if (String(password).length < 6) {
-        sendJson(response, 400, { error: "密码至少 6 位。" });
+      const usernameStr = String(username).trim();
+      if (usernameStr.length < 2 || usernameStr.length > 20) {
+        sendJson(response, 400, { error: "用户名长度需在 2-20 字符之间。" });
         return true;
+      }
+      if (String(password).length < 8) {
+        sendJson(response, 400, { error: "密码至少需要8位。" });
+        return true;
+      }
+      if (/^\d+$/.test(String(password))) {
+        sendJson(response, 400, { error: "密码不能是纯数字。" });
+        return true;
+      }
+      // 检查 username 是否已存在
+      const existingUsers = await supabaseRequest(
+        supabase,
+        `user_profiles?username=eq.${encodeURIComponent(usernameStr)}&select=id&limit=1`,
+        { method: "GET" }
+      );
+      if (Array.isArray(existingUsers) && existingUsers.length > 0) {
+        sendJson(response, 409, { error: "用户名已被使用，请换一个。" });
+        return true;
+      }
+      // 生成邮箱：先尝试标准格式，冲突则加随机后缀
+      let email = usernameToEmail(usernameStr);
+      const emailConflict = await supabaseRequest(
+        supabase,
+        `user_profiles?email=eq.${encodeURIComponent(email)}&select=id&limit=1`,
+        { method: "GET" }
+      ).catch(() => null);
+      if (Array.isArray(emailConflict) && emailConflict.length > 0) {
+        email = generateUniqueEmail(usernameStr);
       }
       // 1. Supabase Auth Admin API 创建账号
       const createRes = await fetch(`${supabase.url}/auth/v1/admin/users`, {
@@ -1943,11 +2069,11 @@ async function handleApi(request, response, url) {
       }
       const authUser = await createRes.json();
       const newUserId = authUser.id;
-      // 2. 插入 user_profiles
+      // 2. 插入 user_profiles（含 username）
       await supabaseRequest(supabase, "user_profiles", {
         method: "POST",
         headers: { Prefer: "return=minimal" },
-        body: JSON.stringify({ id: newUserId, display_name, email, is_active: true }),
+        body: JSON.stringify({ id: newUserId, display_name, email, username: usernameStr, is_active: true }),
       });
       // 3. 批量插入 user_roles
       if (Array.isArray(role_ids) && role_ids.length > 0) {
@@ -1966,10 +2092,10 @@ async function handleApi(request, response, url) {
           action: "create_user",
           target_type: "user",
           target_id: newUserId,
-          detail: { email, display_name, role_ids },
+          detail: { username: usernameStr, email, display_name, role_ids },
         }),
       });
-      sendJson(response, 200, { id: newUserId, display_name, email, is_active: true, roles: [] });
+      sendJson(response, 200, { id: newUserId, display_name, email, username: usernameStr, is_active: true, roles: [] });
       return true;
     }
 

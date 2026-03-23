@@ -14,5 +14,8 @@
   },
   "devDependencies": {
     "playwright-core": "^1.58.2"
+  },
+  "dependencies": {
+    "pinyin-pro": "^3.28.0"
   }
 }
