@@ -100,8 +100,11 @@ body.fy-app-body > .fy-app-shell {
 .fy-app-topbar-right {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 14px;
   min-width: 0;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
 }
 
 .fy-app-user-link {
@@ -109,6 +112,7 @@ body.fy-app-body > .fy-app-shell {
   align-items: center;
   gap: 12px;
   min-width: 0;
+  max-width: 320px;
   padding: 8px 12px 8px 8px;
   border-radius: 18px;
   text-decoration: none;
@@ -136,6 +140,7 @@ body.fy-app-body > .fy-app-shell {
   display: grid;
   gap: 4px;
   min-width: 0;
+  align-content: center;
 }
 
 .fy-app-user-name {
@@ -161,6 +166,8 @@ body.fy-app-body > .fy-app-shell {
 }
 
 .fy-app-role-badge {
+  width: fit-content;
+  max-width: 100%;
   color: #9c6d12;
   background: rgba(199, 161, 90, 0.16);
   border: 1px solid rgba(199, 161, 90, 0.22);
