@@ -88,11 +88,21 @@ const ROUTE_PERMISSION_MAP = [
   ['PUT',    /^\/api\/supplier-items\/[^/]+$/,         'supplier_catalog.edit'],
   ['DELETE', /^\/api\/supplier-items\/[^/]+$/,         'supplier_catalog.delete'],
 
-  // project_type（quote-item-types）
+  // project_type（quote-item-types + project-group-types）
   ['GET',    /^\/api\/quote-item-types$/,              'project_type.view'],
   ['POST',   /^\/api\/quote-item-types$/,              'project_type.create'],
   ['PUT',    /^\/api\/quote-item-types\/[^/]+$/,       'project_type.edit'],
   ['DELETE', /^\/api\/quote-item-types\/[^/]+$/,       'project_type.delete'],
+  ['GET',    /^\/api\/project-group-types$/,           'project_type.view'],
+  ['POST',   /^\/api\/project-group-types$/,           'project_type.create'],
+  ['PUT',    /^\/api\/project-group-types\/[^/]+$/,    'project_type.edit'],
+  ['DELETE', /^\/api\/project-group-types\/[^/]+$/,    'project_type.delete'],
+
+  // supplier_catalog（supplier-items + supplier-categories）
+  ['GET',    /^\/api\/supplier-categories$/,           'supplier_catalog.view'],
+  ['POST',   /^\/api\/supplier-categories$/,           'supplier_catalog.create'],
+  ['PUT',    /^\/api\/supplier-categories\/[^/]+$/,    'supplier_catalog.edit'],
+  ['DELETE', /^\/api\/supplier-categories\/[^/]+$/,    'supplier_catalog.delete'],
 
   // templates — 暂时归入 standard_quote
   ['GET',    /^\/api\/templates(\/.*)?$/,              'standard_quote.view'],

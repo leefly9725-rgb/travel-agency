@@ -43,6 +43,41 @@ const supportedServiceRoles = ["guide", "interpreter"];
 const supportedServiceLanguages = ["zh", "zh-sr", "zh-en"];
 const supportedServiceDurations = ["full_day", "hour"];
 
+// 兜底列表（Supabase 不可用或查询失败时使用）
+const FALLBACK_PROJECT_GROUP_TYPES = ["travel", "event", "mixed"];
+
+// ── 动态类型列表查询（Supabase 优先，失败则回退到硬编码兜底）────────────────
+
+async function fetchValidQuoteItemTypes(supabase) {
+  if (!supabase.enabled) return [...supportedQuoteItemTypes];
+  try {
+    const rows = await supabaseRequest(supabase,
+      "quote_item_types?select=code&is_active=eq.true&order=sort_order.asc");
+    if (Array.isArray(rows) && rows.length > 0) return rows.map((r) => r.code);
+  } catch (_) {}
+  return [...supportedQuoteItemTypes];
+}
+
+async function fetchValidItemCategories(supabase) {
+  if (!supabase.enabled) return [...supportedItemCategories];
+  try {
+    const rows = await supabaseRequest(supabase,
+      "supplier_categories?select=code&is_active=eq.true&order=sort_order.asc");
+    if (Array.isArray(rows) && rows.length > 0) return rows.map((r) => r.code);
+  } catch (_) {}
+  return [...supportedItemCategories];
+}
+
+async function fetchValidProjectGroupTypes(supabase) {
+  if (!supabase.enabled) return [...FALLBACK_PROJECT_GROUP_TYPES];
+  try {
+    const rows = await supabaseRequest(supabase,
+      "project_group_types?select=code&is_active=eq.true&order=sort_order.asc");
+    if (Array.isArray(rows) && rows.length > 0) return rows.map((r) => r.code);
+  } catch (_) {}
+  return [...FALLBACK_PROJECT_GROUP_TYPES];
+}
+
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload, null, 2));
@@ -357,13 +392,14 @@ function normalizeMealDetails(mealDetails, index, itemCurrency) {
   };
 }
 
-function normalizeQuoteItems(items, baseCurrency) {
+function normalizeQuoteItems(items, baseCurrency, validTypes) {
   if (!Array.isArray(items) || items.length === 0) {
     throw new Error("请至少录入一条报价项目。");
   }
+  const allowedTypes = validTypes || supportedQuoteItemTypes;
 
   return items.map((item, index) => {
-    const itemType = assertOneOf(item.type, supportedQuoteItemTypes, `第 ${index + 1} 条报价项目的服务类型`);
+    const itemType = assertOneOf(item.type, allowedTypes, `第 ${index + 1} 条报价项目的服务类型`);
     const currency = assertSupportedCurrency(item.currency || baseCurrency, `第 ${index + 1} 条报价项目的币种`);
     const hasHotelDetails = itemType === "hotel" && Array.isArray(item.hotelDetails) && item.hotelDetails.length > 0;
     const hasVehicleDetails = itemType === "vehicle" && Array.isArray(item.vehicleDetails) && item.vehicleDetails.length > 0;
@@ -404,7 +440,7 @@ function normalizeQuoteItems(items, baseCurrency) {
   });
 }
 
-function normalizeQuotePayload(payload, existingId, existingCreatedAt) {
+function normalizeQuotePayload(payload, existingId, existingCreatedAt, validQuoteItemTypes, validGroupTypes) {
   const now = new Date().toISOString();
   const currency = assertSupportedCurrency(payload.currency || "EUR", "报价币种");
   const language = assertOneOf(payload.language || "zh-CN", supportedLanguages, "文档输出语言");
@@ -435,9 +471,9 @@ function normalizeQuotePayload(payload, existingId, existingCreatedAt) {
     pricingMode: supportedPricingModes.includes(payload.pricingMode) ? payload.pricingMode : "standard",
     items: supportedPricingModes.includes(payload.pricingMode) && payload.pricingMode === "project_based"
       ? []
-      : normalizeQuoteItems(payload.items, currency),
+      : normalizeQuoteItems(payload.items, currency, validQuoteItemTypes),
     projectGroups: payload.pricingMode === "project_based"
-      ? normalizeProjectGroups(payload.projectGroups || [])
+      ? normalizeProjectGroups(payload.projectGroups || [], validGroupTypes)
       : [],
     totalCost: payload.pricingMode === "project_based"
       ? Math.round((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0) * 100) / 100
@@ -454,13 +490,14 @@ function normalizeQuotePayload(payload, existingId, existingCreatedAt) {
   };
 }
 
-function normalizeTemplateItems(items) {
+function normalizeTemplateItems(items, validTypes) {
   if (!Array.isArray(items)) {
     throw new Error("模板报价项目格式不正确。");
   }
+  const allowedTypes = validTypes || supportedQuoteItemTypes;
 
   return items.map((item, index) => ({
-    type: assertOneOf(item.type, supportedQuoteItemTypes, `第 ${index + 1} 条模板项目的服务类型`),
+    type: assertOneOf(item.type, allowedTypes, `第 ${index + 1} 条模板项目的服务类型`),
     name: notEmpty(item.name, `第 ${index + 1} 条模板项目的默认服务名称`),
     unit: notEmpty(item.unit || "项", `第 ${index + 1} 条模板项目的单位`),
     currency: assertSupportedCurrency(item.currency || "EUR", `第 ${index + 1} 条模板项目的币种`),
@@ -469,13 +506,13 @@ function normalizeTemplateItems(items) {
   }));
 }
 
-function normalizeTemplatePayload(payload, existingTemplate) {
+function normalizeTemplatePayload(payload, existingTemplate, validTypes) {
   return {
     id: existingTemplate?.id || payload.id || createId("TPL"),
     name: notEmpty(payload.name, "模板名称"),
     description: String(payload.description || "").trim(),
     isBuiltIn: Boolean(existingTemplate?.isBuiltIn),
-    items: normalizeTemplateItems(payload.items || []),
+    items: normalizeTemplateItems(payload.items || [], validTypes),
   };
 }
 
@@ -515,11 +552,11 @@ function normalizeSupplierPayload(payload, existingId) {
   };
 }
 
-function normalizeSupplierItemPayload(payload, existingId) {
+function normalizeSupplierItemPayload(payload, existingId, validCategories) {
   return {
     id: existingId || payload.id || undefined,
     supplierId: notEmpty(payload.supplierId || payload.supplier_id, "供应商"),
-    category: assertOneOf(payload.category, supportedItemCategories, "物料类别"),
+    category: assertOneOf(payload.category, validCategories || supportedItemCategories, "物料类别"),
     nameZh: notEmpty(payload.nameZh || payload.name_zh, "中文名称"),
     nameEn: String(payload.nameEn || payload.name_en || "").trim(),
     unit: notEmpty(payload.unit, "单位"),
@@ -549,6 +586,37 @@ function ensureQuoteItemTypes(data) {
   return data.quotationItemTypes;
 }
 
+const DEFAULT_PROJECT_GROUP_TYPES = [
+  { id: "pgt-001", code: "travel", nameZh: "旅游接待", sortOrder: 1, isActive: true },
+  { id: "pgt-002", code: "event",  nameZh: "活动服务", sortOrder: 2, isActive: true },
+  { id: "pgt-003", code: "mixed",  nameZh: "综合项目", sortOrder: 3, isActive: true },
+];
+
+function ensureProjectGroupTypes(data) {
+  if (!Array.isArray(data.projectGroupTypes) || data.projectGroupTypes.length === 0) {
+    data.projectGroupTypes = DEFAULT_PROJECT_GROUP_TYPES.map((t) => ({ ...t }));
+  }
+  return data.projectGroupTypes;
+}
+
+const DEFAULT_SUPPLIER_CATEGORIES = [
+  { id: "sc-001", code: "av_equipment",    nameZh: "音视频设备", sortOrder: 1, isActive: true },
+  { id: "sc-002", code: "stage_structure", nameZh: "舞台搭建",   sortOrder: 2, isActive: true },
+  { id: "sc-003", code: "print_display",   nameZh: "印刷展示",   sortOrder: 3, isActive: true },
+  { id: "sc-004", code: "decoration",      nameZh: "装饰物料",   sortOrder: 4, isActive: true },
+  { id: "sc-005", code: "furniture",       nameZh: "家具陈设",   sortOrder: 5, isActive: true },
+  { id: "sc-006", code: "personnel",       nameZh: "人员服务",   sortOrder: 6, isActive: true },
+  { id: "sc-007", code: "logistics",       nameZh: "物流配送",   sortOrder: 7, isActive: true },
+  { id: "sc-008", code: "management",      nameZh: "管理费用",   sortOrder: 8, isActive: true },
+];
+
+function ensureSupplierCategories(data) {
+  if (!Array.isArray(data.supplierCategories) || data.supplierCategories.length === 0) {
+    data.supplierCategories = DEFAULT_SUPPLIER_CATEGORIES.map((c) => ({ ...c }));
+  }
+  return data.supplierCategories;
+}
+
 function normalizeQuoteItemTypePayload(payload, existingId, existing) {
   return {
     id: existingId || payload.id || createId("QT"),
@@ -561,8 +629,9 @@ function normalizeQuoteItemTypePayload(payload, existingId, existing) {
   };
 }
 
-function normalizeProjectGroups(groups) {
+function normalizeProjectGroups(groups, validGroupTypes) {
   if (!Array.isArray(groups)) return [];
+  const allowedGroupTypes = validGroupTypes || FALLBACK_PROJECT_GROUP_TYPES;
   return groups.map((group, gi) => {
     const items = Array.isArray(group.items) ? group.items.map((item, ii) => {
       const itemType = supportedProjectItemTypes.includes(item.itemType) ? item.itemType : "misc";
@@ -598,9 +667,13 @@ function normalizeProjectGroups(groups) {
     const projectSalesTotal = Math.round(items.reduce((s, i) => s + i.salesSubtotal, 0) * 100) / 100;
     const projectProfitTotal = Math.round((projectSalesTotal - projectCostTotal) * 100) / 100;
 
+    const projectType = allowedGroupTypes.includes(String(group.projectType || "").trim())
+      ? String(group.projectType).trim()
+      : allowedGroupTypes[0] || "event";
+
     return {
       id: group.id || null,
-      projectType: String(group.projectType || "event").trim(),
+      projectType,
       projectTitle: String(group.projectTitle || "").trim(),
       sortOrder: gi,
       remarks: String(group.remarks || "").trim(),
@@ -984,7 +1057,8 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/templates") {
-    const template = normalizeTemplatePayload(parseJsonBody(await readRequestBody(request)));
+    const validTypes = await fetchValidQuoteItemTypes(getSupabaseConfig());
+    const template = normalizeTemplatePayload(parseJsonBody(await readRequestBody(request)), undefined, validTypes);
     const result = await templateStore.saveTemplate(template);
     sendJson(response, 201, result.template);
     return true;
@@ -998,7 +1072,8 @@ async function handleApi(request, response, url) {
         sendJson(response, 404, { error: "模板不存在。" });
         return true;
       }
-      const template = normalizeTemplatePayload(parseJsonBody(await readRequestBody(request)), existing);
+      const validTypes = await fetchValidQuoteItemTypes(getSupabaseConfig());
+      const template = normalizeTemplatePayload(parseJsonBody(await readRequestBody(request)), existing, validTypes);
       const result = await templateStore.saveTemplate(template);
       sendJson(response, 200, result.template);
       return true;
@@ -1305,7 +1380,12 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/quotes") {
-    const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)));
+    const supabaseCfg = getSupabaseConfig();
+    const [validQuoteItemTypes, validGroupTypes] = await Promise.all([
+      fetchValidQuoteItemTypes(supabaseCfg),
+      fetchValidProjectGroupTypes(supabaseCfg),
+    ]);
+    const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), undefined, undefined, validQuoteItemTypes, validGroupTypes);
     const result = await quoteStore.saveQuote(quote);
     sendJson(response, 201, enrichQuote(result.quote));
     return true;
@@ -1322,7 +1402,12 @@ async function handleApi(request, response, url) {
         sendJson(response, 404, { error: "报价不存在。" });
         return true;
       }
-      const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), quoteId, existingCreatedAt);
+      const supabaseCfg = getSupabaseConfig();
+      const [validQuoteItemTypes, validGroupTypes] = await Promise.all([
+        fetchValidQuoteItemTypes(supabaseCfg),
+        fetchValidProjectGroupTypes(supabaseCfg),
+      ]);
+      const quote = normalizeQuotePayload(parseJsonBody(await readRequestBody(request)), quoteId, existingCreatedAt, validQuoteItemTypes, validGroupTypes);
       const result = await quoteStore.saveQuote(quote);
       sendJson(response, 200, enrichQuote(result.quote));
       return true;
@@ -1432,7 +1517,8 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "POST" && url.pathname === "/api/supplier-items") {
-    const item = normalizeSupplierItemPayload(parseJsonBody(await readRequestBody(request)));
+    const validCategories = await fetchValidItemCategories(getSupabaseConfig());
+    const item = normalizeSupplierItemPayload(parseJsonBody(await readRequestBody(request)), undefined, validCategories);
     const result = await supplierStore.saveSupplierItem(item);
     sendJson(response, 201, result.item);
     return true;
@@ -1441,7 +1527,8 @@ async function handleApi(request, response, url) {
   if (request.method === "PUT") {
     const itemId = matchIdRoute(url.pathname, "supplier-items");
     if (itemId) {
-      const item = normalizeSupplierItemPayload(parseJsonBody(await readRequestBody(request)), itemId);
+      const validCategories = await fetchValidItemCategories(getSupabaseConfig());
+      const item = normalizeSupplierItemPayload(parseJsonBody(await readRequestBody(request)), itemId, validCategories);
       const result = await supplierStore.saveSupplierItem(item);
       sendJson(response, 200, result.item);
       return true;
@@ -1637,6 +1724,180 @@ async function handleApi(request, response, url) {
       await saveSeedData(data);
       sendJson(response, 200, { message: "类型已删除。" });
       return true;
+    }
+  }
+
+  // ── Project Group Types ─────────────────────────────────────────────────────
+
+  if (request.method === "GET" && url.pathname === "/api/project-group-types") {
+    const supabaseCfg = getSupabaseConfig();
+    if (supabaseCfg.enabled) {
+      const rows = await supabaseRequest(supabaseCfg, "project_group_types?select=*&is_active=eq.true&order=sort_order.asc");
+      sendJson(response, 200, Array.isArray(rows) ? rows : []);
+    } else {
+      const data = await loadSeedData();
+      sendJson(response, 200, ensureProjectGroupTypes(data));
+    }
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/project-group-types") {
+    const payload = parseJsonBody(await readRequestBody(request));
+    const code = notEmpty(payload.code, "类型代码").toLowerCase().replace(/\s+/g, "_");
+    const nameZh = notEmpty(payload.nameZh || payload.name_zh, "中文名称");
+    const supabaseCfg = getSupabaseConfig();
+    if (supabaseCfg.enabled) {
+      const row = await supabaseRequest(supabaseCfg, "project_group_types", {
+        method: "POST",
+        body: JSON.stringify({ code, name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0) }),
+        headers: { Prefer: "return=representation" },
+      });
+      sendJson(response, 201, Array.isArray(row) ? row[0] : row);
+    } else {
+      const data = await loadSeedData();
+      const types = ensureProjectGroupTypes(data);
+      if (types.some((t) => t.code === code)) { sendJson(response, 409, { error: `类型代码「${code}」已存在。` }); return true; }
+      const entry = { id: createId("PGT"), code, nameZh, sortOrder: Number(payload.sortOrder || payload.sort_order || 0), isActive: true };
+      types.push(entry);
+      data.projectGroupTypes = types;
+      await saveSeedData(data);
+      sendJson(response, 201, entry);
+    }
+    return true;
+  }
+
+  {
+    const pgtId = matchIdRoute(url.pathname, "project-group-types");
+    if (pgtId) {
+      const supabaseCfg = getSupabaseConfig();
+      if (request.method === "PUT") {
+        const payload = parseJsonBody(await readRequestBody(request));
+        const nameZh = notEmpty(payload.nameZh || payload.name_zh, "中文名称");
+        if (supabaseCfg.enabled) {
+          const row = await supabaseRequest(supabaseCfg, `project_group_types?id=eq.${encodeURIComponent(pgtId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0) }),
+            headers: { Prefer: "return=representation" },
+          });
+          sendJson(response, 200, Array.isArray(row) ? row[0] : row);
+        } else {
+          const data = await loadSeedData();
+          const types = ensureProjectGroupTypes(data);
+          const idx = types.findIndex((t) => t.id === pgtId);
+          if (idx === -1) { sendJson(response, 404, { error: "类型不存在。" }); return true; }
+          types[idx] = { ...types[idx], nameZh, sortOrder: Number(payload.sortOrder || payload.sort_order || 0) };
+          data.projectGroupTypes = types;
+          await saveSeedData(data);
+          sendJson(response, 200, types[idx]);
+        }
+        return true;
+      }
+      if (request.method === "DELETE") {
+        if (supabaseCfg.enabled) {
+          await supabaseRequest(supabaseCfg, `project_group_types?id=eq.${encodeURIComponent(pgtId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ is_active: false }),
+          });
+          sendJson(response, 200, { message: "类型已停用。" });
+        } else {
+          const data = await loadSeedData();
+          const types = ensureProjectGroupTypes(data);
+          const idx = types.findIndex((t) => t.id === pgtId);
+          if (idx === -1) { sendJson(response, 404, { error: "类型不存在。" }); return true; }
+          types.splice(idx, 1);
+          data.projectGroupTypes = types;
+          await saveSeedData(data);
+          sendJson(response, 200, { message: "类型已删除。" });
+        }
+        return true;
+      }
+    }
+  }
+
+  // ── Supplier Categories ─────────────────────────────────────────────────────
+
+  if (request.method === "GET" && url.pathname === "/api/supplier-categories") {
+    const supabaseCfg = getSupabaseConfig();
+    if (supabaseCfg.enabled) {
+      const rows = await supabaseRequest(supabaseCfg, "supplier_categories?select=*&is_active=eq.true&order=sort_order.asc");
+      sendJson(response, 200, Array.isArray(rows) ? rows : []);
+    } else {
+      const data = await loadSeedData();
+      sendJson(response, 200, ensureSupplierCategories(data));
+    }
+    return true;
+  }
+
+  if (request.method === "POST" && url.pathname === "/api/supplier-categories") {
+    const payload = parseJsonBody(await readRequestBody(request));
+    const code = notEmpty(payload.code, "类别代码").toLowerCase().replace(/\s+/g, "_");
+    const nameZh = notEmpty(payload.nameZh || payload.name_zh, "中文名称");
+    const supabaseCfg = getSupabaseConfig();
+    if (supabaseCfg.enabled) {
+      const row = await supabaseRequest(supabaseCfg, "supplier_categories", {
+        method: "POST",
+        body: JSON.stringify({ code, name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0) }),
+        headers: { Prefer: "return=representation" },
+      });
+      sendJson(response, 201, Array.isArray(row) ? row[0] : row);
+    } else {
+      const data = await loadSeedData();
+      const cats = ensureSupplierCategories(data);
+      if (cats.some((c) => c.code === code)) { sendJson(response, 409, { error: `类别代码「${code}」已存在。` }); return true; }
+      const entry = { id: createId("SC"), code, nameZh, sortOrder: Number(payload.sortOrder || payload.sort_order || 0), isActive: true };
+      cats.push(entry);
+      data.supplierCategories = cats;
+      await saveSeedData(data);
+      sendJson(response, 201, entry);
+    }
+    return true;
+  }
+
+  {
+    const scId = matchIdRoute(url.pathname, "supplier-categories");
+    if (scId) {
+      const supabaseCfg = getSupabaseConfig();
+      if (request.method === "PUT") {
+        const payload = parseJsonBody(await readRequestBody(request));
+        const nameZh = notEmpty(payload.nameZh || payload.name_zh, "中文名称");
+        if (supabaseCfg.enabled) {
+          const row = await supabaseRequest(supabaseCfg, `supplier_categories?id=eq.${encodeURIComponent(scId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0) }),
+            headers: { Prefer: "return=representation" },
+          });
+          sendJson(response, 200, Array.isArray(row) ? row[0] : row);
+        } else {
+          const data = await loadSeedData();
+          const cats = ensureSupplierCategories(data);
+          const idx = cats.findIndex((c) => c.id === scId);
+          if (idx === -1) { sendJson(response, 404, { error: "类别不存在。" }); return true; }
+          cats[idx] = { ...cats[idx], nameZh, sortOrder: Number(payload.sortOrder || payload.sort_order || 0) };
+          data.supplierCategories = cats;
+          await saveSeedData(data);
+          sendJson(response, 200, cats[idx]);
+        }
+        return true;
+      }
+      if (request.method === "DELETE") {
+        if (supabaseCfg.enabled) {
+          await supabaseRequest(supabaseCfg, `supplier_categories?id=eq.${encodeURIComponent(scId)}`, {
+            method: "PATCH",
+            body: JSON.stringify({ is_active: false }),
+          });
+          sendJson(response, 200, { message: "类别已停用。" });
+        } else {
+          const data = await loadSeedData();
+          const cats = ensureSupplierCategories(data);
+          const idx = cats.findIndex((c) => c.id === scId);
+          if (idx === -1) { sendJson(response, 404, { error: "类别不存在。" }); return true; }
+          cats.splice(idx, 1);
+          data.supplierCategories = cats;
+          await saveSeedData(data);
+          sendJson(response, 200, { message: "类别已删除。" });
+        }
+        return true;
+      }
     }
   }
 

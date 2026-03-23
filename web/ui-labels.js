@@ -96,6 +96,7 @@
     standard:      "标准差旅报价",
     project_based: "项目型报价",
   },
+  // @deprecated 已迁移至数据库 quote_item_types 表，前端应调用 GET /api/quote-item-types 动态获取
   projectItemTypeLabels: {
     hotel:             "酒店",
     transport:         "用车",
@@ -106,6 +107,7 @@
     decoration:        "装饰物料",
     misc:              "杂项",
   },
+  // @deprecated 已迁移至数据库 project_group_types 表，前端应调用 GET /api/project-group-types 动态获取
   projectGroupTypeLabels: {
     travel: "旅游接待",
     event:  "活动服务",
