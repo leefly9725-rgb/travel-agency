@@ -171,6 +171,13 @@
       transition: background 0.15s;
     }
     .btn-deactivate:hover { background: rgba(183, 28, 28, 0.08); }
+    .btn-reset-pw {
+      padding: 6px 14px; border-radius: 8px; flex-shrink: 0;
+      border: 1.5px solid var(--accent); background: transparent;
+      color: var(--accent); font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-reset-pw:hover { background: var(--accent-soft); }
 
     /* ── Permission override ─────────────────────────────────────────────────── */
     .perm-toggle-label { display: flex; align-items: center; cursor: pointer; }
@@ -558,7 +565,7 @@
               <div class="name" id="detail-name"></div>
               <div class="email" id="detail-email"></div>
             </div>
-            <div id="detail-actions"></div>
+            <div id="detail-actions" style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"></div>
           </div>
 
           <div class="tab-nav">
@@ -604,6 +611,26 @@
       <div class="modal-actions">
         <button class="modal-btn-cancel" id="modal-cancel">取消</button>
         <button class="modal-btn-submit" id="modal-submit">确认创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 重置密码 modal -->
+  <div class="modal-overlay hidden" id="modal-reset-pw">
+    <div class="modal-card">
+      <h2 class="modal-title" id="reset-pw-title">重置密码</h2>
+      <div class="modal-field">
+        <label for="reset-pw-new">新密码 <span style="color:var(--error-text)">*</span></label>
+        <input type="password" id="reset-pw-new" placeholder="至少8位，不能是纯数字" autocomplete="new-password" />
+      </div>
+      <div class="modal-field">
+        <label for="reset-pw-confirm">确认新密码 <span style="color:var(--error-text)">*</span></label>
+        <input type="password" id="reset-pw-confirm" placeholder="再次输入新密码" autocomplete="new-password" />
+      </div>
+      <div id="reset-pw-error" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" id="reset-pw-cancel">取消</button>
+        <button class="modal-btn-submit" id="reset-pw-submit">确认重置</button>
       </div>
     </div>
   </div>
@@ -868,8 +895,12 @@
       if (!user.is_active) {
         actionsEl.innerHTML = '<span class="deactivated-badge" style="font-size:12px;padding:4px 10px">已停用</span>';
       } else if (window.can && window.can('user.edit')) {
-        actionsEl.innerHTML = '<button class="btn-deactivate" id="btn-deactivate-user">停用账号</button>';
+        actionsEl.innerHTML = `
+          <button class="btn-deactivate" id="btn-deactivate-user">停用账号</button>
+          <button class="btn-reset-pw" id="btn-reset-pw-user">重置密码</button>
+        `;
         document.getElementById('btn-deactivate-user').addEventListener('click', () => deactivateUser(user.id, user.display_name));
+        document.getElementById('btn-reset-pw-user').addEventListener('click', () => openResetPwModal(user.id, user.display_name));
       } else {
         actionsEl.innerHTML = '';
       }
@@ -1099,6 +1130,66 @@
       }
     }
 
+    // ── 重置密码 modal ────────────────────────────────────────────────────────────
+    let _resetPwUserId = null;
+
+    function openResetPwModal(userId, displayName) {
+      _resetPwUserId = userId;
+      document.getElementById('reset-pw-title').textContent = `重置 ${displayName} 的密码`;
+      document.getElementById('reset-pw-new').value = '';
+      document.getElementById('reset-pw-confirm').value = '';
+      document.getElementById('reset-pw-error').classList.add('hidden');
+      document.getElementById('reset-pw-submit').disabled = false;
+      document.getElementById('modal-reset-pw').classList.remove('hidden');
+      document.getElementById('reset-pw-new').focus();
+    }
+
+    function closeResetPwModal() {
+      document.getElementById('modal-reset-pw').classList.add('hidden');
+      _resetPwUserId = null;
+    }
+
+    async function submitResetPw() {
+      const newPw = document.getElementById('reset-pw-new').value;
+      const confirmPw = document.getElementById('reset-pw-confirm').value;
+      const errEl = document.getElementById('reset-pw-error');
+      const submitBtn = document.getElementById('reset-pw-submit');
+
+      errEl.classList.add('hidden');
+
+      if (!newPw || !confirmPw) {
+        errEl.textContent = '请填写所有密码字段';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (newPw !== confirmPw) {
+        errEl.textContent = '两次输入的密码不一致';
+        errEl.classList.remove('hidden');
+        return;
+      }
+      if (newPw.length < 8 || /^\d+$/.test(newPw)) {
+        errEl.textContent = '密码至少8位且不能是纯数字';
+        errEl.classList.remove('hidden');
+        return;
+      }
+
+      submitBtn.disabled = true;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/admin/users/${encodeURIComponent(_resetPwUserId)}/reset-password`,
+          { method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ new_password: newPw }) },
+          '重置密码失败，请稍后重试'
+        );
+        closeResetPwModal();
+        showToast('密码已重置', 'success');
+      } catch (e) {
+        errEl.textContent = e.message || '重置密码失败，请稍后重试';
+        errEl.classList.remove('hidden');
+        submitBtn.disabled = false;
+      }
+    }
+
     // ── Event bindings ───────────────────────────────────────────────────────────
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('btn-new-user').addEventListener('click', openCreateUserModal);
@@ -1106,6 +1197,11 @@
       document.getElementById('modal-submit').addEventListener('click', submitCreateUser);
       document.getElementById('modal-create-user').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closeCreateUserModal();
+      });
+      document.getElementById('reset-pw-cancel').addEventListener('click', closeResetPwModal);
+      document.getElementById('reset-pw-submit').addEventListener('click', submitResetPw);
+      document.getElementById('modal-reset-pw').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeResetPwModal();
       });
 
       document.getElementById('mobile-user-dropdown').addEventListener('change', (e) => {

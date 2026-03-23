@@ -1834,6 +1834,72 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  // POST /api/auth/change-password — 当前用户修改自己的密码（需要登录）
+  if (request.method === "POST" && url.pathname === "/api/auth/change-password") {
+    requirePermission(authCtx, '');  // 仅需登录
+    const supabase = getSupabaseConfig();
+    if (!supabase.enabled) {
+      sendJson(response, 503, { error: "此功能需要 Supabase，当前未配置。" });
+      return true;
+    }
+    const { current_password, new_password } = parseJsonBody(await readRequestBody(request));
+    if (!current_password || !new_password) {
+      sendJson(response, 400, { error: "请填写当前密码和新密码。" });
+      return true;
+    }
+    if (String(new_password).length < 8 || /^\d+$/.test(String(new_password))) {
+      sendJson(response, 400, { error: "密码至少8位且不能是纯数字。" });
+      return true;
+    }
+    // 1. 用当前 email + current_password 验证旧密码
+    const userEmail = authCtx.user?.email;
+    if (!userEmail) {
+      sendJson(response, 400, { error: "无法获取当前用户邮箱，请重新登录。" });
+      return true;
+    }
+    const verifyRes = await fetch(`${supabase.url}/auth/v1/token?grant_type=password`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", apikey: supabase.anonKey },
+      body: JSON.stringify({ email: userEmail, password: current_password }),
+    });
+    if (!verifyRes.ok) {
+      sendJson(response, 401, { error: "当前密码错误。" });
+      return true;
+    }
+    // 2. Admin API 更新密码
+    if (!supabase.hasServiceRoleKey) {
+      sendJson(response, 503, { error: "修改密码需要 service_role key，当前未配置。" });
+      return true;
+    }
+    const updateRes = await fetch(`${supabase.url}/auth/v1/admin/users/${encodeURIComponent(authCtx.userId)}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: supabase.serviceRoleKey,
+        Authorization: `Bearer ${supabase.serviceRoleKey}`,
+      },
+      body: JSON.stringify({ password: new_password }),
+    });
+    if (!updateRes.ok) {
+      const errText = await updateRes.text();
+      throw new Error(`更新密码失败：${updateRes.status} ${errText}`);
+    }
+    // 3. 写审计日志
+    await supabaseRequest(supabase, "audit_log", {
+      method: "POST",
+      headers: { Prefer: "return=minimal" },
+      body: JSON.stringify({
+        operator_id: authCtx.userId,
+        action: "change_password",
+        target_type: "user",
+        target_id: authCtx.userId,
+        detail: {},
+      }),
+    }).catch(() => {});
+    sendJson(response, 200, { message: "密码修改成功。" });
+    return true;
+  }
+
   // ─── 用户权限管理 API（/api/admin/*）────────────────────────────────────────
   // 所有 /api/admin/* 接口额外要求 user.view 权限（仅系统管理员）
   if (url.pathname.startsWith("/api/admin/")) {
@@ -1946,6 +2012,52 @@ async function handleApi(request, response, url) {
         }),
       });
       sendJson(response, 200, { ok: true });
+      return true;
+    }
+
+    // POST /api/admin/users/:userId/reset-password — 管理员重置他人密码
+    const resetPwMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/reset-password$/);
+    if (request.method === "POST" && resetPwMatch) {
+      requirePermission(authCtx, "user.edit");
+      if (!supabase.hasServiceRoleKey) {
+        sendJson(response, 503, { error: "重置密码需要 service_role key，当前未配置。" });
+        return true;
+      }
+      const targetUserId = decodeURIComponent(resetPwMatch[1]);
+      const { new_password } = parseJsonBody(await readRequestBody(request));
+      if (!new_password) {
+        sendJson(response, 400, { error: "请填写新密码。" });
+        return true;
+      }
+      if (String(new_password).length < 8 || /^\d+$/.test(String(new_password))) {
+        sendJson(response, 400, { error: "密码至少8位且不能是纯数字。" });
+        return true;
+      }
+      const resetRes = await fetch(`${supabase.url}/auth/v1/admin/users/${encodeURIComponent(targetUserId)}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: supabase.serviceRoleKey,
+          Authorization: `Bearer ${supabase.serviceRoleKey}`,
+        },
+        body: JSON.stringify({ password: new_password }),
+      });
+      if (!resetRes.ok) {
+        const errText = await resetRes.text();
+        throw new Error(`重置密码失败：${resetRes.status} ${errText}`);
+      }
+      await supabaseRequest(supabase, "audit_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          operator_id: authCtx.userId,
+          action: "reset_password",
+          target_type: "user",
+          target_id: targetUserId,
+          detail: { operator: authCtx.userId },
+        }),
+      }).catch(() => {});
+      sendJson(response, 200, { message: "密码已重置。" });
       return true;
     }
 
