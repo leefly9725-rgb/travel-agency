@@ -101,30 +101,48 @@ body.fy-app-body > .fy-app-shell {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 14px;
+  gap: 16px;
   min-width: 0;
   flex-wrap: nowrap;
   flex-shrink: 0;
 }
 
-.fy-app-user-link {
+.fy-app-topbar-right > * {
+  flex: 0 0 auto;
+}
+
+.fy-app-account {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 14px;
   min-width: 0;
-  max-width: 320px;
-  padding: 8px 12px 8px 8px;
-  border-radius: 18px;
+  padding: 6px 8px 6px 6px;
+  border-radius: 20px;
+  background: linear-gradient(180deg, rgba(255, 252, 247, 0.96), rgba(249, 243, 234, 0.9));
+  border: 1px solid rgba(16, 35, 70, 0.09);
+  box-shadow: 0 12px 28px rgba(16, 35, 70, 0.06);
+}
+
+.fy-app-user-link {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  min-width: 240px;
+  max-width: 340px;
+  overflow: hidden;
+  padding: 4px 8px 4px 4px;
+  border-radius: 16px;
   text-decoration: none;
   color: inherit;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid rgba(16, 35, 70, 0.09);
-  box-shadow: 0 10px 24px rgba(16, 35, 70, 0.05);
+  background: transparent;
+  border: 0;
+  box-shadow: none;
 }
 
 .fy-app-avatar {
-  width: 40px;
-  height: 40px;
+  width: 38px;
+  height: 38px;
   border-radius: 12px;
   display: flex;
   align-items: center;
@@ -132,24 +150,27 @@ body.fy-app-body > .fy-app-shell {
   background: linear-gradient(135deg, var(--fy-shell-navy) 0%, #204e84 100%);
   color: #fff;
   font-weight: 700;
-  box-shadow: 0 10px 24px rgba(16, 35, 70, 0.2);
+  box-shadow: 0 10px 22px rgba(16, 35, 70, 0.18);
   flex-shrink: 0;
 }
 
 .fy-app-user-copy {
   display: grid;
-  gap: 4px;
+  gap: 3px;
   min-width: 0;
+  overflow: hidden;
   align-content: center;
 }
 
 .fy-app-user-name {
   font-size: 13px;
   font-weight: 700;
+  line-height: 1.2;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 180px;
+  max-width: 190px;
+  color: #132642;
 }
 
 .fy-app-role-badge,
@@ -168,21 +189,31 @@ body.fy-app-body > .fy-app-shell {
 .fy-app-role-badge {
   width: fit-content;
   max-width: 100%;
+  min-height: 20px;
+  padding: 2px 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   color: #9c6d12;
-  background: rgba(199, 161, 90, 0.16);
-  border: 1px solid rgba(199, 161, 90, 0.22);
+  background: rgba(199, 161, 90, 0.12);
+  border: 1px solid rgba(199, 161, 90, 0.18);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .fy-app-logout {
-  border: 1px solid rgba(16, 35, 70, 0.12);
-  background: rgba(255, 255, 255, 0.92);
-  color: var(--fy-shell-navy);
-  border-radius: 999px;
-  padding: 10px 16px;
+  flex: 0 0 auto;
+  align-self: stretch;
+  border: 0;
+  border-left: 1px solid rgba(16, 35, 70, 0.08);
+  background: transparent;
+  color: rgba(16, 35, 70, 0.8);
+  border-radius: 0;
+  padding: 0 0 0 14px;
   font-size: 12px;
   font-weight: 700;
   cursor: pointer;
-  box-shadow: 0 10px 24px rgba(16, 35, 70, 0.05);
+  box-shadow: none;
 }
 
 .fy-app-layout {
@@ -464,12 +495,18 @@ body.fy-app-body > .fy-app-shell {
     flex-wrap: wrap;
   }
 
+  .fy-app-account {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .fy-app-user-link {
-    flex: 1 1 220px;
+    min-width: 0;
+    flex: 1 1 auto;
   }
 
   .fy-app-logout {
-    width: 100%;
+    width: auto;
   }
 
   .fy-app-page-head {
