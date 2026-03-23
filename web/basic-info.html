@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>基础数据管理</title>
+  <link rel="stylesheet" href="/styles.css" />
+  <script src="/auth-guard.js"></script>
+  <link rel="stylesheet" href="/app-shell.css" />
+  <style>
+    /* ── CSS 变量（与 admin-permissions.html 一致）── */
+    :root {
+      --accent:       #c7a15a;
+      --accent-soft:  rgba(199,161,90,0.10);
+      --ink:          #142033;
+      --muted:        #6b7280;
+      --line:         rgba(20,32,51,0.08);
+      --panel:        rgba(255,252,247,0.96);
+      --bg:           #f4efe7;
+      --success-bg:   #f0faf2; --success-text: #2e6b3e;
+      --error-bg:     #fff4f1; --error-text:   #a14a39;
+    }
+
+    /* ── Tab 导航栏 ── */
+    .bi-tabbar {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--line);
+      margin-bottom: 22px;
+    }
+    .bi-tab {
+      display: inline-flex;
+      align-items: center;
+      padding: 9px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-decoration: none;
+      border-radius: 10px 10px 0 0;
+      border: 1px solid transparent;
+      border-bottom: none;
+      position: relative;
+      bottom: -1px;
+      transition: color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .bi-tab:hover { color: var(--ink); background: rgba(20,32,51,0.03); }
+    .bi-tab.is-active {
+      color: var(--accent);
+      background: var(--panel);
+      border-color: var(--line);
+      border-bottom-color: var(--panel);
+    }
+
+    /* ── Tab 面板 ── */
+    .bi-panel { display: none; }
+    .bi-panel.is-active { display: block; }
+
+    /* ── 面板顶栏 ── */
+    .bi-panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 14px;
+    }
+    .bi-panel-title { font-size: 16px; font-weight: 700; color: var(--ink); margin: 0; }
+
+    /* ── 说明文字 ── */
+    .bi-desc {
+      font-size: 12px;
+      color: #7a5c18;
+      background: var(--accent-soft);
+      border: 1px solid rgba(199,161,90,0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      margin-bottom: 16px;
+    }
+
+    /* ── 表格容器 ── */
+    .bi-table-wrap {
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--panel);
+    }
+    .bi-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .bi-table th {
+      text-align: left;
+      padding: 10px 14px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--muted);
+      background: rgba(20,32,51,0.02);
+      border-bottom: 1px solid var(--line);
+      white-space: nowrap;
+    }
+    .bi-table td {
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      color: var(--ink);
+      vertical-align: middle;
+    }
+    .bi-table tr:last-child td { border-bottom: none; }
+    .bi-table code {
+      font-family: "Cascadia Code", "Fira Code", monospace;
+      font-size: 11px;
+      background: rgba(20,32,51,0.06);
+      padding: 1px 6px;
+      border-radius: 4px;
+    }
+
+    /* ── 状态徽章 ── */
+    .badge {
+      display: inline-flex; align-items: center;
+      padding: 2px 8px; border-radius: 999px;
+      font-size: 11px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-on  { background: #e8f5e9; color: #2e7d32; }
+    .badge-off { background: #f5f5f5; color: #888; }
+    .badge-sys { background: #e3f2fd; color: #1565c0; margin-left: 4px; }
+
+    /* ── 小按钮 ── */
+    .btn-sm {
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1.5px solid var(--line);
+      background: transparent;
+      color: var(--ink);
+      transition: background 0.12s;
+    }
+    .btn-sm:hover { background: rgba(20,32,51,0.05); }
+    .btn-sm + .btn-sm { margin-left: 4px; }
+    .btn-sm.primary { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.primary:hover { background: var(--accent-soft); }
+    .btn-sm.danger  { border-color: #f1c6be; color: var(--error-text); }
+    .btn-sm.danger:hover { background: var(--error-bg); }
+
+    /* ── 新增按钮 ── */
+    .btn-add {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px;
+      border-radius: 8px;
+      border: 1.5px solid var(--accent);
+      background: transparent;
+      color: var(--accent);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer; text-decoration: none;
+      transition: background 0.12s;
+      white-space: nowrap;
+    }
+    .btn-add:hover { background: var(--accent-soft); }
+
+    /* ── 加载 / 空状态 ── */
+    .bi-loading, .bi-empty {
+      padding: 32px 16px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    /* ═════════════════ Tab3：供应商价格库左右分栏 ════════════════ */
+    .sc-split {
+      display: flex;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--panel);
+      min-height: 420px;
+    }
+    .sc-left {
+      flex: 0 0 220px;
+      min-width: 220px;
+      border-right: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+    }
+    .sc-left-head {
+      display: flex; align-items: center;
+      justify-content: space-between; gap: 8px;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--line);
+      font-size: 12px; font-weight: 700; color: var(--muted);
+    }
+    .sc-cat-list { flex: 1; overflow-y: auto; }
+    .sc-cat-item {
+      display: flex; align-items: center; gap: 6px;
+      padding: 9px 14px;
+      font-size: 13px; cursor: pointer;
+      border-bottom: 1px solid rgba(20,32,51,0.04);
+      transition: background 0.12s;
+      color: var(--ink);
+    }
+    .sc-cat-item:hover { background: rgba(20,32,51,0.03); }
+    .sc-cat-item.is-selected { background: var(--accent-soft); color: #7a5c18; font-weight: 600; }
+    .sc-cat-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sc-cat-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; }
+    .sc-cat-item:hover .sc-cat-actions,
+    .sc-cat-item.is-selected .sc-cat-actions { opacity: 1; }
+    /* 图标按钮 */
+    .ico-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 22px; height: 22px; border-radius: 5px;
+      border: none; background: transparent; cursor: pointer;
+      color: var(--muted); transition: background 0.12s, color 0.12s;
+    }
+    .ico-btn:hover { background: rgba(20,32,51,0.08); color: var(--ink); }
+    .ico-btn.danger:hover { background: var(--error-bg); color: var(--error-text); }
+    /* 右侧 */
+    .sc-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .sc-right-head {
+      display: flex; align-items: center; justify-content: space-between;
+      gap: 12px; padding: 10px 16px;
+      border-bottom: 1px solid var(--line);
+    }
+    .sc-right-title { font-size: 14px; font-weight: 700; color: var(--ink); margin: 0; }
+    .sc-right-body { flex: 1; overflow-y: auto; }
+
+    /* ═════════════════ Tab4：模板卡片 ════════════════ */
+    .tpl-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 14px;
+    }
+    .tpl-card {
+      display: block; padding: 16px 18px;
+      border: 1px solid var(--line); border-radius: 12px;
+      background: var(--panel); text-decoration: none; color: var(--ink);
+      transition: box-shadow 0.15s, border-color 0.15s, transform 0.15s;
+    }
+    .tpl-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 24px rgba(20,32,51,0.08);
+      border-color: rgba(20,32,51,0.14);
+    }
+    .tpl-card-name {
+      font-size: 14px; font-weight: 700; color: var(--ink);
+      margin-bottom: 6px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .tpl-card-meta { font-size: 11px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* ═════════════════ Modal ════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.38);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 2000;
+    }
+    .modal-overlay.hidden { display: none !important; }
+    .modal-card {
+      background: var(--panel); border-radius: 14px;
+      box-shadow: 0 12px 40px rgba(0,0,0,0.18);
+      padding: 28px 28px 22px; width: 440px;
+      max-width: calc(100vw - 32px);
+      max-height: calc(100vh - 64px);
+      overflow-y: auto;
+    }
+    .modal-title { font-size: 16px; font-weight: 700; color: var(--ink); margin: 0 0 20px; }
+    .modal-field { margin-bottom: 14px; }
+    .modal-field > label {
+      display: block; font-size: 12px; font-weight: 600;
+      color: var(--muted); margin-bottom: 4px;
+    }
+    .modal-field input,
+    .modal-field select,
+    .modal-field textarea {
+      width: 100%; padding: 8px 10px; box-sizing: border-box;
+      border: 1.5px solid var(--line); border-radius: 8px;
+      font-size: 13px; background: var(--bg); color: var(--ink);
+      font-family: inherit;
+    }
+    .modal-field input:focus,
+    .modal-field select:focus,
+    .modal-field textarea:focus { outline: none; border-color: var(--accent); }
+    .modal-field textarea { resize: vertical; }
+    .modal-hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+    .modal-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .modal-btn-cancel {
+      padding: 8px 18px; border-radius: 8px;
+      border: 1.5px solid var(--line); background: transparent;
+      color: var(--ink); font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .modal-btn-submit {
+      padding: 8px 18px; border-radius: 8px; border: none;
+      background: var(--accent); color: #fff;
+      font-size: 13px; font-weight: 600; cursor: pointer;
+    }
+    .modal-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-error {
+      font-size: 12px; color: var(--error-text);
+      background: var(--error-bg); border-radius: 6px;
+      padding: 6px 10px; margin-top: 10px;
+    }
+    .modal-error.hidden { display: none !important; }
+
+    /* ── Toast ── */
+    .bi-toast {
+      position: fixed; bottom: 24px; left: 50%;
+      transform: translateX(-50%) translateY(16px);
+      padding: 10px 20px; border-radius: 8px;
+      font-size: 13px; font-weight: 600;
+      opacity: 0; pointer-events: none;
+      transition: opacity 0.2s, transform 0.2s;
+      z-index: 3000; white-space: nowrap;
+    }
+    .bi-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+    .bi-toast.t-success { background: var(--success-bg); color: var(--success-text); border: 1px solid #b7dfc2; }
+    .bi-toast.t-error   { background: var(--error-bg);   color: var(--error-text);   border: 1px solid #f1c6be; }
+
+    @media (max-width: 768px) {
+      .sc-split { flex-direction: column; }
+      .sc-left { flex: none; min-width: unset; border-right: none; border-bottom: 1px solid var(--line); }
+      .sc-cat-actions { opacity: 1; }
+    }
+  </style>
+</head>
+<body style="visibility:hidden">
+  <div class="page-shell">
+    <header class="topbar"></header>
+
+    <div style="padding-bottom:40px">
+
+      <!-- ── Tab 导航 ──────────────────────────────────────────────────────────── -->
+      <div class="bi-tabbar">
+        <a class="bi-tab" href="#item-types">报价行类型</a>
+        <a class="bi-tab" href="#group-types">项目组类型</a>
+        <a class="bi-tab" href="#supplier-catalog">供应商价格库</a>
+        <a class="bi-tab" href="#templates">报价模板</a>
+      </div>
+
+      <!-- ═══════════════ Tab 1：报价行类型 ═══════════════ -->
+      <div id="panel-item-types" class="bi-panel">
+        <div class="bi-panel-head">
+          <h2 class="bi-panel-title">报价行类型</h2>
+          <button class="btn-add" id="btn-add-it" style="display:none">+ 新增类型</button>
+        </div>
+        <div class="bi-table-wrap">
+          <table class="bi-table">
+            <thead>
+              <tr>
+                <th>代码</th>
+                <th>中文名称</th>
+                <th>分组</th>
+                <th style="width:56px">排序</th>
+                <th style="width:80px">状态</th>
+                <th style="width:160px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-it">
+              <tr><td colspan="6" class="bi-loading">加载中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════ Tab 2：项目组类型 ═══════════════ -->
+      <div id="panel-group-types" class="bi-panel">
+        <div class="bi-panel-head">
+          <h2 class="bi-panel-title">项目组类型</h2>
+          <button class="btn-add" id="btn-add-gt" style="display:none">+ 新增类型</button>
+        </div>
+        <p class="bi-desc">项目型报价中的项目组分类，如：旅游接待、活动服务、综合项目。</p>
+        <div class="bi-table-wrap">
+          <table class="bi-table">
+            <thead>
+              <tr>
+                <th>代码</th>
+                <th>中文名称</th>
+                <th style="width:56px">排序</th>
+                <th style="width:80px">状态</th>
+                <th style="width:120px">操作</th>
+              </tr>
+            </thead>
+            <tbody id="tbody-gt">
+              <tr><td colspan="5" class="bi-loading">加载中…</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ═══════════════ Tab 3：供应商价格库 ═══════════════ -->
+      <div id="panel-supplier-catalog" class="bi-panel">
+        <div class="sc-split">
+          <!-- 左侧：分类列表 -->
+          <div class="sc-left">
+            <div class="sc-left-head">
+              <span>分类</span>
+              <button class="btn-sm primary" id="btn-add-cat" style="display:none" title="新增分类">＋</button>
+            </div>
+            <div class="sc-cat-list" id="sc-cat-list">
+              <div class="bi-loading">加载中…</div>
+            </div>
+          </div>
+
+          <!-- 右侧：条目列表 -->
+          <div class="sc-right">
+            <div class="sc-right-head">
+              <h3 class="sc-right-title" id="sc-right-title">请选择左侧分类</h3>
+              <button class="btn-add" id="btn-add-sci" style="display:none">+ 新增条目</button>
+            </div>
+            <div class="sc-right-body">
+              <table class="bi-table">
+                <thead>
+                  <tr>
+                    <th>名称</th>
+                    <th>规格</th>
+                    <th style="width:56px">单位</th>
+                    <th style="width:96px">参考成本</th>
+                    <th style="width:80px">状态</th>
+                    <th style="width:120px">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-sci">
+                  <tr><td colspan="6" class="bi-empty">← 选择左侧分类查看条目</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ═══════════════ Tab 4：报价模板 ═══════════════ -->
+      <div id="panel-templates" class="bi-panel">
+        <div class="bi-panel-head">
+          <h2 class="bi-panel-title">报价模板</h2>
+          <a class="btn-add" href="/template-edit.html?new=1">+ 新建模板</a>
+        </div>
+        <div id="tpl-grid" class="tpl-grid">
+          <div class="bi-loading">加载中…</div>
+        </div>
+      </div>
+
+    </div><!-- /padding wrapper -->
+  </div><!-- /page-shell -->
+
+
+  <!-- ══════════════════════════════════════
+       Modal 1：报价行类型 新增/编辑
+  ══════════════════════════════════════ -->
+  <div id="modal-it" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 class="modal-title" id="modal-it-title">新增报价行类型</h3>
+      <div class="modal-field">
+        <label>类型代码 <span style="color:var(--error-text)">*</span></label>
+        <input id="it-code" placeholder="例如：custom_service" />
+        <div class="modal-hint">只能含小写字母、数字、下划线，系统内置类型不可修改</div>
+      </div>
+      <div class="modal-field">
+        <label>中文名称 <span style="color:var(--error-text)">*</span></label>
+        <input id="it-name" placeholder="例如：定制服务" />
+      </div>
+      <div class="modal-field">
+        <label>分组</label>
+        <select id="it-group">
+          <option value="accommodation">住宿</option>
+          <option value="transport">交通</option>
+          <option value="service">服务</option>
+          <option value="catalog">目录</option>
+          <option value="misc" selected>杂项</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>排序序号</label>
+        <input id="it-sort" type="number" value="10" min="0" step="1" />
+      </div>
+      <div class="modal-field">
+        <label class="modal-checkbox-row">
+          <input type="checkbox" id="it-active" checked />
+          启用（在录入时可选）
+        </label>
+      </div>
+      <div id="modal-it-err" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" id="modal-it-cancel">取消</button>
+        <button class="modal-btn-submit" id="modal-it-submit">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       Modal 2：项目组类型 新增/编辑
+  ══════════════════════════════════════ -->
+  <div id="modal-gt" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 class="modal-title" id="modal-gt-title">新增项目组类型</h3>
+      <div class="modal-field">
+        <label>类型代码 <span style="color:var(--error-text)">*</span></label>
+        <input id="gt-code" placeholder="例如：conference" />
+        <div class="modal-hint">只能含小写字母、数字、下划线</div>
+      </div>
+      <div class="modal-field">
+        <label>中文名称 <span style="color:var(--error-text)">*</span></label>
+        <input id="gt-name" placeholder="例如：会议服务" />
+      </div>
+      <div class="modal-field">
+        <label>排序序号</label>
+        <input id="gt-sort" type="number" value="10" min="0" step="1" />
+      </div>
+      <div id="modal-gt-err" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" id="modal-gt-cancel">取消</button>
+        <button class="modal-btn-submit" id="modal-gt-submit">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       Modal 3：供应商分类 新增/编辑
+  ══════════════════════════════════════ -->
+  <div id="modal-cat" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 class="modal-title" id="modal-cat-title">新增分类</h3>
+      <div class="modal-field">
+        <label>分类代码 <span style="color:var(--error-text)">*</span></label>
+        <input id="cat-code" placeholder="例如：lighting" />
+        <div class="modal-hint">只能含小写字母、数字、下划线</div>
+      </div>
+      <div class="modal-field">
+        <label>中文名称 <span style="color:var(--error-text)">*</span></label>
+        <input id="cat-name" placeholder="例如：灯光设备" />
+      </div>
+      <div class="modal-field">
+        <label>排序序号</label>
+        <input id="cat-sort" type="number" value="10" min="0" step="1" />
+      </div>
+      <div id="modal-cat-err" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" id="modal-cat-cancel">取消</button>
+        <button class="modal-btn-submit" id="modal-cat-submit">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════
+       Modal 4：供应商条目 新增/编辑
+  ══════════════════════════════════════ -->
+  <div id="modal-sci" class="modal-overlay hidden">
+    <div class="modal-card">
+      <h3 class="modal-title" id="modal-sci-title">新增条目</h3>
+      <div class="modal-field">
+        <label>中文名称 <span style="color:var(--error-text)">*</span></label>
+        <input id="sci-name-zh" placeholder="例如：LED墙 8×3m" />
+      </div>
+      <div class="modal-field">
+        <label>英文名称（选填）</label>
+        <input id="sci-name-en" placeholder="例如：LED Wall 8x3m" />
+      </div>
+      <div class="modal-field">
+        <label>规格说明</label>
+        <input id="sci-spec" placeholder="例如：含运输安装" />
+      </div>
+      <div class="modal-field">
+        <label>单位 <span style="color:var(--error-text)">*</span></label>
+        <input id="sci-unit" placeholder="例如：套 / m² / 个 / 人" />
+      </div>
+      <div class="modal-field">
+        <label>参考成本价（EUR）</label>
+        <input id="sci-cost" type="number" min="0" step="0.01" placeholder="0.00" />
+      </div>
+      <div class="modal-field">
+        <label>所属供应商（选填）</label>
+        <select id="sci-supplier">
+          <option value="">— 不指定 —</option>
+        </select>
+      </div>
+      <div class="modal-field">
+        <label>备注</label>
+        <textarea id="sci-notes" rows="2" placeholder="其他说明"></textarea>
+      </div>
+      <div class="modal-field">
+        <label class="modal-checkbox-row">
+          <input type="checkbox" id="sci-active" checked />
+          启用（纳入价格库）
+        </label>
+      </div>
+      <div id="modal-sci-err" class="modal-error hidden"></div>
+      <div class="modal-actions">
+        <button class="modal-btn-cancel" id="modal-sci-cancel">取消</button>
+        <button class="modal-btn-submit" id="modal-sci-submit">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast 通知 -->
+  <div id="bi-toast" class="bi-toast"></div>
+
+  <script src="/ui-labels.js"></script>
+  <script src="/app-utils.js"></script>
+  <script>
+  (function () {
+    'use strict';
+
+    // ── 工具函数 ──────────────────────────────────────────────────────────────
+
+    /** HTML 转义，防止 XSS */
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    /** 显示 Toast 通知 */
+    let toastTimer;
+    function toast(msg, type) {
+      const el = document.getElementById('bi-toast');
+      el.textContent = msg;
+      el.className = 'bi-toast show t-' + (type || 'success');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => { el.className = 'bi-toast'; }, 3000);
+    }
+
+    /** 权限检查（auth-guard.js 注入 window.can） */
+    function can(code) {
+      return typeof window.can === 'function' ? window.can(code) : false;
+    }
+
+    /** 显示/隐藏 Modal 错误 */
+    function setModalError(id, msg) {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = msg || '';
+      el.classList.toggle('hidden', !msg);
+    }
+
+    /** 设置按钮 loading 状态 */
+    function setSubmitting(btnId, yes) {
+      const btn = document.getElementById(btnId);
+      if (!btn) return;
+      btn.disabled = yes;
+      btn.textContent = yes ? '提交中…' : '保存';
+    }
+
+    // ── Tab 路由 ──────────────────────────────────────────────────────────────
+
+    const TAB_KEYS = ['item-types', 'group-types', 'supplier-catalog', 'templates'];
+    const loadedTabs = new Set(); // 记录已初始化的 tab，避免重复加载
+
+    function getActiveTab() {
+      const hash = location.hash.slice(1);
+      return TAB_KEYS.includes(hash) ? hash : TAB_KEYS[0];
+    }
+
+    /** 激活指定 Tab：切换样式、显示面板、按需加载数据 */
+    function activateTab(key) {
+      // 更新 tab 链接高亮
+      document.querySelectorAll('.bi-tab').forEach(a => {
+        a.classList.toggle('is-active', a.getAttribute('href') === '#' + key);
+      });
+      // 切换面板显示
+      TAB_KEYS.forEach(k => {
+        const p = document.getElementById('panel-' + k);
+        if (p) p.classList.toggle('is-active', k === key);
+      });
+      // 首次切入时加载数据
+      if (!loadedTabs.has(key)) {
+        loadedTabs.add(key);
+        if (key === 'item-types')       loadItemTypes();
+        else if (key === 'group-types') loadGroupTypes();
+        else if (key === 'supplier-catalog') loadCategories().then(loadSuppliers);
+        else if (key === 'templates')   loadTemplates();
+      }
+    }
+
+    window.addEventListener('hashchange', () => activateTab(getActiveTab()));
+
+
+    // ════════════════════════════════════════════════════════════
+    // Tab 1：报价行类型 (/api/quote-item-types)
+    // ════════════════════════════════════════════════════════════
+
+    let itemTypes = [];
+    let editingItId = null; // 当前正在编辑的类型 id，null = 新增
+
+    async function loadItemTypes() {
+      try {
+        itemTypes = await window.AppUtils.fetchJson('/api/quote-item-types', null, '加载报价行类型失败');
+        renderItemTypes();
+      } catch (e) {
+        document.getElementById('tbody-it').innerHTML =
+          `<tr><td colspan="6" style="color:var(--error-text);padding:16px">${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    function renderItemTypes() {
+      const canEdit = can('project_type.edit');
+      const tbody = document.getElementById('tbody-it');
+      if (!itemTypes.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="bi-empty">暂无类型，点击「新增类型」开始录入。</td></tr>';
+        return;
+      }
+      // 按 sortOrder 排序后渲染每行
+      tbody.innerHTML = itemTypes
+        .slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+        .map(t => {
+          const statusBadge = t.isActive !== false
+            ? '<span class="badge badge-on">启用</span>'
+            : '<span class="badge badge-off">停用</span>';
+          const sysBadge = t.isSystem ? '<span class="badge badge-sys">系统内置</span>' : '';
+          // 操作按钮（受权限控制）
+          const editBtn  = canEdit ? `<button class="btn-sm" data-it-edit="${esc(t.id)}">编辑</button>` : '';
+          const toggleBtn = canEdit && !t.isSystem
+            ? (t.isActive !== false
+                ? `<button class="btn-sm danger" data-it-toggle="${esc(t.id)}" data-it-active="false">停用</button>`
+                : `<button class="btn-sm primary" data-it-toggle="${esc(t.id)}" data-it-active="true">启用</button>`)
+            : '';
+          return `<tr>
+            <td><code>${esc(t.code)}</code></td>
+            <td>${esc(t.nameZh)}${sysBadge}</td>
+            <td>${esc(t.categoryGroup || '—')}</td>
+            <td>${t.sortOrder ?? 0}</td>
+            <td>${statusBadge}</td>
+            <td>${editBtn}${toggleBtn}</td>
+          </tr>`;
+        }).join('');
+    }
+
+    /** 打开新增/编辑弹窗 */
+    function openItModal(type) {
+      editingItId = type ? type.id : null;
+      document.getElementById('modal-it-title').textContent = type ? '编辑报价行类型' : '新增报价行类型';
+      document.getElementById('it-code').value  = type ? type.code : '';
+      document.getElementById('it-code').disabled = Boolean(type?.isSystem);
+      document.getElementById('it-name').value  = type ? (type.nameZh || '') : '';
+      document.getElementById('it-group').value = type ? (type.categoryGroup || 'misc') : 'misc';
+      document.getElementById('it-sort').value  = type ? (type.sortOrder ?? 10) : 10;
+      document.getElementById('it-active').checked = type ? (type.isActive !== false) : true;
+      setModalError('modal-it-err', '');
+      document.getElementById('modal-it').classList.remove('hidden');
+      document.getElementById('it-name').focus();
+    }
+
+    document.getElementById('modal-it-cancel').addEventListener('click', () => {
+      document.getElementById('modal-it').classList.add('hidden');
+    });
+
+    /** 提交报价行类型 新增/编辑 */
+    document.getElementById('modal-it-submit').addEventListener('click', async () => {
+      const code   = document.getElementById('it-code').value.trim();
+      const nameZh = document.getElementById('it-name').value.trim();
+      if (!nameZh) { setModalError('modal-it-err', '中文名称不能为空。'); return; }
+      if (!editingItId && !code) { setModalError('modal-it-err', '类型代码不能为空。'); return; }
+
+      const payload = {
+        code,
+        nameZh,
+        categoryGroup: document.getElementById('it-group').value,
+        sortOrder: Number(document.getElementById('it-sort').value || 0),
+        isActive: document.getElementById('it-active').checked,
+      };
+
+      setSubmitting('modal-it-submit', true);
+      try {
+        const url    = editingItId ? `/api/quote-item-types/${encodeURIComponent(editingItId)}` : '/api/quote-item-types';
+        const method = editingItId ? 'PUT' : 'POST';
+        await window.AppUtils.fetchJson(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }, '保存类型失败');
+        document.getElementById('modal-it').classList.add('hidden');
+        toast(editingItId ? '类型已更新。' : '类型已创建。', 'success');
+        await loadItemTypes(); // 刷新列表
+      } catch (e) {
+        setModalError('modal-it-err', e.message);
+      } finally {
+        setSubmitting('modal-it-submit', false);
+      }
+    });
+
+    /** 新增按钮 */
+    document.getElementById('btn-add-it').addEventListener('click', () => openItModal(null));
+
+    /** 列表行内按钮（编辑、停用、启用）委托到 tbody */
+    document.getElementById('tbody-it').addEventListener('click', async e => {
+      // 编辑
+      const editId = e.target.dataset.itEdit;
+      if (editId) {
+        const t = itemTypes.find(x => x.id === editId);
+        if (t) openItModal(t);
+        return;
+      }
+      // 停用 / 启用（通过 PUT isActive 字段）
+      const toggleId = e.target.dataset.itToggle;
+      if (toggleId) {
+        const newActive = e.target.dataset.itActive === 'true';
+        const t = itemTypes.find(x => x.id === toggleId);
+        if (!t) return;
+        e.target.disabled = true;
+        try {
+          await window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(toggleId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...t, isActive: newActive }),
+          }, '操作失败');
+          toast(newActive ? '已启用。' : '已停用。', 'success');
+          await loadItemTypes();
+        } catch (e2) {
+          toast(e2.message, 'error');
+          e.target.disabled = false;
+        }
+      }
+    });
+
+
+    // ════════════════════════════════════════════════════════════
+    // Tab 2：项目组类型 (/api/project-group-types)
+    // ════════════════════════════════════════════════════════════
+
+    let groupTypes = [];
+    let editingGtId = null;
+
+    async function loadGroupTypes() {
+      try {
+        groupTypes = await window.AppUtils.fetchJson('/api/project-group-types', null, '加载项目组类型失败');
+        renderGroupTypes();
+      } catch (e) {
+        document.getElementById('tbody-gt').innerHTML =
+          `<tr><td colspan="5" style="color:var(--error-text);padding:16px">${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    function renderGroupTypes() {
+      const canEdit = can('project_type.edit');
+      const tbody = document.getElementById('tbody-gt');
+      if (!groupTypes.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="bi-empty">暂无类型，点击「新增类型」开始录入。</td></tr>';
+        return;
+      }
+      tbody.innerHTML = groupTypes
+        .slice().sort((a, b) => (a.sortOrder || a.sort_order || 0) - (b.sortOrder || b.sort_order || 0))
+        .map(t => {
+          // 兼容 Supabase 下划线字段名和本地驼峰字段名
+          const nameZh   = t.nameZh || t.name_zh || '';
+          const sortOrder = t.sortOrder ?? t.sort_order ?? 0;
+          const isActive  = t.isActive !== false && t.is_active !== false;
+          const statusBadge = isActive
+            ? '<span class="badge badge-on">启用</span>'
+            : '<span class="badge badge-off">停用</span>';
+          const editBtn = canEdit ? `<button class="btn-sm" data-gt-edit="${esc(t.id)}">编辑</button>` : '';
+          const stopBtn = canEdit && isActive
+            ? `<button class="btn-sm danger" data-gt-stop="${esc(t.id)}">停用</button>` : '';
+          return `<tr>
+            <td><code>${esc(t.code)}</code></td>
+            <td>${esc(nameZh)}</td>
+            <td>${sortOrder}</td>
+            <td>${statusBadge}</td>
+            <td>${editBtn}${stopBtn}</td>
+          </tr>`;
+        }).join('');
+    }
+
+    function openGtModal(type) {
+      editingGtId = type ? type.id : null;
+      document.getElementById('modal-gt-title').textContent = type ? '编辑项目组类型' : '新增项目组类型';
+      document.getElementById('gt-code').value = type ? type.code : '';
+      document.getElementById('gt-code').disabled = !!type; // 编辑时不允许改 code
+      document.getElementById('gt-name').value = type ? (type.nameZh || type.name_zh || '') : '';
+      document.getElementById('gt-sort').value = type ? (type.sortOrder ?? type.sort_order ?? 10) : 10;
+      setModalError('modal-gt-err', '');
+      document.getElementById('modal-gt').classList.remove('hidden');
+      document.getElementById('gt-name').focus();
+    }
+
+    document.getElementById('modal-gt-cancel').addEventListener('click', () => {
+      document.getElementById('modal-gt').classList.add('hidden');
+    });
+
+    document.getElementById('modal-gt-submit').addEventListener('click', async () => {
+      const code   = document.getElementById('gt-code').value.trim();
+      const nameZh = document.getElementById('gt-name').value.trim();
+      if (!nameZh) { setModalError('modal-gt-err', '中文名称不能为空。'); return; }
+      if (!editingGtId && !code) { setModalError('modal-gt-err', '类型代码不能为空。'); return; }
+
+      const payload = {
+        code,
+        nameZh,
+        sortOrder: Number(document.getElementById('gt-sort').value || 0),
+      };
+
+      setSubmitting('modal-gt-submit', true);
+      try {
+        const url    = editingGtId ? `/api/project-group-types/${encodeURIComponent(editingGtId)}` : '/api/project-group-types';
+        const method = editingGtId ? 'PUT' : 'POST';
+        await window.AppUtils.fetchJson(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }, '保存类型失败');
+        document.getElementById('modal-gt').classList.add('hidden');
+        toast(editingGtId ? '类型已更新。' : '类型已创建。', 'success');
+        await loadGroupTypes();
+      } catch (e) {
+        setModalError('modal-gt-err', e.message);
+      } finally {
+        setSubmitting('modal-gt-submit', false);
+      }
+    });
+
+    document.getElementById('btn-add-gt').addEventListener('click', () => openGtModal(null));
+
+    document.getElementById('tbody-gt').addEventListener('click', async e => {
+      const editId = e.target.dataset.gtEdit;
+      if (editId) {
+        const t = groupTypes.find(x => x.id === editId);
+        if (t) openGtModal(t);
+        return;
+      }
+      // 停用（调用 DELETE，后端做软删除）
+      const stopId = e.target.dataset.gtStop;
+      if (stopId) {
+        if (!confirm('确定停用该类型吗？停用后将不再出现在新建选项中。')) return;
+        e.target.disabled = true;
+        try {
+          await window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(stopId)}`,
+            { method: 'DELETE' }, '停用失败');
+          toast('已停用。', 'success');
+          await loadGroupTypes();
+        } catch (e2) {
+          toast(e2.message, 'error');
+          e.target.disabled = false;
+        }
+      }
+    });
+
+
+    // ════════════════════════════════════════════════════════════
+    // Tab 3：供应商价格库
+    // ════════════════════════════════════════════════════════════
+
+    let categories  = [];     // 当前分类列表
+    let selectedCat = null;   // 当前选中的分类对象
+    let catItems    = [];     // 右侧条目列表
+    let suppliers   = [];     // 供应商列表（用于下拉）
+    let editingCatId = null;  // 正在编辑的分类 id
+    let editingScId  = null;  // 正在编辑的条目 id
+
+    /** 加载分类列表 */
+    async function loadCategories() {
+      try {
+        categories = await window.AppUtils.fetchJson('/api/supplier-categories', null, '加载分类失败');
+        renderCategories();
+        // 默认选中第一个分类
+        if (categories.length && !selectedCat) {
+          selectCategory(categories[0]);
+        }
+      } catch (e) {
+        document.getElementById('sc-cat-list').innerHTML =
+          `<div style="padding:16px;color:var(--error-text);font-size:13px">${esc(e.message)}</div>`;
+      }
+    }
+
+    /** 加载供应商列表（用于条目弹窗下拉） */
+    async function loadSuppliers() {
+      try {
+        const list = await window.AppUtils.fetchJson('/api/suppliers', null, '加载供应商失败');
+        suppliers = Array.isArray(list) ? list : (list.suppliers || []);
+        // 填充供应商下拉
+        const sel = document.getElementById('sci-supplier');
+        suppliers.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s.id;
+          opt.textContent = s.name || s.nameEn || s.id;
+          sel.appendChild(opt);
+        });
+      } catch (_) { /* 供应商列表加载失败不阻塞流程 */ }
+    }
+
+    /** 渲染左侧分类列表 */
+    function renderCategories() {
+      const canEdit = can('supplier_catalog.edit');
+      const container = document.getElementById('sc-cat-list');
+      if (!categories.length) {
+        container.innerHTML = '<div class="bi-empty">暂无分类</div>';
+        return;
+      }
+      container.innerHTML = categories
+        .slice().sort((a, b) => (a.sortOrder || a.sort_order || 0) - (b.sortOrder || b.sort_order || 0))
+        .map(c => {
+          const nameZh   = c.nameZh || c.name_zh || c.code;
+          const selected = selectedCat && selectedCat.id === c.id;
+          // 编辑和停用图标（铅笔、叉）
+          const editIcon = canEdit
+            ? `<button class="ico-btn" data-cat-edit="${esc(c.id)}" title="编辑分类">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>` : '';
+          const stopIcon = canEdit
+            ? `<button class="ico-btn danger" data-cat-stop="${esc(c.id)}" title="停用分类">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                  <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>` : '';
+          return `<div class="sc-cat-item${selected ? ' is-selected' : ''}" data-cat-select="${esc(c.id)}">
+            <span class="sc-cat-name">${esc(nameZh)}</span>
+            <span class="sc-cat-actions">${editIcon}${stopIcon}</span>
+          </div>`;
+        }).join('');
+    }
+
+    /** 选中某个分类，加载右侧条目 */
+    function selectCategory(cat) {
+      selectedCat = cat;
+      const nameZh = cat.nameZh || cat.name_zh || cat.code;
+      document.getElementById('sc-right-title').textContent = nameZh;
+      renderCategories(); // 刷新高亮
+      loadCatItems(cat.code);
+    }
+
+    /** 加载右侧条目 */
+    async function loadCatItems(categoryCode) {
+      const tbody = document.getElementById('tbody-sci');
+      tbody.innerHTML = '<tr><td colspan="6" class="bi-loading">加载中…</td></tr>';
+      try {
+        const items = await window.AppUtils.fetchJson(
+          `/api/supplier-items?category=${encodeURIComponent(categoryCode)}`,
+          null, '加载条目失败'
+        );
+        catItems = Array.isArray(items) ? items : (items.items || []);
+        renderCatItems();
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" style="color:var(--error-text);padding:16px">${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    function renderCatItems() {
+      const canEdit = can('supplier_catalog.edit');
+      const tbody = document.getElementById('tbody-sci');
+      if (!catItems.length) {
+        tbody.innerHTML = '<tr><td colspan="6" class="bi-empty">该分类暂无条目。</td></tr>';
+        return;
+      }
+      tbody.innerHTML = catItems.map(item => {
+        const nameZh = item.nameZh || item.name_zh || '';
+        const isActive = item.isActive !== false && item.is_active !== false;
+        const statusBadge = isActive
+          ? '<span class="badge badge-on">启用</span>'
+          : '<span class="badge badge-off">停用</span>';
+        const editBtn = canEdit ? `<button class="btn-sm" data-sci-edit="${esc(item.id)}">编辑</button>` : '';
+        const toggleBtn = canEdit
+          ? (isActive
+              ? `<button class="btn-sm danger" data-sci-stop="${esc(item.id)}">停用</button>`
+              : `<button class="btn-sm primary" data-sci-start="${esc(item.id)}">启用</button>`)
+          : '';
+        const cost = item.costPrice ?? item.cost_price;
+        return `<tr>
+          <td>${esc(nameZh)}</td>
+          <td>${esc(item.spec || '—')}</td>
+          <td>${esc(item.unit || '—')}</td>
+          <td>${cost != null ? Number(cost).toFixed(2) : '—'}</td>
+          <td>${statusBadge}</td>
+          <td>${editBtn}${toggleBtn}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    /** 分类列表事件：选择 / 编辑 / 停用 */
+    document.getElementById('sc-cat-list').addEventListener('click', async e => {
+      // 编辑按钮
+      const editId = e.target.closest('[data-cat-edit]')?.dataset.catEdit;
+      if (editId) {
+        const c = categories.find(x => x.id === editId);
+        if (c) openCatModal(c);
+        return;
+      }
+      // 停用按钮
+      const stopId = e.target.closest('[data-cat-stop]')?.dataset.catStop;
+      if (stopId) {
+        if (!confirm('确定停用该分类吗？')) return;
+        try {
+          await window.AppUtils.fetchJson(`/api/supplier-categories/${encodeURIComponent(stopId)}`,
+            { method: 'DELETE' }, '停用失败');
+          toast('分类已停用。', 'success');
+          // 若停用的是当前选中分类，清空右侧
+          if (selectedCat && selectedCat.id === stopId) {
+            selectedCat = null;
+            document.getElementById('sc-right-title').textContent = '请选择左侧分类';
+            document.getElementById('tbody-sci').innerHTML =
+              '<tr><td colspan="6" class="bi-empty">← 选择左侧分类查看条目</td></tr>';
+          }
+          await loadCategories();
+        } catch (e2) {
+          toast(e2.message, 'error');
+        }
+        return;
+      }
+      // 选择分类（点击行本身）
+      const selId = e.target.closest('[data-cat-select]')?.dataset.catSelect;
+      if (selId && !e.target.closest('button')) {
+        const c = categories.find(x => x.id === selId);
+        if (c) selectCategory(c);
+      }
+    });
+
+    /** 条目列表事件 */
+    document.getElementById('tbody-sci').addEventListener('click', async e => {
+      const editId = e.target.dataset.sciEdit;
+      if (editId) {
+        const item = catItems.find(x => x.id === editId);
+        if (item) openSciModal(item);
+        return;
+      }
+      const stopId = e.target.dataset.sciStop;
+      if (stopId) {
+        if (!confirm('确定停用该条目吗？')) return;
+        e.target.disabled = true;
+        try {
+          await window.AppUtils.fetchJson(`/api/supplier-items/${encodeURIComponent(stopId)}`,
+            { method: 'DELETE' }, '停用失败');
+          toast('条目已停用。', 'success');
+          if (selectedCat) await loadCatItems(selectedCat.code);
+        } catch (e2) {
+          toast(e2.message, 'error');
+          e.target.disabled = false;
+        }
+        return;
+      }
+      const startId = e.target.dataset.sciStart;
+      if (startId) {
+        const item = catItems.find(x => x.id === startId);
+        if (!item) return;
+        e.target.disabled = true;
+        try {
+          // 启用：PUT 发送 isActive:true
+          await window.AppUtils.fetchJson(`/api/supplier-items/${encodeURIComponent(startId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...item, isActive: true }),
+          }, '启用失败');
+          toast('条目已启用。', 'success');
+          if (selectedCat) await loadCatItems(selectedCat.code);
+        } catch (e2) {
+          toast(e2.message, 'error');
+          e.target.disabled = false;
+        }
+      }
+    });
+
+    /** 新增分类 */
+    document.getElementById('btn-add-cat').addEventListener('click', () => openCatModal(null));
+
+    /** 新增条目 */
+    document.getElementById('btn-add-sci').addEventListener('click', () => openSciModal(null));
+
+    // ── Modal 3：供应商分类 ──
+
+    function openCatModal(cat) {
+      editingCatId = cat ? cat.id : null;
+      document.getElementById('modal-cat-title').textContent = cat ? '编辑分类' : '新增分类';
+      document.getElementById('cat-code').value = cat ? cat.code : '';
+      document.getElementById('cat-code').disabled = !!cat; // 编辑时不允许改 code
+      document.getElementById('cat-name').value = cat ? (cat.nameZh || cat.name_zh || '') : '';
+      document.getElementById('cat-sort').value = cat ? (cat.sortOrder ?? cat.sort_order ?? 10) : 10;
+      setModalError('modal-cat-err', '');
+      document.getElementById('modal-cat').classList.remove('hidden');
+      document.getElementById('cat-name').focus();
+    }
+
+    document.getElementById('modal-cat-cancel').addEventListener('click', () => {
+      document.getElementById('modal-cat').classList.add('hidden');
+    });
+
+    document.getElementById('modal-cat-submit').addEventListener('click', async () => {
+      const code   = document.getElementById('cat-code').value.trim();
+      const nameZh = document.getElementById('cat-name').value.trim();
+      if (!nameZh) { setModalError('modal-cat-err', '中文名称不能为空。'); return; }
+      if (!editingCatId && !code) { setModalError('modal-cat-err', '分类代码不能为空。'); return; }
+
+      setSubmitting('modal-cat-submit', true);
+      try {
+        const url    = editingCatId ? `/api/supplier-categories/${encodeURIComponent(editingCatId)}` : '/api/supplier-categories';
+        const method = editingCatId ? 'PUT' : 'POST';
+        await window.AppUtils.fetchJson(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, nameZh, sortOrder: Number(document.getElementById('cat-sort').value || 0) }),
+        }, '保存失败');
+        document.getElementById('modal-cat').classList.add('hidden');
+        toast(editingCatId ? '分类已更新。' : '分类已创建。', 'success');
+        await loadCategories();
+      } catch (e) {
+        setModalError('modal-cat-err', e.message);
+      } finally {
+        setSubmitting('modal-cat-submit', false);
+      }
+    });
+
+    // ── Modal 4：供应商条目 ──
+
+    function openSciModal(item) {
+      editingScId = item ? item.id : null;
+      document.getElementById('modal-sci-title').textContent = item ? '编辑条目' : '新增条目';
+      document.getElementById('sci-name-zh').value = item ? (item.nameZh || item.name_zh || '') : '';
+      document.getElementById('sci-name-en').value = item ? (item.nameEn || item.name_en || '') : '';
+      document.getElementById('sci-spec').value    = item ? (item.spec || '') : '';
+      document.getElementById('sci-unit').value    = item ? (item.unit || '') : '';
+      document.getElementById('sci-cost').value    = item ? (item.costPrice ?? item.cost_price ?? '') : '';
+      document.getElementById('sci-notes').value   = item ? (item.notes || '') : '';
+      document.getElementById('sci-active').checked = item ? (item.isActive !== false && item.is_active !== false) : true;
+      // 设置供应商下拉选中值
+      const suppId = item ? (item.supplierId || item.supplier_id || '') : '';
+      document.getElementById('sci-supplier').value = suppId;
+      setModalError('modal-sci-err', '');
+      document.getElementById('modal-sci').classList.remove('hidden');
+      document.getElementById('sci-name-zh').focus();
+    }
+
+    document.getElementById('modal-sci-cancel').addEventListener('click', () => {
+      document.getElementById('modal-sci').classList.add('hidden');
+    });
+
+    document.getElementById('modal-sci-submit').addEventListener('click', async () => {
+      if (!selectedCat) { setModalError('modal-sci-err', '请先选择左侧分类。'); return; }
+      const nameZh = document.getElementById('sci-name-zh').value.trim();
+      const unit   = document.getElementById('sci-unit').value.trim();
+      if (!nameZh) { setModalError('modal-sci-err', '中文名称不能为空。'); return; }
+      if (!unit)   { setModalError('modal-sci-err', '单位不能为空。'); return; }
+
+      const payload = {
+        nameZh,
+        nameEn:     document.getElementById('sci-name-en').value.trim(),
+        spec:       document.getElementById('sci-spec').value.trim(),
+        unit,
+        costPrice:  Number(document.getElementById('sci-cost').value || 0),
+        supplierId: document.getElementById('sci-supplier').value || null,
+        notes:      document.getElementById('sci-notes').value.trim(),
+        isActive:   document.getElementById('sci-active').checked,
+        category:   selectedCat.code, // 记录所属分类 code
+      };
+
+      setSubmitting('modal-sci-submit', true);
+      try {
+        const url    = editingScId ? `/api/supplier-items/${encodeURIComponent(editingScId)}` : '/api/supplier-items';
+        const method = editingScId ? 'PUT' : 'POST';
+        await window.AppUtils.fetchJson(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }, '保存失败');
+        document.getElementById('modal-sci').classList.add('hidden');
+        toast(editingScId ? '条目已更新。' : '条目已创建。', 'success');
+        await loadCatItems(selectedCat.code);
+      } catch (e) {
+        setModalError('modal-sci-err', e.message);
+      } finally {
+        setSubmitting('modal-sci-submit', false);
+      }
+    });
+
+
+    // ════════════════════════════════════════════════════════════
+    // Tab 4：报价模板 (/api/templates)
+    // ════════════════════════════════════════════════════════════
+
+    const PRICING_MODE_LABELS = {
+      standard:     '标准差旅报价',
+      project_based: '项目型报价',
+    };
+
+    async function loadTemplates() {
+      // Tab4 需要 standard_quote.view 权限
+      if (!can('standard_quote.view')) {
+        document.getElementById('tpl-grid').innerHTML =
+          '<div class="bi-empty">您没有查看报价模板的权限。</div>';
+        return;
+      }
+      try {
+        const data = await window.AppUtils.fetchJson('/api/templates', null, '加载模板失败');
+        const list = Array.isArray(data) ? data : (data.templates || []);
+        renderTemplates(list);
+      } catch (e) {
+        document.getElementById('tpl-grid').innerHTML =
+          `<div style="color:var(--error-text);font-size:13px">${esc(e.message)}</div>`;
+      }
+    }
+
+    function renderTemplates(list) {
+      const grid = document.getElementById('tpl-grid');
+      if (!list.length) {
+        grid.innerHTML = '<div class="bi-empty">暂无模板，点击「新建模板」开始创建。</div>';
+        return;
+      }
+      grid.innerHTML = list.map(t => {
+        const mode = PRICING_MODE_LABELS[t.pricingMode] || t.pricingMode || '—';
+        const created = t.createdAt ? t.createdAt.slice(0,10) : '';
+        return `<a class="tpl-card" href="/template-edit.html?id=${encodeURIComponent(t.id)}">
+          <div class="tpl-card-name" title="${esc(t.name)}">${esc(t.name)}</div>
+          <div class="tpl-card-meta">
+            <span>${esc(mode)}</span>
+            ${created ? `<span>${esc(created)}</span>` : ''}
+          </div>
+        </a>`;
+      }).join('');
+    }
+
+
+    // ════════════════════════════════════════════════════════════
+    // 权限驱动的按钮显示 & 初始化
+    // ════════════════════════════════════════════════════════════
+
+    /** 根据当前权限更新所有操作按钮的可见性 */
+    function applyPermissions() {
+      const canType     = can('project_type.edit') || can('project_type.create');
+      const canCatalog  = can('supplier_catalog.edit') || can('supplier_catalog.create');
+
+      document.getElementById('btn-add-it').style.display   = canType    ? '' : 'none';
+      document.getElementById('btn-add-gt').style.display   = canType    ? '' : 'none';
+      document.getElementById('btn-add-cat').style.display  = canCatalog ? '' : 'none';
+      document.getElementById('btn-add-sci').style.display  = canCatalog ? '' : 'none';
+    }
+
+    /** 点击 Modal 背景关闭（UX 优化） */
+    ['modal-it', 'modal-gt', 'modal-cat', 'modal-sci'].forEach(id => {
+      document.getElementById(id).addEventListener('click', e => {
+        if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
+      });
+    });
+
+    // 按 ESC 关闭所有 Modal
+    document.addEventListener('keydown', e => {
+      if (e.key !== 'Escape') return;
+      ['modal-it', 'modal-gt', 'modal-cat', 'modal-sci'].forEach(id => {
+        document.getElementById(id).classList.add('hidden');
+      });
+    });
+
+    /** 初始化：页面 DOM 就绪后执行 */
+    function init() {
+      applyPermissions();
+      activateTab(getActiveTab());
+    }
+
+    // authReady 事件由 auth-guard.js 触发（权限数据已加载）
+    document.addEventListener('authReady', () => {
+      applyPermissions();
+      // 刷新已加载 Tab 的渲染，使权限按钮立刻生效
+      if (loadedTabs.has('item-types'))       renderItemTypes();
+      if (loadedTabs.has('group-types'))      renderGroupTypes();
+      if (loadedTabs.has('supplier-catalog')) renderCategories();
+    });
+
+    if (document.readyState !== 'loading') {
+      init();
+    } else {
+      document.addEventListener('DOMContentLoaded', init);
+    }
+
+  })();
+  </script>
+  <script src="/app-shell.js"></script>
+</body>
+</html>

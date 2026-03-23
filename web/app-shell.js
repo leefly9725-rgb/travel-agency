@@ -18,6 +18,7 @@
     templates: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 5h12v14H6z" stroke="currentColor" stroke-width="1.7"/><path d="M9 9h6M9 12h6M9 15h4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     documents: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M7 4h7l4 4v12H7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M14 4v4h4M9 13h6M9 16h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
     itemTypes: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 7h12M6 12h12M6 17h7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="17" cy="17" r="3" stroke="currentColor" stroke-width="1.7"/></svg>',
+    basicInfo: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><ellipse cx="12" cy="7" rx="8" ry="3" stroke="currentColor" stroke-width="1.7"/><path d="M4 7v5c0 1.657 3.582 3 8 3s8-1.343 8-3V7" stroke="currentColor" stroke-width="1.7"/><path d="M4 12v5c0 1.657 3.582 3 8 3s8-1.343 8-3v-5" stroke="currentColor" stroke-width="1.7"/></svg>',
     admin: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 12.5l1.5 1.5 3.5-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
@@ -52,7 +53,8 @@
         { key: 'suppliers', icon: ICONS.suppliers, label: '\u4f9b\u5e94\u5546\u7ba1\u7406', note: '\u4ef7\u683c\u5e93\u4e0e\u4f9b\u5e94\u5546\u4fe1\u606f', href: '/suppliers.html', permission: 'supplier.view' },
         { key: 'templates', icon: ICONS.templates, label: '\u6a21\u677f\u7ba1\u7406', note: '\u62a5\u4ef7\u6a21\u677f\u4e0e\u590d\u7528\u8d44\u4ea7', href: '/templates.html', permission: 'standard_quote.view' },
         { key: 'documents', icon: ICONS.documents, label: '\u6587\u6863\u7ba1\u7406', note: '\u6587\u6863\u6e90\u6570\u636e\u9884\u89c8', href: '/documents.html', permission: 'standard_quote.view' },
-        { key: 'item-types', icon: ICONS.itemTypes, label: '\u9879\u76ee\u7c7b\u578b\u7ba1\u7406', note: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ef4\u62a4', href: '/item-types.html', permission: 'project_type.view' }
+        { key: 'item-types', icon: ICONS.itemTypes, label: '\u9879\u76ee\u7c7b\u578b\u7ba1\u7406', note: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ef4\u62a4', href: '/item-types.html', permission: 'project_type.view' },
+        { key: 'basic-info', icon: ICONS.basicInfo, label: '\u57fa\u7840\u6570\u636e\u7ba1\u7406', note: '\u7c7b\u578b\u3001\u5206\u7c7b\u4e0e\u6a21\u677f\u4e3b\u6570\u636e', href: '/basic-info.html', permission: 'project_type.view' }
       ]
     },
     {
@@ -74,6 +76,7 @@
     '/templates.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u6a21\u677f\u7ba1\u7406', subtitle: '\u6c89\u6dc0\u9ad8\u9891\u62a5\u4ef7\u6a21\u677f\uff0c\u63d0\u9ad8\u590d\u7528\u6548\u7387\u3002' },
     '/documents.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u6587\u6863\u7ba1\u7406', subtitle: '\u4ee5\u6e90\u6570\u636e\u89c6\u89d2\u67e5\u770b\u6587\u6863\u51c6\u5907\u5ea6\u3002' },
     '/item-types.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u9879\u76ee\u7c7b\u578b\u7ba1\u7406', subtitle: '\u7ef4\u62a4\u62a5\u4ef7\u660e\u7ec6\u7684\u7c7b\u578b\u4e0e\u5206\u7c7b\u3002' },
+    '/basic-info.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u57fa\u7840\u6570\u636e\u7ba1\u7406', subtitle: '\u7edf\u4e00\u7ba1\u7406\u62a5\u4ef7\u884c\u7c7b\u578b\u3001\u9879\u76ee\u7ec4\u5206\u7c7b\u3001\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u4e0e\u62a5\u4ef7\u6a21\u677f\u3002' },
     '/admin-permissions.html': { eyebrow: '\u7cfb\u7edf\u7ba1\u7406', title: '\u6743\u9650\u7ba1\u7406', subtitle: '\u7edf\u4e00\u7ba1\u7406\u7528\u6237\u3001\u89d2\u8272\u4e0e\u6743\u9650\u6388\u6743\u3002' }
   };
 
