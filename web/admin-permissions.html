@@ -776,7 +776,20 @@
         renderMobileDropdown();
         showToast(`用户 ${newUser.display_name} 创建成功`, 'success');
       } catch (e) {
-        errEl.textContent = e.message || '创建失败，请稍后重试';
+        const errorMsg = e?.message || '';
+        let friendlyMsg;
+        if (errorMsg.includes('email_exists') || errorMsg.includes('already been registered')) {
+          friendlyMsg = '该邮箱已被注册，请更换其他邮箱';
+        } else if (errorMsg.includes('invalid') && errorMsg.includes('email')) {
+          friendlyMsg = '邮箱格式不正确，请重新输入';
+        } else if (errorMsg.includes('password') && errorMsg.includes('weak')) {
+          friendlyMsg = '密码强度不足，请使用至少6位包含字母和数字的密码';
+        } else if (errorMsg.includes('422')) {
+          friendlyMsg = '用户信息格式有误，请检查后重试';
+        } else {
+          friendlyMsg = '创建失败，请稍后重试';
+        }
+        errEl.textContent = friendlyMsg;
         errEl.classList.remove('hidden');
         submitBtn.disabled = false;
       }
