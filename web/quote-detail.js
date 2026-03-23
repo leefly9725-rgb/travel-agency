@@ -1,12 +1,35 @@
-﻿function isFlaggedReview(record) {
+function isFlaggedReview(record) {
   return record?.dataQuality?.reviewStatus === "flagged_review";
 }
 
-function renderVehicleDetailBlock(item, quoteCurrency) {
-  if (!item.vehicleDetails || item.vehicleDetails.length === 0) {
-    return "";
-  }
+function esc(str) {
+  return String(str == null ? "" : str)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
 
+function formatTs(ts) {
+  if (!ts) return "—";
+  try {
+    const d = new Date(ts);
+    const p = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+  } catch { return "—"; }
+}
+
+function isManagerOrAdmin() {
+  const roles = window.__CURRENT_USER__?.roles || [];
+  return roles.includes("admin") || roles.includes("manager");
+}
+
+const STATUS_CLS   = { draft: "s-draft", pending: "s-pending", approved: "s-approved", rejected: "s-rejected" };
+const EXEC_CLS     = { preparing: "e-preparing", executing: "e-executing", completed: "e-completed" };
+const STATUS_LABEL = { draft: "草稿", pending: "待审批", approved: "已批准", rejected: "已拒绝" };
+const EXEC_LABEL   = { preparing: "筹备中", executing: "执行中", completed: "已完成" };
+
+// ── Detail sub-blocks (unchanged from original) ───────────────────────────────
+function renderVehicleDetailBlock(item, quoteCurrency) {
+  if (!item.vehicleDetails || item.vehicleDetails.length === 0) return "";
   return `
     <div class="vehicle-detail-preview section-spacing-sm">
       ${item.vehicleDetails.map((detail) => `
@@ -28,10 +51,7 @@ function renderVehicleDetailBlock(item, quoteCurrency) {
 }
 
 function renderServiceDetailBlock(item, quoteCurrency) {
-  if (!item.serviceDetails || item.serviceDetails.length === 0) {
-    return "";
-  }
-
+  if (!item.serviceDetails || item.serviceDetails.length === 0) return "";
   return `
     <div class="service-detail-preview section-spacing-sm">
       ${item.serviceDetails.map((detail) => `
@@ -53,10 +73,7 @@ function renderServiceDetailBlock(item, quoteCurrency) {
 }
 
 function renderHotelDetailBlock(item, quoteCurrency) {
-  if (!item.hotelDetails || item.hotelDetails.length === 0) {
-    return "";
-  }
-
+  if (!item.hotelDetails || item.hotelDetails.length === 0) return "";
   return `
     <div class="hotel-detail-preview section-spacing-sm">
       ${item.hotelDetails.map((detail) => `
@@ -78,10 +95,7 @@ function renderHotelDetailBlock(item, quoteCurrency) {
 }
 
 function renderMealDetailBlock(item, quoteCurrency) {
-  if (!item.mealDetails) {
-    return "";
-  }
-
+  if (!item.mealDetails) return "";
   const detail = item.mealDetails;
   return `
     <div class="meal-detail-preview section-spacing-sm">
@@ -102,6 +116,180 @@ function renderMealDetailBlock(item, quoteCurrency) {
   `;
 }
 
+// ── Approval info block ───────────────────────────────────────────────────────
+function renderApprovalBlock(quote) {
+  if (!quote.ownerId && !quote.submittedAt && !quote.reviewedAt) return "";
+  const showRejectNote = (quote.status === "rejected") && quote.reviewNote;
+  return `
+    <div class="panel subpanel section-spacing">
+      <div class="panel-head"><h2>审批信息</h2></div>
+      <div class="detail-grid">
+        <div class="metric"><span>负责人</span><strong>${esc(quote.ownerName || quote.ownerId || "未指定")}</strong></div>
+        <div class="metric"><span>提交时间</span><strong>${formatTs(quote.submittedAt)}</strong></div>
+        <div class="metric"><span>审批人</span><strong>${esc(quote.reviewerName || quote.reviewerId || "未审批")}</strong></div>
+        <div class="metric"><span>审批时间</span><strong>${formatTs(quote.reviewedAt)}</strong></div>
+      </div>
+      ${showRejectNote ? `
+        <div class="review-note section-spacing-sm">
+          <strong>拒绝原因</strong>
+          <p>${esc(quote.reviewNote)}</p>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
+// ── Action buttons (role + status driven) ────────────────────────────────────
+function renderActionButtons(quote) {
+  const container = document.getElementById("quote-action-row");
+  if (!container) return;
+  // Remove any previously rendered workflow buttons to avoid duplicates on re-render
+  container.querySelectorAll(".workflow-btn").forEach(b => b.remove());
+
+  const isAdmin = isManagerOrAdmin();
+  const status = quote.status || "draft";
+
+  if (!isAdmin) {
+    if (status === "draft") {
+      const btn = document.createElement("button");
+      btn.className = "button-link small-link workflow-btn";
+      btn.style.cssText = "background:var(--accent);color:#fff;border:none;cursor:pointer";
+      btn.textContent = "提交审批";
+      btn.addEventListener("click", () => submitForReview(quote.id, btn));
+      container.insertBefore(btn, container.firstChild);
+    } else if (status === "rejected") {
+      const btn = document.createElement("button");
+      btn.className = "button-link small-link workflow-btn";
+      btn.style.cursor = "pointer";
+      btn.textContent = "打回重改";
+      btn.addEventListener("click", () => reopenQuote(quote.id, btn));
+      container.insertBefore(btn, container.firstChild);
+    }
+  } else {
+    if (status === "pending") {
+      const rejectBtn = document.createElement("button");
+      rejectBtn.className = "button-link small-link workflow-btn";
+      rejectBtn.style.cssText = "background:var(--error-text);color:#fff;border:none;cursor:pointer";
+      rejectBtn.textContent = "拒绝";
+      rejectBtn.addEventListener("click", () => showRejectDialog(quote.id));
+
+      const approveBtn = document.createElement("button");
+      approveBtn.className = "button-link small-link workflow-btn";
+      approveBtn.style.cssText = "background:#2e7d32;color:#fff;border:none;cursor:pointer";
+      approveBtn.textContent = "批准";
+      approveBtn.addEventListener("click", () => approveQuote(quote.id, approveBtn));
+
+      container.insertBefore(rejectBtn, container.firstChild);
+      container.insertBefore(approveBtn, container.firstChild);
+    }
+  }
+}
+
+// ── Workflow action functions ──────────────────────────────────────────────────
+async function submitForReview(quoteId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "提交中…"; }
+  try {
+    await window.AppUtils.fetchJson(
+      `/api/quotes/${encodeURIComponent(quoteId)}/submit`,
+      { method: "POST" },
+      "提交审批失败，请稍后重试"
+    );
+    window.AppUtils.setFlash("已提交审批，等待经理/管理员审核。", "success");
+    window.location.reload();
+  } catch (e) {
+    window.AppUtils.showMessage("quote-message", e.message, "error");
+    if (btn) { btn.disabled = false; btn.textContent = "提交审批"; }
+  }
+}
+
+async function approveQuote(quoteId, btn) {
+  if (!window.confirm("确认批准此报价单？")) return;
+  if (btn) { btn.disabled = true; btn.textContent = "处理中…"; }
+  try {
+    await window.AppUtils.fetchJson(
+      `/api/quotes/${encodeURIComponent(quoteId)}/review`,
+      { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve", note: "" }) },
+      "批准失败，请稍后重试"
+    );
+    // 批准成功后前端同步更新 execution_status → executing
+    await window.AppUtils.fetchJson(
+      `/api/quotes/${encodeURIComponent(quoteId)}`,
+      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ execution_status: "executing" }) },
+      "更新执行状态失败"
+    ).catch(() => {}); // 非致命
+    window.AppUtils.setFlash("报价单已批准，执行状态已更新为「执行中」。", "success");
+    window.location.reload();
+  } catch (e) {
+    window.AppUtils.showMessage("quote-message", e.message, "error");
+    if (btn) { btn.disabled = false; btn.textContent = "批准"; }
+  }
+}
+
+function showRejectDialog(quoteId) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:2000";
+  overlay.innerHTML = `
+    <div style="background:var(--panel);border-radius:12px;padding:28px;width:420px;max-width:calc(100vw - 32px);box-shadow:0 8px 32px rgba(0,0,0,0.18)">
+      <h2 style="font-size:16px;font-weight:700;margin:0 0 16px">填写拒绝原因</h2>
+      <textarea id="reject-note-input" placeholder="请填写拒绝原因（必填）" style="width:100%;height:100px;padding:8px 10px;box-sizing:border-box;border:1.5px solid var(--line);border-radius:8px;font:inherit;resize:vertical;background:var(--bg);color:var(--ink)"></textarea>
+      <div id="reject-error" style="font-size:12px;color:var(--error-text);margin-top:6px;display:none"></div>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+        <button id="reject-cancel" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer">取消</button>
+        <button id="reject-confirm" style="padding:8px 18px;border-radius:8px;border:none;background:var(--error-text);color:#fff;font-size:13px;font-weight:600;cursor:pointer">确认拒绝</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const textarea   = overlay.querySelector("#reject-note-input");
+  const errorEl    = overlay.querySelector("#reject-error");
+  const cancelBtn  = overlay.querySelector("#reject-cancel");
+  const confirmBtn = overlay.querySelector("#reject-confirm");
+
+  cancelBtn.addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  textarea.focus();
+
+  confirmBtn.addEventListener("click", async () => {
+    const note = textarea.value.trim();
+    if (!note) { errorEl.textContent = "拒绝原因不能为空"; errorEl.style.display = "block"; return; }
+    confirmBtn.disabled = true; confirmBtn.textContent = "处理中…";
+    try {
+      await window.AppUtils.fetchJson(
+        `/api/quotes/${encodeURIComponent(quoteId)}/review`,
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "reject", note }) },
+        "拒绝操作失败，请稍后重试"
+      );
+      overlay.remove();
+      window.AppUtils.setFlash("报价单已拒绝。", "success");
+      window.location.reload();
+    } catch (e) {
+      errorEl.textContent = e.message; errorEl.style.display = "block";
+      confirmBtn.disabled = false; confirmBtn.textContent = "确认拒绝";
+    }
+  });
+}
+
+async function reopenQuote(quoteId, btn) {
+  if (!window.confirm("确认将此报价单打回重改？报价单将恢复为草稿状态。")) return;
+  if (btn) { btn.disabled = true; btn.textContent = "处理中…"; }
+  try {
+    await window.AppUtils.fetchJson(
+      `/api/quotes/${encodeURIComponent(quoteId)}/reopen`,
+      { method: "POST" },
+      "打回重改失败，请稍后重试"
+    );
+    window.AppUtils.setFlash("报价单已打回重改，可重新编辑并再次提交。", "success");
+    window.location.reload();
+  } catch (e) {
+    window.AppUtils.showMessage("quote-message", e.message, "error");
+    if (btn) { btn.disabled = false; btn.textContent = "打回重改"; }
+  }
+}
+
+// ── Bootstrap ─────────────────────────────────────────────────────────────────
+let cachedQuote = null;
+
 async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
   const params = new URLSearchParams(window.location.search);
@@ -113,18 +301,24 @@ async function bootstrap() {
 
   try {
     const quote = await window.AppUtils.fetchJson(`/api/quotes/${encodeURIComponent(id)}`, null, "报价详情加载失败，请稍后重试。");
+    cachedQuote = quote;
     const projectArchiveId = quote.projectId || quote.id;
+    const status = quote.status || "draft";
+    const execStatus = quote.executionStatus || "preparing";
     const container = document.getElementById("quote-detail");
+
     container.innerHTML = `
       <div class="panel-head panel-head-wrap">
         <div>
           <div class="title-row">
             <h1>${quote.projectName}</h1>
-            ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ''}
+            ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
+            <span class="status-badge ${STATUS_CLS[status] || "s-draft"}">${esc(STATUS_LABEL[status] || status)}</span>
+            <span class="status-badge ${EXEC_CLS[execStatus] || "e-preparing"}">${esc(EXEC_LABEL[execStatus] || execStatus)}</span>
           </div>
           <p class="meta">${quote.quoteNumber} / ${quote.clientName}</p>
         </div>
-        <div class="action-row">
+        <div class="action-row" id="quote-action-row">
           <a class="button-link small-link" href="/quote-new.html?id=${encodeURIComponent(quote.id)}">编辑报价</a>
           <a class="button-link small-link" href="/documents.html?quoteId=${encodeURIComponent(quote.id)}">查看文档数据</a>
           <a class="button-link small-link" href="/project-detail.html?id=${encodeURIComponent(projectArchiveId)}">项目主档</a>
@@ -136,6 +330,7 @@ async function bootstrap() {
           <p>${quote.dataQuality.note || "该报价记录已标记为待复核，正式业务使用前请先完成人工检查。"}</p>
         </div>
       ` : ""}
+      ${renderApprovalBlock(quote)}
       <div class="detail-grid section-spacing">
         <div class="metric"><span>客户</span><strong>${quote.clientName}</strong></div>
         <div class="metric"><span>联系人</span><strong>${quote.contactName}</strong></div>
@@ -181,6 +376,8 @@ async function bootstrap() {
         <p>${quote.notes || "暂无"}</p>
       </div>
     `;
+
+    renderActionButtons(quote);
   } catch (error) {
     document.getElementById("quote-detail").innerHTML = window.AppUtils.renderEmptyState("报价详情不可用", error.message);
     window.AppUtils.showMessage("quote-message", error.message, "error");
@@ -188,3 +385,7 @@ async function bootstrap() {
 }
 
 bootstrap();
+
+document.addEventListener("authReady", function () {
+  if (cachedQuote) renderActionButtons(cachedQuote);
+});

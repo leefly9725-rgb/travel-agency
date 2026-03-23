@@ -157,6 +157,25 @@
     }
     .status-dot.active { background: #2e7d32; opacity: 1; }
 
+    /* ── Inactive user ───────────────────────────────────────────────────────── */
+    .user-item.inactive .user-item-name { color: var(--muted); text-decoration: line-through; }
+    .deactivated-badge {
+      display: inline-block; font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 10px;
+      background: rgba(183, 28, 28, 0.08); color: #b71c1c; white-space: nowrap;
+    }
+    .btn-deactivate {
+      padding: 6px 14px; border-radius: 8px; flex-shrink: 0;
+      border: 1.5px solid #b71c1c; background: transparent;
+      color: #b71c1c; font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-deactivate:hover { background: rgba(183, 28, 28, 0.08); }
+
+    /* ── Permission override ─────────────────────────────────────────────────── */
+    .perm-toggle-label { display: flex; align-items: center; cursor: pointer; }
+    .perm-toggle-label.loading { opacity: 0.4; pointer-events: none; }
+
     /* ── Right panel ─────────────────────────────────────────────────────────── */
     .admin-right {
       flex: 1 1 auto;
@@ -539,6 +558,7 @@
               <div class="name" id="detail-name"></div>
               <div class="email" id="detail-email"></div>
             </div>
+            <div id="detail-actions"></div>
           </div>
 
           <div class="tab-nav">
@@ -770,14 +790,14 @@
         return;
       }
       el.innerHTML = allUsers.map(u => `
-        <div class="user-item${u.id === selectedUserId ? ' selected' : ''}" data-id="${esc(u.id)}">
+        <div class="user-item${u.id === selectedUserId ? ' selected' : ''}${!u.is_active ? ' inactive' : ''}" data-id="${esc(u.id)}">
           <div class="user-avatar" style="background:${avatarColor(u.display_name)}">
             ${esc(firstLetter(u.display_name))}
           </div>
           <div class="user-item-info">
             <div class="user-item-name">${esc(u.display_name)}</div>
             <div class="user-item-roles">
-              ${(u.roles || []).map(r => `<span class="role-badge">${esc(r.name_zh)}</span>`).join('')}
+              ${!u.is_active ? '<span class="deactivated-badge">已停用</span>' : (u.roles || []).map(r => `<span class="role-badge">${esc(r.name_zh)}</span>`).join('')}
             </div>
           </div>
           <span class="status-dot${u.is_active ? ' active' : ''}"></span>
@@ -817,6 +837,16 @@
       avatar.style.background = color;
       document.getElementById('detail-name').textContent = user.display_name;
       document.getElementById('detail-email').textContent = user.email;
+
+      const actionsEl = document.getElementById('detail-actions');
+      if (!user.is_active) {
+        actionsEl.innerHTML = '<span class="deactivated-badge" style="font-size:12px;padding:4px 10px">已停用</span>';
+      } else if (window.can && window.can('user.edit')) {
+        actionsEl.innerHTML = '<button class="btn-deactivate" id="btn-deactivate-user">停用账号</button>';
+        document.getElementById('btn-deactivate-user').addEventListener('click', () => deactivateUser(user.id, user.display_name));
+      } else {
+        actionsEl.innerHTML = '';
+      }
 
       switchTab('roles');
     }
@@ -917,6 +947,27 @@
       showToast(assign ? '角色已分配' : '角色已取消', 'success');
     }
 
+    // ── Deactivate user ──────────────────────────────────────────────────────────
+    async function deactivateUser(userId, displayName) {
+      if (!window.confirm(`确认停用用户「${displayName}」吗？\n停用后该用户将无法登录，历史数据保留不删除。`)) return;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/admin/users/${encodeURIComponent(userId)}/deactivate`,
+          { method: 'PATCH' },
+          '停用用户失败，请稍后重试'
+        );
+        const user = allUsers.find(u => u.id === userId);
+        if (user) user.is_active = false;
+        renderUserList();
+        document.getElementById('detail-actions').innerHTML =
+          '<span class="deactivated-badge" style="font-size:12px;padding:4px 10px">已停用</span>';
+        showToast(`用户「${displayName}」已停用`, 'success');
+      } catch (e) {
+        console.error('[deactivateUser] 停用用户失败:', e);
+        showToast(e.message, 'error');
+      }
+    }
+
     // ── Permissions tab ──────────────────────────────────────────────────────────
     async function renderPermissionsTab() {
       const container = document.getElementById('tab-permissions');
@@ -948,7 +999,7 @@
       }
 
       container.innerHTML = `
-        <p class="perm-note">以下权限由用户角色自动继承，如需调整请修改角色分配。</p>
+        <p class="perm-note">以下权限来自用户角色。可通过「个人覆盖」开关调整单个权限；关闭表示显式拒绝，即使角色有此权限也不生效。</p>
         ${Object.entries(groups).map(([groupName, perms]) => `
           <div class="perm-group">
             <div class="perm-group-header" onclick="togglePermGroup(this)">
@@ -959,14 +1010,23 @@
             <div class="perm-group-body">
               <table class="perm-table">
                 <thead>
-                  <tr><th>权限项目</th><th>操作类型</th><th>来源角色</th></tr>
+                  <tr><th>权限项目</th><th>操作类型</th><th>来源角色</th><th style="width:72px;text-align:center">个人覆盖</th></tr>
                 </thead>
                 <tbody>
                   ${perms.map(p => `
                     <tr>
-                      <td>${esc(PERMISSION_LABELS[p.permission_code] ?? p.permission_code)}</td>
+                      <td>${esc(PERMISSION_LABELS[p.permission_code] ?? p.permission_code)}${p.is_override ? ' <span style="font-size:10px;color:var(--accent);font-weight:600">已覆盖</span>' : ''}</td>
                       <td>${esc(ACTION_LABELS[p.action] ?? p.action)}</td>
                       <td>${(p.granted_by_roles || []).map(r => `<span class="role-badge-sm">${esc(r)}</span>`).join('')}</td>
+                      <td style="text-align:center">
+                        <label class="perm-toggle-label" style="justify-content:center" id="ptl-${esc(p.permission_code)}">
+                          <input type="checkbox" ${p.granted !== false ? 'checked' : ''}
+                            data-perm="${esc(p.permission_code)}"
+                            class="perm-override-cb"
+                            style="position:absolute;opacity:0;width:0;height:0">
+                          <span class="toggle-track"></span>
+                        </label>
+                      </td>
                     </tr>
                   `).join('')}
                 </tbody>
@@ -975,6 +1035,12 @@
           </div>
         `).join('')}
       `;
+
+      container.querySelectorAll('.perm-override-cb').forEach(cb => {
+        cb.addEventListener('change', () =>
+          togglePermOverride(selectedUserId, cb.dataset.perm, cb.checked, cb)
+        );
+      });
     }
 
     function togglePermGroup(header) {
@@ -982,6 +1048,29 @@
       const arrow = header.querySelector('.perm-group-arrow');
       const collapsed = body.classList.toggle('collapsed');
       arrow.textContent = collapsed ? '▶' : '▼';
+    }
+
+    async function togglePermOverride(userId, permCode, newGranted, cbEl) {
+      const labelEl = document.getElementById(`ptl-${permCode}`);
+      if (labelEl) labelEl.classList.add('loading');
+      cbEl.disabled = true;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/admin/users/${encodeURIComponent(userId)}/permissions/${encodeURIComponent(permCode)}`,
+          { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ granted: newGranted }) },
+          '更新权限失败，请稍后重试'
+        );
+        const p = (cachedPermissions || []).find(x => x.permission_code === permCode);
+        if (p) { p.is_override = true; p.granted = newGranted; }
+        showToast(newGranted ? '权限已开启' : '权限已关闭', 'success');
+      } catch (e) {
+        console.error('[togglePermOverride] 更新权限失败:', permCode, e);
+        cbEl.checked = !newGranted;
+        showToast(e.message, 'error');
+      } finally {
+        cbEl.disabled = false;
+        if (labelEl) labelEl.classList.remove('loading');
+      }
     }
 
     // ── Event bindings ───────────────────────────────────────────────────────────

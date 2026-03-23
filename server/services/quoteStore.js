@@ -288,6 +288,13 @@ function mapRemoteQuote(row) {
     projectGroups: Array.isArray(compat?.projectGroups) ? compat.projectGroups : [],
     createdAt: row.created_at ? String(row.created_at) : "",
     updatedAt: row.updated_at ? String(row.updated_at) : "",
+    status: row.status || "draft",
+    ownerId: row.owner_id || null,
+    executionStatus: row.execution_status || "preparing",
+    submittedAt: row.submitted_at ? String(row.submitted_at) : null,
+    reviewedAt: row.reviewed_at ? String(row.reviewed_at) : null,
+    reviewerId: row.reviewer_id || null,
+    reviewNote: row.review_note || "",
     items,
   };
 }

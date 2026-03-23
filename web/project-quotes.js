@@ -38,6 +38,9 @@ function renderProjectQuotes(quotes) {
     return;
   }
 
+  const STATUS_CLS = { draft: 's-draft', pending: 's-pending', approved: 's-approved', rejected: 's-rejected' };
+  const EXEC_CLS   = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
+
   container.innerHTML = quotes.map((quote) => {
     const totalSales = quote.totalSales != null
       ? quote.totalSales
@@ -55,6 +58,10 @@ function renderProjectQuotes(quotes) {
     const dimPax = quote.paxCount == null;
     const dimGroups = groupCount === 0 && itemCount === 0;
     const dimAttr = ' style="opacity:0.45"';
+    const status = quote.status || "draft";
+    const execStatus = quote.executionStatus || "preparing";
+    const statusLabel = window.AppUi.getLabel("quoteStatusLabels", status) || status;
+    const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
 
     return `
       <article class="card quote-card quote-card-project" data-card-href="${cardHref}">
@@ -63,6 +70,8 @@ function renderProjectQuotes(quotes) {
             <div class="title-row quote-title-row">
               <h3>${title}</h3>
               <span class="status-badge status-badge-strong">项目型报价</span>
+              <span class="status-badge ${STATUS_CLS[status] || 's-draft'}">${esc(statusLabel)}</span>
+              <span class="status-badge ${EXEC_CLS[execStatus] || 'e-preparing'}">${esc(execLabel)}</span>
               ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
             </div>
             <p class="meta quote-card-meta">${esc(quote.clientName || "未填写客户")} · ${esc(quote.startDate || "日期待定")} · ${esc(quote.destination || "地点待定")}</p>

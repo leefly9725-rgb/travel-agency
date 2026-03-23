@@ -81,6 +81,17 @@
     logistics: "物流设备",
     management: "管理服务",
   },
+  quoteStatusLabels: {
+    draft:    '草稿',
+    pending:  '待审批',
+    approved: '已批准',
+    rejected: '已拒绝',
+  },
+  executionStatusLabels: {
+    preparing: '筹备中',
+    executing: '执行中',
+    completed: '已完成',
+  },
   pricingModeLabels: {
     standard:      "标准差旅报价",
     project_based: "项目型报价",

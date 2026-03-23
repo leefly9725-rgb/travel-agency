@@ -931,10 +931,135 @@ async function handleApi(request, response, url) {
     if (quoteId) {
       try {
         const { quote } = await quoteStore.getQuoteById(quoteId);
-        sendJson(response, 200, enrichQuote(quote));
+        const enriched = enrichQuote(quote);
+        // Resolve owner / reviewer display names when Supabase is available
+        const supabaseCfg = getSupabaseConfig();
+        if (supabaseCfg.enabled) {
+          const userIds = [enriched.ownerId, enriched.reviewerId].filter(Boolean);
+          if (userIds.length > 0) {
+            try {
+              const profiles = await supabaseRequest(
+                supabaseCfg,
+                `user_profiles?id=in.(${userIds.map(encodeURIComponent).join(",")})&select=id,display_name`
+              );
+              const nameMap = Object.fromEntries((profiles || []).map(p => [p.id, p.display_name]));
+              enriched.ownerName = enriched.ownerId ? (nameMap[enriched.ownerId] || null) : null;
+              enriched.reviewerName = enriched.reviewerId ? (nameMap[enriched.reviewerId] || null) : null;
+            } catch (_) { /* name resolution failure is non-fatal */ }
+          }
+        }
+        sendJson(response, 200, enriched);
       } catch (error) {
         sendJson(response, 404, { error: error.message });
       }
+      return true;
+    }
+  }
+
+  // POST /api/quotes/:id/submit — 提交审批 (draft/rejected → pending)
+  {
+    const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/submit$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "");
+      const quoteId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      await supabaseRequest(supabaseCfg, "rpc/submit_quote_for_review", {
+        method: "POST", body: JSON.stringify({ p_quote_id: quoteId }),
+      });
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+  }
+
+  // POST /api/quotes/:id/review — 审批 (pending → approved/rejected，DB RPC 自行校验角色)
+  {
+    const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/review$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "");
+      const quoteId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      const { action, note = "" } = parseJsonBody(await readRequestBody(request));
+      if (!["approve", "reject"].includes(action)) { sendJson(response, 400, { error: "action 必须为 approve 或 reject。" }); return true; }
+      if (action === "reject" && !String(note).trim()) { sendJson(response, 400, { error: "拒绝时必须填写拒绝原因。" }); return true; }
+      await supabaseRequest(supabaseCfg, "rpc/review_quote", {
+        method: "POST", body: JSON.stringify({ p_quote_id: quoteId, p_action: action, p_note: note }),
+      });
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+  }
+
+  // POST /api/quotes/:id/reopen — 打回重改 (rejected → draft)
+  {
+    const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/reopen$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "");
+      const quoteId = decodeURIComponent(m[1]);
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "审批工作流需要 Supabase，当前未配置。" }); return true; }
+      await supabaseRequest(supabaseCfg, "rpc/reopen_quote", {
+        method: "POST", body: JSON.stringify({ p_quote_id: quoteId }),
+      });
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+  }
+
+  // PATCH /api/quotes/:id — 局部字段更新（供前端 approve 回调更新 execution_status）
+  if (request.method === "PATCH") {
+    const quoteId = matchIdRoute(url.pathname, "quotes");
+    if (quoteId) {
+      requirePermission(authCtx, "");
+      const supabaseCfg = getSupabaseConfig();
+      if (!supabaseCfg.enabled) { sendJson(response, 503, { error: "此操作需要 Supabase，当前未配置。" }); return true; }
+      const body = parseJsonBody(await readRequestBody(request));
+      const { execution_status, owner_id } = body;
+
+      // [权限修复] execution_status / owner_id 字段角色校验：仅 manager / admin 可修改
+      const RESTRICTED_FIELDS = ["execution_status", "owner_id"];
+      const hasRestrictedField = RESTRICTED_FIELDS.some(f => f in body);
+      if (hasRestrictedField) {
+        // 通配权限（admin dev bypass）直接放行
+        if (!authCtx.permissions.has("*")) {
+          // 查询当前用户的角色列表，写法与 /api/auth/me 保持一致
+          const urRows = await supabaseRequest(
+            supabaseCfg,
+            `user_roles?user_id=eq.${encodeURIComponent(authCtx.userId)}&select=roles(code)`,
+            { method: "GET" }
+          );
+          const roleCodes = (urRows || []).map(ur => ur.roles?.code).filter(Boolean);
+          if (!roleCodes.includes("admin") && !roleCodes.includes("manager")) {
+            sendJson(response, 403, { error: "权限不足，仅管理员可修改执行状态" });
+            return true;
+          }
+        }
+      }
+
+      if (execution_status !== undefined) {
+        const allowed = ["preparing", "executing", "completed"];
+        if (!allowed.includes(execution_status)) {
+          sendJson(response, 400, { error: `execution_status 无效，允许值：${allowed.join("/")}。` });
+          return true;
+        }
+      }
+
+      const patch = {};
+      if (execution_status !== undefined) patch.execution_status = execution_status;
+      if (owner_id !== undefined) patch.owner_id = owner_id;
+
+      if (Object.keys(patch).length === 0) {
+        sendJson(response, 400, { error: "请求体中无可更新的字段。" });
+        return true;
+      }
+
+      await supabaseRequest(
+        supabaseCfg,
+        `quotes?id=eq.${encodeURIComponent(quoteId)}`,
+        { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(patch) }
+      );
+      sendJson(response, 200, { ok: true });
       return true;
     }
   }
@@ -1455,15 +1580,23 @@ async function handleApi(request, response, url) {
       return true;
     }
 
-    // GET /api/admin/users/:userId/permissions — 用户权限明细
+    // GET /api/admin/users/:userId/permissions — 用户权限明细（含个人覆盖）
     const permMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/permissions$/);
     if (request.method === "GET" && permMatch) {
       const userId = decodeURIComponent(permMatch[1]);
-      const rows = await supabaseRequest(
-        supabase,
-        `user_roles?select=roles(name_zh,role_permissions(permissions(code,action,resources(group_name,name_zh))))&user_id=eq.${encodeURIComponent(userId)}`,
-        { method: "GET" }
-      );
+      const [rows, rawOverrides] = await Promise.all([
+        supabaseRequest(
+          supabase,
+          `user_roles?select=roles(name_zh,role_permissions(permissions(code,action,resources(group_name,name_zh))))&user_id=eq.${encodeURIComponent(userId)}`,
+          { method: "GET" }
+        ),
+        supabaseRequest(
+          supabase,
+          `user_permissions?user_id=eq.${encodeURIComponent(userId)}&select=permission_code,granted`,
+          { method: "GET" }
+        ).catch(() => []),
+      ]);
+      const overrideMap = new Map((rawOverrides || []).map(o => [o.permission_code, o.granted]));
       const permsMap = new Map();
       for (const ur of (rows || [])) {
         const role = ur.roles;
@@ -1479,6 +1612,8 @@ async function handleApi(request, response, url) {
               resource_name_zh: perm.resources?.name_zh || perm.code,
               action: perm.action,
               granted_by_roles: [],
+              is_override: overrideMap.has(perm.code),
+              granted: overrideMap.has(perm.code) ? overrideMap.get(perm.code) : true,
             });
           }
           permsMap.get(key).granted_by_roles.push(role.name_zh);
@@ -1488,6 +1623,66 @@ async function handleApi(request, response, url) {
         a.resource_group.localeCompare(b.resource_group, "zh")
       );
       sendJson(response, 200, result);
+      return true;
+    }
+
+    // PATCH /api/admin/users/:userId/deactivate — 停用用户（软删除）
+    const userDeactivateMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/deactivate$/);
+    if (request.method === "PATCH" && userDeactivateMatch) {
+      requirePermission(authCtx, "user.edit");
+      const userId = decodeURIComponent(userDeactivateMatch[1]);
+      if (userId === authCtx.userId) {
+        sendJson(response, 400, { error: "不能停用自己的账号。" });
+        return true;
+      }
+      await supabaseRequest(
+        supabase,
+        `user_profiles?id=eq.${encodeURIComponent(userId)}`,
+        { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ is_active: false }) }
+      );
+      await supabaseRequest(supabase, "audit_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          operator_id: authCtx.userId,
+          action: "deactivate_user",
+          target_type: "user",
+          target_id: userId,
+          detail: {},
+        }),
+      });
+      sendJson(response, 200, { ok: true });
+      return true;
+    }
+
+    // PATCH /api/admin/users/:userId/permissions/:permCode — 覆盖单个权限
+    const permOverrideMatch = url.pathname.match(/^\/api\/admin\/users\/([^/]+)\/permissions\/([^/]+)$/);
+    if (request.method === "PATCH" && permOverrideMatch) {
+      requirePermission(authCtx, "user.edit");
+      const userId = decodeURIComponent(permOverrideMatch[1]);
+      const permCode = decodeURIComponent(permOverrideMatch[2]);
+      const { granted } = parseJsonBody(await readRequestBody(request));
+      if (typeof granted !== "boolean") {
+        sendJson(response, 400, { error: "granted 字段必须为布尔值。" });
+        return true;
+      }
+      await supabaseRequest(supabase, "user_permissions", {
+        method: "POST",
+        headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
+        body: JSON.stringify({ user_id: userId, permission_code: permCode, granted, updated_at: new Date().toISOString() }),
+      });
+      await supabaseRequest(supabase, "audit_log", {
+        method: "POST",
+        headers: { Prefer: "return=minimal" },
+        body: JSON.stringify({
+          operator_id: authCtx.userId,
+          action: "override_permission",
+          target_type: "user",
+          target_id: userId,
+          detail: { permission_code: permCode, granted },
+        }),
+      });
+      sendJson(response, 200, { ok: true });
       return true;
     }
 

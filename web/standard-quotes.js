@@ -48,11 +48,18 @@ function renderQuotes(quotes) {
     return;
   }
 
+  const STATUS_CLS  = { draft: 's-draft', pending: 's-pending', approved: 's-approved', rejected: 's-rejected' };
+  const EXEC_CLS    = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
+
   container.innerHTML = quotes.map((quote) => {
     const modeLabel = window.AppUi.getLabel("pricingModeLabels", quote.pricingMode || "standard");
     const dateInfo = `${quote.startDate || "—"} ~ ${quote.endDate || "—"}`;
     const locationInfo = quote.destination || "未填写";
     const cardHref = `/quote-detail.html?id=${encodeURIComponent(quote.id)}`;
+    const status = quote.status || "draft";
+    const execStatus = quote.executionStatus || "preparing";
+    const statusLabel = window.AppUi.getLabel("quoteStatusLabels", status) || status;
+    const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
     return `
       <article class="card quote-card quote-card-standard" data-card-href="${cardHref}">
         <div class="list-row list-row-top quote-card-head">
@@ -60,6 +67,8 @@ function renderQuotes(quotes) {
             <div class="title-row quote-title-row">
               <h3>${esc(quote.projectName || "未命名报价")}</h3>
               <span class="status-badge">${esc(modeLabel)}</span>
+              <span class="status-badge ${STATUS_CLS[status] || 's-draft'}">${esc(statusLabel)}</span>
+              <span class="status-badge ${EXEC_CLS[execStatus] || 'e-preparing'}">${esc(execLabel)}</span>
               ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
             </div>
             <p class="meta quote-card-meta">${esc(quote.quoteNumber || "无编号")} · ${esc(quote.clientName || "未填写客户")}</p>

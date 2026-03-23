@@ -1547,6 +1547,15 @@ button.ghost,
   color: var(--accent);
 }
 
+/* ── Approval / execution status badge colors ───────────────────────────────── */
+.status-badge.s-draft    { background: rgba(95,107,122,0.08); border-color: rgba(95,107,122,0.2); color: #5f6b7a; }
+.status-badge.s-pending  { background: var(--review-bg); border-color: var(--review-line); color: var(--review-text); }
+.status-badge.s-approved { background: var(--success-bg); border-color: rgba(36,97,59,0.2); color: var(--success-text); }
+.status-badge.s-rejected { background: var(--error-bg); border-color: rgba(163,61,47,0.2); color: var(--error-text); }
+.status-badge.e-preparing { background: rgba(2,119,189,0.08); border-color: rgba(2,119,189,0.2); color: #0277bd; }
+.status-badge.e-executing { background: rgba(123,31,162,0.08); border-color: rgba(123,31,162,0.2); color: #7b1fa2; }
+.status-badge.e-completed { background: var(--success-bg); border-color: rgba(36,97,59,0.2); color: var(--success-text); }
+
 .quote-list-section-project {
   border-color: rgba(194, 106, 46, 0.18);
 }
