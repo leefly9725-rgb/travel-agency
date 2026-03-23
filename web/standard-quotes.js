@@ -38,6 +38,31 @@ function sortQuotes(arr, sortKey) {
   }
 }
 
+function renderApprovalActions(quote) {
+  const status = quote.status || "draft";
+  const canApprove = window.can && window.can("standard_quote.approve");
+  const canEdit    = window.can && window.can("standard_quote.edit");
+
+  if (canApprove) {
+    if (status === "pending") return `
+      <button class="ghost mini-button action-link-primary" data-approve-id="${esc(quote.id)}">批准</button>
+      <button class="ghost mini-button action-link-danger"  data-reject-id="${esc(quote.id)}">拒绝</button>`;
+    if (status === "approved") return `<span class="approval-status-text approved-text">已批准</span>`;
+    if (status === "rejected") return `<span class="approval-status-text rejected-text">已拒绝</span>`;
+    return "";
+  }
+
+  if (canEdit) {
+    if (status === "draft")    return `<button class="ghost mini-button" data-submit-id="${esc(quote.id)}">提交审批</button>`;
+    if (status === "pending")  return `<span class="approval-status-text muted-text">审批中</span>`;
+    if (status === "approved") return `<span class="approval-status-text approved-text">已批准</span>`;
+    if (status === "rejected") return `
+      <span class="approval-status-text rejected-text">已拒绝</span>
+      <button class="ghost mini-button" data-view-reason="${esc(quote.reviewNote || "暂无说明")}">查看原因</button>`;
+  }
+  return "";
+}
+
 function renderQuotes(quotes) {
   const container = document.getElementById("quote-list");
   const countEl = document.getElementById("standard-quote-count");
@@ -74,6 +99,7 @@ function renderQuotes(quotes) {
             <p class="meta quote-card-meta">${esc(quote.quoteNumber || "无编号")} · ${esc(quote.clientName || "未填写客户")}</p>
           </div>
           <div class="action-row quote-card-actions">
+            ${renderApprovalActions(quote)}
             ${window.can('standard_quote.edit') ? `<a class="button-link small-link action-link-primary" href="/quote-new.html?id=${encodeURIComponent(quote.id)}">编辑</a>` : ''}
             <a class="button-link small-link action-link-secondary" href="${cardHref}">查看详情</a>
             ${window.can('standard_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${esc(quote.projectName || '该报价')}">删除</button>` : ''}
@@ -97,28 +123,105 @@ async function bootstrap() {
   window.AppUtils.applyFlash("quote-message");
 
   document.body.addEventListener("click", async (event) => {
-    const button = event.target.closest("[data-delete-id]");
-    if (!button) return;
+    // ── 删除 ──────────────────────────────────────────────────────────────────
+    const deleteBtn = event.target.closest("[data-delete-id]");
+    if (deleteBtn) {
+      const deleteId = deleteBtn.getAttribute("data-delete-id");
+      if (!deleteId) return;
+      const name = deleteBtn.getAttribute("data-name") || "该报价";
+      if (!window.confirm(`确认删除"${name}"吗？`)) return;
+      try {
+        window.AppUtils.hideMessage("quote-message");
+        await window.AppUtils.fetchJson(
+          `/api/quotes/${encodeURIComponent(deleteId)}`,
+          { method: "DELETE" },
+          "删除报价失败，请稍后重试。"
+        );
+        window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
+        const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
+        cachedQuotes = allQuotes.filter((q) => (q.pricingMode || "standard") !== "project_based");
+        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+      } catch (error) {
+        window.AppUtils.showMessage("quote-message", error.message, "error");
+      }
+      return;
+    }
 
-    const deleteId = button.getAttribute("data-delete-id");
-    if (!deleteId) return;
+    // ── 提交审批 ──────────────────────────────────────────────────────────────
+    const submitBtn = event.target.closest("[data-submit-id]");
+    if (submitBtn) {
+      const id = submitBtn.getAttribute("data-submit-id");
+      submitBtn.disabled = true;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/quotes/${encodeURIComponent(id)}/submit`,
+          { method: "POST" },
+          "提交审批失败，请稍后重试。"
+        );
+        const q = cachedQuotes.find(x => x.id === id);
+        if (q) q.status = "pending";
+        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        window.AppUtils.showMessage("quote-message", "已提交审批，等待经理审核。", "success");
+      } catch (err) {
+        window.AppUtils.showMessage("quote-message", err.message, "error");
+        submitBtn.disabled = false;
+      }
+      return;
+    }
 
-    const name = button.getAttribute("data-name") || "该报价";
-    if (!window.confirm(`确认删除"${name}"吗？`)) return;
+    // ── 批准 ──────────────────────────────────────────────────────────────────
+    const approveBtn = event.target.closest("[data-approve-id]");
+    if (approveBtn) {
+      const id = approveBtn.getAttribute("data-approve-id");
+      if (!window.confirm("确认批准该报价？")) return;
+      approveBtn.disabled = true;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/quotes/${encodeURIComponent(id)}/approve`,
+          { method: "POST" },
+          "批准操作失败，请稍后重试。"
+        );
+        const q = cachedQuotes.find(x => x.id === id);
+        if (q) q.status = "approved";
+        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        window.AppUtils.showMessage("quote-message", "报价已批准。", "success");
+      } catch (err) {
+        window.AppUtils.showMessage("quote-message", err.message, "error");
+        approveBtn.disabled = false;
+      }
+      return;
+    }
 
-    try {
-      window.AppUtils.hideMessage("quote-message");
-      await window.AppUtils.fetchJson(
-        `/api/quotes/${encodeURIComponent(deleteId)}`,
-        { method: "DELETE" },
-        "删除报价失败，请稍后重试。"
-      );
-      window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
-      const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
-      cachedQuotes = allQuotes.filter((q) => (q.pricingMode || "standard") !== "project_based");
-      renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
-    } catch (error) {
-      window.AppUtils.showMessage("quote-message", error.message, "error");
+    // ── 拒绝 ──────────────────────────────────────────────────────────────────
+    const rejectBtn = event.target.closest("[data-reject-id]");
+    if (rejectBtn) {
+      const id = rejectBtn.getAttribute("data-reject-id");
+      const reason = window.prompt("请填写拒绝原因（必填）：");
+      if (reason === null) return;
+      if (!reason.trim()) { window.alert("拒绝原因不能为空。"); return; }
+      rejectBtn.disabled = true;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/quotes/${encodeURIComponent(id)}/reject`,
+          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) },
+          "拒绝操作失败，请稍后重试。"
+        );
+        const q = cachedQuotes.find(x => x.id === id);
+        if (q) { q.status = "rejected"; q.reviewNote = reason; }
+        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        window.AppUtils.showMessage("quote-message", "报价已拒绝。", "success");
+      } catch (err) {
+        window.AppUtils.showMessage("quote-message", err.message, "error");
+        rejectBtn.disabled = false;
+      }
+      return;
+    }
+
+    // ── 查看拒绝原因 ──────────────────────────────────────────────────────────
+    const reasonBtn = event.target.closest("[data-view-reason]");
+    if (reasonBtn) {
+      const note = reasonBtn.getAttribute("data-view-reason") || "暂无说明";
+      window.alert(`拒绝原因：\n${note}`);
     }
   });
 
