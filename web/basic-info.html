@@ -1233,6 +1233,277 @@
 
   })();
   </script>
+  <script>
+  (function () {
+    'use strict';
+    if (window.__basicInfoProjectTypePatch) return;
+    window.__basicInfoProjectTypePatch = true;
+
+    const state = {
+      groupTypes: [],
+      itemTypes: [],
+      selectedGroupId: null,
+    };
+
+    function canProjectTypeEdit() {
+      if (typeof window.can !== 'function') return false;
+      return !!(
+        window.can('project_type', 'edit') ||
+        window.can('project_type', 'create') ||
+        window.can('project_type.edit') ||
+        window.can('project_type.create')
+      );
+    }
+
+    function sortByOrder(list) {
+      return (Array.isArray(list) ? list.slice() : []).sort((a, b) => {
+        const aSort = Number(a.sortOrder ?? a.sort_order ?? 0);
+        const bSort = Number(b.sortOrder ?? b.sort_order ?? 0);
+        return aSort - bSort;
+      });
+    }
+
+    function ensureAddItemButton() {
+      const addItemBtn = document.getElementById('btn-add-it');
+      if (addItemBtn) addItemBtn.classList.add('it-action-btn');
+    }
+
+    function refreshActionButtons() {
+      ensureAddItemButton();
+      const canEdit = canProjectTypeEdit();
+      document.querySelectorAll('.gt-action-btn, .it-action-btn').forEach((btn) => {
+        btn.style.display = canEdit ? '' : 'none';
+      });
+      const addGt = document.getElementById('btn-add-gt');
+      if (addGt) addGt.style.display = canEdit ? '' : 'none';
+      const addIt = document.getElementById('btn-add-it');
+      if (addIt) addIt.style.display = canEdit && state.selectedGroupId ? '' : 'none';
+    }
+
+    function syncSelectedGroupId() {
+      const selected = document.querySelector('#gt-cat-list .sc-cat-item.is-selected[data-gt-select]')
+        || document.querySelector('#gt-cat-list .sc-cat-item[data-gt-select]');
+      state.selectedGroupId = selected ? selected.dataset.gtSelect : null;
+    }
+
+    async function fetchGroupTypes() {
+      try {
+        const data = await window.AppUtils.fetchJson('/api/project-group-types', null, '加载项目组类型失败');
+        state.groupTypes = Array.isArray(data) ? data : [];
+      } catch (_) {
+        state.groupTypes = [];
+      }
+      syncSelectedGroupId();
+      enhanceGroupTypeList();
+    }
+
+    async function fetchItemTypes(groupId) {
+      if (!groupId) {
+        state.itemTypes = [];
+        refreshActionButtons();
+        return;
+      }
+      try {
+        const data = await window.AppUtils.fetchJson(`/api/quote-item-types?project_group_id=${encodeURIComponent(groupId)}`, null, '加载服务类型失败');
+        state.itemTypes = Array.isArray(data) ? data : [];
+      } catch (_) {
+        state.itemTypes = [];
+      }
+      enhanceItemTypeRows();
+    }
+
+    function enhanceGroupTypeList() {
+      const sorted = sortByOrder(state.groupTypes);
+      const items = Array.from(document.querySelectorAll('#gt-cat-list .sc-cat-item[data-gt-select]'));
+      items.forEach((el) => {
+        const id = el.dataset.gtSelect;
+        const index = sorted.findIndex((entry) => String(entry.id) === String(id));
+        if (index < 0) return;
+        let actions = el.querySelector('.sc-cat-actions');
+        if (!actions) {
+          actions = document.createElement('span');
+          actions.className = 'sc-cat-actions';
+          el.appendChild(actions);
+        }
+        actions.innerHTML = [
+          `<button class="ico-btn gt-action-btn" data-gt-up="${id}" title="上移"${index === 0 ? ' disabled' : ''}>↑</button>`,
+          `<button class="ico-btn gt-action-btn" data-gt-down="${id}" title="下移"${index === sorted.length - 1 ? ' disabled' : ''}>↓</button>`,
+          `<button class="ico-btn gt-action-btn" data-gt-edit="${id}" title="编辑">编辑</button>`,
+          `<button class="ico-btn danger gt-action-btn" data-gt-delete="${id}" title="删除">删除</button>`
+        ].join('');
+      });
+      refreshActionButtons();
+    }
+
+    function enhanceItemTypeRows() {
+      const sorted = sortByOrder(state.itemTypes);
+      const rows = Array.from(document.querySelectorAll('#tbody-it tr')).filter((tr) => tr.children.length >= 4 && !tr.querySelector('.bi-empty'));
+      rows.forEach((tr, index) => {
+        const item = sorted[index];
+        if (!item) return;
+        const isActive = item.isActive !== false && item.is_active !== false;
+        const actionsCell = tr.children[3];
+        if (!actionsCell) return;
+        actionsCell.innerHTML = [
+          `<button class="btn-sm gt-action-btn it-action-btn" data-it-up="${item.id}"${index === 0 ? ' disabled' : ''}>↑</button>`,
+          `<button class="btn-sm gt-action-btn it-action-btn" data-it-down="${item.id}"${index === sorted.length - 1 ? ' disabled' : ''}>↓</button>`,
+          `<button class="btn-sm gt-action-btn it-action-btn" data-it-edit="${item.id}">编辑</button>`,
+          isActive
+            ? `<button class="btn-sm danger gt-action-btn it-action-btn" data-it-toggle="${item.id}" data-it-active="false">停用</button>`
+            : `<button class="btn-sm primary gt-action-btn it-action-btn" data-it-toggle="${item.id}" data-it-active="true">启用</button>`
+        ].join('');
+      });
+      refreshActionButtons();
+    }
+
+    async function swapGroupTypeSort(groupTypeId, direction) {
+      const sorted = sortByOrder(state.groupTypes);
+      const index = sorted.findIndex((entry) => String(entry.id) === String(groupTypeId));
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= sorted.length) return;
+      const current = sorted[index];
+      const target = sorted[targetIndex];
+      const currentSort = Number(current.sortOrder ?? current.sort_order ?? 0);
+      const targetSort = Number(target.sortOrder ?? target.sort_order ?? 0);
+      await window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(current.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: current.code,
+          nameZh: current.nameZh || current.name_zh || current.code,
+          sortOrder: targetSort,
+        }),
+      }, '调整排序失败');
+      await window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(target.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: target.code,
+          nameZh: target.nameZh || target.name_zh || target.code,
+          sortOrder: currentSort,
+        }),
+      }, '调整排序失败');
+      await fetchGroupTypes();
+    }
+
+    async function swapItemTypeSort(itemTypeId, direction) {
+      const sorted = sortByOrder(state.itemTypes);
+      const index = sorted.findIndex((entry) => String(entry.id) === String(itemTypeId));
+      const targetIndex = index + direction;
+      if (index < 0 || targetIndex < 0 || targetIndex >= sorted.length) return;
+      const current = sorted[index];
+      const target = sorted[targetIndex];
+      const currentSort = Number(current.sortOrder ?? current.sort_order ?? 0);
+      const targetSort = Number(target.sortOrder ?? target.sort_order ?? 0);
+      await window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(current.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: targetSort }),
+      }, '调整排序失败');
+      await window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(target.id)}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sortOrder: currentSort }),
+      }, '调整排序失败');
+      await fetchItemTypes(state.selectedGroupId);
+    }
+
+    function bindEvents() {
+      const gtList = document.getElementById('gt-cat-list');
+      const tbody = document.getElementById('tbody-it');
+      if (gtList && !gtList.dataset.patchBound) {
+        gtList.dataset.patchBound = '1';
+        gtList.addEventListener('click', async (event) => {
+          const deleteId = event.target.closest('[data-gt-delete]')?.dataset.gtDelete;
+          if (deleteId) {
+            event.preventDefault();
+            event.stopPropagation();
+            if (!confirm('确定删除该项目组分类吗？')) return;
+            await window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(deleteId)}`, { method: 'DELETE' }, '删除失败');
+            await fetchGroupTypes();
+            return;
+          }
+          const upId = event.target.closest('[data-gt-up]')?.dataset.gtUp;
+          if (upId) {
+            event.preventDefault();
+            event.stopPropagation();
+            await swapGroupTypeSort(upId, -1);
+            return;
+          }
+          const downId = event.target.closest('[data-gt-down]')?.dataset.gtDown;
+          if (downId) {
+            event.preventDefault();
+            event.stopPropagation();
+            await swapGroupTypeSort(downId, 1);
+            return;
+          }
+          const selectId = event.target.closest('[data-gt-select]')?.dataset.gtSelect;
+          if (selectId && !event.target.closest('button')) {
+            state.selectedGroupId = selectId;
+            setTimeout(() => {
+              syncSelectedGroupId();
+              fetchItemTypes(state.selectedGroupId);
+              refreshActionButtons();
+            }, 0);
+          }
+        });
+      }
+      if (tbody && !tbody.dataset.patchBound) {
+        tbody.dataset.patchBound = '1';
+        tbody.addEventListener('click', async (event) => {
+          const upId = event.target.closest('[data-it-up]')?.dataset.itUp;
+          if (upId) {
+            event.preventDefault();
+            event.stopPropagation();
+            await swapItemTypeSort(upId, -1);
+            return;
+          }
+          const downId = event.target.closest('[data-it-down]')?.dataset.itDown;
+          if (downId) {
+            event.preventDefault();
+            event.stopPropagation();
+            await swapItemTypeSort(downId, 1);
+            return;
+          }
+        });
+      }
+    }
+
+    function bindObservers() {
+      const gtList = document.getElementById('gt-cat-list');
+      const tbody = document.getElementById('tbody-it');
+      if (gtList) {
+        new MutationObserver(() => {
+          syncSelectedGroupId();
+          enhanceGroupTypeList();
+          refreshActionButtons();
+        }).observe(gtList, { childList: true, subtree: true });
+      }
+      if (tbody) {
+        new MutationObserver(() => {
+          enhanceItemTypeRows();
+          refreshActionButtons();
+        }).observe(tbody, { childList: true, subtree: true });
+      }
+    }
+
+    function initPatch() {
+      ensureAddItemButton();
+      bindEvents();
+      bindObservers();
+      syncSelectedGroupId();
+      refreshActionButtons();
+      fetchGroupTypes().then(() => fetchItemTypes(state.selectedGroupId));
+    }
+
+    document.addEventListener('authReady', refreshActionButtons);
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initPatch);
+    } else {
+      initPatch();
+    }
+  })();
+  </script>
   <script src="/app-shell.js"></script>
 </body>
 </html>
