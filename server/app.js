@@ -701,7 +701,6 @@ function normalizeQuoteItemTypeRecord(record, fallback) {
     id: record.id || base.id || createId("QT"),
     code: String(record.code || base.code || "").trim().toLowerCase(),
     nameZh: String(record.nameZh || record.name_zh || base.nameZh || base.name_zh || record.code || "").trim(),
-    categoryGroup: String(record.categoryGroup || record.category_group || base.categoryGroup || "misc").trim() || "misc",
     projectGroupId: record.project_group_id || record.projectGroupId || base.projectGroupId || null,
     sortOrder: Number(record.sortOrder ?? record.sort_order ?? base.sortOrder ?? 0),
     isActive: record.isActive !== undefined ? Boolean(record.isActive) : (record.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
@@ -741,9 +740,6 @@ async function listQuoteItemTypes(data, supabaseCfg, options = {}) {
       } else if (projectGroupId) {
         // 按 project_group_id 外键过滤（新模式）
         query = `quote_item_types?select=*&is_active=eq.true&project_group_id=eq.${encodeURIComponent(projectGroupId)}&order=sort_order.asc`;
-      } else if (groupFilter && groupFilter !== "mixed") {
-        // 兼容旧 ?group=travel|event 参数：按 category_group 过滤
-        query = `quote_item_types?select=*&is_active=eq.true&category_group=in.(${groupFilter},misc)&order=sort_order.asc`;
       } else {
         // mixed 或无参数：返回全量活跃记录
         query = "quote_item_types?select=*&is_active=eq.true&order=sort_order.asc";
@@ -840,7 +836,6 @@ function normalizeQuoteItemTypePayload(payload, existingId, existing) {
     id: existingId || payload.id || createId("QT"),
     code,
     nameZh: notEmpty(payload.nameZh || payload.name_zh, "\u4e2d\u6587\u540d\u79f0"),
-    categoryGroup: String(payload.categoryGroup || payload.category_group || "misc").trim(),
     projectGroupId: String(payload.project_group_id || payload.projectGroupId || existing?.projectGroupId || "").trim() || null,
     sortOrder: Number(payload.sortOrder || payload.sort_order || 0),
     isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : (payload.is_active !== undefined ? Boolean(payload.is_active) : true),
@@ -1993,7 +1988,7 @@ async function handleApi(request, response, url) {
       const row = await supabaseRequest(supabaseCfg, "quote_item_types", {
         method: "POST",
         body: JSON.stringify({
-          code: payload.code, name_zh: payload.nameZh, category_group: payload.categoryGroup,
+          code: payload.code, name_zh: payload.nameZh,
           project_group_id: projectGroupId,
           sort_order: payload.sortOrder, is_active: payload.isActive, is_system: payload.isSystem,
           project_group_codes: payload.projectGroupCodes, supplier_category_codes: payload.supplierCategoryCodes,
@@ -2034,7 +2029,7 @@ async function handleApi(request, response, url) {
           const existingNorm = normalizeQuoteItemTypeRecord(existing[0]);
           const payload = normalizeQuoteItemTypePayload(parseJsonBody(await readRequestBody(request)), qitId, existingNorm);
           const patchBody = {
-            name_zh: payload.nameZh, category_group: payload.categoryGroup,
+            name_zh: payload.nameZh,
             sort_order: payload.sortOrder, is_active: payload.isActive,
             project_group_codes: payload.projectGroupCodes, supplier_category_codes: payload.supplierCategoryCodes,
             default_unit: payload.defaultUnit,
