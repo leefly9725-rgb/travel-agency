@@ -93,6 +93,29 @@ const state = {
   rowCounter: 0,
 };
 
+function normalizeItemType(record) {
+  if (!record || typeof record !== "object") return null;
+  return {
+    id: record.id || "",
+    code: record.code || "",
+    nameZh: record.nameZh || record.name_zh || "",
+    projectGroupId: record.projectGroupId || record.project_group_id || null,
+    sortOrder: Number(record.sortOrder ?? record.sort_order ?? 0),
+    isActive: record.isActive !== false && record.is_active !== false,
+  };
+}
+
+function normalizeGroupType(record) {
+  if (!record || typeof record !== "object") return null;
+  return {
+    id: record.id || null,
+    code: record.code || "",
+    nameZh: record.nameZh || record.name_zh || "",
+    sortOrder: Number(record.sortOrder ?? record.sort_order ?? 0),
+    isActive: record.isActive !== false && record.is_active !== false,
+  };
+};
+
 // ── 主数据加载 ─────────────────────────────────────────────────────────────────
 
 /**
@@ -101,11 +124,13 @@ const state = {
  */
 async function fetchItemTypes() {
   try {
-    const types = await window.AppUtils.fetchJson("/api/quote-item-types", null, "加载服务类型失败");
-    window._allItemTypes = Array.isArray(types) ? types : [];
-    window._itemTypes = window._allItemTypes; // 向后兼容别名
+    const types = await window.AppUtils.fetchJson("/api/quote-item-types", null, "Failed to load item types.");
+    window._allItemTypes = Array.isArray(types)
+      ? types.map(normalizeItemType).filter((item) => item && item.code).sort((a, b) => a.sortOrder - b.sortOrder)
+      : [];
+    window._itemTypes = window._allItemTypes; // backward-compatible alias
   } catch (e) {
-    console.warn("[quote-project] 服务类型加载失败，使用空列表", e);
+    console.warn("[quote-project] failed to load item types; using empty list", e);
     window._allItemTypes = [];
     window._itemTypes = [];
   }
@@ -117,15 +142,17 @@ async function fetchProjectGroupTypes() {
     const types = await window.AppUtils.fetchJson(
       "/api/project-group-types",
       null,
-      "加载项目组分类失败",
+      "Failed to load project group types.",
     );
-    window._groupTypes = Array.isArray(types) ? types : [];
+    window._groupTypes = Array.isArray(types)
+      ? types.map(normalizeGroupType).filter((item) => item && item.code && item.isActive !== false).sort((a, b) => a.sortOrder - b.sortOrder)
+      : [];
   } catch (e) {
-    console.warn("[quote-project] 项目组分类加载失败，使用默认值", e);
+    console.warn("[quote-project] failed to load project group types; using defaults", e);
     window._groupTypes = [
-      { code: "travel", nameZh: "旅游接待", sortOrder: 1 },
-      { code: "event",  nameZh: "活动服务", sortOrder: 2 },
-      { code: "mixed",  nameZh: "综合服务", sortOrder: 3 },
+      { id: null, code: "travel", nameZh: "\u65c5\u6e38\u63a5\u5f85", sortOrder: 1, isActive: true },
+      { id: null, code: "event",  nameZh: "\u6d3b\u52a8\u670d\u52a1", sortOrder: 2, isActive: true },
+      { id: null, code: "mixed",  nameZh: "\u7efc\u5408\u670d\u52a1", sortOrder: 3, isActive: true },
     ];
   }
 }
