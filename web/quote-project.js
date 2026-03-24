@@ -1,13 +1,16 @@
 // ── 主数据缓存 ────────────────────────────────────────────────────────────────
 
-/** 服务类型主数据缓存，从 GET /api/quote-item-types 加载 */
+/** 服务类型全量缓存，从 GET /api/quote-item-types 加载（始终保存全集，不做 URL 过滤） */
+window._allItemTypes = [];
+
+/** 服务类型缓存（向后兼容别名，指向 _allItemTypes） */
 window._itemTypes = [];
 
 /** 项目组分类缓存，从 GET /api/project-group-types 加载 */
 window._groupTypes = [];
 
 // ── Activity templates ────────────────────────────────────────────────────────
-// groupName 使用中文名称，套用时通过 resolveGroupNameToCode 映射为 code
+// groupName 使用中文名称，createItemRow 通过 resolveGroupNameToId 映射为 UUID
 
 const ACTIVITY_TEMPLATES = {
   opening_ceremony: {
@@ -93,22 +96,17 @@ const state = {
 // ── 主数据加载 ─────────────────────────────────────────────────────────────────
 
 /**
- * 从 API 加载服务类型，缓存到 window._itemTypes
- * 若当前已选项目组分类有 id 且非 mixed，使用 ?project_group_id=xxx 过滤
- * 否则返回全集
+ * 从 API 加载全量服务类型，缓存到 window._allItemTypes
+ * 始终加载全集，运行时按项目组 UUID 在前端过滤，避免切换分组时重复请求
  */
 async function fetchItemTypes() {
-  const pg    = getFormProjectGroup();
-  const group = window._groupTypes.find((t) => t.code === pg);
-  let url = "/api/quote-item-types";
-  if (group && group.id && pg !== "mixed") {
-    url = `/api/quote-item-types?project_group_id=${encodeURIComponent(group.id)}`;
-  }
   try {
-    const types = await window.AppUtils.fetchJson(url, null, "加载服务类型失败");
-    window._itemTypes = Array.isArray(types) ? types : [];
+    const types = await window.AppUtils.fetchJson("/api/quote-item-types", null, "加载服务类型失败");
+    window._allItemTypes = Array.isArray(types) ? types : [];
+    window._itemTypes = window._allItemTypes; // 向后兼容别名
   } catch (e) {
     console.warn("[quote-project] 服务类型加载失败，使用空列表", e);
+    window._allItemTypes = [];
     window._itemTypes = [];
   }
 }
@@ -181,111 +179,113 @@ function esc(str) {
 // ── 服务类型下拉管理 ──────────────────────────────────────────────────────────
 
 /**
- * 将历史 groupName 值反向解析为服务类型 code（历史数据兼容）
- * 先按 code 精确匹配，再按 nameZh 匹配，都失败则标记 legacy
- * @param {string} value
- * @returns {{ code: string, legacy: boolean }}
+ * 返回杂项（misc）服务类型的 UUID id，找不到时返回空字符串
  */
-function resolveGroupNameToCode(value) {
-  if (!value) return { code: "misc", legacy: false };
-  // 已经是合法 code
-  if (window._itemTypes.some((t) => t.code === value)) return { code: value, legacy: false };
-  // 按 nameZh 匹配（兼容旧版中文 groupName）
-  const byName = window._itemTypes.find((t) => t.nameZh === value);
-  if (byName) return { code: byName.code, legacy: false };
-  // 匹配失败：保留原值，标记为历史遗留
-  return { code: value, legacy: true };
+function getMiscId() {
+  const misc = window._allItemTypes.find((t) => t.code === "misc");
+  return misc ? misc.id : "";
 }
 
 /**
- * 根据当前项目组分类过滤服务类型，生成 <option> HTML
- * @param {string} currentValue 当前选中值（合法 code 或已匹配后的 code）
- * @param {string} [projectGroup] 项目组 code（travel | event | mixed），省略时读表单
- * @param {string|null} [legacyValue] 无法匹配的历史中文字符串，显示为橙色警告项
- * @returns {string} options HTML
+ * 将任意格式的 groupName 解析为 quote_item_types.id（UUID）
+ * 兼容三种格式：UUID（新格式）、code（如 "misc"）、中文 nameZh（历史数据）
+ * @param {string} value
+ * @returns {string} UUID id，找不到时返回 misc 的 id
  */
+function resolveGroupNameToId(value) {
+  if (!value) return getMiscId();
+  // 已经是合法 id (UUID)
+  if (window._allItemTypes.some((t) => t.id === value)) return value;
+  // code 精确匹配
+  const byCode = window._allItemTypes.find((t) => t.code === value);
+  if (byCode) return byCode.id;
+  // nameZh 匹配（兼容旧版中文 groupName，如"搭建制作"）
+  const byName = window._allItemTypes.find((t) => t.nameZh === value);
+  if (byName) return byName.id;
+  // 匹配失败：fallback 到 misc
+  return getMiscId();
+}
+
 /**
- * 根据当前项目组分类过滤服务类型，生成 <option> HTML
- * - travel → category_group IN ('travel','misc')
- * - event  → category_group IN ('event','misc')
- * - mixed  → 全集（所有 is_active=true）
- * - currentValue 不在集合内时自动选中 'misc'
- * @param {string} currentValue 当前选中值
- * @param {string} [projectGroup] 项目组 code，省略时读表单
- * @param {string|null} [legacyValue] 无法匹配的历史值，追加警告选项（内部使用）
- * @returns {string} options HTML
+ * 根据项目组 UUID 过滤服务类型，生成 <option> HTML
+ * - 有效 projectGroupId 且非 mixed：显示该分组 + mixed 分组的服务类型
+ * - mixed 或无 projectGroupId：显示全集
+ * - currentValue（UUID）不在集合内时自动 fallback 到 misc
+ * @param {string} currentValue 当前选中值（quote_item_types.id UUID）
+ * @param {string|null} projectGroupId 项目组 UUID（project_group_types.id），省略则用全集
+ * @returns {string} options HTML，option value = quote_item_types.id（UUID）
  */
-function buildServiceTypeOptions(currentValue, projectGroup, legacyValue) {
-  const pg = projectGroup || getFormProjectGroup();
+function buildServiceTypeOptions(currentValue, projectGroupId) {
+  const mixedGroup = window._groupTypes.find((t) => t.code === "mixed");
+  const mixedId    = mixedGroup ? mixedGroup.id : null;
+
   let filtered;
-
-  if (pg === "travel") {
-    // 旅游接待：显示 category_group 为 'travel' 或 'misc' 的类型
-    filtered = window._itemTypes.filter((t) =>
-      t.isActive !== false &&
-      (t.categoryGroup === "travel" || t.categoryGroup === "misc"),
-    );
-  } else if (pg === "event") {
-    // 活动服务：显示 category_group 为 'event' 或 'misc' 的类型
-    filtered = window._itemTypes.filter((t) =>
-      t.isActive !== false &&
-      (t.categoryGroup === "event" || t.categoryGroup === "misc"),
-    );
+  if (!projectGroupId || projectGroupId === mixedId) {
+    // mixed 或无分组：显示全集
+    filtered = window._allItemTypes.filter((t) => t.isActive !== false);
   } else {
-    // 综合服务（mixed）：全集
-    filtered = window._itemTypes.filter((t) => t.isActive !== false);
+    // 显示当前分组 + mixed 分组（杂项）的服务类型
+    filtered = window._allItemTypes.filter((t) =>
+      t.isActive !== false &&
+      (t.projectGroupId === projectGroupId ||
+       t.projectGroupId === mixedId ||
+       !t.projectGroupId),  // null = 适用所有分组
+    );
   }
 
-  // misc 排最后
-  const nonMisc = filtered.filter((t) => t.code !== "misc");
-  const misc    = filtered.filter((t) => t.code === "misc");
-  const sorted  = [...nonMisc, ...misc];
-  const validCodes = sorted.map((t) => t.code);
+  const validIds   = new Set(filtered.map((t) => t.id));
+  const miscId     = getMiscId();
+  // currentValue 不在集合内时 fallback 到 misc，misc 也不存在时取第一项
+  const selectedId = validIds.has(currentValue)
+    ? currentValue
+    : (validIds.has(miscId) ? miscId : (filtered[0]?.id || ""));
 
-  let options = "";
-
-  // 历史遗留值：插入警告选项并选中（由 createItemRow 传入）
-  if (legacyValue && !validCodes.includes(legacyValue)) {
-    options += `<option value="${esc(legacyValue)}" selected style="color:#e67e22">⚠️ ${esc(legacyValue)}（未识别）</option>`;
-  }
-
-  // currentValue 不在集合内时 fallback 到 misc
-  const selectedCode = legacyValue
-    ? ""  // 已由 legacyValue option 选中
-    : (validCodes.includes(currentValue) ? currentValue : "misc");
-
-  options += sorted.map((t) =>
-    `<option value="${esc(t.code)}" ${!legacyValue && t.code === selectedCode ? "selected" : ""}>${esc(t.nameZh)}</option>`,
+  return filtered.map((t) =>
+    `<option value="${esc(t.id)}" ${t.id === selectedId ? "selected" : ""}>${esc(t.nameZh)}</option>`,
   ).join("");
-
-  return options;
 }
 
 /**
  * 重建所有报价行的服务类型下拉（切换项目组时调用）
- * 不触发 change 事件，避免循环；当前选中值不在新集合内时自动重置为 misc
+ * 从 _allItemTypes 全集按新项目组 UUID 过滤，不触发 change 事件
+ * currentValue（UUID）不在新集合内时自动 fallback 到 misc
  */
 function rebuildAllServiceTypeSelects() {
-  const pg = getFormProjectGroup();
-  const validCodes = window._itemTypes
-    .filter((t) => t.isActive !== false)
-    .map((t) => t.code);
+  const pgCode  = getFormProjectGroup();
+  const pgType  = window._groupTypes.find((t) => t.code === pgCode);
+  const pgGroupId = pgType ? pgType.id : null;
 
   document.querySelectorAll("#items-tbody tr[data-row-id]").forEach((tr) => {
     const select = tr.querySelector("select[name='groupName']");
     if (!select) return;
-    const currentValue = select.value;
-    // 历史遗留值（不在合法 code 集合内）跳过重建，保持原样
-    if (currentValue && !validCodes.includes(currentValue)) return;
-    // currentValue 不在新 pg 集合内时，buildServiceTypeOptions 会自动 fallback 到 misc
-    select.innerHTML = buildServiceTypeOptions(currentValue, pg);
+    select.innerHTML = buildServiceTypeOptions(select.value, pgGroupId);
   });
 }
 
 // ── 备注浮层管理 ──────────────────────────────────────────────────────────────
 
-/** 当前打开浮层对应的 { td, tr }，null 表示已关闭 */
-let _notesTarget = null;
+/** 当前打开浮层对应的行 rowId，null 表示已关闭 */
+let notesCurrentRowId = null;
+
+/**
+ * 按 rowId 读取对应行的备注内容
+ * @param {string} rowId
+ * @returns {string}
+ */
+function getRowNotes(rowId) {
+  const tr = document.querySelector(`#items-tbody tr[data-row-id="${CSS.escape(rowId)}"]`);
+  return tr ? (tr.dataset.notes || "") : "";
+}
+
+/**
+ * 按 rowId 将备注内容写回对应行的 dataset
+ * @param {string} rowId
+ * @param {string} notes
+ */
+function setRowNotes(rowId, notes) {
+  const tr = document.querySelector(`#items-tbody tr[data-row-id="${CSS.escape(rowId)}"]`);
+  if (tr) tr.dataset.notes = notes;
+}
 
 /**
  * 在页面加载时创建全局备注浮层并 append 到 body
@@ -329,16 +329,16 @@ function createNotesPopover() {
 
 /**
  * 打开备注编辑浮层，定位在点击的单元格附近
- * @param {HTMLElement} td 备注单元格
- * @param {HTMLElement} tr 所在行
+ * @param {HTMLElement} td 备注单元格（.notes-cell）
+ * @param {string} rowId 所在行的 rowId
  */
-function openNotesPopover(td, tr) {
-  if (_notesTarget) closeNotesPopover(); // 先保存已有浮层
-  _notesTarget = { td, tr };
+function openNotesPopover(td, rowId) {
+  if (notesCurrentRowId) closeNotesPopover(); // 先保存已有浮层
+  notesCurrentRowId = rowId;
 
   const popover  = document.getElementById("notes-popover");
   const textarea = document.getElementById("notes-popover-ta");
-  textarea.value = tr.dataset.notes || "";
+  textarea.value = getRowNotes(rowId);
 
   // 定位：优先显示在单元格下方，空间不足时显示在上方
   const rect = td.getBoundingClientRect();
@@ -354,31 +354,43 @@ function openNotesPopover(td, tr) {
   textarea.focus();
 }
 
-/** 关闭浮层并将 textarea 内容保存到对应行的 dataset.notes */
+/** 关闭浮层，将 textarea 内容写回对应行，并刷新摘要显示 */
 function closeNotesPopover() {
-  if (!_notesTarget) return;
-  const { td, tr } = _notesTarget;
-  const notes = document.getElementById("notes-popover-ta").value;
-  tr.dataset.notes = notes;
-  renderNotesCellDisplay(td, notes);
+  if (!notesCurrentRowId) return;
+  const rowId = notesCurrentRowId;
+  const notes = document.getElementById("notes-popover-ta").value.trim();
+  setRowNotes(rowId, notes);          // 写回行数据
+  updateNotesPreview(rowId);          // 更新摘要显示
   document.getElementById("notes-popover").style.display = "none";
-  _notesTarget = null;
+  notesCurrentRowId = null;
   updateSummary();
 }
 
 /**
- * 刷新备注单元格的摘要显示
+ * 刷新备注单元格的摘要 span 显示
  * 有内容：截断到 20 字；无内容：灰色提示文字
+ * @param {string} rowId 行 id
+ */
+function updateNotesPreview(rowId) {
+  const td = document.querySelector(`#items-tbody td.notes-cell[data-row-id="${CSS.escape(rowId)}"]`);
+  if (!td) return;
+  renderNotesCellDisplay(td, getRowNotes(rowId));
+}
+
+/**
+ * 刷新备注单元格内 .notes-preview span 的文本
  * @param {HTMLElement} td 备注单元格
  * @param {string} notes 备注文本
  */
 function renderNotesCellDisplay(td, notes) {
+  const preview = td.querySelector(".notes-preview");
+  if (!preview) return;
   if (!notes) {
-    td.innerHTML = `<span style="color:#aaa">+ 添加备注</span>`;
+    preview.textContent = "+ 添加备注";
+    preview.style.color = "#bbb";
   } else {
-    const truncated = notes.length > 20 ? notes.slice(0, 20) + "…" : notes;
-    td.textContent  = truncated;
-    td.style.color  = "#333";
+    preview.textContent = notes.length > 20 ? notes.slice(0, 20) + "…" : notes;
+    preview.style.color = "#333";
   }
 }
 
@@ -390,13 +402,13 @@ function createItemRow(defaults) {
   tr.dataset.rowId = id;
   tr.dataset.notes = defaults?.notes || "";
 
-  // 解析 groupName：兼容旧版中文字符串
-  const resolved = resolveGroupNameToCode(defaults?.groupName);
-  const serviceTypeOptions = buildServiceTypeOptions(
-    resolved.code,
-    getFormProjectGroup(),
-    resolved.legacy ? resolved.code : null,
-  );
+  // 解析 groupName → UUID（兼容历史中文字符串、code、UUID）
+  const resolvedId = resolveGroupNameToId(defaults?.groupName);
+  // 获取当前项目组的 UUID，用于过滤服务类型下拉选项
+  const pgCode    = getFormProjectGroup();
+  const pgType    = window._groupTypes.find((t) => t.code === pgCode);
+  const pgGroupId = pgType ? pgType.id : null;
+  const serviceTypeOptions = buildServiceTypeOptions(resolvedId, pgGroupId);
 
   tr.innerHTML = `
     <td><select class="cell-input col-group-select" name="groupName">${serviceTypeOptions}</select></td>
@@ -410,12 +422,12 @@ function createItemRow(defaults) {
     <td class="computed-cell" data-field="sellSubtotal">—</td>
     <td class="view-internal computed-cell" data-field="margin">—</td>
     <td class="view-internal"><input class="cell-input" name="supplier" value="${esc(defaults?.supplier || "")}" placeholder="供应商" /></td>
-    <td data-field="notes"></td>
+    <td class="col-notes notes-cell" data-field="notes" data-row-id="${esc(id)}" style="cursor:pointer"><span class="notes-preview"></span></td>
     <td><button type="button" class="ghost mini-button delete-row">✕</button></td>
   `;
 
-  // 初始化备注单元格显示
-  renderNotesCellDisplay(tr.querySelector('[data-field="notes"]'), tr.dataset.notes);
+  // 初始化备注单元格摘要显示
+  renderNotesCellDisplay(tr.querySelector(".notes-cell"), tr.dataset.notes);
   updateRowComputedCells(tr);
   return tr;
 }
@@ -438,7 +450,7 @@ function updateRowComputedCells(tr) {
 
 function getItemsFromTable() {
   // 若备注浮层仍开着，先保存内容
-  if (_notesTarget) closeNotesPopover();
+  if (notesCurrentRowId) closeNotesPopover();
 
   return Array.from(
     document.getElementById("items-tbody").querySelectorAll("tr[data-row-id]"),
@@ -517,11 +529,9 @@ function updateSummary() {
 
 /**
  * 项目组分类切换时的处理函数
- * 先按新选中分类重新拉取服务类型，再重建下拉并刷新汇总
- * 绑定到 #select-project-group change 事件
+ * _allItemTypes 已是全量，直接按新项目组 UUID 过滤重建下拉，无需重新请求 API
  */
-async function onProjectGroupChange() {
-  await fetchItemTypes();
+function onProjectGroupChange() {
   rebuildAllServiceTypeSelects();
   updateSummary();
 }
@@ -717,13 +727,9 @@ async function bootstrap() {
       if (!window.confirm(`应用「${template.label}」模板将替换当前所有物料行，确定继续吗？`)) return;
     }
 
-    // 套用时将模板 groupName（中文名称）解析为 code
-    const resolvedItems = template.items.map((item) => ({
-      ...item,
-      groupName: resolveGroupNameToCode(item.groupName).code,
-    }));
-
-    renderItemsTable(resolvedItems);
+    // 套用时直接传原始 groupName（中文名称或 code），
+    // createItemRow 内部通过 resolveGroupNameToId 解析为 UUID
+    renderItemsTable(template.items);
     // 套用后重建服务类型下拉（确保与当前项目组匹配）
     rebuildAllServiceTypeSelects();
     document.getElementById("template-select").value = "";
@@ -759,11 +765,11 @@ async function bootstrap() {
 
   // 表格委托：click 事件（删除行 + 备注单元格点击）
   document.getElementById("items-tbody").addEventListener("click", (event) => {
-    // 备注单元格点击
-    const notesTd = event.target.closest('td[data-field="notes"]');
+    // 备注单元格点击：通过 .notes-cell 类和 data-row-id 定位
+    const notesTd = event.target.closest(".notes-cell");
     if (notesTd) {
-      const tr = notesTd.closest("tr[data-row-id]");
-      if (tr) openNotesPopover(notesTd, tr);
+      const rowId = notesTd.dataset.rowId;
+      if (rowId) openNotesPopover(notesTd, rowId);
       return;
     }
     // 删除行
@@ -782,9 +788,11 @@ async function bootstrap() {
 
   // 点击备注浮层外部时自动关闭并保存
   document.addEventListener("mousedown", (event) => {
-    if (!_notesTarget) return;
+    if (!notesCurrentRowId) return;
     const popover = document.getElementById("notes-popover");
-    if (!popover.contains(event.target)) {
+    if (popover.style.display !== "none" &&
+        !popover.contains(event.target) &&
+        !event.target.closest(".notes-cell")) {
       closeNotesPopover();
     }
   });

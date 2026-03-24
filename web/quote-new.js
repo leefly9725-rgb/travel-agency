@@ -968,10 +968,11 @@ async function bootstrap() {
     });
   }
 
-  // 若 URL 带有 mode=project_based，自动激活
+  // 若 URL 带有 mode=project_based，自动激活并同步返回链接
   const urlSearchParams = new URLSearchParams(window.location.search);
   if (urlSearchParams.get("mode") === "project_based") {
     activatePricingMode("project_based", [], form.currency.value || "EUR");
+    syncReturnLinks(form); // 模式确定后重新同步，确保返回链接指向 project-quotes.html
   }
   // ── 报价模式切换结束 ─────────────────────────────────────────────────────────
   const templateSelect = document.getElementById("template-select");
@@ -1380,8 +1381,9 @@ async function bootstrap() {
     clearItemRows();
 
     if (quote.pricingMode === "project_based") {
-      // 切换至项目型模式
+      // 切换至项目型模式，并同步返回链接
       activatePricingMode("project_based", quote.projectGroups || [], quote.currency || "EUR");
+      syncReturnLinks(form);
     } else {
       (quote.items || []).forEach((item) => addItemRow(item));
       if (!quote.items || quote.items.length === 0) {
