@@ -561,6 +561,21 @@
       return typeof window.can === 'function' ? window.can(code) : false;
     }
 
+    /**
+     * 判断当前用户是否有项目组类型管理权限。
+     * 策略：默认显示，只有明确识别为「报价专员」角色时才隐藏。
+     * 优先用 window.can('*') 检测管理员；兜底用角色列表排除 quotation_specialist。
+     */
+    function canEditTypes() {
+      // 已加载完成：admin 拥有 '*' 权限直接通过
+      if (typeof window.can === 'function') {
+        if (window.can('project_type.edit') || window.can('project_type.create')) return true;
+      }
+      // 兜底：只要不是报价专员角色，均默认有权限（含 auth 尚未就绪的阶段）
+      const roles = (window.__CURRENT_USER__ && window.__CURRENT_USER__.roles) || [];
+      return !roles.includes('quotation_specialist');
+    }
+
     function setModalError(id, msg) {
       const el = document.getElementById(id);
       if (!el) return;
@@ -627,7 +642,7 @@
 
     /** 渲染左侧项目组分类列表 */
     function renderGtList() {
-      const canEdit  = can('project_type.edit') || can('project_type.create');
+      const canEdit  = canEditTypes();
       const container = document.getElementById('gt-cat-list');
       if (!groupTypes.length) {
         container.innerHTML = '<div class="bi-empty">暂无分类</div>';
@@ -657,6 +672,7 @@
       selectedGt = gt;
       const nameZh = gt.nameZh || gt.name_zh || gt.code;
       document.getElementById('gt-right-title').textContent = nameZh + ' 的服务类型';
+      applyPermissions();
       renderGtList();
       loadItemTypes(gt.id);
     }
@@ -747,7 +763,7 @@
 
     /** 渲染右侧服务类型列表 */
     function renderItemTypes() {
-      const canEdit = can('project_type.edit') || can('project_type.create');
+      const canEdit = canEditTypes();
       const tbody = document.getElementById('tbody-it');
       if (!itemTypes.length) {
         tbody.innerHTML = '<tr><td colspan="4" class="bi-empty">暂无服务类型，点击「+ 新增服务类型」添加。</td></tr>';
@@ -1193,7 +1209,7 @@
     // ════════ 权限 & 初始化 ════════
 
     function applyPermissions() {
-      const canType    = can('project_type.edit') || can('project_type.create');
+      const canType    = canEditTypes();
       const canCatalog = can('supplier_catalog.edit') || can('supplier_catalog.create');
       document.getElementById('btn-add-it').style.display  = (canType && selectedGt) ? '' : 'none';
       document.getElementById('btn-add-gt').style.display  = canType    ? '' : 'none';
