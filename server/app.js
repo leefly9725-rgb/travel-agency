@@ -569,23 +569,49 @@ function normalizeSupplierItemPayload(payload, existingId, validCategories) {
 
 const supportedProjectQuoteStatuses = ["draft", "sent", "confirmed", "cancelled"];
 const supportedPricingModes = ["standard", "project_based"];
-const supportedProjectItemTypes = ["hotel", "transport", "guide_translation", "driver_guide", "ticket", "fuel", "toll_parking", "event_material", "catalog_item", "av_equipment", "print_display", "decoration", "personnel", "logistics", "misc"];
+const supportedProjectItemTypes = [
+  "hotel",
+  "transport",
+  "guide_translation",
+  "driver_guide",
+  "ticket",
+  "fuel",
+  "toll_parking",
+  "venue_service",
+  "build_production",
+  "av_lighting",
+  "design_print",
+  "staffing_execution",
+  "catering_refreshments",
+  "logistics_transport",
+  "material_purchase",
+  "misc",
+  "event_material",
+  "catalog_item",
+  "av_equipment",
+  "print_display",
+  "decoration",
+  "personnel",
+  "logistics",
+];
 
 const DEFAULT_QUOTE_ITEM_TYPES = [
-  { id: "qt-001", code: "hotel",             nameZh: "\u9152\u5e97", categoryGroup: "accommodation", sortOrder: 1,  isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u95f4" },
-  { id: "qt-002", code: "transport",         nameZh: "\u7528\u8f66", categoryGroup: "transport",     sortOrder: 2,  isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u8f86" },
-  { id: "qt-003", code: "guide_translation", nameZh: "\u5bfc\u6e38/\u7ffb\u8bd1", categoryGroup: "service", sortOrder: 3, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "\u4eba\u5929" },
-  { id: "qt-004", code: "driver_guide",      nameZh: "\u53f8\u517c\u5bfc", categoryGroup: "service", sortOrder: 4, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "\u4eba\u5929" },
-  { id: "qt-005", code: "ticket",            nameZh: "\u7968\u52a1", categoryGroup: "service", sortOrder: 5, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u5f20" },
-  { id: "qt-006", code: "fuel",              nameZh: "\u6cb9\u8d39", categoryGroup: "transport", sortOrder: 6, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u6b21" },
-  { id: "qt-007", code: "toll_parking",      nameZh: "\u8fc7\u8def/\u505c\u8f66", categoryGroup: "transport", sortOrder: 7, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u6b21" },
-  { id: "qt-008", code: "catalog_item",      nameZh: "\u76ee\u5f55\u9879\u76ee", categoryGroup: "catalog", sortOrder: 8, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["av_equipment", "stage_structure", "print_display", "decoration", "furniture", "personnel", "logistics", "management"], defaultUnit: "\u9879" },
-  { id: "qt-009", code: "av_equipment",      nameZh: "\u97f3\u89c6\u9891\u8bbe\u5907", categoryGroup: "catalog", sortOrder: 9, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["av_equipment"], defaultUnit: "\u53f0" },
-  { id: "qt-010", code: "print_display",     nameZh: "\u5370\u5237\u5c55\u793a", categoryGroup: "catalog", sortOrder: 10, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["print_display", "stage_structure"], defaultUnit: "\u9879" },
-  { id: "qt-011", code: "decoration",        nameZh: "\u88c5\u9970\u7269\u6599", categoryGroup: "catalog", sortOrder: 11, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["decoration", "furniture"], defaultUnit: "\u9879" },
-  { id: "qt-012", code: "personnel",         nameZh: "\u4eba\u5458\u670d\u52a1", categoryGroup: "service", sortOrder: 12, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "\u4eba\u5929" },
-  { id: "qt-013", code: "logistics",         nameZh: "\u7269\u6d41\u914d\u9001", categoryGroup: "service", sortOrder: 13, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["logistics"], defaultUnit: "\u9879" },
-  { id: "qt-014", code: "misc",              nameZh: "\u6742\u9879", categoryGroup: "misc", sortOrder: 14, isActive: true, isSystem: true, projectGroupCodes: ["travel", "event", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u9879" },
+  { id: "qt-001", code: "hotel",                 nameZh: "酒店", categoryGroup: "accommodation", sortOrder: 1,  isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "间" },
+  { id: "qt-002", code: "transport",             nameZh: "用车", categoryGroup: "transport",     sortOrder: 2,  isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "辆" },
+  { id: "qt-003", code: "guide_translation",     nameZh: "导游/翻译", categoryGroup: "service", sortOrder: 3, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "人天" },
+  { id: "qt-004", code: "driver_guide",          nameZh: "司兼导", categoryGroup: "service", sortOrder: 4, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "人天" },
+  { id: "qt-005", code: "ticket",                nameZh: "门票", categoryGroup: "service", sortOrder: 5, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "张" },
+  { id: "qt-006", code: "fuel",                  nameZh: "油费", categoryGroup: "transport", sortOrder: 6, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "次" },
+  { id: "qt-007", code: "toll_parking",          nameZh: "过路/停车", categoryGroup: "transport", sortOrder: 7, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "次" },
+  { id: "qt-008", code: "venue_service",         nameZh: "场地服务", categoryGroup: "service", sortOrder: 8, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["management"], defaultUnit: "项" },
+  { id: "qt-009", code: "build_production",      nameZh: "搭建制作", categoryGroup: "service", sortOrder: 9, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["stage_structure", "decoration", "furniture"], defaultUnit: "项" },
+  { id: "qt-010", code: "av_lighting",           nameZh: "AV / 灯光音响", categoryGroup: "service", sortOrder: 10, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["av_equipment"], defaultUnit: "套" },
+  { id: "qt-011", code: "design_print",          nameZh: "设计印刷", categoryGroup: "service", sortOrder: 11, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["print_display"], defaultUnit: "项" },
+  { id: "qt-012", code: "staffing_execution",    nameZh: "人员执行", categoryGroup: "service", sortOrder: 12, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "人天" },
+  { id: "qt-013", code: "catering_refreshments", nameZh: "餐饮茶歇", categoryGroup: "service", sortOrder: 13, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: [], defaultUnit: "人次" },
+  { id: "qt-014", code: "logistics_transport",   nameZh: "物流运输", categoryGroup: "service", sortOrder: 14, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["logistics"], defaultUnit: "项" },
+  { id: "qt-015", code: "material_purchase",     nameZh: "物料采购", categoryGroup: "service", sortOrder: 15, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["decoration", "furniture", "print_display"], defaultUnit: "项" },
+  { id: "qt-016", code: "misc",                  nameZh: "杂项", categoryGroup: "misc", sortOrder: 16, isActive: true, isSystem: true, projectGroupCodes: ["travel", "event", "mixed"], supplierCategoryCodes: [], defaultUnit: "项" },
 ];
 
 function normalizeCodeArray(values, fallback) {
@@ -635,14 +661,120 @@ function ensureQuoteItemTypes(data) {
 const DEFAULT_PROJECT_GROUP_TYPES = [
   { id: "pgt-001", code: "travel", nameZh: "旅游接待", sortOrder: 1, isActive: true },
   { id: "pgt-002", code: "event",  nameZh: "活动服务", sortOrder: 2, isActive: true },
-  { id: "pgt-003", code: "mixed",  nameZh: "综合项目", sortOrder: 3, isActive: true },
+  { id: "pgt-003", code: "mixed",  nameZh: "综合服务", sortOrder: 3, isActive: true },
 ];
 
 function ensureProjectGroupTypes(data) {
-  if (!Array.isArray(data.projectGroupTypes) || data.projectGroupTypes.length === 0) {
-    data.projectGroupTypes = DEFAULT_PROJECT_GROUP_TYPES.map((t) => ({ ...t }));
-  }
+  const existing = Array.isArray(data.projectGroupTypes) ? data.projectGroupTypes : [];
+  const merged = DEFAULT_PROJECT_GROUP_TYPES.map((entry) => {
+    const current = existing.find((item) => item && item.code === entry.code) || {};
+    return {
+      ...entry,
+      ...current,
+      code: entry.code,
+      nameZh: entry.code === "mixed"
+        ? "综合服务"
+        : String(current.nameZh || current.name_zh || entry.nameZh).trim(),
+      sortOrder: Number(current.sortOrder ?? current.sort_order ?? entry.sortOrder ?? 0),
+      isActive: current.isActive !== undefined
+        ? Boolean(current.isActive)
+        : (current.is_active !== undefined ? Boolean(current.is_active) : entry.isActive),
+    };
+  });
+  existing.forEach((item) => {
+    if (!item || merged.some((entry) => entry.code === item.code)) return;
+    merged.push({
+      id: item.id || createId("PGT"),
+      code: notEmpty(item.code, "项目组分类代码").toLowerCase().replace(/s+/g, "_"),
+      nameZh: String(item.nameZh || item.name_zh || item.code).trim(),
+      sortOrder: Number(item.sortOrder ?? item.sort_order ?? 0),
+      isActive: item.isActive !== undefined ? Boolean(item.isActive) : (item.is_active !== undefined ? Boolean(item.is_active) : true),
+    });
+  });
+  data.projectGroupTypes = merged.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
   return data.projectGroupTypes;
+}
+
+function normalizeQuoteItemTypeRecord(record, fallback) {
+  const base = fallback || {};
+  return {
+    id: record.id || base.id || createId("QT"),
+    code: String(record.code || base.code || "").trim().toLowerCase(),
+    nameZh: String(record.nameZh || record.name_zh || base.nameZh || base.name_zh || record.code || "").trim(),
+    categoryGroup: String(record.categoryGroup || record.category_group || base.categoryGroup || "misc").trim() || "misc",
+    sortOrder: Number(record.sortOrder ?? record.sort_order ?? base.sortOrder ?? 0),
+    isActive: record.isActive !== undefined ? Boolean(record.isActive) : (record.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
+    isSystem: record.isSystem !== undefined ? Boolean(record.isSystem) : (record.is_system !== undefined ? Boolean(record.is_system) : Boolean(base.isSystem || false)),
+    projectGroupCodes: normalizeCodeArray(record.projectGroupCodes || record.project_group_codes, base.projectGroupCodes || ["mixed"]),
+    supplierCategoryCodes: normalizeCodeArray(record.supplierCategoryCodes || record.supplier_category_codes, base.supplierCategoryCodes || []),
+    defaultUnit: String(record.defaultUnit || record.default_unit || base.defaultUnit || "").trim(),
+  };
+}
+
+function normalizeProjectGroupTypeRecord(record, fallback) {
+  const base = fallback || {};
+  const code = String(record.code || base.code || "").trim().toLowerCase();
+  return {
+    id: record.id || base.id || createId("PGT"),
+    code,
+    nameZh: code === "mixed"
+      ? "综合服务"
+      : String(record.nameZh || record.name_zh || base.nameZh || base.name_zh || code).trim(),
+    sortOrder: Number(record.sortOrder ?? record.sort_order ?? base.sortOrder ?? 0),
+    isActive: record.isActive !== undefined ? Boolean(record.isActive) : (record.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
+  };
+}
+
+async function listQuoteItemTypes(data, supabaseCfg) {
+  let rows = [];
+  if (supabaseCfg.enabled) {
+    try {
+      const remote = await supabaseRequest(supabaseCfg, "quote_item_types?select=*&is_active=eq.true&order=sort_order.asc");
+      rows = Array.isArray(remote) ? remote : [];
+    } catch (_) {
+      rows = [];
+    }
+  }
+  const local = ensureQuoteItemTypes(data);
+  const source = rows.length > 0 ? rows : local;
+  const merged = DEFAULT_QUOTE_ITEM_TYPES.map((entry) => {
+    const current = source.find((item) => item && String(item.code || "").trim().toLowerCase() === entry.code) || {};
+    return normalizeQuoteItemTypeRecord(current, entry);
+  });
+  source.forEach((item) => {
+    const code = String(item?.code || "").trim().toLowerCase();
+    if (!code || merged.some((entry) => entry.code === code)) return;
+    merged.push(normalizeQuoteItemTypeRecord(item));
+  });
+  return merged
+    .filter((item) => item.code && item.isActive !== false)
+    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+}
+
+async function listProjectGroupTypes(data, supabaseCfg) {
+  let rows = [];
+  if (supabaseCfg.enabled) {
+    try {
+      const remote = await supabaseRequest(supabaseCfg, "project_group_types?select=*&is_active=eq.true&order=sort_order.asc");
+      rows = Array.isArray(remote) ? remote : [];
+    } catch (_) {
+      rows = [];
+    }
+  }
+  const local = ensureProjectGroupTypes(data);
+  const source = rows.length > 0 ? rows : local;
+  const merged = DEFAULT_PROJECT_GROUP_TYPES.map((entry) => {
+    const current = source.find((item) => item && String(item.code || "").trim().toLowerCase() === entry.code) || {};
+    return normalizeProjectGroupTypeRecord(current, entry);
+  });
+  source.forEach((item) => {
+    const code = String(item?.code || "").trim().toLowerCase();
+    if (!code || merged.some((entry) => entry.code === code)) return;
+    merged.push(normalizeProjectGroupTypeRecord(item));
+  });
+  return merged
+    .filter((item) => item.code && item.isActive !== false)
+    .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
 }
 
 const DEFAULT_SUPPLIER_CATEGORIES = [
@@ -1800,8 +1932,8 @@ async function handleApi(request, response, url) {
   // ── Quote Item Types ────────────────────────────────────────────────────────
 
   if (request.method === "GET" && url.pathname === "/api/quote-item-types") {
-    const data = await loadSeedData();
-    const types = ensureQuoteItemTypes(data);
+    const supabaseCfg = getSupabaseConfig();
+    const types = await listQuoteItemTypes(data, supabaseCfg);
     sendJson(response, 200, types);
     return true;
   }
@@ -1857,15 +1989,8 @@ async function handleApi(request, response, url) {
 
   if (request.method === "GET" && url.pathname === "/api/project-group-types") {
     const supabaseCfg = getSupabaseConfig();
-    if (supabaseCfg.enabled) {
-      try {
-        const rows = await supabaseRequest(supabaseCfg, "project_group_types?select=*&is_active=eq.true&order=sort_order.asc");
-        sendJson(response, 200, Array.isArray(rows) ? rows : []);
-        return true;
-      } catch (_) {}
-    }
-    const data = await loadSeedData();
-    sendJson(response, 200, ensureProjectGroupTypes(data));
+    const types = await listProjectGroupTypes(data, supabaseCfg);
+    sendJson(response, 200, types);
     return true;
   }
 

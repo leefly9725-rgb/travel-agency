@@ -1926,10 +1926,40 @@ button.ghost,
 }
 /* 表格内 cell-input 高度统一 */
 .proj-item-table .cell-input {
-  height: 28px;
   font-size: 12px;
   padding: 2px 5px;
   min-width: 0;
+}
+.proj-item-table input.cell-input,
+.proj-item-table select.cell-input {
+  height: 28px;
+}
+.proj-item-table textarea.cell-input {
+  height: auto;
+}
+.remarks-textarea {
+  min-width: 180px;
+  min-height: 28px;
+  max-height: 72px;
+  height: auto;
+  overflow-y: auto;
+  resize: none;
+  line-height: 1.35;
+  padding: 4px 6px;
+  border-radius: 10px;
+  white-space: pre-wrap;
+}
+.remarks-textarea::-webkit-scrollbar {
+  width: 8px;
+}
+.remarks-textarea::-webkit-scrollbar-thumb {
+  background: rgba(30, 36, 48, 0.18);
+  border-radius: 999px;
+}
+.remarks-textarea:focus {
+  outline: none;
+  border-color: rgba(194, 106, 46, 0.45);
+  box-shadow: 0 0 0 3px rgba(194, 106, 46, 0.12);
 }
 .proj-item-table select.cell-input {
   padding: 2px 4px;
