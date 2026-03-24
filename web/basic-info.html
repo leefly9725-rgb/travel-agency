@@ -9,11 +9,11 @@
   <link rel="stylesheet" href="/app-shell.css" />
   <style>
     :root {
-      --accent:      #c7a15a;
-      --accent-dark: #b8924d;
+      --accent:      #c87941;
+      --accent-light:#fdf6ee;
       --ink:         #1a1a1a;
       --muted:       #666;
-      --line:        #f0ede8;
+      --line:        #ede9e3;
       --panel:       #fff;
       --bg:          #fafafa;
       --error-bg:    #fff4f1; --error-text: #a14a39;
@@ -21,300 +21,311 @@
     }
 
     /* ── Tab 导航栏 ── */
-    .bi-tabbar {
-      display: flex;
-      gap: 0;
-      border-bottom: 2px solid #eee;
-      margin-bottom: 24px;
-    }
+    .bi-tabbar { display:flex; border-bottom:2px solid #eee; margin-bottom:24px; }
     .bi-tab {
-      display: inline-flex;
-      align-items: center;
-      padding: 12px 20px;
-      font-size: 15px;
-      font-weight: 500;
-      color: #999;
-      text-decoration: none;
-      background: transparent;
-      border: none;
-      position: relative;
-      white-space: nowrap;
-      transition: color 0.15s;
+      display:inline-flex; align-items:center;
+      padding:12px 20px; font-size:15px; font-weight:500;
+      color:#999; text-decoration:none; background:transparent; border:none;
+      position:relative; white-space:nowrap; transition:color 0.15s; cursor:pointer;
     }
-    .bi-tab:hover { color: #333; }
-    .bi-tab.is-active { color: var(--accent); font-weight: 600; }
+    .bi-tab:hover { color:#333; }
+    .bi-tab.is-active { color:var(--accent); font-weight:600; }
     .bi-tab.is-active::after {
-      content: '';
-      position: absolute;
-      bottom: -2px; left: 0; right: 0;
-      height: 3px;
-      background: var(--accent);
-      border-radius: 2px 2px 0 0;
+      content:''; position:absolute; bottom:-2px; left:0; right:0;
+      height:3px; background:var(--accent); border-radius:2px 2px 0 0;
     }
 
     /* ── Tab 面板 ── */
-    .bi-panel { display: none; }
-    .bi-panel.is-active { display: block; }
+    .bi-panel { display:none; }
+    .bi-panel.is-active { display:block; }
 
-    /* ── 面板顶栏 ── */
-    .bi-panel-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 14px;
-    }
-    .bi-panel-title { font-size: 16px; font-weight: 700; color: var(--ink); margin: 0; }
-
-    /* ── 说明条 ── */
-    .bi-desc {
-      font-size: 12px;
-      color: #7a5c18;
-      background: rgba(199,161,90,0.08);
-      border: 1px solid rgba(199,161,90,0.2);
-      border-radius: 8px;
-      padding: 8px 12px;
-      margin-bottom: 16px;
-    }
-
-    /* ── 表格容器 ── */
-    .bi-table-wrap {
-      border: 1px solid #ede9e3;
-      border-radius: 12px;
-      overflow: hidden;
-      background: var(--panel);
-    }
-    .bi-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-    .bi-table th {
-      text-align: left;
-      padding: 10px 14px;
-      font-size: 12px;
-      font-weight: 600;
-      color: #666;
-      background: #f5f3ef;
-      border-bottom: 1px solid #f0ede8;
-      white-space: nowrap;
-    }
-    .bi-table td {
-      padding: 0 14px;
-      height: 52px;
-      border-bottom: 1px solid #f0ede8;
-      color: var(--ink);
-      vertical-align: middle;
-    }
-    .bi-table tr:hover td { background: #faf9f7; }
-    .bi-table tr:last-child td { border-bottom: none; }
-    .bi-table .cell-name { font-size: 14px; font-weight: 500; color: #1a1a1a; }
-    .bi-table .cell-sec  { font-size: 13px; color: #999; }
-
-    /* ── 状态徽章（点式）── */
-    .badge { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 500; white-space: nowrap; }
-    .badge-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-    .badge-on  { color: #2e7d32; }
-    .badge-on  .badge-dot { background: #2e7d32; }
-    .badge-off { color: #999; }
-    .badge-off .badge-dot { background: #ccc; }
-    .badge-sys { background: #e3f2fd; color: #1565c0; padding: 1px 7px; border-radius: 999px; font-size: 11px; margin-left: 5px; }
-
-    /* ── 行内小按钮 ── */
-    .btn-sm {
-      padding: 4px 10px; border-radius: 6px;
-      font-size: 12px; font-weight: 500; cursor: pointer;
-      border: 1px solid #d4a96a; background: transparent; color: #d4a96a;
-      transition: background 0.12s;
-    }
-    .btn-sm:hover { background: rgba(212,169,106,0.1); }
-    .btn-sm + .btn-sm { margin-left: 6px; }
-    .btn-sm.primary { border-color: #52c41a; color: #52c41a; }
-    .btn-sm.primary:hover { background: rgba(82,196,26,0.08); }
-    .btn-sm.danger  { border-color: #e0e0e0; color: #888; }
-    .btn-sm.danger:hover  { border-color: #ff4d4f; color: #ff4d4f; background: rgba(255,77,79,0.04); }
-
-    /* ── 新增按钮（橙色填充）── */
-    .btn-add {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 7px 16px; border-radius: 8px;
-      border: none; background: var(--accent); color: #fff;
-      font-size: 13px; font-weight: 600;
-      cursor: pointer; text-decoration: none;
-      transition: background 0.12s;
-      white-space: nowrap;
-    }
-    .btn-add:hover { background: var(--accent-dark); }
+    /* ── 面板顶栏（报价模板 Tab 用）── */
+    .bi-panel-head { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px; }
+    .bi-panel-title { font-size:16px; font-weight:700; color:var(--ink); margin:0; }
 
     /* ── 空/加载 ── */
-    .bi-loading, .bi-empty {
-      padding: 32px 16px; text-align: center;
-      color: #999; font-size: 13px;
+    .bi-loading { padding:32px 16px; text-align:center; color:#bbb; font-size:13px; }
+
+    /* ════════════════════════════════════
+       左右分栏（Tab1 项目组类型 / Tab2 供应商价格库 共用）
+    ════════════════════════════════════ */
+    .sc-split {
+      display:flex; border:1px solid var(--line);
+      border-radius:12px; overflow:hidden; background:var(--panel); min-height:500px;
     }
 
-    /* ═══ Tab3：左右分栏 ═══ */
-    .sc-split {
-      display: flex;
-      border: 1px solid #ede9e3; border-radius: 12px;
-      overflow: hidden; background: var(--panel); min-height: 420px;
-    }
+    /* ── 左侧面板 ── */
     .sc-left {
-      flex: 0 0 200px; min-width: 200px;
-      border-right: 1px solid #f0ede8;
-      display: flex; flex-direction: column;
+      flex:0 0 200px; min-width:200px; border-right:1px solid var(--line);
+      display:flex; flex-direction:column; background:#faf9f7;
     }
     .sc-left-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 8px;
-      padding: 10px 14px;
-      border-bottom: 1px solid #f0ede8;
-      font-size: 12px; font-weight: 600; color: #888;
+      display:flex; align-items:center; justify-content:space-between; gap:8px;
+      padding:10px 14px; border-bottom:1px solid var(--line);
+      font-size:12px; font-weight:600; color:#888;
     }
+    /* Tab2 左侧顶部的旧式新增按钮 */
     .btn-add-cat-txt {
-      background: none; border: none;
-      color: var(--accent); font-size: 13px; font-weight: 600;
-      cursor: pointer; padding: 2px 4px;
-      transition: color 0.12s;
+      background:none; border:none; color:var(--accent);
+      font-size:13px; font-weight:600; cursor:pointer; padding:2px 4px; transition:color 0.12s;
     }
-    .btn-add-cat-txt:hover { color: var(--accent-dark); }
-    .sc-cat-list { flex: 1; overflow-y: auto; }
+    .btn-add-cat-txt:hover { color:#a05a28; }
+
+    /* 左侧分类列表 */
+    .sc-cat-list { flex:1; overflow-y:auto; }
     .sc-cat-item {
-      display: flex; align-items: center;
-      padding: 0 14px; height: 40px;
-      font-size: 13px; cursor: pointer;
-      border-bottom: 1px solid rgba(20,32,51,0.04);
-      transition: background 0.12s; color: #333;
-      position: relative;
+      display:flex; align-items:center; justify-content:space-between;
+      height:44px; padding:0 12px 0 16px;
+      font-size:13px; color:#555; cursor:pointer;
+      border-bottom:1px solid rgba(0,0,0,0.04);
+      transition:background 0.15s; position:relative;
     }
-    .sc-cat-item:hover { background: rgba(20,32,51,0.03); }
-    .sc-cat-item.is-selected { background: #fdf6ee; color: var(--accent); font-weight: 600; }
-    .sc-cat-item.is-selected::before {
-      content: ''; position: absolute;
-      left: 0; top: 0; bottom: 0; width: 3px;
-      background: var(--accent); border-radius: 0 2px 2px 0;
+    .sc-cat-item:hover { background:#f0ede8; }
+    .sc-cat-item.is-selected {
+      background:var(--accent-light); color:var(--accent);
+      font-weight:600; border-left:3px solid var(--accent); padding-left:13px;
     }
-    .sc-cat-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sc-cat-actions { display: flex; gap: 3px; opacity: 0; transition: opacity 0.12s; flex-shrink: 0; }
+    .sc-cat-name { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+    /* 左侧行操作按钮区（hover 时显示）*/
+    .sc-cat-actions { display:flex; gap:1px; opacity:0; transition:opacity 0.15s; flex-shrink:0; }
     .sc-cat-item:hover .sc-cat-actions,
-    .sc-cat-item.is-selected .sc-cat-actions { opacity: 1; }
+    .sc-cat-item.is-selected .sc-cat-actions { opacity:1; }
+
+    /* 通用图标小按钮 */
     .ico-btn {
-      display: flex; align-items: center; justify-content: center;
-      width: 22px; height: 22px; border-radius: 5px;
-      border: none; background: transparent; cursor: pointer;
-      color: #999; transition: background 0.12s, color 0.12s;
+      display:flex; align-items:center; justify-content:center;
+      width:22px; height:22px; border-radius:4px;
+      border:none; background:transparent; cursor:pointer;
+      color:#aaa; font-size:13px; line-height:1; padding:0;
+      transition:background 0.12s, color 0.12s;
     }
-    .ico-btn:hover { background: rgba(20,32,51,0.08); color: #333; }
-    .ico-btn.danger:hover { background: rgba(255,77,79,0.08); color: #ff4d4f; }
-    .sc-right { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .ico-btn:hover { background:rgba(0,0,0,0.06); color:var(--accent); }
+    .ico-btn.danger:hover { background:rgba(229,62,62,0.08); color:#e53e3e; }
+
+    /* 左侧底部新增分类按钮 */
+    .sc-left-footer { border-top:1px solid var(--line); }
+    .sc-left-add-btn {
+      display:block; width:100%; padding:12px 16px;
+      border:none; background:none; color:var(--accent);
+      font-size:13px; cursor:pointer; text-align:left;
+      transition:background 0.12s;
+    }
+    .sc-left-add-btn:hover { background:var(--accent-light); }
+
+    /* ── 右侧面板 ── */
+    .sc-right { flex:1; min-width:0; display:flex; flex-direction:column; }
     .sc-right-head {
-      display: flex; align-items: center; justify-content: space-between;
-      gap: 12px; padding: 10px 16px;
-      border-bottom: 1px solid #f0ede8;
+      display:flex; align-items:center; justify-content:space-between;
+      gap:12px; padding:12px 20px; border-bottom:1px solid var(--line);
     }
-    .sc-right-title { font-size: 14px; font-weight: 700; color: var(--ink); margin: 0; }
-    .sc-right-body { flex: 1; overflow-y: auto; }
+    .sc-right-title { font-size:15px; font-weight:600; color:var(--ink); margin:0; }
+    .sc-right-body { flex:1; overflow-y:auto; }
 
-    /* ═══ Tab4：模板卡片 ═══ */
-    .tpl-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-      gap: 14px;
+    /* 右侧「+ 新增服务类型」按钮 */
+    #btn-add-it {
+      background:var(--accent); color:#fff; border:none;
+      border-radius:6px; padding:6px 14px; font-size:13px;
+      cursor:pointer; white-space:nowrap; transition:background 0.12s;
     }
+    #btn-add-it:hover { background:#b5692f; }
+
+    /* ── 右侧服务类型 flex 行式列表 ── */
+    .it-list-header, .it-list-row {
+      display:flex; align-items:center; padding:0 16px;
+    }
+    .it-list-header {
+      background:#f5f3ef; font-size:12px; color:#888; font-weight:600;
+      padding-top:8px; padding-bottom:8px;
+      border-bottom:1px solid var(--line); white-space:nowrap;
+    }
+    .it-list-row {
+      padding-top:10px; padding-bottom:10px;
+      border-bottom:1px solid #f5f3ef; transition:background 0.12s;
+    }
+    .it-list-row:last-child { border-bottom:none; }
+    .it-list-row:hover { background:#faf9f7; }
+
+    .it-col-name   { flex:1; min-width:0; }
+    .it-col-sort   { width:60px; text-align:center; flex-shrink:0; }
+    .it-col-status { width:72px; flex-shrink:0; }
+    .it-col-ops    { width:174px; flex-shrink:0; display:flex; gap:4px; align-items:center; justify-content:flex-end; }
+
+    .it-name-text {
+      font-size:14px; font-weight:500; color:var(--ink);
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:block;
+    }
+    .it-sort-num { font-size:13px; color:#999; }
+
+    /* 状态徽章 */
+    .badge { display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:500; white-space:nowrap; }
+    .badge-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+    .badge-on  { color:#52c41a; } .badge-on  .badge-dot { background:#52c41a; }
+    .badge-off { color:#999; }   .badge-off .badge-dot { background:#ccc; }
+    .badge-sys { background:#e3f2fd; color:#1565c0; padding:1px 7px; border-radius:999px; font-size:11px; margin-left:5px; }
+
+    /* 右侧编辑按钮 */
+    .btn-it-edit {
+      border:1px solid #d4a96a; color:var(--accent); background:#fff;
+      border-radius:5px; padding:3px 10px; font-size:12px; cursor:pointer;
+      transition:background 0.12s; white-space:nowrap;
+    }
+    .btn-it-edit:hover { background:var(--accent-light); }
+    /* 停用态（点击后停用）*/
+    .btn-it-stop {
+      border:1px solid #e0e0e0; color:#999; background:#fff;
+      border-radius:5px; padding:3px 10px; font-size:12px; cursor:pointer;
+      transition:border-color 0.12s, color 0.12s; white-space:nowrap;
+    }
+    .btn-it-stop:hover { border-color:#e53e3e; color:#e53e3e; }
+    /* 启用态（点击后启用）*/
+    .btn-it-start {
+      border:1px solid #52c41a; color:#52c41a; background:#fff;
+      border-radius:5px; padding:3px 10px; font-size:12px; cursor:pointer;
+      transition:background 0.12s; white-space:nowrap;
+    }
+    .btn-it-start:hover { background:#f6ffed; }
+
+    /* 空状态 */
+    .it-empty { padding:60px 20px; text-align:center; }
+    .it-empty-primary { font-size:14px; color:#bbb; margin-bottom:6px; }
+    .it-empty-hint    { font-size:12px; color:#ddd; }
+
+    /* ════════════════════════════════════
+       供应商价格库 Tab2 表格（bi-table 保留兼容）
+    ════════════════════════════════════ */
+    .bi-table-wrap { border:1px solid var(--line); border-radius:12px; overflow:hidden; background:var(--panel); }
+    .bi-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .bi-table th {
+      text-align:left; padding:8px 16px;
+      font-size:12px; font-weight:600; color:#888;
+      background:#f5f3ef; border-bottom:1px solid var(--line); white-space:nowrap;
+    }
+    .bi-table td {
+      padding:0 16px; height:48px;
+      border-bottom:1px solid #f5f3ef; color:var(--ink); vertical-align:middle;
+    }
+    .bi-table tr:hover td { background:#faf9f7; }
+    .bi-table tr:last-child td { border-bottom:none; }
+    .bi-table .cell-name { font-size:14px; font-weight:500; color:#1a1a1a; }
+    .bi-table .cell-sec  { font-size:13px; color:#999; }
+
+    /* 行内小按钮（供应商价格库 Tab 用）*/
+    .btn-sm {
+      padding:3px 10px; border-radius:5px;
+      font-size:12px; font-weight:500; cursor:pointer;
+      border:1px solid #d4a96a; background:#fff; color:var(--accent);
+      transition:background 0.12s; white-space:nowrap;
+    }
+    .btn-sm:hover { background:var(--accent-light); }
+    .btn-sm + .btn-sm { margin-left:4px; }
+    .btn-sm.primary { border-color:#52c41a; color:#52c41a; }
+    .btn-sm.primary:hover { background:#f6ffed; }
+    .btn-sm.danger  { border-color:#e0e0e0; color:#999; }
+    .btn-sm.danger:hover { border-color:#e53e3e; color:#e53e3e; }
+
+    /* 通用填充新增按钮 */
+    .btn-add {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:7px 16px; border-radius:8px;
+      border:none; background:var(--accent); color:#fff;
+      font-size:13px; font-weight:600; cursor:pointer; text-decoration:none;
+      transition:background 0.12s; white-space:nowrap;
+    }
+    .btn-add:hover { background:#b5692f; }
+
+    /* ════════════════════════════════════
+       报价模板卡片（Tab3）
+    ════════════════════════════════════ */
+    .tpl-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:14px; }
     .tpl-card {
-      display: block; padding: 16px 18px;
-      border: 1px solid #ede9e3; border-radius: 10px;
-      background: #fff; text-decoration: none; color: var(--ink);
-      transition: box-shadow 0.15s, border-color 0.15s;
+      display:block; padding:16px 18px;
+      border:1px solid var(--line); border-radius:10px;
+      background:#fff; text-decoration:none; color:var(--ink);
+      transition:box-shadow 0.15s, border-color 0.15s;
     }
-    .tpl-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.08); border-color: #d4a96a; }
+    .tpl-card:hover { box-shadow:0 4px 16px rgba(0,0,0,0.08); border-color:var(--accent); }
     .tpl-mode-badge {
-      display: inline-block;
-      background: #fdf6ee; color: #c87941;
-      font-size: 11px; font-weight: 600;
-      padding: 2px 8px; border-radius: 999px; margin-bottom: 8px;
+      display:inline-block; background:var(--accent-light); color:var(--accent);
+      font-size:11px; font-weight:600; padding:2px 8px; border-radius:999px; margin-bottom:8px;
     }
-    .tpl-card-name {
-      font-size: 14px; font-weight: 600; color: #1a1a1a; margin-bottom: 6px;
-      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    }
-    .tpl-card-date { font-size: 12px; color: #aaa; }
+    .tpl-card-name { font-size:14px; font-weight:600; color:#1a1a1a; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+    .tpl-card-date { font-size:12px; color:#aaa; }
 
-    /* ═══ Modal ═══ */
+    /* ════════════════════════════════════
+       Modal 弹窗
+    ════════════════════════════════════ */
     .modal-overlay {
-      position: fixed; inset: 0;
-      background: rgba(0,0,0,0.38);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 2000;
+      position:fixed; inset:0; background:rgba(0,0,0,0.38);
+      display:flex; align-items:center; justify-content:center; z-index:2000;
     }
-    .modal-overlay.hidden { display: none !important; }
+    .modal-overlay.hidden { display:none !important; }
     .modal-card {
-      background: #fff; border-radius: 14px;
-      box-shadow: 0 12px 40px rgba(0,0,0,0.18);
-      padding: 24px 28px 22px; width: 440px;
-      max-width: calc(100vw - 32px);
-      max-height: calc(100vh - 64px);
-      overflow-y: auto;
+      background:#fff; border-radius:14px;
+      box-shadow:0 12px 40px rgba(0,0,0,0.18);
+      padding:24px 28px 22px; width:440px;
+      max-width:calc(100vw - 32px); max-height:calc(100vh - 64px); overflow-y:auto;
     }
     .modal-title {
-      font-size: 16px; font-weight: 600; color: var(--ink);
-      margin: 0 0 18px;
-      padding-bottom: 16px;
-      border-bottom: 1px solid #f0ede8;
+      font-size:16px; font-weight:600; color:var(--ink);
+      margin:0 0 18px; padding-bottom:16px; border-bottom:1px solid #f0ede8;
     }
-    .modal-field { margin-bottom: 14px; }
-    .modal-field > label { display: block; font-size: 12px; font-weight: 600; color: #666; margin-bottom: 4px; }
+    .modal-field { margin-bottom:14px; }
+    .modal-field > label { display:block; font-size:13px; color:#555; font-weight:500; margin-bottom:4px; }
     .modal-field input,
     .modal-field select,
     .modal-field textarea {
-      width: 100%; padding: 8px 10px; box-sizing: border-box;
-      border: 1px solid #ddd; border-radius: 6px;
-      font-size: 13px; background: #fafafa; color: var(--ink);
-      font-family: inherit; transition: border-color 0.15s;
+      width:100%; padding:8px 12px; box-sizing:border-box;
+      border:1px solid #ddd; border-radius:6px;
+      font-size:14px; background:#fafafa; color:var(--ink);
+      font-family:inherit; transition:border-color 0.15s;
     }
     .modal-field input:focus,
     .modal-field select:focus,
-    .modal-field textarea:focus { outline: none; border-color: var(--accent); }
-    .modal-field textarea { resize: vertical; }
-    .modal-hint { font-size: 11px; color: #999; margin-top: 3px; }
-    .modal-checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; cursor: pointer; }
-    .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+    .modal-field textarea:focus { outline:none; border-color:var(--accent); }
+    .modal-field input[readonly] { background:#f5f5f5; color:#999; cursor:not-allowed; }
+    .modal-field textarea { resize:vertical; }
+    .modal-hint { font-size:11px; color:#999; margin-top:3px; }
+    .modal-checkbox-row { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; }
+    .modal-actions { display:flex; justify-content:flex-end; gap:10px; margin-top:20px; }
     .modal-btn-cancel {
-      padding: 8px 18px; border-radius: 8px;
-      border: 1px solid #e0e0e0; background: transparent;
-      color: #666; font-size: 13px; font-weight: 500; cursor: pointer;
+      padding:8px 20px; border-radius:6px;
+      border:1px solid #ddd; background:#fff; color:#666;
+      font-size:13px; font-weight:500; cursor:pointer; transition:background 0.12s;
     }
-    .modal-btn-cancel:hover { background: #f5f5f5; }
+    .modal-btn-cancel:hover { background:#f5f5f5; }
     .modal-btn-submit {
-      padding: 8px 18px; border-radius: 8px; border: none;
-      background: var(--accent); color: #fff;
-      font-size: 13px; font-weight: 600; cursor: pointer;
+      padding:8px 20px; border-radius:6px; border:none;
+      background:var(--accent); color:#fff;
+      font-size:13px; font-weight:600; cursor:pointer; transition:background 0.12s;
     }
-    .modal-btn-submit:hover { background: var(--accent-dark); }
-    .modal-btn-submit:disabled { opacity: 0.6; cursor: not-allowed; }
+    .modal-btn-submit:hover { background:#b5692f; }
+    .modal-btn-submit:disabled { opacity:0.6; cursor:not-allowed; }
     .modal-error {
-      font-size: 12px; color: var(--error-text);
-      background: var(--error-bg); border-radius: 6px;
-      padding: 6px 10px; margin-top: 10px;
+      font-size:12px; color:var(--error-text); background:var(--error-bg);
+      border-radius:6px; padding:6px 10px; margin-top:10px;
     }
-    .modal-error.hidden { display: none !important; }
+    .modal-error.hidden { display:none !important; }
 
     /* ── Toast ── */
     .bi-toast {
-      position: fixed; bottom: 24px; left: 50%;
-      transform: translateX(-50%) translateY(16px);
-      padding: 10px 20px; border-radius: 8px;
-      font-size: 13px; font-weight: 600;
-      opacity: 0; pointer-events: none;
-      transition: opacity 0.2s, transform 0.2s;
-      z-index: 3000; white-space: nowrap;
+      position:fixed; bottom:24px; left:50%;
+      transform:translateX(-50%) translateY(16px);
+      padding:10px 20px; border-radius:8px;
+      font-size:13px; font-weight:600;
+      opacity:0; pointer-events:none;
+      transition:opacity 0.2s, transform 0.2s;
+      z-index:3000; white-space:nowrap;
     }
-    .bi-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-    .bi-toast.t-success { background: var(--success-bg); color: var(--success-text); border: 1px solid #b7dfc2; }
-    .bi-toast.t-error   { background: var(--error-bg);   color: var(--error-text);   border: 1px solid #f1c6be; }
+    .bi-toast.show { opacity:1; transform:translateX(-50%) translateY(0); }
+    .bi-toast.t-success { background:var(--success-bg); color:var(--success-text); border:1px solid #b7dfc2; }
+    .bi-toast.t-error   { background:var(--error-bg);   color:var(--error-text);   border:1px solid #f1c6be; }
 
-    @media (max-width: 768px) {
-      .sc-split { flex-direction: column; }
-      .sc-left { flex: none; min-width: unset; border-right: none; border-bottom: 1px solid #f0ede8; }
-      .sc-cat-actions { opacity: 1; }
+    @media (max-width:768px) {
+      .sc-split { flex-direction:column; }
+      .sc-left { flex:none; min-width:unset; border-right:none; border-bottom:1px solid var(--line); }
+      .sc-cat-actions { opacity:1; }
+      .it-col-ops { width:auto; }
     }
   </style>
 </head>
@@ -336,42 +347,40 @@
         <div class="sc-split">
           <!-- 左侧：项目组分类列表 -->
           <div class="sc-left">
-            <div class="sc-left-head">
-              <span>项目组分类</span>
-            </div>
+            <div class="sc-left-head"><span>项目组分类</span></div>
             <div class="sc-cat-list" id="gt-cat-list">
               <div class="bi-loading">加载中…</div>
             </div>
-            <div style="padding:10px 14px;border-top:1px solid #f0ede8">
-              <button class="btn-add-cat-txt" id="btn-add-gt" style="display:none">＋ 新增分类</button>
+            <div class="sc-left-footer">
+              <button class="sc-left-add-btn" id="btn-add-gt" style="display:none">＋ 新增分类</button>
             </div>
           </div>
           <!-- 右侧：该分组下的服务类型 -->
           <div class="sc-right">
             <div class="sc-right-head">
               <h3 class="sc-right-title" id="gt-right-title">请选择左侧分类</h3>
-              <button class="btn-add" id="btn-add-it" style="display:none">+ 新增服务类型</button>
+              <button id="btn-add-it" style="display:none">+ 新增服务类型</button>
             </div>
             <div class="sc-right-body">
-              <table class="bi-table">
-                <thead>
-                  <tr>
-                    <th style="width:50%">服务类型名称</th>
-                    <th style="width:12%">排序</th>
-                    <th style="width:15%">状态</th>
-                    <th style="width:23%">操作</th>
-                  </tr>
-                </thead>
-                <tbody id="tbody-it">
-                  <tr><td colspan="4" class="bi-empty">← 选择左侧分类查看服务类型</td></tr>
-                </tbody>
-              </table>
+              <!-- 表头 -->
+              <div class="it-list-header">
+                <div class="it-col-name">服务类型名称</div>
+                <div class="it-col-sort">排序</div>
+                <div class="it-col-status">状态</div>
+                <div class="it-col-ops"></div>
+              </div>
+              <!-- 数据行（JS 动态渲染）-->
+              <div id="it-list-body">
+                <div class="it-empty">
+                  <div class="it-empty-primary">← 选择左侧分类查看服务类型</div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <!-- ═══ Tab 3：供应商价格库 ═══ -->
+      <!-- ═══ Tab 2：供应商价格库 ═══ -->
       <div id="panel-supplier-catalog" class="bi-panel">
         <div class="sc-split">
           <div class="sc-left">
@@ -401,7 +410,7 @@
                   </tr>
                 </thead>
                 <tbody id="tbody-sci">
-                  <tr><td colspan="6" class="bi-empty">← 选择左侧分类查看条目</td></tr>
+                  <tr><td colspan="6" class="bi-loading">← 选择左侧分类查看条目</td></tr>
                 </tbody>
               </table>
             </div>
@@ -409,7 +418,7 @@
         </div>
       </div>
 
-      <!-- ═══ Tab 4：报价模板 ═══ -->
+      <!-- ═══ Tab 3：报价模板 ═══ -->
       <div id="panel-templates" class="bi-panel">
         <div class="bi-panel-head">
           <h2 class="bi-panel-title">报价模板</h2>
@@ -424,7 +433,7 @@
   </div>
 
 
-  <!-- ═══ Modal：服务类型（属于某项目组分类）═══ -->
+  <!-- ═══ Modal 1：服务类型 ═══ -->
   <div id="modal-it" class="modal-overlay hidden">
     <div class="modal-card">
       <h3 class="modal-title" id="modal-it-title">新增服务类型</h3>
@@ -434,7 +443,7 @@
       </div>
       <div class="modal-field">
         <label>所属分组</label>
-        <input id="it-group-label" readonly style="background:#f5f5f5;color:#888;cursor:not-allowed" />
+        <input id="it-group-label" readonly />
       </div>
       <div class="modal-field">
         <label>排序序号</label>
@@ -514,9 +523,7 @@
       </div>
       <div class="modal-field">
         <label>所属供应商（选填）</label>
-        <select id="sci-supplier">
-          <option value="">— 不指定 —</option>
-        </select>
+        <select id="sci-supplier"><option value="">— 不指定 —</option></select>
       </div>
       <div class="modal-field">
         <label>备注</label>
@@ -544,10 +551,12 @@
   (function () {
     'use strict';
 
+    // HTML 转义工具
     function esc(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    // Toast 通知
     let toastTimer;
     function toast(msg, type) {
       const el = document.getElementById('bi-toast');
@@ -557,6 +566,7 @@
       toastTimer = setTimeout(() => { el.className = 'bi-toast'; }, 3000);
     }
 
+    // 本地权限辅助（auth 未就绪时返回 false）
     function can(code) {
       return typeof window.can === 'function' ? window.can(code) : false;
     }
@@ -564,14 +574,11 @@
     /**
      * 判断当前用户是否有项目组类型管理权限。
      * 策略：默认显示，只有明确识别为「报价专员」角色时才隐藏。
-     * 优先用 window.can('*') 检测管理员；兜底用角色列表排除 quotation_specialist。
      */
     function canEditTypes() {
-      // 已加载完成：admin 拥有 '*' 权限直接通过
       if (typeof window.can === 'function') {
         if (window.can('project_type.edit') || window.can('project_type.create')) return true;
       }
-      // 兜底：只要不是报价专员角色，均默认有权限（含 auth 尚未就绪的阶段）
       const roles = (window.__CURRENT_USER__ && window.__CURRENT_USER__.roles) || [];
       return !roles.includes('quotation_specialist');
     }
@@ -609,7 +616,7 @@
       });
       if (!loadedTabs.has(key)) {
         loadedTabs.add(key);
-        if (key === 'group-types')       loadGroupTypes();
+        if (key === 'group-types')           loadGroupTypes();
         else if (key === 'supplier-catalog') loadCategories().then(loadSuppliers);
         else if (key === 'templates')        loadTemplates();
       }
@@ -620,11 +627,11 @@
 
     // ════════ Tab 1：项目组类型（左右分栏）════════
 
-    let groupTypes  = [];      // 左侧：项目组分类列表
-    let itemTypes   = [];      // 右侧：当前选中分组的服务类型列表
-    let selectedGt  = null;    // 当前选中的项目组分类对象
-    let editingGtId = null;    // 正在编辑的项目组分类 id
-    let editingItId = null;    // 正在编辑的服务类型 id
+    let groupTypes  = [];   // 左侧：项目组分类列表
+    let itemTypes   = [];   // 右侧：当前选中分组的服务类型列表
+    let selectedGt  = null; // 当前选中的项目组分类对象
+    let editingGtId = null; // 正在编辑的项目组分类 id
+    let editingItId = null; // 正在编辑的服务类型 id
 
     // ── 左侧：项目组分类 ──
 
@@ -640,35 +647,43 @@
       }
     }
 
-    /** 渲染左侧项目组分类列表 */
+    /** 渲染左侧项目组分类列表（含 ↑↓ 编辑 删除 按钮）*/
     function renderGtList() {
       const container = document.getElementById('gt-cat-list');
       if (!groupTypes.length) {
-        container.innerHTML = '<div class="bi-empty">暂无分类</div>';
+        container.innerHTML = '<div class="bi-loading" style="color:#bbb">暂无分类</div>';
         return;
       }
-      container.innerHTML = groupTypes
-        .slice().sort((a, b) => (a.sortOrder || a.sort_order || 0) - (b.sortOrder || b.sort_order || 0))
-        .map(t => {
-          const nameZh   = t.nameZh || t.name_zh || t.code;
-          const selected = selectedGt && selectedGt.id === t.id;
-          return `<div class="sc-cat-item${selected ? ' is-selected' : ''}" data-gt-select="${esc(t.id)}">
-            <span class="sc-cat-name">${esc(nameZh)}</span>
-            <span class="sc-cat-actions">
-              <button class="ico-btn gt-edit-btn gt-action-btn" data-gt-edit="${esc(t.id)}" title="编辑分类">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                </svg>
-              </button>
-              <button class="ico-btn danger gt-delete-btn gt-action-btn" data-gt-delete="${esc(t.id)}" title="删除分类">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                  <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
-                </svg>
-              </button>
-            </span>
-          </div>`;
-        }).join('');
+      // 按 sortOrder 升序排列
+      const sorted = groupTypes.slice().sort((a, b) =>
+        (a.sortOrder || a.sort_order || 0) - (b.sortOrder || b.sort_order || 0)
+      );
+      container.innerHTML = sorted.map((t, idx) => {
+        const nameZh  = t.nameZh || t.name_zh || t.code;
+        const selected = selectedGt && selectedGt.id === t.id;
+        // 第一项隐藏 ↑，最后一项隐藏 ↓
+        const upVis   = idx > 0                  ? '' : 'visibility:hidden';
+        const downVis = idx < sorted.length - 1  ? '' : 'visibility:hidden';
+        return `<div class="sc-cat-item${selected ? ' is-selected' : ''}" data-gt-select="${esc(t.id)}">
+          <span class="sc-cat-name">${esc(nameZh)}</span>
+          <span class="sc-cat-actions">
+            <button class="ico-btn gt-action-btn" data-gt-up="${esc(t.id)}" title="上移" style="${upVis}">↑</button>
+            <button class="ico-btn gt-action-btn" data-gt-down="${esc(t.id)}" title="下移" style="${downVis}">↓</button>
+            <button class="ico-btn gt-edit-btn gt-action-btn" data-gt-edit="${esc(t.id)}" title="编辑分类">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+              </svg>
+            </button>
+            <button class="ico-btn danger gt-delete-btn gt-action-btn" data-gt-delete="${esc(t.id)}" title="删除分类">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/>
+                <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4h6v2"/>
+              </svg>
+            </button>
+          </span>
+        </div>`;
+      }).join('');
       refreshActionButtons();
     }
 
@@ -682,32 +697,42 @@
       loadItemTypes(gt.id);
     }
 
+    // 左侧列表点击代理（编辑 / 删除 / 排序 / 选中）
     document.getElementById('gt-cat-list').addEventListener('click', async e => {
-      // 编辑按钮
+      // ── 上移 ──
+      const upId = e.target.closest('[data-gt-up]')?.dataset.gtUp;
+      if (upId) { await swapGtSortOrder(upId, 'up'); return; }
+      // ── 下移 ──
+      const downId = e.target.closest('[data-gt-down]')?.dataset.gtDown;
+      if (downId) { await swapGtSortOrder(downId, 'down'); return; }
+      // ── 编辑 ──
       const editId = e.target.closest('[data-gt-edit]')?.dataset.gtEdit;
       if (editId) {
         const t = groupTypes.find(x => x.id === editId);
         if (t) openGtModal(t);
         return;
       }
-      // 删除按钮
+      // ── 删除 ──
       const deleteId = e.target.closest('[data-gt-delete]')?.dataset.gtDelete;
       if (deleteId) {
-        if (!confirm('确认删除该项目组分类？此操作不可撤销。')) return;
+        const t = groupTypes.find(x => x.id === deleteId);
+        const nameZh = t ? (t.nameZh || t.name_zh || '此分类') : '此分类';
+        if (!confirm(`确认删除「${nameZh}」分类？删除后无法恢复。`)) return;
         try {
           await window.AppUtils.fetchJson(
             `/api/project-group-types/${encodeURIComponent(deleteId)}`,
             { method: 'DELETE' }, '删除失败'
           );
           toast('分类已删除。', 'success');
+          // 若删除的是当前选中项，清空选中
           if (selectedGt?.id === deleteId) selectedGt = null;
           await loadGroupTypes();
-        } catch (e2) {
-          toast(e2.message, 'error');
-        }
+          // 删除后自动选中第一项
+          if (!selectedGt && groupTypes.length) selectGroupType(groupTypes[0]);
+        } catch (e2) { toast(e2.message, 'error'); }
         return;
       }
-      // 选中行
+      // ── 选中行（不在按钮上）──
       const selId = e.target.closest('[data-gt-select]')?.dataset.gtSelect;
       if (selId && !e.target.closest('button')) {
         const t = groupTypes.find(x => x.id === selId);
@@ -720,8 +745,8 @@
     function openGtModal(type) {
       editingGtId = type ? type.id : null;
       document.getElementById('modal-gt-title').textContent = type ? '编辑项目组分类' : '新增项目组分类';
-      document.getElementById('gt-name').value = type ? (type.nameZh || type.name_zh || '') : '';
-      document.getElementById('gt-sort').value = type ? (type.sortOrder ?? type.sort_order ?? 10) : 10;
+      document.getElementById('gt-name').value  = type ? (type.nameZh || type.name_zh || '') : '';
+      document.getElementById('gt-sort').value  = type ? (type.sortOrder ?? type.sort_order ?? 10) : 10;
       setModalError('modal-gt-err', '');
       document.getElementById('modal-gt').classList.remove('hidden');
       document.getElementById('gt-name').focus();
@@ -734,27 +759,24 @@
     document.getElementById('modal-gt-submit').addEventListener('click', async () => {
       const nameZh = document.getElementById('gt-name').value.trim();
       if (!nameZh) { setModalError('modal-gt-err', '中文名称不能为空。'); return; }
-
       const code = editingGtId
         ? (groupTypes.find(x => x.id === editingGtId)?.code || '')
         : 'type_' + Date.now();
-
       setSubmitting('modal-gt-submit', true);
       try {
         const url    = editingGtId ? `/api/project-group-types/${encodeURIComponent(editingGtId)}` : '/api/project-group-types';
         const method = editingGtId ? 'PUT' : 'POST';
         await window.AppUtils.fetchJson(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
+          method, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, nameZh, sortOrder: Number(document.getElementById('gt-sort').value || 0) }),
         }, '保存失败');
         document.getElementById('modal-gt').classList.add('hidden');
         toast(editingGtId ? '分类已更新。' : '分类已创建。', 'success');
-        const prevSelectedId = selectedGt?.id;
+        const prevId = selectedGt?.id;
         await loadGroupTypes();
         // 保持原来的选中状态
-        if (prevSelectedId) {
-          const prev = groupTypes.find(x => x.id === prevSelectedId);
+        if (prevId) {
+          const prev = groupTypes.find(x => x.id === prevId);
           if (prev) selectGroupType(prev);
         }
       } catch (e) {
@@ -766,12 +788,49 @@
 
     document.getElementById('btn-add-gt').addEventListener('click', () => openGtModal(null));
 
+    /**
+     * 交换两个项目组分类的 sort_order（实现 ↑↓ 排序）
+     * @param {string} id        被操作的分类 id
+     * @param {'up'|'down'} dir  方向
+     */
+    async function swapGtSortOrder(id, dir) {
+      const sorted = groupTypes.slice().sort((a, b) =>
+        (a.sortOrder || a.sort_order || 0) - (b.sortOrder || b.sort_order || 0)
+      );
+      const idx = sorted.findIndex(t => t.id === id);
+      const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= sorted.length) return;
+      const a = sorted[idx];
+      const b = sorted[targetIdx];
+      const aSort = a.sortOrder ?? a.sort_order ?? 0;
+      const bSort = b.sortOrder ?? b.sort_order ?? 0;
+      try {
+        // 并发更新两条记录的 sortOrder
+        await Promise.all([
+          window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(a.id)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: a.code, nameZh: a.nameZh || a.name_zh, sortOrder: bSort }),
+          }, '排序失败'),
+          window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(b.id)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ code: b.code, nameZh: b.nameZh || b.name_zh, sortOrder: aSort }),
+          }, '排序失败'),
+        ]);
+        await loadGroupTypes();
+        // 保持选中项
+        if (selectedGt) {
+          const curr = groupTypes.find(t => t.id === selectedGt.id);
+          if (curr) { selectedGt = curr; renderGtList(); }
+        }
+      } catch (e2) { toast(e2.message, 'error'); }
+    }
+
     // ── 右侧：服务类型 ──
 
-    /** 加载当前选中项目组的服务类型 */
+    /** 加载当前选中项目组的服务类型列表 */
     async function loadItemTypes(projectGroupId) {
-      const tbody = document.getElementById('tbody-it');
-      tbody.innerHTML = '<tr><td colspan="4" class="bi-loading">加载中…</td></tr>';
+      const container = document.getElementById('it-list-body');
+      container.innerHTML = '<div class="bi-loading">加载中…</div>';
       try {
         itemTypes = await window.AppUtils.fetchJson(
           `/api/quote-item-types?project_group_id=${encodeURIComponent(projectGroupId)}`,
@@ -779,35 +838,44 @@
         );
         renderItemTypes();
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="4" style="color:#a14a39;padding:16px">${esc(e.message)}</td></tr>`;
+        container.innerHTML = `<div class="it-empty"><div class="it-empty-primary" style="color:#a14a39">${esc(e.message)}</div></div>`;
       }
     }
 
-    /** 渲染右侧服务类型列表 */
+    /** 渲染右侧服务类型 flex 行列表（含 ↑↓ 编辑 停用/启用 按钮）*/
     function renderItemTypes() {
-      const tbody = document.getElementById('tbody-it');
+      const container = document.getElementById('it-list-body');
       if (!itemTypes.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="bi-empty">暂无服务类型，点击「+ 新增服务类型」添加。</td></tr>';
+        container.innerHTML = `<div class="it-empty">
+          <div class="it-empty-primary">暂无服务类型</div>
+          <div class="it-empty-hint">点击右上角「+ 新增服务类型」添加</div>
+        </div>`;
         return;
       }
-      tbody.innerHTML = itemTypes
-        .slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-        .map(t => {
-          const statusBadge = t.isActive !== false
-            ? '<span class="badge badge-on"><span class="badge-dot"></span>启用</span>'
-            : '<span class="badge badge-off"><span class="badge-dot"></span>停用</span>';
-          const toggleLabel = t.isActive !== false ? '停用' : '启用';
-          const toggleCls   = t.isActive !== false ? 'btn-sm danger' : 'btn-sm primary';
-          return `<tr>
-            <td class="cell-name">${esc(t.nameZh || '')}</td>
-            <td class="cell-sec">${t.sortOrder ?? 0}</td>
-            <td>${statusBadge}</td>
-            <td>
-              <button class="btn-sm it-edit-btn it-action-btn" data-it-edit="${esc(t.id)}">编辑</button>
-              <button class="${toggleCls} it-toggle-btn it-action-btn" data-it-toggle="${esc(t.id)}" data-it-active="${t.isActive !== false ? 'false' : 'true'}">${toggleLabel}</button>
-            </td>
-          </tr>`;
-        }).join('');
+      const sorted = itemTypes.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      container.innerHTML = sorted.map((t, idx) => {
+        const statusBadge = t.isActive !== false
+          ? '<span class="badge badge-on"><span class="badge-dot"></span>启用</span>'
+          : '<span class="badge badge-off"><span class="badge-dot"></span>停用</span>';
+        // 第一项隐藏 ↑，最后一项隐藏 ↓
+        const upVis   = idx > 0                 ? '' : 'visibility:hidden';
+        const downVis = idx < sorted.length - 1 ? '' : 'visibility:hidden';
+        // 停用/启用按钮样式和行为
+        const toggleBtn = t.isActive !== false
+          ? `<button class="btn-it-stop it-action-btn" data-it-toggle="${esc(t.id)}" data-it-active="false">停用</button>`
+          : `<button class="btn-it-start it-action-btn" data-it-toggle="${esc(t.id)}" data-it-active="true">启用</button>`;
+        return `<div class="it-list-row">
+          <div class="it-col-name"><span class="it-name-text">${esc(t.nameZh || '')}</span></div>
+          <div class="it-col-sort"><span class="it-sort-num">${t.sortOrder ?? 0}</span></div>
+          <div class="it-col-status">${statusBadge}</div>
+          <div class="it-col-ops">
+            <button class="ico-btn it-action-btn" data-it-up="${esc(t.id)}" title="上移" style="${upVis}">↑</button>
+            <button class="ico-btn it-action-btn" data-it-down="${esc(t.id)}" title="下移" style="${downVis}">↓</button>
+            <button class="btn-it-edit it-action-btn" data-it-edit="${esc(t.id)}">编辑</button>
+            ${toggleBtn}
+          </div>
+        </div>`;
+      }).join('');
       refreshActionButtons();
     }
 
@@ -816,9 +884,9 @@
     function openItModal(type) {
       editingItId = type ? type.id : null;
       document.getElementById('modal-it-title').textContent = type ? '编辑服务类型' : '新增服务类型';
-      document.getElementById('it-name').value  = type ? (type.nameZh || '') : '';
+      document.getElementById('it-name').value        = type ? (type.nameZh || '') : '';
       document.getElementById('it-group-label').value = selectedGt ? (selectedGt.nameZh || selectedGt.name_zh || '') : '';
-      document.getElementById('it-sort').value  = type ? (type.sortOrder ?? 10) : 10;
+      document.getElementById('it-sort').value        = type ? (type.sortOrder ?? 10) : 10;
       setModalError('modal-it-err', '');
       document.getElementById('modal-it').classList.remove('hidden');
       document.getElementById('it-name').focus();
@@ -832,20 +900,17 @@
       if (!selectedGt) { setModalError('modal-it-err', '请先选择左侧分类。'); return; }
       const nameZh = document.getElementById('it-name').value.trim();
       if (!nameZh) { setModalError('modal-it-err', '服务类型名称不能为空。'); return; }
-
       const payload = {
         nameZh,
         project_group_id: selectedGt.id,
         sortOrder: Number(document.getElementById('it-sort').value || 0),
       };
-
       setSubmitting('modal-it-submit', true);
       try {
         const url    = editingItId ? `/api/quote-item-types/${encodeURIComponent(editingItId)}` : '/api/quote-item-types';
         const method = editingItId ? 'PUT' : 'POST';
         await window.AppUtils.fetchJson(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
+          method, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         }, '保存失败');
         document.getElementById('modal-it').classList.add('hidden');
@@ -860,21 +925,29 @@
 
     document.getElementById('btn-add-it').addEventListener('click', () => openItModal(null));
 
-    document.getElementById('tbody-it').addEventListener('click', async e => {
-      const editId = e.target.dataset.itEdit;
+    // 右侧行操作代理（编辑 / 停用启用 / 排序）
+    document.getElementById('it-list-body').addEventListener('click', async e => {
+      // ── 上移 ──
+      const upId = e.target.closest('[data-it-up]')?.dataset.itUp;
+      if (upId) { await swapItSortOrder(upId, 'up'); return; }
+      // ── 下移 ──
+      const downId = e.target.closest('[data-it-down]')?.dataset.itDown;
+      if (downId) { await swapItSortOrder(downId, 'down'); return; }
+      // ── 编辑 ──
+      const editId = e.target.closest('[data-it-edit]')?.dataset.itEdit;
       if (editId) {
         const t = itemTypes.find(x => x.id === editId);
         if (t) openItModal(t);
         return;
       }
-      const toggleId = e.target.dataset.itToggle;
+      // ── 停用 / 启用 ──
+      const toggleId = e.target.closest('[data-it-toggle]')?.dataset.itToggle;
       if (toggleId) {
         const newActive = e.target.dataset.itActive === 'true';
         e.target.disabled = true;
         try {
           await window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(toggleId)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ isActive: newActive }),
           }, '操作失败');
           toast(newActive ? '已启用。' : '已停用。', 'success');
@@ -886,13 +959,41 @@
       }
     });
 
+    /**
+     * 交换两条服务类型的 sort_order（实现 ↑↓ 排序）
+     * @param {string} id        被操作的记录 id
+     * @param {'up'|'down'} dir  方向
+     */
+    async function swapItSortOrder(id, dir) {
+      const sorted = itemTypes.slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+      const idx = sorted.findIndex(t => t.id === id);
+      const targetIdx = dir === 'up' ? idx - 1 : idx + 1;
+      if (targetIdx < 0 || targetIdx >= sorted.length) return;
+      const a = sorted[idx];
+      const b = sorted[targetIdx];
+      try {
+        // 并发更新两条记录的 sortOrder
+        await Promise.all([
+          window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(a.id)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nameZh: a.nameZh, sortOrder: b.sortOrder ?? 0 }),
+          }, '排序失败'),
+          window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(b.id)}`, {
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nameZh: b.nameZh, sortOrder: a.sortOrder ?? 0 }),
+          }, '排序失败'),
+        ]);
+        if (selectedGt) await loadItemTypes(selectedGt.id);
+      } catch (e2) { toast(e2.message, 'error'); }
+    }
 
-    // ════════ Tab 3：供应商价格库 ════════
 
-    let categories  = [];
-    let selectedCat = null;
-    let catItems    = [];
-    let suppliers   = [];
+    // ════════ Tab 2：供应商价格库 ════════
+
+    let categories   = [];
+    let selectedCat  = null;
+    let catItems     = [];
+    let suppliers    = [];
     let editingCatId = null;
     let editingScId  = null;
 
@@ -918,14 +1019,14 @@
           opt.textContent = s.name || s.nameEn || s.id;
           sel.appendChild(opt);
         });
-      } catch (_) { /* 不阻塞 */ }
+      } catch (_) { /* 不阻塞主流程 */ }
     }
 
     function renderCategories() {
-      const canEdit = can('supplier_catalog.edit');
+      const canEdit  = can('supplier_catalog.edit');
       const container = document.getElementById('sc-cat-list');
       if (!categories.length) {
-        container.innerHTML = '<div class="bi-empty">暂无分类</div>';
+        container.innerHTML = '<div class="bi-loading" style="color:#bbb">暂无分类</div>';
         return;
       }
       container.innerHTML = categories
@@ -935,14 +1036,14 @@
           const selected = selectedCat && selectedCat.id === c.id;
           const editIcon = canEdit
             ? `<button class="ico-btn" data-cat-edit="${esc(c.id)}" title="编辑分类">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                   <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                   <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
                 </svg>
               </button>` : '';
           const stopIcon = canEdit
             ? `<button class="ico-btn danger" data-cat-stop="${esc(c.id)}" title="停用分类">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
                   <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
                 </svg>
               </button>` : '';
@@ -977,9 +1078,9 @@
 
     function renderCatItems() {
       const canEdit = can('supplier_catalog.edit');
-      const tbody = document.getElementById('tbody-sci');
+      const tbody   = document.getElementById('tbody-sci');
       if (!catItems.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="bi-empty">该分类暂无条目。</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="bi-loading" style="color:#bbb">该分类暂无条目。</td></tr>';
         return;
       }
       tbody.innerHTML = catItems.map(item => {
@@ -1024,12 +1125,10 @@
             selectedCat = null;
             document.getElementById('sc-right-title').textContent = '请选择左侧分类';
             document.getElementById('tbody-sci').innerHTML =
-              '<tr><td colspan="6" class="bi-empty">← 选择左侧分类查看条目</td></tr>';
+              '<tr><td colspan="6" class="bi-loading" style="color:#bbb">← 选择左侧分类查看条目</td></tr>';
           }
           await loadCategories();
-        } catch (e2) {
-          toast(e2.message, 'error');
-        }
+        } catch (e2) { toast(e2.message, 'error'); }
         return;
       }
       const selId = e.target.closest('[data-cat-select]')?.dataset.catSelect;
@@ -1055,10 +1154,7 @@
             { method: 'DELETE' }, '停用失败');
           toast('条目已停用。', 'success');
           if (selectedCat) await loadCatItems(selectedCat.code);
-        } catch (e2) {
-          toast(e2.message, 'error');
-          e.target.disabled = false;
-        }
+        } catch (e2) { toast(e2.message, 'error'); e.target.disabled = false; }
         return;
       }
       const startId = e.target.dataset.sciStart;
@@ -1068,16 +1164,12 @@
         e.target.disabled = true;
         try {
           await window.AppUtils.fetchJson(`/api/supplier-items/${encodeURIComponent(startId)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
+            method: 'PUT', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ ...item, isActive: true }),
           }, '启用失败');
           toast('条目已启用。', 'success');
           if (selectedCat) await loadCatItems(selectedCat.code);
-        } catch (e2) {
-          toast(e2.message, 'error');
-          e.target.disabled = false;
-        }
+        } catch (e2) { toast(e2.message, 'error'); e.target.disabled = false; }
       }
     });
 
@@ -1103,18 +1195,15 @@
     document.getElementById('modal-cat-submit').addEventListener('click', async () => {
       const nameZh = document.getElementById('cat-name').value.trim();
       if (!nameZh) { setModalError('modal-cat-err', '中文名称不能为空。'); return; }
-
       const code = editingCatId
         ? (categories.find(x => x.id === editingCatId)?.code || '')
         : 'cat_' + Date.now();
-
       setSubmitting('modal-cat-submit', true);
       try {
         const url    = editingCatId ? `/api/supplier-categories/${encodeURIComponent(editingCatId)}` : '/api/supplier-categories';
         const method = editingCatId ? 'PUT' : 'POST';
         await window.AppUtils.fetchJson(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
+          method, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, nameZh, sortOrder: Number(document.getElementById('cat-sort').value || 0) }),
         }, '保存失败');
         document.getElementById('modal-cat').classList.add('hidden');
@@ -1155,7 +1244,6 @@
       const unit   = document.getElementById('sci-unit').value.trim();
       if (!nameZh) { setModalError('modal-sci-err', '中文名称不能为空。'); return; }
       if (!unit)   { setModalError('modal-sci-err', '单位不能为空。'); return; }
-
       const payload = {
         nameZh,
         nameEn:     document.getElementById('sci-name-en').value.trim(),
@@ -1167,14 +1255,12 @@
         isActive:   document.getElementById('sci-active').checked,
         category:   selectedCat.code,
       };
-
       setSubmitting('modal-sci-submit', true);
       try {
         const url    = editingScId ? `/api/supplier-items/${encodeURIComponent(editingScId)}` : '/api/supplier-items';
         const method = editingScId ? 'PUT' : 'POST';
         await window.AppUtils.fetchJson(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
+          method, headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(payload),
         }, '保存失败');
         document.getElementById('modal-sci').classList.add('hidden');
@@ -1188,7 +1274,7 @@
     });
 
 
-    // ════════ Tab 4：报价模板 ════════
+    // ════════ Tab 3：报价模板 ════════
 
     const PRICING_MODE_LABELS = {
       standard:      '标准差旅报价',
@@ -1197,7 +1283,7 @@
 
     async function loadTemplates() {
       if (!can('standard_quote.view')) {
-        document.getElementById('tpl-grid').innerHTML = '<div class="bi-empty">您没有查看报价模板的权限。</div>';
+        document.getElementById('tpl-grid').innerHTML = '<div class="bi-loading" style="color:#bbb">您没有查看报价模板的权限。</div>';
         return;
       }
       try {
@@ -1212,7 +1298,7 @@
     function renderTemplates(list) {
       const grid = document.getElementById('tpl-grid');
       if (!list.length) {
-        grid.innerHTML = '<div class="bi-empty">暂无模板，点击「新增」开始创建。</div>';
+        grid.innerHTML = '<div class="bi-loading" style="color:#bbb">暂无模板，点击「新增」开始创建。</div>';
         return;
       }
       grid.innerHTML = list.map(t => {
@@ -1229,7 +1315,7 @@
 
     // ════════ 权限 & 初始化 ════════
 
-    /** 刷新行内操作按钮的可见状态（无条件渲染后调用） */
+    /** 刷新行内操作按钮可见状态（渲染完毕后调用，确保 auth 就绪前也能正确显隐）*/
     function refreshActionButtons() {
       const canType = canEditTypes();
       const display = canType ? '' : 'none';
@@ -1248,12 +1334,14 @@
       refreshActionButtons();
     }
 
+    // Modal 点击背景关闭
     ['modal-it', 'modal-gt', 'modal-cat', 'modal-sci'].forEach(id => {
       document.getElementById(id).addEventListener('click', e => {
         if (e.target === e.currentTarget) e.currentTarget.classList.add('hidden');
       });
     });
 
+    // ESC 关闭所有 Modal
     document.addEventListener('keydown', e => {
       if (e.key !== 'Escape') return;
       ['modal-it', 'modal-gt', 'modal-cat', 'modal-sci'].forEach(id => {
@@ -1266,6 +1354,7 @@
       activateTab(getActiveTab());
     }
 
+    // auth 就绪后重新渲染已加载的 Tab
     document.addEventListener('authReady', () => {
       applyPermissions();
       if (loadedTabs.has('group-types'))      { renderGtList(); renderItemTypes(); }
