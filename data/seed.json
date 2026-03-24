@@ -1313,5 +1313,37 @@
       "notes": "",
       "isActive": true
     }
+  ],
+  "serviceCatalogCandidates": [
+    {
+      "id": "SCC-1774345733880",
+      "projectGroupCode": "event",
+      "serviceTypeCode": "catalog_item",
+      "serviceName": "Test Service",
+      "specification": "Spec",
+      "unit": "?",
+      "costPrice": 123,
+      "supplierId": "",
+      "supplierCategory": "",
+      "sourceQuoteId": "",
+      "notes": "",
+      "status": "pending",
+      "createdAt": "2026-03-24T09:48:53.880Z"
+    },
+    {
+      "id": "SCC-1774345793821",
+      "projectGroupCode": "event",
+      "serviceTypeCode": "catalog_item",
+      "serviceName": "Test Service",
+      "specification": "Spec",
+      "unit": "?",
+      "costPrice": 123,
+      "supplierId": "",
+      "supplierCategory": "",
+      "sourceQuoteId": "",
+      "notes": "",
+      "status": "pending",
+      "createdAt": "2026-03-24T09:49:53.821Z"
+    }
   ]
 }

@@ -12,6 +12,7 @@ function mapRemoteProject(row) {
     currency: row.currency || "EUR",
     status: row.status || "draft",
     notes: row.notes || "",
+    projectGroup: row.project_group || "mixed",
     items: [],
   };
 }
@@ -74,6 +75,7 @@ async function saveRemoteProject(config, project) {
       currency: project.currency || "EUR",
       status: project.status || "draft",
       notes: project.notes || "",
+      project_group: project.projectGroup || "mixed",
       updated_at: new Date().toISOString(),
     }),
   });

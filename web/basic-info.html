@@ -326,57 +326,48 @@
 
       <!-- ── Tab 导航 ── -->
       <div class="bi-tabbar">
-        <a class="bi-tab" href="#item-types">报价行类型</a>
         <a class="bi-tab" href="#group-types">项目组类型</a>
         <a class="bi-tab" href="#supplier-catalog">供应商价格库</a>
         <a class="bi-tab" href="#templates">报价模板</a>
       </div>
 
-      <!-- ═══ Tab 1：报价行类型 ═══ -->
-      <div id="panel-item-types" class="bi-panel">
-        <div class="bi-panel-head">
-          <h2 class="bi-panel-title">报价行类型</h2>
-          <button class="btn-add" id="btn-add-it" style="display:none">+ 新增</button>
-        </div>
-        <div class="bi-table-wrap">
-          <table class="bi-table">
-            <thead>
-              <tr>
-                <th style="width:40%">中文名称</th>
-                <th style="width:25%">分组</th>
-                <th style="width:10%">排序</th>
-                <th style="width:12%">状态</th>
-                <th style="width:13%">操作</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-it">
-              <tr><td colspan="5" class="bi-loading">加载中…</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <!-- ═══ Tab 2：项目组类型 ═══ -->
+      <!-- ═══ Tab 1：项目组类型（左右分栏）═══ -->
       <div id="panel-group-types" class="bi-panel">
-        <div class="bi-panel-head">
-          <h2 class="bi-panel-title">项目组类型</h2>
-          <button class="btn-add" id="btn-add-gt" style="display:none">+ 新增</button>
-        </div>
-        <p class="bi-desc">项目型报价中的项目组分类，如：旅游接待、活动服务、综合项目。</p>
-        <div class="bi-table-wrap">
-          <table class="bi-table">
-            <thead>
-              <tr>
-                <th style="width:55%">中文名称</th>
-                <th style="width:12%">排序</th>
-                <th style="width:15%">状态</th>
-                <th style="width:18%">操作</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-gt">
-              <tr><td colspan="4" class="bi-loading">加载中…</td></tr>
-            </tbody>
-          </table>
+        <div class="sc-split">
+          <!-- 左侧：项目组分类列表 -->
+          <div class="sc-left">
+            <div class="sc-left-head">
+              <span>项目组分类</span>
+            </div>
+            <div class="sc-cat-list" id="gt-cat-list">
+              <div class="bi-loading">加载中…</div>
+            </div>
+            <div style="padding:10px 14px;border-top:1px solid #f0ede8">
+              <button class="btn-add-cat-txt" id="btn-add-gt" style="display:none">＋ 新增分类</button>
+            </div>
+          </div>
+          <!-- 右侧：该分组下的服务类型 -->
+          <div class="sc-right">
+            <div class="sc-right-head">
+              <h3 class="sc-right-title" id="gt-right-title">请选择左侧分类</h3>
+              <button class="btn-add" id="btn-add-it" style="display:none">+ 新增服务类型</button>
+            </div>
+            <div class="sc-right-body">
+              <table class="bi-table">
+                <thead>
+                  <tr>
+                    <th style="width:50%">服务类型名称</th>
+                    <th style="width:12%">排序</th>
+                    <th style="width:15%">状态</th>
+                    <th style="width:23%">操作</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-it">
+                  <tr><td colspan="4" class="bi-empty">← 选择左侧分类查看服务类型</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -433,33 +424,21 @@
   </div>
 
 
-  <!-- ═══ Modal 1：报价行类型 ═══ -->
+  <!-- ═══ Modal：服务类型（属于某项目组分类）═══ -->
   <div id="modal-it" class="modal-overlay hidden">
     <div class="modal-card">
-      <h3 class="modal-title" id="modal-it-title">新增报价行类型</h3>
+      <h3 class="modal-title" id="modal-it-title">新增服务类型</h3>
       <div class="modal-field">
-        <label>中文名称 <span style="color:var(--error-text)">*</span></label>
-        <input id="it-name" placeholder="例如：定制服务" />
+        <label>服务类型名称 <span style="color:var(--error-text)">*</span></label>
+        <input id="it-name" placeholder="例如：舞台搭建" />
       </div>
       <div class="modal-field">
-        <label>分组</label>
-        <select id="it-group">
-          <option value="accommodation">住宿</option>
-          <option value="transport">交通</option>
-          <option value="service">服务</option>
-          <option value="catalog">目录</option>
-          <option value="misc" selected>杂项</option>
-        </select>
+        <label>所属分组</label>
+        <input id="it-group-label" readonly style="background:#f5f5f5;color:#888;cursor:not-allowed" />
       </div>
       <div class="modal-field">
         <label>排序序号</label>
         <input id="it-sort" type="number" value="10" min="0" step="1" />
-      </div>
-      <div class="modal-field">
-        <label class="modal-checkbox-row">
-          <input type="checkbox" id="it-active" checked />
-          启用（在录入时可选）
-        </label>
       </div>
       <div id="modal-it-err" class="modal-error hidden"></div>
       <div class="modal-actions">
@@ -597,7 +576,7 @@
     }
 
     // ── Tab 路由 ──
-    const TAB_KEYS = ['item-types', 'group-types', 'supplier-catalog', 'templates'];
+    const TAB_KEYS = ['group-types', 'supplier-catalog', 'templates'];
     const loadedTabs = new Set();
 
     function getActiveTab() {
@@ -615,8 +594,7 @@
       });
       if (!loadedTabs.has(key)) {
         loadedTabs.add(key);
-        if (key === 'item-types')            loadItemTypes();
-        else if (key === 'group-types')      loadGroupTypes();
+        if (key === 'group-types')       loadGroupTypes();
         else if (key === 'supplier-catalog') loadCategories().then(loadSuppliers);
         else if (key === 'templates')        loadTemplates();
       }
@@ -625,179 +603,85 @@
     window.addEventListener('hashchange', () => activateTab(getActiveTab()));
 
 
-    // ════════ Tab 1：报价行类型 ════════
+    // ════════ Tab 1：项目组类型（左右分栏）════════
 
-    let itemTypes = [];
-    let editingItId = null;
+    let groupTypes  = [];      // 左侧：项目组分类列表
+    let itemTypes   = [];      // 右侧：当前选中分组的服务类型列表
+    let selectedGt  = null;    // 当前选中的项目组分类对象
+    let editingGtId = null;    // 正在编辑的项目组分类 id
+    let editingItId = null;    // 正在编辑的服务类型 id
 
-    async function loadItemTypes() {
-      try {
-        itemTypes = await window.AppUtils.fetchJson('/api/quote-item-types', null, '加载报价行类型失败');
-        renderItemTypes();
-      } catch (e) {
-        document.getElementById('tbody-it').innerHTML =
-          `<tr><td colspan="5" style="color:#a14a39;padding:16px">${esc(e.message)}</td></tr>`;
-      }
-    }
+    // ── 左侧：项目组分类 ──
 
-    function renderItemTypes() {
-      const canEdit = can('project_type.edit');
-      const tbody = document.getElementById('tbody-it');
-      if (!itemTypes.length) {
-        tbody.innerHTML = '<tr><td colspan="5" class="bi-empty">暂无类型，点击「新增」开始录入。</td></tr>';
-        return;
-      }
-      tbody.innerHTML = itemTypes
-        .slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
-        .map(t => {
-          const statusBadge = t.isActive !== false
-            ? '<span class="badge badge-on"><span class="badge-dot"></span>启用</span>'
-            : '<span class="badge badge-off"><span class="badge-dot"></span>停用</span>';
-          const sysBadge = t.isSystem ? '<span class="badge badge-sys">系统内置</span>' : '';
-          const editBtn   = canEdit ? `<button class="btn-sm" data-it-edit="${esc(t.id)}">编辑</button>` : '';
-          const toggleBtn = canEdit && !t.isSystem
-            ? (t.isActive !== false
-                ? `<button class="btn-sm danger" data-it-toggle="${esc(t.id)}" data-it-active="false">停用</button>`
-                : `<button class="btn-sm primary" data-it-toggle="${esc(t.id)}" data-it-active="true">启用</button>`)
-            : '';
-          return `<tr>
-            <td class="cell-name">${esc(t.nameZh)}${sysBadge}</td>
-            <td class="cell-sec">${esc(t.categoryGroup || '—')}</td>
-            <td class="cell-sec">${t.sortOrder ?? 0}</td>
-            <td>${statusBadge}</td>
-            <td>${editBtn}${toggleBtn}</td>
-          </tr>`;
-        }).join('');
-    }
-
-    function openItModal(type) {
-      editingItId = type ? type.id : null;
-      document.getElementById('modal-it-title').textContent = type ? '编辑报价行类型' : '新增报价行类型';
-      document.getElementById('it-name').value  = type ? (type.nameZh || '') : '';
-      document.getElementById('it-group').value = type ? (type.categoryGroup || 'misc') : 'misc';
-      document.getElementById('it-sort').value  = type ? (type.sortOrder ?? 10) : 10;
-      document.getElementById('it-active').checked = type ? (type.isActive !== false) : true;
-      setModalError('modal-it-err', '');
-      document.getElementById('modal-it').classList.remove('hidden');
-      document.getElementById('it-name').focus();
-    }
-
-    document.getElementById('modal-it-cancel').addEventListener('click', () => {
-      document.getElementById('modal-it').classList.add('hidden');
-    });
-
-    document.getElementById('modal-it-submit').addEventListener('click', async () => {
-      const nameZh = document.getElementById('it-name').value.trim();
-      if (!nameZh) { setModalError('modal-it-err', '中文名称不能为空。'); return; }
-
-      const code = editingItId
-        ? (itemTypes.find(x => x.id === editingItId)?.code || '')
-        : 'type_' + Date.now();
-
-      const payload = {
-        code,
-        nameZh,
-        categoryGroup: document.getElementById('it-group').value,
-        sortOrder: Number(document.getElementById('it-sort').value || 0),
-        isActive: document.getElementById('it-active').checked,
-      };
-
-      setSubmitting('modal-it-submit', true);
-      try {
-        const url    = editingItId ? `/api/quote-item-types/${encodeURIComponent(editingItId)}` : '/api/quote-item-types';
-        const method = editingItId ? 'PUT' : 'POST';
-        await window.AppUtils.fetchJson(url, {
-          method,
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }, '保存类型失败');
-        document.getElementById('modal-it').classList.add('hidden');
-        toast(editingItId ? '类型已更新。' : '类型已创建。', 'success');
-        await loadItemTypes();
-      } catch (e) {
-        setModalError('modal-it-err', e.message);
-      } finally {
-        setSubmitting('modal-it-submit', false);
-      }
-    });
-
-    document.getElementById('btn-add-it').addEventListener('click', () => openItModal(null));
-
-    document.getElementById('tbody-it').addEventListener('click', async e => {
-      const editId = e.target.dataset.itEdit;
-      if (editId) {
-        const t = itemTypes.find(x => x.id === editId);
-        if (t) openItModal(t);
-        return;
-      }
-      const toggleId = e.target.dataset.itToggle;
-      if (toggleId) {
-        const newActive = e.target.dataset.itActive === 'true';
-        const t = itemTypes.find(x => x.id === toggleId);
-        if (!t) return;
-        e.target.disabled = true;
-        try {
-          await window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(toggleId)}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ ...t, isActive: newActive }),
-          }, '操作失败');
-          toast(newActive ? '已启用。' : '已停用。', 'success');
-          await loadItemTypes();
-        } catch (e2) {
-          toast(e2.message, 'error');
-          e.target.disabled = false;
-        }
-      }
-    });
-
-
-    // ════════ Tab 2：项目组类型 ════════
-
-    let groupTypes = [];
-    let editingGtId = null;
-
+    /** 加载全部项目组分类，渲染左侧列表，默认选中第一项 */
     async function loadGroupTypes() {
       try {
         groupTypes = await window.AppUtils.fetchJson('/api/project-group-types', null, '加载项目组类型失败');
-        renderGroupTypes();
+        renderGtList();
+        if (groupTypes.length && !selectedGt) selectGroupType(groupTypes[0]);
       } catch (e) {
-        document.getElementById('tbody-gt').innerHTML =
-          `<tr><td colspan="4" style="color:#a14a39;padding:16px">${esc(e.message)}</td></tr>`;
+        document.getElementById('gt-cat-list').innerHTML =
+          `<div style="padding:16px;color:#a14a39;font-size:13px">${esc(e.message)}</div>`;
       }
     }
 
-    function renderGroupTypes() {
-      const canEdit = can('project_type.edit');
-      const tbody = document.getElementById('tbody-gt');
+    /** 渲染左侧项目组分类列表 */
+    function renderGtList() {
+      const canEdit  = can('project_type.edit') || can('project_type.create');
+      const container = document.getElementById('gt-cat-list');
       if (!groupTypes.length) {
-        tbody.innerHTML = '<tr><td colspan="4" class="bi-empty">暂无类型，点击「新增」开始录入。</td></tr>';
+        container.innerHTML = '<div class="bi-empty">暂无分类</div>';
         return;
       }
-      tbody.innerHTML = groupTypes
+      container.innerHTML = groupTypes
         .slice().sort((a, b) => (a.sortOrder || a.sort_order || 0) - (b.sortOrder || b.sort_order || 0))
         .map(t => {
-          const nameZh    = t.nameZh || t.name_zh || '';
-          const sortOrder = t.sortOrder ?? t.sort_order ?? 0;
-          const isActive  = t.isActive !== false && t.is_active !== false;
-          const statusBadge = isActive
-            ? '<span class="badge badge-on"><span class="badge-dot"></span>启用</span>'
-            : '<span class="badge badge-off"><span class="badge-dot"></span>停用</span>';
-          const editBtn = canEdit ? `<button class="btn-sm" data-gt-edit="${esc(t.id)}">编辑</button>` : '';
-          const stopBtn = canEdit && isActive
-            ? `<button class="btn-sm danger" data-gt-stop="${esc(t.id)}">停用</button>` : '';
-          return `<tr>
-            <td class="cell-name">${esc(nameZh)}</td>
-            <td class="cell-sec">${sortOrder}</td>
-            <td>${statusBadge}</td>
-            <td>${editBtn}${stopBtn}</td>
-          </tr>`;
+          const nameZh   = t.nameZh || t.name_zh || t.code;
+          const selected = selectedGt && selectedGt.id === t.id;
+          const editIcon = canEdit
+            ? `<button class="ico-btn" data-gt-edit="${esc(t.id)}" title="编辑分类">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                  <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                </svg>
+              </button>` : '';
+          return `<div class="sc-cat-item${selected ? ' is-selected' : ''}" data-gt-select="${esc(t.id)}">
+            <span class="sc-cat-name">${esc(nameZh)}</span>
+            <span class="sc-cat-actions">${editIcon}</span>
+          </div>`;
         }).join('');
     }
 
+    /** 选中一个项目组分类，加载其服务类型 */
+    function selectGroupType(gt) {
+      selectedGt = gt;
+      const nameZh = gt.nameZh || gt.name_zh || gt.code;
+      document.getElementById('gt-right-title').textContent = nameZh + ' 的服务类型';
+      renderGtList();
+      loadItemTypes(gt.id);
+    }
+
+    document.getElementById('gt-cat-list').addEventListener('click', e => {
+      // 编辑按钮
+      const editId = e.target.closest('[data-gt-edit]')?.dataset.gtEdit;
+      if (editId) {
+        const t = groupTypes.find(x => x.id === editId);
+        if (t) openGtModal(t);
+        return;
+      }
+      // 选中行
+      const selId = e.target.closest('[data-gt-select]')?.dataset.gtSelect;
+      if (selId && !e.target.closest('button')) {
+        const t = groupTypes.find(x => x.id === selId);
+        if (t) selectGroupType(t);
+      }
+    });
+
+    // ── 项目组分类弹窗 ──
+
     function openGtModal(type) {
       editingGtId = type ? type.id : null;
-      document.getElementById('modal-gt-title').textContent = type ? '编辑项目组类型' : '新增项目组类型';
+      document.getElementById('modal-gt-title').textContent = type ? '编辑项目组分类' : '新增项目组分类';
       document.getElementById('gt-name').value = type ? (type.nameZh || type.name_zh || '') : '';
       document.getElementById('gt-sort').value = type ? (type.sortOrder ?? type.sort_order ?? 10) : 10;
       setModalError('modal-gt-err', '');
@@ -817,12 +701,6 @@
         ? (groupTypes.find(x => x.id === editingGtId)?.code || '')
         : 'type_' + Date.now();
 
-      const payload = {
-        code,
-        nameZh,
-        sortOrder: Number(document.getElementById('gt-sort').value || 0),
-      };
-
       setSubmitting('modal-gt-submit', true);
       try {
         const url    = editingGtId ? `/api/project-group-types/${encodeURIComponent(editingGtId)}` : '/api/project-group-types';
@@ -830,11 +708,17 @@
         await window.AppUtils.fetchJson(url, {
           method,
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        }, '保存类型失败');
+          body: JSON.stringify({ code, nameZh, sortOrder: Number(document.getElementById('gt-sort').value || 0) }),
+        }, '保存失败');
         document.getElementById('modal-gt').classList.add('hidden');
-        toast(editingGtId ? '类型已更新。' : '类型已创建。', 'success');
+        toast(editingGtId ? '分类已更新。' : '分类已创建。', 'success');
+        const prevSelectedId = selectedGt?.id;
         await loadGroupTypes();
+        // 保持原来的选中状态
+        if (prevSelectedId) {
+          const prev = groupTypes.find(x => x.id === prevSelectedId);
+          if (prev) selectGroupType(prev);
+        }
       } catch (e) {
         setModalError('modal-gt-err', e.message);
       } finally {
@@ -844,22 +728,120 @@
 
     document.getElementById('btn-add-gt').addEventListener('click', () => openGtModal(null));
 
-    document.getElementById('tbody-gt').addEventListener('click', async e => {
-      const editId = e.target.dataset.gtEdit;
-      if (editId) {
-        const t = groupTypes.find(x => x.id === editId);
-        if (t) openGtModal(t);
+    // ── 右侧：服务类型 ──
+
+    /** 加载当前选中项目组的服务类型 */
+    async function loadItemTypes(projectGroupId) {
+      const tbody = document.getElementById('tbody-it');
+      tbody.innerHTML = '<tr><td colspan="4" class="bi-loading">加载中…</td></tr>';
+      try {
+        itemTypes = await window.AppUtils.fetchJson(
+          `/api/quote-item-types?project_group_id=${encodeURIComponent(projectGroupId)}`,
+          null, '加载服务类型失败'
+        );
+        renderItemTypes();
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="4" style="color:#a14a39;padding:16px">${esc(e.message)}</td></tr>`;
+      }
+    }
+
+    /** 渲染右侧服务类型列表 */
+    function renderItemTypes() {
+      const canEdit = can('project_type.edit') || can('project_type.create');
+      const tbody = document.getElementById('tbody-it');
+      if (!itemTypes.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="bi-empty">暂无服务类型，点击「+ 新增服务类型」添加。</td></tr>';
         return;
       }
-      const stopId = e.target.dataset.gtStop;
-      if (stopId) {
-        if (!confirm('确定停用该类型吗？停用后将不再出现在新建选项中。')) return;
+      tbody.innerHTML = itemTypes
+        .slice().sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))
+        .map(t => {
+          const statusBadge = t.isActive !== false
+            ? '<span class="badge badge-on"><span class="badge-dot"></span>启用</span>'
+            : '<span class="badge badge-off"><span class="badge-dot"></span>停用</span>';
+          const editBtn   = canEdit ? `<button class="btn-sm" data-it-edit="${esc(t.id)}">编辑</button>` : '';
+          const toggleBtn = canEdit
+            ? (t.isActive !== false
+                ? `<button class="btn-sm danger" data-it-toggle="${esc(t.id)}" data-it-active="false">停用</button>`
+                : `<button class="btn-sm primary" data-it-toggle="${esc(t.id)}" data-it-active="true">启用</button>`)
+            : '';
+          return `<tr>
+            <td class="cell-name">${esc(t.nameZh || '')}</td>
+            <td class="cell-sec">${t.sortOrder ?? 0}</td>
+            <td>${statusBadge}</td>
+            <td>${editBtn}${toggleBtn}</td>
+          </tr>`;
+        }).join('');
+    }
+
+    // ── 服务类型弹窗 ──
+
+    function openItModal(type) {
+      editingItId = type ? type.id : null;
+      document.getElementById('modal-it-title').textContent = type ? '编辑服务类型' : '新增服务类型';
+      document.getElementById('it-name').value  = type ? (type.nameZh || '') : '';
+      document.getElementById('it-group-label').value = selectedGt ? (selectedGt.nameZh || selectedGt.name_zh || '') : '';
+      document.getElementById('it-sort').value  = type ? (type.sortOrder ?? 10) : 10;
+      setModalError('modal-it-err', '');
+      document.getElementById('modal-it').classList.remove('hidden');
+      document.getElementById('it-name').focus();
+    }
+
+    document.getElementById('modal-it-cancel').addEventListener('click', () => {
+      document.getElementById('modal-it').classList.add('hidden');
+    });
+
+    document.getElementById('modal-it-submit').addEventListener('click', async () => {
+      if (!selectedGt) { setModalError('modal-it-err', '请先选择左侧分类。'); return; }
+      const nameZh = document.getElementById('it-name').value.trim();
+      if (!nameZh) { setModalError('modal-it-err', '服务类型名称不能为空。'); return; }
+
+      const payload = {
+        nameZh,
+        project_group_id: selectedGt.id,
+        sortOrder: Number(document.getElementById('it-sort').value || 0),
+      };
+
+      setSubmitting('modal-it-submit', true);
+      try {
+        const url    = editingItId ? `/api/quote-item-types/${encodeURIComponent(editingItId)}` : '/api/quote-item-types';
+        const method = editingItId ? 'PUT' : 'POST';
+        await window.AppUtils.fetchJson(url, {
+          method,
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }, '保存失败');
+        document.getElementById('modal-it').classList.add('hidden');
+        toast(editingItId ? '服务类型已更新。' : '服务类型已创建。', 'success');
+        await loadItemTypes(selectedGt.id);
+      } catch (e) {
+        setModalError('modal-it-err', e.message);
+      } finally {
+        setSubmitting('modal-it-submit', false);
+      }
+    });
+
+    document.getElementById('btn-add-it').addEventListener('click', () => openItModal(null));
+
+    document.getElementById('tbody-it').addEventListener('click', async e => {
+      const editId = e.target.dataset.itEdit;
+      if (editId) {
+        const t = itemTypes.find(x => x.id === editId);
+        if (t) openItModal(t);
+        return;
+      }
+      const toggleId = e.target.dataset.itToggle;
+      if (toggleId) {
+        const newActive = e.target.dataset.itActive === 'true';
         e.target.disabled = true;
         try {
-          await window.AppUtils.fetchJson(`/api/project-group-types/${encodeURIComponent(stopId)}`,
-            { method: 'DELETE' }, '停用失败');
-          toast('已停用。', 'success');
-          await loadGroupTypes();
+          await window.AppUtils.fetchJson(`/api/quote-item-types/${encodeURIComponent(toggleId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ isActive: newActive }),
+          }, '操作失败');
+          toast(newActive ? '已启用。' : '已停用。', 'success');
+          if (selectedGt) await loadItemTypes(selectedGt.id);
         } catch (e2) {
           toast(e2.message, 'error');
           e.target.disabled = false;
@@ -1213,7 +1195,7 @@
     function applyPermissions() {
       const canType    = can('project_type.edit') || can('project_type.create');
       const canCatalog = can('supplier_catalog.edit') || can('supplier_catalog.create');
-      document.getElementById('btn-add-it').style.display  = canType    ? '' : 'none';
+      document.getElementById('btn-add-it').style.display  = (canType && selectedGt) ? '' : 'none';
       document.getElementById('btn-add-gt').style.display  = canType    ? '' : 'none';
       document.getElementById('btn-add-cat').style.display = canCatalog ? '' : 'none';
       document.getElementById('btn-add-sci').style.display = canCatalog ? '' : 'none';
@@ -1239,8 +1221,7 @@
 
     document.addEventListener('authReady', () => {
       applyPermissions();
-      if (loadedTabs.has('item-types'))       renderItemTypes();
-      if (loadedTabs.has('group-types'))      renderGroupTypes();
+      if (loadedTabs.has('group-types'))      { renderGtList(); renderItemTypes(); }
       if (loadedTabs.has('supplier-catalog')) renderCategories();
     });
 
