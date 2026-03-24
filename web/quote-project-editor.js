@@ -15,6 +15,10 @@ window.ProjectEditor = (function () {
   let _supplierItems = [];
   let _supplierMap   = {};   // id → supplier name
   let _catalogLoaded = false;
+  let _catalogPromise = null;
+  let _masterDataPromise = null;
+  let _dynamicGroupTypes = [];
+  let _dynamicItemTypes = [];
 
   // ── 明细类型（全集，travel + event + misc，作为 mixed 与兜底使用）────────────
   const ITEM_TYPES = [
@@ -66,11 +70,22 @@ window.ProjectEditor = (function () {
     mixed: ITEM_TYPES,
   };
 
-  function _getAllowedTypes(groupEl) {
-    const groupType = groupEl.querySelector("[name='projectType']")?.value || "event";
-    return GROUP_TYPE_ITEM_TYPES[groupType] || ITEM_TYPES;
+  function _normalizeCodeList(values) {
+    const source = Array.isArray(values) ? values : (values ? [values] : []);
+    return source.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
   }
 
+  function _getAllowedTypes(groupEl) {
+    const groupType = groupEl.querySelector("[name='projectType']")?.value || "event";
+    if (_dynamicItemTypes.length > 0) {
+      const filtered = _dynamicItemTypes.filter((item) => {
+        const groups = _normalizeCodeList(item.projectGroupCodes || item.project_group_codes);
+        return groupType === "mixed" || groups.length === 0 || groups.includes(groupType) || groups.includes("mixed");
+      }).map((item) => ({ value: item.code, label: item.nameZh || item.name_zh || item.code }));
+      if (filtered.length > 0) return filtered;
+    }
+    return GROUP_TYPE_ITEM_TYPES[groupType] || ITEM_TYPES;
+  }
   const SPEC_LABELS = {
     hotel:             "房型",
     transport:         "车型/路线",
@@ -212,6 +227,220 @@ window.ProjectEditor = (function () {
   }
 
   // ── 明细行渲染 ──────────────────────────────────────────────────────────────
+  function _autoSizeRemarks(textarea) {
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    textarea.style.height = Math.min(textarea.scrollHeight, 72) + "px";
+    textarea.style.overflowY = textarea.scrollHeight > 72 ? "auto" : "hidden";
+  }
+
+  function _ensureSupplierCatalogLoaded() {
+    if (_catalogPromise) return _catalogPromise;
+    _catalogPromise = Promise.all([
+      window.AppUtils.fetchJson("/api/supplier-items", null, "\u4ef7\u683c\u5e93\u52a0\u8f7d\u5931\u8d25"),
+      window.AppUtils.fetchJson("/api/suppliers", null, "\u4f9b\u5e94\u5546\u5217\u8868\u52a0\u8f7d\u5931\u8d25"),
+    ]).then(([itemsResult, suppliersResult]) => {
+      _supplierItems = Array.isArray(itemsResult) ? itemsResult : (itemsResult.items || []);
+      const suppliers = Array.isArray(suppliersResult) ? suppliersResult : (suppliersResult.suppliers || []);
+      _supplierMap = {};
+      suppliers.forEach((supplier) => { _supplierMap[supplier.id] = supplier.name; });
+      _catalogLoaded = true;
+      return _supplierItems;
+    }).catch(() => {
+      _supplierItems = [];
+      _supplierMap = {};
+      _catalogLoaded = true;
+      return _supplierItems;
+    });
+    return _catalogPromise;
+  }
+
+  function _getSuggestionCategories(typeCode) {
+    const map = {
+      catalog_item: ["av_equipment", "stage_structure", "print_display", "decoration", "furniture", "personnel", "logistics", "management"],
+      av_equipment: ["av_equipment"],
+      print_display: ["print_display", "stage_structure"],
+      decoration: ["decoration", "furniture"],
+      personnel: ["personnel"],
+      logistics: ["logistics"],
+      guide_translation: ["personnel"],
+      driver_guide: ["personnel"],
+    };
+    return map[typeCode] || [];
+  }
+
+  function _filterServiceSuggestions(tr, query) {
+    const keyword = String(query || "").trim().toLowerCase();
+    if (!keyword) return [];
+    const itemType = tr.querySelector("[name='itemType']")?.value || "misc";
+    const allowedCategories = _getSuggestionCategories(itemType);
+    const matched = _supplierItems.filter((item) => {
+      const haystack = [item.nameZh, item.nameEn, item.spec, item.unit, item.category, _supplierMap[item.supplierId]].join(" ").toLowerCase();
+      return haystack.includes(keyword);
+    });
+    if (!allowedCategories.length) return matched.slice(0, 6);
+    const filtered = matched.filter((item) => allowedCategories.includes(String(item.category || "").toLowerCase()));
+    return (filtered.length > 0 ? filtered : matched).slice(0, 6);
+  }
+
+  function _hideServiceSuggestions(tr) {
+    const box = tr?.querySelector(".service-suggestion-box");
+    if (!box) return;
+    box.hidden = true;
+    box.innerHTML = "";
+  }
+
+  async function _saveServiceCandidate(tr, groupEl, query) {
+    const payload = {
+      projectGroupCode: groupEl.querySelector("[name='projectType']")?.value || "",
+      serviceTypeCode: tr.querySelector("[name='itemType']")?.value || "",
+      serviceName: String(query || tr.querySelector("[name='itemName']")?.value || "").trim(),
+      specification: tr.querySelector("[name='specification']")?.value || "",
+      unit: tr.querySelector("[name='unit']")?.value || "",
+      costPrice: Number(tr.querySelector("[name='costUnitPrice']")?.value || 0),
+      supplierId: tr.querySelector("[name='supplierId']")?.value || "",
+      notes: tr.querySelector("[name='remarks']")?.value || "",
+    };
+    if (!payload.serviceName) return;
+    if (!window.confirm("\u672a\u627e\u5230\u5339\u914d\u6761\u76ee\uff0c\u662f\u5426\u5c06\u5f53\u524d\u670d\u52a1\u4fdd\u5b58\u4e3a\u5f85\u6574\u7406\u5019\u9009\uff1f")) return;
+    await window.AppUtils.fetchJson("/api/service-catalog-candidates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    }, "\u4fdd\u5b58\u5f85\u6574\u7406\u5019\u9009\u5931\u8d25");
+    _hideServiceSuggestions(tr);
+    window.alert("\u5df2\u4fdd\u5b58\u4e3a\u5f85\u6574\u7406\u5019\u9009\u6761\u76ee\u3002");
+  }
+
+  function _renderServiceSuggestions(tr, groupEl) {
+    const input = tr.querySelector("[name='itemName']");
+    const box = tr.querySelector(".service-suggestion-box");
+    const query = String(input?.value || "").trim();
+    if (!input || !box || !query) {
+      _hideServiceSuggestions(tr);
+      return;
+    }
+    const matches = _filterServiceSuggestions(tr, query);
+    if (!matches.length) {
+      box.hidden = false;
+      box.innerHTML = '<button type="button" class="service-candidate-action">\u672a\u627e\u5230\u5339\u914d\u6761\u76ee\uff0c\u4fdd\u5b58\u4e3a\u5f85\u6574\u7406\u5019\u9009</button>';
+      const action = box.querySelector(".service-candidate-action");
+      if (action) {
+        action.addEventListener("click", () => {
+          _saveServiceCandidate(tr, groupEl, query).catch((error) => window.alert(error.message || "\u4fdd\u5b58\u5f85\u6574\u7406\u5019\u9009\u5931\u8d25"));
+        });
+        action.addEventListener("keydown", (event) => {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            input.focus();
+            _hideServiceSuggestions(tr);
+          }
+        });
+      }
+      return;
+    }
+    box.hidden = false;
+    box.innerHTML = matches.map((item) => {
+      const supplierName = _supplierMap[item.supplierId] || "";
+      const meta = [item.spec || "", item.unit || "", supplierName || "", window.AppUtils.formatCurrency(item.costPrice || 0, _currency)].filter(Boolean).join(" \u00b7 ");
+      return '<button type="button" class="service-suggestion-item" data-id="' + esc(String(item.id || "")) + '"><span class="service-suggestion-main">' + esc(item.nameZh || item.nameEn || "") + '</span><span>' + esc(meta) + '</span></button>';
+    }).join("");
+    box.querySelectorAll(".service-suggestion-item").forEach((button, index) => {
+      button.addEventListener("click", () => {
+        _fillFromCatalog(tr, groupEl, matches[index]);
+        _hideServiceSuggestions(tr);
+      });
+      button.addEventListener("keydown", (event) => {
+        if (event.key === "ArrowDown") {
+          event.preventDefault();
+          button.nextElementSibling?.focus();
+        } else if (event.key === "ArrowUp") {
+          event.preventDefault();
+          (button.previousElementSibling || input).focus();
+        } else if (event.key === "Escape") {
+          event.preventDefault();
+          input.focus();
+          _hideServiceSuggestions(tr);
+        }
+      });
+    });
+  }
+
+  function _bindRowCatalogExperience(tr, groupEl) {
+    if (!tr || tr.dataset.catalogExperienceBound === "1") return;
+    tr.dataset.catalogExperienceBound = "1";
+    const input = tr.querySelector("[name='itemName']");
+    const remarks = tr.querySelector(".remarks-textarea");
+    if (remarks) _autoSizeRemarks(remarks);
+    if (!input) return;
+    input.addEventListener("focus", () => {
+      _ensureSupplierCatalogLoaded().then(() => _renderServiceSuggestions(tr, groupEl));
+    });
+    input.addEventListener("input", () => {
+      _ensureSupplierCatalogLoaded().then(() => _renderServiceSuggestions(tr, groupEl));
+    });
+    input.addEventListener("keydown", (event) => {
+      if (event.key === "ArrowDown") {
+        const first = tr.querySelector(".service-suggestion-item, .service-candidate-action");
+        if (first) {
+          event.preventDefault();
+          first.focus();
+        }
+      } else if (event.key === "Escape") {
+        _hideServiceSuggestions(tr);
+      }
+    });
+    input.addEventListener("blur", () => {
+      window.setTimeout(() => {
+        const active = document.activeElement;
+        if (!active || !tr.contains(active) || (!active.classList.contains("service-suggestion-item") && !active.classList.contains("service-candidate-action"))) {
+          _hideServiceSuggestions(tr);
+        }
+      }, 120);
+    });
+  }
+  function _getGroupTypeOptions() {
+    return _dynamicGroupTypes.length > 0
+      ? _dynamicGroupTypes.map((item) => ({ value: item.code || item.value, label: item.nameZh || item.name_zh || item.label || item.code }))
+      : GROUP_TYPES;
+  }
+
+  function _refreshMasterDataOptions() {
+    if (!_container) return;
+    _container.querySelectorAll(".project-group").forEach((groupEl) => {
+      const groupSelect = groupEl.querySelector("[name='projectType']");
+      const currentGroup = groupSelect?.value || "travel";
+      if (groupSelect && _dynamicGroupTypes.length > 0) {
+        groupSelect.innerHTML = _getGroupTypeOptions().map((item) => `<option value="${item.value}"${item.value === currentGroup ? " selected" : ""}>${item.label}</option>`).join("");
+      }
+      groupEl.querySelectorAll(".items-tbody tr[data-item-id]").forEach((tr) => {
+        const select = tr.querySelector(".item-type-sel");
+        const currentType = select?.value || "misc";
+        if (select) {
+          let allowed = _getAllowedTypes(groupEl);
+          if (!allowed.find((item) => item.value === currentType)) {
+            allowed = [...allowed, { value: currentType, label: currentType }];
+          }
+          select.innerHTML = allowed.map((item) => `<option value="${item.value}"${item.value === currentType ? " selected" : ""}>${item.label}</option>`).join("");
+        }
+      });
+      _updateGroupHeaders(groupEl, groupSelect?.value || currentGroup);
+    });
+  }
+
+  function _ensureMasterDataLoaded() {
+    if (_masterDataPromise) return _masterDataPromise;
+    _masterDataPromise = Promise.all([
+      window.AppUtils.fetchJson("/api/project-group-types", null, "\u52a0\u8f7d\u9879\u76ee\u7ec4\u5206\u7c7b\u5931\u8d25"),
+      window.AppUtils.fetchJson("/api/quote-item-types", null, "\u52a0\u8f7d\u670d\u52a1\u7c7b\u578b\u5931\u8d25"),
+    ]).then(([groupsResult, itemTypesResult]) => {
+      _dynamicGroupTypes = Array.isArray(groupsResult) ? groupsResult : (groupsResult.items || groupsResult.projectGroupTypes || []);
+      _dynamicItemTypes = Array.isArray(itemTypesResult) ? itemTypesResult : (itemTypesResult.items || itemTypesResult.types || []);
+      _refreshMasterDataOptions();
+      return { groups: _dynamicGroupTypes, itemTypes: _dynamicItemTypes };
+    }).catch(() => ({ groups: _dynamicGroupTypes, itemTypes: _dynamicItemTypes }));
+    return _masterDataPromise;
+  }
   function createItemRow(item, groupEl, allowedTypes) {
     const tr    = document.createElement("tr");
     const iType = item.itemType || "misc";
@@ -253,13 +482,13 @@ window.ProjectEditor = (function () {
           ${types.map((t) => `<option value="${t.value}"${iType === t.value ? " selected" : ""}>${t.label}</option>`).join("")}
         </select>
       </td>
-      <td><input class="cell-input" name="itemName" value="${esc(item.itemName || "")}" placeholder="${esc(nameHint)}" style="min-width:110px" /></td>
+      <td><div class="service-name-wrap"><input class="cell-input" name="itemName" value="${esc(item.itemName || "")}" placeholder="${esc(nameHint)}" style="min-width:110px" autocomplete="off" /><div class="service-suggestion-box" hidden></div></div></td>
       <td><input class="cell-input spec-input" name="specification" value="${esc(item.specification || "")}" placeholder="${esc(specLabel)}" style="min-width:72px" /></td>
       <td><input class="cell-input" name="unit" value="${esc(item.unit || _getDefaultUnit(iType))}" placeholder="单位" style="width:44px" data-system-unit="${esc(_getDefaultUnit(iType))}" /></td>
       <td class="qty-td">
         <div class="qty-stack">
           <div class="qty-main-line">
-            <input class="cell-input qty-input" name="quantity" type="number" min="0" step="1" value="${qty}" />
+            <input class="cell-input qty-input" name="quantity" type="number" min="0" step="0.01" value="${qty}" />
             <span class="qty-unit-label">${qtyUnitLabel}</span>
           </div>
           <div class="qty-sub-line nights-marker"${isHotel ? "" : ' style="display:none"'}>
@@ -288,7 +517,7 @@ window.ProjectEditor = (function () {
         <input type="hidden" name="supplierId" value="${esc(item.supplierId || "")}" />
         <input type="hidden" name="supplierCatalogItemId" value="${esc(item.supplierCatalogItemId || "")}" />
       </td>
-      <td><input class="cell-input" name="remarks" value="${esc(item.remarks || "")}" placeholder="备注" style="min-width:72px" /></td>
+      <td class="remarks-cell"><textarea class="cell-input remarks-textarea" name="remarks" rows="1" placeholder="备注" style="min-width:180px;overflow:hidden" oninput="this.style.height=&quot;auto&quot;;this.style.height=Math.min(this.scrollHeight,72)+&quot;px&quot;;">${esc(item.remarks || "")}</textarea></td>
       <td>
         <div style="display:flex;gap:3px;align-items:center;justify-content:flex-end">
           ${isCatalog ? '<button type="button" class="catalog-select-btn catalog-btn" title="从价格库选择" style="padding:4px 8px;font-size:11px">从库选</button>' : '<span style="width:4px"></span>'}
@@ -298,13 +527,15 @@ window.ProjectEditor = (function () {
     `;
 
     // 输入联动
-    tr.querySelectorAll("input, select").forEach((input) => {
+    tr.querySelectorAll("input, select, textarea").forEach((input) => {
       input.addEventListener("input",  () => _updateRow(tr, groupEl));
       input.addEventListener("change", () => {
         _updateRow(tr, groupEl);
         if (input.name === "itemType") _syncRowType(tr);
       });
     });
+
+    _bindRowCatalogExperience(tr, groupEl);
 
     tr.querySelector(".delete-item-btn").addEventListener("click", () => {
       tr.remove();
@@ -489,7 +720,7 @@ window.ProjectEditor = (function () {
       const salesSub = Math.round(qty * nights * salesUnit * 100) / 100;
 
       // catalog_item → save as misc on backend; store catalogCategory in extraJson
-      const backendType = iType === "catalog_item" ? "misc" : iType;
+      const backendType = iType;
       const catalogCat  = iType === "catalog_item" ? (tr.dataset.catalogCategory || "") : "";
       const extraJson   = iType === "hotel"
         ? { nights }
@@ -660,17 +891,7 @@ window.ProjectEditor = (function () {
       const listEl = document.getElementById("catalog-items-list");
       if (listEl) listEl.innerHTML = '<div class="catalog-empty">加载中…</div>';
 
-      Promise.all([
-        window.AppUtils.fetchJson("/api/supplier-items", null, "价格库加载失败"),
-        window.AppUtils.fetchJson("/api/suppliers",      null, "供应商列表加载失败"),
-      ]).then(([itemsResult, suppliersResult]) => {
-        _supplierItems = Array.isArray(itemsResult) ? itemsResult : (itemsResult.items || []);
-        const suppliers = Array.isArray(suppliersResult) ? suppliersResult : (suppliersResult.suppliers || []);
-        suppliers.forEach((s) => { _supplierMap[s.id] = s.name; });
-        _catalogLoaded = true;
-        if (picker._render) picker._render();
-      }).catch(() => {
-        _catalogLoaded = true;
+      _ensureSupplierCatalogLoaded().then(() => {
         if (picker._render) picker._render();
       });
     } else if (picker._render) {
@@ -694,8 +915,12 @@ window.ProjectEditor = (function () {
   // 更新分组的表头文字和 projectTitle 占位文字（与组类型联动）
   function _updateGroupHeaders(div, groupType) {
     const labels = GROUP_HEADER_LABELS[groupType] || GROUP_HEADER_LABELS.mixed;
+    const typeTh = div.querySelector(".type-th");
     const nameTh = div.querySelector(".name-th");
     const specTh = div.querySelector(".spec-th");
+    const groupLabel = div.querySelector(".project-group-classifier span");
+    if (typeTh) typeTh.textContent = "\u670d\u52a1\u7c7b\u578b";
+    if (groupLabel) groupLabel.textContent = "\u9879\u76ee\u7ec4\u5206\u7c7b";
     if (nameTh) nameTh.textContent = labels.name;
     if (specTh) specTh.textContent = labels.spec;
     const titleInput = div.querySelector("[name='projectTitle']");
@@ -711,9 +936,9 @@ window.ProjectEditor = (function () {
 
     div.innerHTML = `
       <div class="project-group-header">
-        <select class="proj-type-select" name="projectType">
-          ${GROUP_TYPES.map((t) => `<option value="${t.value}"${group.projectType === t.value ? " selected" : ""}>${t.label}</option>`).join("")}
-        </select>
+        <label class="project-group-classifier"><span>项目组分类</span><select class="proj-type-select" name="projectType">
+          ${_getGroupTypeOptions().map((t) => `<option value="${t.value}"${(group.projectType || "travel") === t.value ? " selected" : ""}>${t.label}</option>`).join("")}
+        </select></label>
         <input name="projectTitle" class="proj-title-input"
           value="${esc(group.projectTitle || "")}"
           placeholder="${esc(GROUP_TITLE_HINTS[group.projectType || "travel"] || GROUP_TITLE_HINTS.mixed)}" />
@@ -730,7 +955,7 @@ window.ProjectEditor = (function () {
           <table class="proj-item-table">
             <thead>
               <tr>
-                <th style="min-width:90px">类型</th>
+                <th class="type-th" style="min-width:90px">类型</th>
                 <th class="name-th" style="min-width:120px">名称</th>
                 <th class="spec-th" style="min-width:80px">规格</th>
                 <th style="width:46px">单位</th>
@@ -1005,6 +1230,7 @@ window.ProjectEditor = (function () {
 
       applyViewMode();
       _refreshSummary();
+      _ensureMasterDataLoaded();
     },
 
     getGroups() {

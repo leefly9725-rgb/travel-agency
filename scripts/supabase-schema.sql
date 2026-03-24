@@ -156,6 +156,25 @@ create table if not exists public.supplier_items (
 create index if not exists idx_supplier_items_supplier_id on public.supplier_items (supplier_id);
 create index if not exists idx_supplier_items_category on public.supplier_items (category);
 
+create table if not exists public.service_catalog_candidates (
+  id bigserial primary key,
+  project_group_code text not null default '',
+  service_type_code text not null default '',
+  service_name text not null,
+  specification text not null default '',
+  unit text not null default '',
+  cost_price numeric(14, 2) not null default 0,
+  supplier_id text not null default '',
+  supplier_category text not null default '',
+  source_quote_id text not null default '',
+  notes text not null default '',
+  status text not null default 'pending',
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_service_catalog_candidates_status on public.service_catalog_candidates (status);
+create index if not exists idx_service_catalog_candidates_service_name on public.service_catalog_candidates (service_name);
+
 -- Project-based quotation tables (v2: linked to quotes via quotation_id)
 create table if not exists public.quotation_projects (
   id text primary key,

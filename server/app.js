@@ -572,17 +572,63 @@ const supportedPricingModes = ["standard", "project_based"];
 const supportedProjectItemTypes = ["hotel", "transport", "guide_translation", "driver_guide", "ticket", "fuel", "toll_parking", "event_material", "catalog_item", "av_equipment", "print_display", "decoration", "personnel", "logistics", "misc"];
 
 const DEFAULT_QUOTE_ITEM_TYPES = [
-  { id: "qt-001", code: "hotel",            nameZh: "酒店",      categoryGroup: "accommodation", sortOrder: 1, isActive: true, isSystem: true },
-  { id: "qt-002", code: "transport",        nameZh: "用车",      categoryGroup: "transport",     sortOrder: 2, isActive: true, isSystem: true },
-  { id: "qt-003", code: "guide_translation",nameZh: "导游/翻译", categoryGroup: "service",       sortOrder: 3, isActive: true, isSystem: true },
-  { id: "qt-004", code: "catalog_item",     nameZh: "目录项目",  categoryGroup: "catalog",       sortOrder: 4, isActive: true, isSystem: true },
-  { id: "qt-005", code: "misc",             nameZh: "杂项",      categoryGroup: "misc",          sortOrder: 5, isActive: true, isSystem: true },
+  { id: "qt-001", code: "hotel",             nameZh: "\u9152\u5e97", categoryGroup: "accommodation", sortOrder: 1,  isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u95f4" },
+  { id: "qt-002", code: "transport",         nameZh: "\u7528\u8f66", categoryGroup: "transport",     sortOrder: 2,  isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u8f86" },
+  { id: "qt-003", code: "guide_translation", nameZh: "\u5bfc\u6e38/\u7ffb\u8bd1", categoryGroup: "service", sortOrder: 3, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "\u4eba\u5929" },
+  { id: "qt-004", code: "driver_guide",      nameZh: "\u53f8\u517c\u5bfc", categoryGroup: "service", sortOrder: 4, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "\u4eba\u5929" },
+  { id: "qt-005", code: "ticket",            nameZh: "\u7968\u52a1", categoryGroup: "service", sortOrder: 5, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u5f20" },
+  { id: "qt-006", code: "fuel",              nameZh: "\u6cb9\u8d39", categoryGroup: "transport", sortOrder: 6, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u6b21" },
+  { id: "qt-007", code: "toll_parking",      nameZh: "\u8fc7\u8def/\u505c\u8f66", categoryGroup: "transport", sortOrder: 7, isActive: true, isSystem: true, projectGroupCodes: ["travel", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u6b21" },
+  { id: "qt-008", code: "catalog_item",      nameZh: "\u76ee\u5f55\u9879\u76ee", categoryGroup: "catalog", sortOrder: 8, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["av_equipment", "stage_structure", "print_display", "decoration", "furniture", "personnel", "logistics", "management"], defaultUnit: "\u9879" },
+  { id: "qt-009", code: "av_equipment",      nameZh: "\u97f3\u89c6\u9891\u8bbe\u5907", categoryGroup: "catalog", sortOrder: 9, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["av_equipment"], defaultUnit: "\u53f0" },
+  { id: "qt-010", code: "print_display",     nameZh: "\u5370\u5237\u5c55\u793a", categoryGroup: "catalog", sortOrder: 10, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["print_display", "stage_structure"], defaultUnit: "\u9879" },
+  { id: "qt-011", code: "decoration",        nameZh: "\u88c5\u9970\u7269\u6599", categoryGroup: "catalog", sortOrder: 11, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["decoration", "furniture"], defaultUnit: "\u9879" },
+  { id: "qt-012", code: "personnel",         nameZh: "\u4eba\u5458\u670d\u52a1", categoryGroup: "service", sortOrder: 12, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["personnel"], defaultUnit: "\u4eba\u5929" },
+  { id: "qt-013", code: "logistics",         nameZh: "\u7269\u6d41\u914d\u9001", categoryGroup: "service", sortOrder: 13, isActive: true, isSystem: true, projectGroupCodes: ["event", "mixed"], supplierCategoryCodes: ["logistics"], defaultUnit: "\u9879" },
+  { id: "qt-014", code: "misc",              nameZh: "\u6742\u9879", categoryGroup: "misc", sortOrder: 14, isActive: true, isSystem: true, projectGroupCodes: ["travel", "event", "mixed"], supplierCategoryCodes: [], defaultUnit: "\u9879" },
 ];
 
+function normalizeCodeArray(values, fallback) {
+  const source = Array.isArray(values) ? values : (values ? [values] : []);
+  const normalized = source.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
+  if (normalized.length > 0) return Array.from(new Set(normalized));
+  return Array.isArray(fallback) ? [...fallback] : [];
+}
+
 function ensureQuoteItemTypes(data) {
-  if (!Array.isArray(data.quotationItemTypes) || data.quotationItemTypes.length === 0) {
-    data.quotationItemTypes = DEFAULT_QUOTE_ITEM_TYPES.map((t) => ({ ...t }));
-  }
+  const existing = Array.isArray(data.quotationItemTypes) ? data.quotationItemTypes : [];
+  const merged = DEFAULT_QUOTE_ITEM_TYPES.map((entry) => {
+    const current = existing.find((item) => item && item.code === entry.code) || {};
+    return {
+      ...entry,
+      ...current,
+      code: entry.code,
+      nameZh: String(current.nameZh || current.name_zh || entry.nameZh).trim(),
+      categoryGroup: String(current.categoryGroup || entry.categoryGroup).trim() || "misc",
+      sortOrder: Number(current.sortOrder ?? entry.sortOrder ?? 0),
+      isActive: current.isActive !== undefined ? Boolean(current.isActive) : entry.isActive,
+      isSystem: current.isSystem !== undefined ? Boolean(current.isSystem) : entry.isSystem,
+      projectGroupCodes: normalizeCodeArray(current.projectGroupCodes || current.project_group_codes, entry.projectGroupCodes),
+      supplierCategoryCodes: normalizeCodeArray(current.supplierCategoryCodes || current.supplier_category_codes, entry.supplierCategoryCodes),
+      defaultUnit: String(current.defaultUnit || current.default_unit || entry.defaultUnit || "").trim(),
+    };
+  });
+  existing.forEach((item) => {
+    if (!item || merged.some((entry) => entry.code === item.code)) return;
+    merged.push({
+      id: item.id || createId("QT"),
+      code: notEmpty(item.code, "\u7c7b\u578b\u4ee3\u7801").toLowerCase().replace(/\s+/g, "_"),
+      nameZh: String(item.nameZh || item.name_zh || item.code).trim(),
+      categoryGroup: String(item.categoryGroup || "misc").trim() || "misc",
+      sortOrder: Number(item.sortOrder || 0),
+      isActive: item.isActive !== undefined ? Boolean(item.isActive) : true,
+      isSystem: Boolean(item.isSystem || false),
+      projectGroupCodes: normalizeCodeArray(item.projectGroupCodes || item.project_group_codes, ["mixed"]),
+      supplierCategoryCodes: normalizeCodeArray(item.supplierCategoryCodes || item.supplier_category_codes, []),
+      defaultUnit: String(item.defaultUnit || item.default_unit || "").trim(),
+    });
+  });
+  data.quotationItemTypes = merged.sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
   return data.quotationItemTypes;
 }
 
@@ -617,15 +663,56 @@ function ensureSupplierCategories(data) {
   return data.supplierCategories;
 }
 
+function ensureServiceCatalogCandidates(data) {
+  if (!Array.isArray(data.serviceCatalogCandidates)) {
+    data.serviceCatalogCandidates = [];
+  }
+  return data.serviceCatalogCandidates;
+}
+
 function normalizeQuoteItemTypePayload(payload, existingId, existing) {
   return {
     id: existingId || payload.id || createId("QT"),
-    code: existing?.isSystem ? (existing.code) : notEmpty(payload.code, "类型代码").toLowerCase().replace(/\s+/g, "_"),
-    nameZh: notEmpty(payload.nameZh, "中文名称"),
+    code: existing?.isSystem ? (existing.code) : notEmpty(payload.code, "\u7c7b\u578b\u4ee3\u7801").toLowerCase().replace(/\s+/g, "_"),
+    nameZh: notEmpty(payload.nameZh || payload.name_zh, "\u4e2d\u6587\u540d\u79f0"),
     categoryGroup: String(payload.categoryGroup || "misc").trim(),
     sortOrder: Number(payload.sortOrder || 0),
     isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : true,
     isSystem: Boolean(existing?.isSystem || payload.isSystem || false),
+    projectGroupCodes: normalizeCodeArray(payload.projectGroupCodes || payload.project_group_codes, existing?.projectGroupCodes || ["mixed"]),
+    supplierCategoryCodes: normalizeCodeArray(payload.supplierCategoryCodes || payload.supplier_category_codes, existing?.supplierCategoryCodes || []),
+    defaultUnit: String(payload.defaultUnit || payload.default_unit || existing?.defaultUnit || "").trim(),
+  };
+}
+
+function normalizeServiceCatalogCandidatePayload(payload, validCategories, validGroupTypes) {
+  const itemTypes = DEFAULT_QUOTE_ITEM_TYPES.map((item) => item.code);
+  const supplierCategory = String(payload.supplierCategory || payload.supplier_category || "").trim().toLowerCase();
+  const projectGroupCode = String(payload.projectGroupCode || payload.project_group_code || "").trim().toLowerCase();
+  const serviceTypeCode = String(payload.serviceTypeCode || payload.service_type_code || "").trim().toLowerCase();
+  if (projectGroupCode && Array.isArray(validGroupTypes) && validGroupTypes.length > 0 && !validGroupTypes.includes(projectGroupCode)) {
+    throw new Error("\u9879\u76ee\u7ec4\u5206\u7c7b\u4e0d\u5728\u652f\u6301\u8303\u56f4\u5185\u3002");
+  }
+  if (serviceTypeCode && !itemTypes.includes(serviceTypeCode)) {
+    throw new Error("\u670d\u52a1\u7c7b\u578b\u4e0d\u5728\u652f\u6301\u8303\u56f4\u5185\u3002");
+  }
+  if (supplierCategory && Array.isArray(validCategories) && validCategories.length > 0 && !validCategories.includes(supplierCategory)) {
+    throw new Error("\u4f9b\u5e94\u5546\u76ee\u5f55\u5206\u7c7b\u4e0d\u5728\u652f\u6301\u8303\u56f4\u5185\u3002");
+  }
+  return {
+    id: payload.id || createId("SCC"),
+    projectGroupCode,
+    serviceTypeCode,
+    serviceName: notEmpty(payload.serviceName || payload.service_name, "\u670d\u52a1\u540d\u79f0"),
+    specification: String(payload.specification || "").trim(),
+    unit: String(payload.unit || "").trim(),
+    costPrice: Math.max(Number(payload.costPrice ?? payload.cost_price ?? 0), 0),
+    supplierId: String(payload.supplierId || payload.supplier_id || "").trim(),
+    supplierCategory,
+    sourceQuoteId: String(payload.sourceQuoteId || payload.source_quote_id || "").trim(),
+    notes: String(payload.notes || "").trim(),
+    status: String(payload.status || "pending").trim() || "pending",
+    createdAt: payload.createdAt || payload.created_at || new Date().toISOString(),
   };
 }
 
@@ -1550,6 +1637,45 @@ async function handleApi(request, response, url) {
 
   // ── Project Quotes ─────────────────────────────────────────────────────────
 
+  if (request.method === "POST" && url.pathname === "/api/service-catalog-candidates") {
+    requirePermission(authCtx, "project_quote.edit");
+    const supabaseCfg = getSupabaseConfig();
+    const validCategories = await fetchValidItemCategories(supabaseCfg);
+    const validGroupTypes = await fetchValidProjectGroupTypes(supabaseCfg);
+    const payload = normalizeServiceCatalogCandidatePayload(parseJsonBody(await readRequestBody(request)), validCategories, validGroupTypes);
+    if (supabaseCfg.enabled) {
+      try {
+        const row = await supabaseRequest(supabaseCfg, "service_catalog_candidates", {
+          method: "POST",
+          headers: { Prefer: "return=representation" },
+          body: JSON.stringify({
+            project_group_code: payload.projectGroupCode || null,
+            service_type_code: payload.serviceTypeCode || null,
+            service_name: payload.serviceName,
+            specification: payload.specification || null,
+            unit: payload.unit || null,
+            cost_price: payload.costPrice,
+            supplier_id: payload.supplierId || null,
+            supplier_category: payload.supplierCategory || null,
+            source_quote_id: payload.sourceQuoteId || null,
+            notes: payload.notes || null,
+            status: payload.status,
+            created_at: payload.createdAt,
+          }),
+        });
+        sendJson(response, 201, Array.isArray(row) ? row[0] : row);
+        return true;
+      } catch (_) {}
+    }
+    const data = await loadSeedData();
+    const candidates = ensureServiceCatalogCandidates(data);
+    candidates.push(payload);
+    data.serviceCatalogCandidates = candidates;
+    await saveSeedData(data);
+    sendJson(response, 201, payload);
+    return true;
+  }
+
   if (request.method === "GET" && url.pathname === "/api/project-quotes") {
     const { projects } = await projectQuoteStore.listProjectQuotes();
     sendJson(response, 200, projects);
@@ -1732,12 +1858,14 @@ async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/project-group-types") {
     const supabaseCfg = getSupabaseConfig();
     if (supabaseCfg.enabled) {
-      const rows = await supabaseRequest(supabaseCfg, "project_group_types?select=*&is_active=eq.true&order=sort_order.asc");
-      sendJson(response, 200, Array.isArray(rows) ? rows : []);
-    } else {
-      const data = await loadSeedData();
-      sendJson(response, 200, ensureProjectGroupTypes(data));
+      try {
+        const rows = await supabaseRequest(supabaseCfg, "project_group_types?select=*&is_active=eq.true&order=sort_order.asc");
+        sendJson(response, 200, Array.isArray(rows) ? rows : []);
+        return true;
+      } catch (_) {}
     }
+    const data = await loadSeedData();
+    sendJson(response, 200, ensureProjectGroupTypes(data));
     return true;
   }
 

@@ -87,6 +87,7 @@ const ROUTE_PERMISSION_MAP = [
   ['POST',   /^\/api\/supplier-items$/,                'supplier_catalog.create'],
   ['PUT',    /^\/api\/supplier-items\/[^/]+$/,         'supplier_catalog.edit'],
   ['DELETE', /^\/api\/supplier-items\/[^/]+$/,         'supplier_catalog.delete'],
+  ['POST',   /^\/api\/service-catalog-candidates$/,    'project_quote.edit'],
 
   // project_type（quote-item-types + project-group-types）
   ['GET',    /^\/api\/quote-item-types$/,              'project_type.view'],

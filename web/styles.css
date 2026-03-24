@@ -1,4 +1,4 @@
-﻿:root {
+:root {
   --bg: #f4efe7;
   --ink: #1e2430;
   --muted: #5f6b7a;
@@ -1798,8 +1798,8 @@ button.ghost,
   gap: 2px;                  /* 数字与汉字单位紧挨 */
 }
 .qty-input {
-  width: 32px !important;    /* 固定宽，两行输入框等宽 */
-  min-width: 0 !important;
+  width: 72px !important;    /* 更宽，保证 1000 / 10.5 仍可完整显示 */
+  min-width: 72px !important;
   text-align: right;
   padding: 2px 3px !important;
   flex-shrink: 0;
@@ -2056,3 +2056,13 @@ button.ghost,
 .proj-add-group-btn:hover { opacity: 0.88; }
 
 
+
+.service-name-wrap { position: relative; }
+.service-suggestion-box { position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 20; border: 1px solid var(--line); border-radius: 12px; background: #fff; box-shadow: 0 12px 28px rgba(0,0,0,0.12); max-height: 280px; overflow: auto; }
+.service-suggestion-item { width: 100%; display: grid; grid-template-columns: minmax(0, 1.8fr) 64px 92px 120px; gap: 8px; align-items: center; padding: 10px 12px; border: none; border-bottom: 1px solid rgba(30,36,48,0.06); background: transparent; text-align: left; cursor: pointer; }
+.service-suggestion-item:last-child { border-bottom: none; }
+.service-suggestion-item.active, .service-suggestion-item:hover { background: rgba(244,239,231,0.55); }
+.service-suggestion-main { display: grid; gap: 2px; min-width: 0; }
+.service-suggestion-main strong, .service-suggestion-main span, .service-suggestion-side { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.service-candidate-action { margin-top: 6px; width: 100%; justify-content: flex-start; }
+.remarks-cell { min-width: 180px; }
