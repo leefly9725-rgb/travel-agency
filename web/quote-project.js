@@ -682,6 +682,7 @@ async function bootstrap() {
 
   // 1. 先加载项目组分类（fetchItemTypes 需要 _groupTypes 已就绪才能拼 project_group_id）
   await fetchProjectGroupTypes();
+  console.log("[init] _groupTypes:", window._groupTypes);
 
   // 2. 填充项目组分类下拉（新建时默认第一项）
   populateProjectGroupSelect();
@@ -697,6 +698,7 @@ async function bootstrap() {
 
   // 4. 根据当前选中的项目组分类加载对应服务类型
   await fetchItemTypes();
+  console.log("[init] _allItemTypes:", window._allItemTypes);
 
   applyViewMode();
   updateSummary();
