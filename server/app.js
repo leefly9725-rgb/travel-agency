@@ -839,10 +839,6 @@ function normalizeQuoteItemTypePayload(payload, existingId, existing) {
     projectGroupId: String(payload.project_group_id || payload.projectGroupId || existing?.projectGroupId || "").trim() || null,
     sortOrder: Number(payload.sortOrder || payload.sort_order || 0),
     isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : (payload.is_active !== undefined ? Boolean(payload.is_active) : true),
-    isSystem: Boolean(existing?.isSystem || payload.isSystem || false),
-    projectGroupCodes: normalizeCodeArray(payload.projectGroupCodes || payload.project_group_codes, existing?.projectGroupCodes || ["mixed"]),
-    supplierCategoryCodes: normalizeCodeArray(payload.supplierCategoryCodes || payload.supplier_category_codes, existing?.supplierCategoryCodes || []),
-    defaultUnit: String(payload.defaultUnit || payload.default_unit || existing?.defaultUnit || "").trim(),
   };
 }
 
@@ -1988,11 +1984,11 @@ async function handleApi(request, response, url) {
       const row = await supabaseRequest(supabaseCfg, "quote_item_types", {
         method: "POST",
         body: JSON.stringify({
-          code: payload.code, name_zh: payload.nameZh,
+          code: payload.code,
+          name_zh: payload.nameZh,
           project_group_id: projectGroupId,
-          sort_order: payload.sortOrder, is_active: payload.isActive, is_system: payload.isSystem,
-          project_group_codes: payload.projectGroupCodes, supplier_category_codes: payload.supplierCategoryCodes,
-          default_unit: payload.defaultUnit,
+          sort_order: payload.sortOrder,
+          is_active: payload.isActive,
         }),
         headers: { Prefer: "return=representation" },
       });
@@ -2030,11 +2026,10 @@ async function handleApi(request, response, url) {
           const payload = normalizeQuoteItemTypePayload(parseJsonBody(await readRequestBody(request)), qitId, existingNorm);
           const patchBody = {
             name_zh: payload.nameZh,
-            sort_order: payload.sortOrder, is_active: payload.isActive,
-            project_group_codes: payload.projectGroupCodes, supplier_category_codes: payload.supplierCategoryCodes,
-            default_unit: payload.defaultUnit,
+            sort_order: payload.sortOrder,
+            is_active: payload.isActive,
+            project_group_id: payload.projectGroupId || existingNorm.projectGroupId || null,
           };
-          if (payload.projectGroupId) patchBody.project_group_id = payload.projectGroupId;
           const row = await supabaseRequest(supabaseCfg, `quote_item_types?id=eq.${encodeURIComponent(qitId)}`, {
             method: "PATCH",
             body: JSON.stringify(patchBody),
