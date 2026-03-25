@@ -1,987 +1,445 @@
-// ── 项目型报价编辑器 ──────────────────────────────────────────────────────────
-// window.ProjectEditor 提供统一 API：
-//   init(container, groups, currency)  – 初始化编辑器
-//   getGroups()                        – 读取当前所有分组数据
-//   getSummary()                       – 读取汇总金额
-//   setViewMode('internal'|'client')   – 切换内部/客户视图
-//   setCurrency(currency)              – 更新货币（重新格式化显示）
-
 window.ProjectEditor = (function () {
-  // ── 内部状态 ────────────────────────────────────────────────────────────────
-  let _container   = null;
-  let _currency    = "EUR";
-  let _viewMode    = "internal";
-  let _groupCounter = 0;
-  let _supplierItems = [];
-  let _supplierMap   = {};   // id → supplier name
-  let _catalogLoaded = false;
-  let _catalogPromise = null;
-  let _masterDataPromise = null;
-  let _dynamicGroupTypes = [];
-  let _dynamicItemTypes = [];
+  let containerEl = null;
+  let currencyCode = "EUR";
+  let viewMode = "internal";
+  let groupSeed = 0;
+  let itemSeed = 0;
+  let groupTypeCache = null;
+  let itemTypeCache = null;
+  let masterDataPromise = null;
 
-  // ── 明细类型（全集，travel + event + misc，作为 mixed 与兜底使用）────────────
-  const ITEM_TYPES = [
-    { value: "hotel",             label: "酒店"       },
-    { value: "transport",         label: "用车"       },
-    { value: "guide_translation", label: "导游/翻译"  },
-    { value: "driver_guide",      label: "司兼导"     },
-    { value: "ticket",            label: "票务"       },
-    { value: "fuel",              label: "油费"       },
-    { value: "toll_parking",      label: "过路/停车"  },
-    { value: "catalog_item",      label: "目录项目"   },
-    { value: "av_equipment",      label: "音视频设备" },
-    { value: "print_display",     label: "印刷展示"   },
-    { value: "decoration",        label: "装饰物料"   },
-    { value: "personnel",         label: "人员服务"   },
-    { value: "logistics",         label: "物流配送"   },
-    { value: "misc",              label: "杂项"       },
+  const DEFAULT_GROUP_TYPES = [
+    { code: "event", nameZh: "活动服务", isActive: true, sortOrder: 1 },
+    { code: "travel", nameZh: "旅游接待", isActive: true, sortOrder: 2 },
+    { code: "mixed", nameZh: "综合服务", isActive: true, sortOrder: 3 },
   ];
 
-  const GROUP_TYPES = [
-    { value: "travel", label: "旅游接待" },
-    { value: "event",  label: "活动服务" },
-    { value: "mixed",  label: "综合项目" },
+  const DEFAULT_ITEM_TYPES = [
+    { code: "hotel", nameZh: "酒店", isActive: true, sortOrder: 1, projectGroupCodes: ["travel", "mixed"], defaultUnit: "间", supplierCategoryCodes: [] },
+    { code: "transport", nameZh: "用车", isActive: true, sortOrder: 2, projectGroupCodes: ["travel", "mixed"], defaultUnit: "辆", supplierCategoryCodes: [] },
+    { code: "guide_translation", nameZh: "导游/翻译", isActive: true, sortOrder: 3, projectGroupCodes: ["travel", "mixed"], defaultUnit: "人天", supplierCategoryCodes: [] },
+    { code: "driver_guide", nameZh: "司兼导", isActive: true, sortOrder: 4, projectGroupCodes: ["travel", "mixed"], defaultUnit: "人天", supplierCategoryCodes: [] },
+    { code: "ticket", nameZh: "门票", isActive: true, sortOrder: 5, projectGroupCodes: ["travel", "mixed"], defaultUnit: "张", supplierCategoryCodes: [] },
+    { code: "fuel", nameZh: "油费", isActive: true, sortOrder: 6, projectGroupCodes: ["travel", "mixed"], defaultUnit: "次", supplierCategoryCodes: [] },
+    { code: "toll_parking", nameZh: "过路/停车", isActive: true, sortOrder: 7, projectGroupCodes: ["travel", "mixed"], defaultUnit: "次", supplierCategoryCodes: [] },
+    { code: "venue_service", nameZh: "场地服务", isActive: true, sortOrder: 8, projectGroupCodes: ["event", "mixed"], defaultUnit: "项", supplierCategoryCodes: [] },
+    { code: "build_production", nameZh: "搭建制作", isActive: true, sortOrder: 9, projectGroupCodes: ["event", "mixed"], defaultUnit: "项", supplierCategoryCodes: [] },
+    { code: "av_lighting", nameZh: "AV / 灯光音响", isActive: true, sortOrder: 10, projectGroupCodes: ["event", "mixed"], defaultUnit: "套", supplierCategoryCodes: [] },
+    { code: "design_print", nameZh: "设计印刷", isActive: true, sortOrder: 11, projectGroupCodes: ["event", "mixed"], defaultUnit: "项", supplierCategoryCodes: [] },
+    { code: "staffing_execution", nameZh: "人员执行", isActive: true, sortOrder: 12, projectGroupCodes: ["event", "mixed"], defaultUnit: "人天", supplierCategoryCodes: [] },
+    { code: "catering_refreshments", nameZh: "餐饮茶歇", isActive: true, sortOrder: 13, projectGroupCodes: ["event", "mixed"], defaultUnit: "人次", supplierCategoryCodes: [] },
+    { code: "logistics_transport", nameZh: "物流运输", isActive: true, sortOrder: 14, projectGroupCodes: ["event", "mixed"], defaultUnit: "项", supplierCategoryCodes: [] },
+    { code: "material_purchase", nameZh: "物料采购", isActive: true, sortOrder: 15, projectGroupCodes: ["event", "mixed"], defaultUnit: "项", supplierCategoryCodes: [] },
+    { code: "misc", nameZh: "杂项", isActive: true, sortOrder: 16, projectGroupCodes: ["travel", "event", "mixed"], defaultUnit: "项", supplierCategoryCodes: [] },
   ];
 
-  const GROUP_TYPE_ITEM_TYPES = {
-    // 旅游接待：以接待业务为主，覆盖住宿、用车、导游、司兼导、票务、油费、过路停车
-    travel: [
-      { value: "hotel",             label: "酒店"      },
-      { value: "transport",         label: "用车"      },
-      { value: "guide_translation", label: "导游/翻译" },
-      { value: "driver_guide",      label: "司兼导"    },
-      { value: "ticket",            label: "票务"      },
-      { value: "fuel",              label: "油费"      },
-      { value: "toll_parking",      label: "过路/停车" },
-      { value: "misc",              label: "杂项"      },
-    ],
-    // 活动服务：以物料/设备/人员/服务为主，catalog_item 支持从价格库选取
-    event: [
-      { value: "catalog_item",      label: "目录项目"   },
-      { value: "av_equipment",      label: "音视频设备" },
-      { value: "print_display",     label: "印刷展示"   },
-      { value: "decoration",        label: "装饰物料"   },
-      { value: "personnel",         label: "人员服务"   },
-      { value: "logistics",         label: "物流配送"   },
-      { value: "misc",              label: "杂项"       },
-    ],
-    // 综合项目：兼容 travel + event 全部类型
-    mixed: ITEM_TYPES,
+  const LEGACY_ITEM_LABELS = {
+    catalog_item: "场地服务",
+    av_equipment: "AV / 灯光音响",
+    print_display: "设计印刷",
+    decoration: "搭建制作",
+    personnel: "人员执行",
+    logistics: "物流运输",
+    event_material: "物料采购",
   };
 
-  function _normalizeCodeList(values) {
-    const source = Array.isArray(values) ? values : (values ? [values] : []);
-    return source.map((value) => String(value || "").trim().toLowerCase()).filter(Boolean);
-  }
-
-  function _getAllowedTypes(groupEl) {
-    const groupType = groupEl.querySelector("[name='projectType']")?.value || "event";
-    if (_dynamicItemTypes.length > 0) {
-      const filtered = _dynamicItemTypes.filter((item) => {
-        const groups = _normalizeCodeList(item.projectGroupCodes || item.project_group_codes);
-        return groupType === "mixed" || groups.length === 0 || groups.includes(groupType) || groups.includes("mixed");
-      }).map((item) => ({ value: item.code, label: item.nameZh || item.name_zh || item.code }));
-      if (filtered.length > 0) return filtered;
-    }
-    return GROUP_TYPE_ITEM_TYPES[groupType] || ITEM_TYPES;
-  }
-  const SPEC_LABELS = {
-    hotel:             "房型",
-    transport:         "车型/路线",
-    guide_translation: "语言/时长",
-    driver_guide:      "语种",
-    ticket:            "票种",
-    fuel:              "车型/路线",
-    toll_parking:      "路线/地点",
-    catalog_item:      "规格",
-    av_equipment:      "型号/规格",
-    print_display:     "尺寸/规格",
-    decoration:        "规格/材质",
-    personnel:         "岗位/服务描述",
-    logistics:         "型号/规格",
-    misc:              "规格",
-  };
-
-  // 各行类型的默认单位。
-  // 后续将接入项目类型主数据 default_unit（运营侧可维护），此映射作为代码级兜底。
-  // 读取优先级：主数据 default_unit > 此映射 > "项"
-  const TYPE_DEFAULT_UNIT = {
-    hotel:             "间",
-    transport:         "辆",
-    guide_translation: "天",
-    driver_guide:      "天",
-    ticket:            "张",
-    fuel:              "次",
-    toll_parking:      "次",
-    catalog_item:      "项",
-    av_equipment:      "台",
-    print_display:     "项",
-    decoration:        "项",
-    personnel:         "人天",
-    logistics:         "项",
-    misc:              "项",
-  };
-
-  // 数量输入框旁的单位标签（仅对有强业务语义的类型显示）
-  const QTY_UNIT_LABELS = {
-    hotel:        "间",
-    transport:    "辆",
-    ticket:       "张",
-    av_equipment: "台",
-  };
-
-  // masterDataUnit：将来主数据接入后由调用方传入；优先级：主数据 > 代码映射 > "项"
-  function _getDefaultUnit(iType, masterDataUnit) {
-    return masterDataUnit || TYPE_DEFAULT_UNIT[iType] || "项";
-  }
-
-  // 不同项目组类型 × 行类型的录入提示
-  const GROUP_ITEM_NAME_HINTS = {
-    travel: {
-      hotel:             "例：Superior 双床房 / 四星标准间",
-      transport:         "例：商务中巴 Mercedes Sprinter",
-      guide_translation: "例：中塞双语全程导游",
-      driver_guide:      "例：中英文司兼导 / 塞尔维亚语司导",
-      ticket:            "例：贝尔格莱德城堡门票 / 皮伦特表演票",
-      fuel:              "例：接机专程油费 / 全程油费补贴",
-      toll_parking:      "例：高速过路费 / 景区停车费",
-      misc:              "例：景区门票 / 餐费 / 小费",
-    },
-    event: {
-      catalog_item:      "例：LED 墙 8×3m 含运输安装",
-      av_equipment:      "例：无线话筒套装 / LED 显示屏 6×3m",
-      print_display:     "例：易拉宝 80×200cm / 背景板 4×6m",
-      decoration:        "例：鲜花台型装饰 / 签到台布置",
-      personnel:         "例：礼仪引导 2 人 / 现场统筹",
-      logistics:         "例：设备运输车 / 叉车及操作员 4h",
-      misc:              "例：现场礼仪 / 活动统筹服务费",
-    },
-    mixed: {
-      hotel:             "例：双人标准间",
-      transport:         "例：机场接送车",
-      guide_translation: "例：翻译服务",
-      driver_guide:      "例：司兼导",
-      ticket:            "例：景区门票",
-      fuel:              "例：油费补贴",
-      toll_parking:      "例：过路停车费",
-      catalog_item:      "例：展架展台物料",
-      av_equipment:      "例：音响设备",
-      print_display:     "例：展示物料",
-      decoration:        "例：装饰布置",
-      personnel:         "例：人员服务",
-      logistics:         "例：物流配送",
-      misc:              "例：杂项费用",
-    },
-  };
-
-  // 各组类型对应的 projectTitle 输入框提示文字
-  const GROUP_TITLE_HINTS = {
-    travel: "项目组名称（如：第一天接机 / 行程安排）",
-    event:  "项目组名称（如：开幕式物料 / 音视频设备组）",
-    mixed:  "项目组名称（如：第一天行程 / 开幕式服务）",
-  };
-
-  // 各组类型对应的表头文字（名称列 + 规格列）
-  const GROUP_HEADER_LABELS = {
-    travel: { name: "服务名称",   spec: "规格 / 说明" },
-    event:  { name: "物料 / 服务", spec: "规格 / 型号" },
-    mixed:  { name: "名称",        spec: "规格"        },
-  };
-
-  const CATALOG_CATS = [
-    { value: "",               label: "全部" },
-    { value: "av_equipment",   label: "音视频设备" },
-    { value: "stage_structure",label: "舞台结构"   },
-    { value: "print_display",  label: "印刷展示"   },
-    { value: "decoration",     label: "装饰物料"   },
-    { value: "furniture",      label: "家具桌椅"   },
-    { value: "personnel",      label: "人员服务"   },
-    { value: "logistics",      label: "物流设备"   },
-    { value: "management",     label: "管理服务"   },
-  ];
-
-  // ── 工具函数 ────────────────────────────────────────────────────────────────
-  function esc(str) {
-    return String(str || "")
+  function escapeHtml(value) {
+    return String(value || "")
       .replace(/&/g, "&amp;")
       .replace(/"/g, "&quot;")
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;");
   }
 
-  function fmt(amount) {
-    return window.AppUtils.formatCurrency(Number(amount) || 0, _currency);
+  function nextGroupId() {
+    groupSeed += 1;
+    return "group-" + groupSeed;
   }
 
-  function _generateId() {
-    return "item-" + Date.now() + "-" + Math.random().toString(36).slice(2, 7);
+  function nextItemId() {
+    itemSeed += 1;
+    return "item-" + itemSeed;
   }
 
-  function applyViewMode() {
-    if (!_container) return;
-    const isClient = _viewMode === "client";
-    _container.querySelectorAll(".view-internal").forEach((el) => {
-      el.style.display = isClient ? "none" : "";
+  function asArray(value) {
+    return Array.isArray(value) ? value : (value ? [value] : []);
+  }
+
+  function normalizeCodeList(value) {
+    return asArray(value).map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean);
+  }
+
+  function sortByOrder(list) {
+    return [...list].sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+  }
+
+  function normalizeGroupType(record, fallback) {
+    const base = fallback || {};
+    const code = String(record?.code || base.code || "").trim().toLowerCase();
+    if (!code) return null;
+    return {
+      id: record?.id || base.id || null,
+      code,
+      nameZh: code === "mixed"
+        ? "综合服务"
+        : String(record?.nameZh || record?.name_zh || base.nameZh || code).trim(),
+      isActive: record?.isActive !== undefined
+        ? Boolean(record.isActive)
+        : (record?.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
+      sortOrder: Number(record?.sortOrder ?? record?.sort_order ?? base.sortOrder ?? 0),
+    };
+  }
+
+  function normalizeItemType(record, fallback) {
+    const base = fallback || {};
+    const code = String(record?.code || base.code || "").trim().toLowerCase();
+    if (!code) return null;
+    const groups = normalizeCodeList(record?.projectGroupCodes || record?.project_group_codes || base.projectGroupCodes || ["mixed"]);
+    return {
+      code,
+      nameZh: String(record?.nameZh || record?.name_zh || base.nameZh || LEGACY_ITEM_LABELS[code] || code).trim(),
+      isActive: record?.isActive !== undefined
+        ? Boolean(record.isActive)
+        : (record?.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
+      sortOrder: Number(record?.sortOrder ?? record?.sort_order ?? base.sortOrder ?? 0),
+      projectGroupCodes: groups.length > 0 ? groups : ["mixed"],
+      defaultUnit: String(record?.defaultUnit || record?.default_unit || base.defaultUnit || "项").trim() || "项",
+      supplierCategoryCodes: normalizeCodeList(record?.supplierCategoryCodes || record?.supplier_category_codes || base.supplierCategoryCodes || []),
+    };
+  }
+
+  async function loadProjectGroupTypes() {
+    if (groupTypeCache) return groupTypeCache;
+    try {
+      const result = await window.AppUtils.fetchJson("/api/project-group-types", null, "加载项目组分类失败");
+      const remoteList = Array.isArray(result) ? result : asArray(result?.items || result?.projectGroupTypes);
+      const merged = DEFAULT_GROUP_TYPES.map((fallback) => {
+        const current = remoteList.find((item) => String(item?.code || "").trim().toLowerCase() === fallback.code) || fallback;
+        return normalizeGroupType(current, fallback);
+      }).filter(Boolean);
+      groupTypeCache = sortByOrder(merged);
+    } catch (_) {
+      groupTypeCache = sortByOrder(DEFAULT_GROUP_TYPES.map((item) => normalizeGroupType(item)).filter(Boolean));
+    }
+    return groupTypeCache;
+  }
+
+  function resolveProjectGroupId(uuid) {
+    if (!uuid || !groupTypeCache) return null;
+    const found = groupTypeCache.find((g) => g.id && g.id === uuid);
+    return found ? found.code : null;
+  }
+
+  async function loadItemTypes() {
+    if (itemTypeCache) return itemTypeCache;
+    try {
+      // Load group types first so resolveProjectGroupId can map UUID → code
+      const groups = await loadProjectGroupTypes();
+      void groups; // groupTypeCache is now populated
+
+      const result = await window.AppUtils.fetchJson("/api/quote-item-types", null, "加载服务类型失败");
+      const remoteList = Array.isArray(result) ? result : asArray(result?.items || result?.types);
+
+      if (remoteList.length > 0) {
+        // Primary path: use remote data as-is; resolve project_group_id UUID → projectGroupCodes
+        const converted = remoteList.map((item) => {
+          const pgId = item.project_group_id || item.projectGroupId;
+          const pgCode = pgId ? resolveProjectGroupId(pgId) : null;
+          const enriched = pgCode ? { ...item, projectGroupCodes: [pgCode] } : item;
+          return normalizeItemType(enriched);
+        }).filter(Boolean);
+        itemTypeCache = sortByOrder(converted.filter((item) => item.isActive !== false));
+      } else {
+        // Fallback: remote returned nothing, use hardcoded defaults
+        itemTypeCache = sortByOrder(DEFAULT_ITEM_TYPES.map((item) => normalizeItemType(item)).filter(Boolean));
+      }
+    } catch (_) {
+      itemTypeCache = sortByOrder(DEFAULT_ITEM_TYPES.map((item) => normalizeItemType(item)).filter(Boolean));
+    }
+    return itemTypeCache;
+  }
+
+  function ensureMasterDataLoaded() {
+    if (!masterDataPromise) {
+      masterDataPromise = Promise.all([loadProjectGroupTypes(), loadItemTypes()]);
+    }
+    return masterDataPromise;
+  }
+
+  function getGroupTypeOptions() {
+    return groupTypeCache || DEFAULT_GROUP_TYPES;
+  }
+
+  function getAllowedItemTypes(groupType) {
+    const normalizedGroupType = String(groupType || "travel").trim().toLowerCase();
+    const source = itemTypeCache || DEFAULT_ITEM_TYPES;
+    const filtered = source.filter((item) => {
+      const groups = normalizeCodeList(item.projectGroupCodes);
+      return normalizedGroupType === "mixed" || groups.length === 0 || groups.includes(normalizedGroupType) || groups.includes("mixed");
     });
+    return filtered.length > 0 ? sortByOrder(filtered) : sortByOrder(DEFAULT_ITEM_TYPES);
   }
 
-  // ── 明细行渲染 ──────────────────────────────────────────────────────────────
-  function _autoSizeRemarks(textarea) {
+  function formatMoney(value) {
+    if (window.AppUtils?.formatCurrency) {
+      return window.AppUtils.formatCurrency(Number(value) || 0, currencyCode);
+    }
+    return `${currencyCode} ${(Number(value) || 0).toFixed(2)}`;
+  }
+
+  function autoSizeRemarks(textarea) {
     if (!textarea) return;
     textarea.style.height = "auto";
-    textarea.style.height = Math.min(textarea.scrollHeight, 72) + "px";
+    const nextHeight = Math.min(textarea.scrollHeight, 72);
+    textarea.style.height = `${Math.max(nextHeight, 28)}px`;
     textarea.style.overflowY = textarea.scrollHeight > 72 ? "auto" : "hidden";
   }
 
-  function _ensureSupplierCatalogLoaded() {
-    if (_catalogPromise) return _catalogPromise;
-    _catalogPromise = Promise.all([
-      window.AppUtils.fetchJson("/api/supplier-items", null, "\u4ef7\u683c\u5e93\u52a0\u8f7d\u5931\u8d25"),
-      window.AppUtils.fetchJson("/api/suppliers", null, "\u4f9b\u5e94\u5546\u5217\u8868\u52a0\u8f7d\u5931\u8d25"),
-    ]).then(([itemsResult, suppliersResult]) => {
-      _supplierItems = Array.isArray(itemsResult) ? itemsResult : (itemsResult.items || []);
-      const suppliers = Array.isArray(suppliersResult) ? suppliersResult : (suppliersResult.suppliers || []);
-      _supplierMap = {};
-      suppliers.forEach((supplier) => { _supplierMap[supplier.id] = supplier.name; });
-      _catalogLoaded = true;
-      return _supplierItems;
-    }).catch(() => {
-      _supplierItems = [];
-      _supplierMap = {};
-      _catalogLoaded = true;
-      return _supplierItems;
+  function applyViewMode() {
+    if (!containerEl) return;
+    const hidden = viewMode === "client";
+    containerEl.querySelectorAll(".view-internal").forEach((el) => {
+      el.style.display = hidden ? "none" : "";
     });
-    return _catalogPromise;
   }
 
-  function _getSuggestionCategories(typeCode) {
-    const map = {
-      catalog_item: ["av_equipment", "stage_structure", "print_display", "decoration", "furniture", "personnel", "logistics", "management"],
-      av_equipment: ["av_equipment"],
-      print_display: ["print_display", "stage_structure"],
-      decoration: ["decoration", "furniture"],
-      personnel: ["personnel"],
-      logistics: ["logistics"],
-      guide_translation: ["personnel"],
-      driver_guide: ["personnel"],
+  function createEmptyItem(groupType) {
+    const allowed = getAllowedItemTypes(groupType);
+    const first = allowed[0] || DEFAULT_ITEM_TYPES[0];
+    return {
+      _id: nextItemId(),
+      itemType: first?.code || "misc",
+      itemName: "",
+      specification: "",
+      unit: first?.defaultUnit || "项",
+      quantity: 1,
+      costUnitPrice: 0,
+      salesUnitPrice: 0,
+      remarks: "",
+      supplierDisplay: "",
+      supplierId: "",
+      supplierCatalogItemId: "",
     };
-    return map[typeCode] || [];
   }
 
-  function _filterServiceSuggestions(tr, query) {
-    const keyword = String(query || "").trim().toLowerCase();
-    if (!keyword) return [];
-    const itemType = tr.querySelector("[name='itemType']")?.value || "misc";
-    const allowedCategories = _getSuggestionCategories(itemType);
-    const matched = _supplierItems.filter((item) => {
-      const haystack = [item.nameZh, item.nameEn, item.spec, item.unit, item.category, _supplierMap[item.supplierId]].join(" ").toLowerCase();
-      return haystack.includes(keyword);
+  function refreshGroupTotals(groupEl) {
+    let totalCost = 0;
+    let totalSales = 0;
+    groupEl.querySelectorAll("tbody tr[data-item-id]").forEach((row) => {
+      const qty = Number(row.querySelector("[name='quantity']")?.value || 0);
+      const cost = Number(row.querySelector("[name='costUnitPrice']")?.value || 0);
+      const sales = Number(row.querySelector("[name='salesUnitPrice']")?.value || 0);
+      totalCost += qty * cost;
+      totalSales += qty * sales;
+      const costSubtotal = qty * cost;
+      const salesSubtotal = qty * sales;
+      const margin = salesSubtotal > 0 ? (((salesSubtotal - costSubtotal) / salesSubtotal) * 100).toFixed(1) + "%" : "—";
+      row.querySelector("[data-field='costSubtotal']").textContent = costSubtotal > 0 ? formatMoney(costSubtotal) : "—";
+      row.querySelector("[data-field='salesSubtotal']").textContent = salesSubtotal > 0 ? formatMoney(salesSubtotal) : "—";
+      row.querySelector("[data-field='margin']").textContent = margin;
     });
-    if (!allowedCategories.length) return matched.slice(0, 6);
-    const filtered = matched.filter((item) => allowedCategories.includes(String(item.category || "").toLowerCase()));
-    return (filtered.length > 0 ? filtered : matched).slice(0, 6);
+    const totalProfit = totalSales - totalCost;
+    groupEl.querySelector(".group-cost-total").textContent = formatMoney(totalCost);
+    groupEl.querySelector(".group-sales-total").textContent = formatMoney(totalSales);
+    groupEl.querySelector(".group-profit-total").textContent = formatMoney(totalProfit);
+    const badge = groupEl.querySelector(".proj-group-badge");
+    if (badge) badge.textContent = totalSales > 0 ? `销售 ${formatMoney(totalSales)}` : "";
   }
 
-  function _hideServiceSuggestions(tr) {
-    const box = tr?.querySelector(".service-suggestion-box");
-    if (!box) return;
-    box.hidden = true;
-    box.innerHTML = "";
+  function refreshSummary() {
+    if (!containerEl) return;
+    let totalCost = 0;
+    let totalSales = 0;
+    containerEl.querySelectorAll(".project-group").forEach((groupEl) => {
+      groupEl.querySelectorAll("tbody tr[data-item-id]").forEach((row) => {
+        const qty = Number(row.querySelector("[name='quantity']")?.value || 0);
+        const cost = Number(row.querySelector("[name='costUnitPrice']")?.value || 0);
+        const sales = Number(row.querySelector("[name='salesUnitPrice']")?.value || 0);
+        totalCost += qty * cost;
+        totalSales += qty * sales;
+      });
+    });
+    const totalProfit = totalSales - totalCost;
+    const margin = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) + "%" : "0.0%";
+    const byId = (id) => containerEl.querySelector("#" + id);
+    if (byId("proj-sum-cost")) byId("proj-sum-cost").textContent = formatMoney(totalCost);
+    if (byId("proj-sum-sales")) byId("proj-sum-sales").textContent = formatMoney(totalSales);
+    if (byId("proj-sum-profit")) byId("proj-sum-profit").textContent = formatMoney(totalProfit);
+    if (byId("proj-sum-margin")) byId("proj-sum-margin").textContent = margin;
   }
 
-  async function _saveServiceCandidate(tr, groupEl, query) {
-    const payload = {
-      projectGroupCode: groupEl.querySelector("[name='projectType']")?.value || "",
-      serviceTypeCode: tr.querySelector("[name='itemType']")?.value || "",
-      serviceName: String(query || tr.querySelector("[name='itemName']")?.value || "").trim(),
-      specification: tr.querySelector("[name='specification']")?.value || "",
-      unit: tr.querySelector("[name='unit']")?.value || "",
-      costPrice: Number(tr.querySelector("[name='costUnitPrice']")?.value || 0),
-      supplierId: tr.querySelector("[name='supplierId']")?.value || "",
-      notes: tr.querySelector("[name='remarks']")?.value || "",
-    };
-    if (!payload.serviceName) return;
-    if (!window.confirm("\u672a\u627e\u5230\u5339\u914d\u6761\u76ee\uff0c\u662f\u5426\u5c06\u5f53\u524d\u670d\u52a1\u4fdd\u5b58\u4e3a\u5f85\u6574\u7406\u5019\u9009\uff1f")) return;
-    await window.AppUtils.fetchJson("/api/service-catalog-candidates", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    }, "\u4fdd\u5b58\u5f85\u6574\u7406\u5019\u9009\u5931\u8d25");
-    _hideServiceSuggestions(tr);
-    window.alert("\u5df2\u4fdd\u5b58\u4e3a\u5f85\u6574\u7406\u5019\u9009\u6761\u76ee\u3002");
-  }
-
-  function _renderServiceSuggestions(tr, groupEl) {
-    const input = tr.querySelector("[name='itemName']");
-    const box = tr.querySelector(".service-suggestion-box");
-    const query = String(input?.value || "").trim();
-    if (!input || !box || !query) {
-      _hideServiceSuggestions(tr);
-      return;
+  function syncRowUnit(rowEl) {
+    const typeCode = rowEl.querySelector("[name='itemType']")?.value || "misc";
+    const itemType = (itemTypeCache || DEFAULT_ITEM_TYPES).find((item) => item.code === typeCode);
+    const unitInput = rowEl.querySelector("[name='unit']");
+    if (!unitInput) return;
+    const systemUnit = itemType?.defaultUnit || "项";
+    if (!unitInput.value || unitInput.value === unitInput.dataset.systemUnit) {
+      unitInput.value = systemUnit;
     }
-    const matches = _filterServiceSuggestions(tr, query);
-    if (!matches.length) {
-      box.hidden = false;
-      box.innerHTML = '<button type="button" class="service-candidate-action">\u672a\u627e\u5230\u5339\u914d\u6761\u76ee\uff0c\u4fdd\u5b58\u4e3a\u5f85\u6574\u7406\u5019\u9009</button>';
-      const action = box.querySelector(".service-candidate-action");
-      if (action) {
-        action.addEventListener("click", () => {
-          _saveServiceCandidate(tr, groupEl, query).catch((error) => window.alert(error.message || "\u4fdd\u5b58\u5f85\u6574\u7406\u5019\u9009\u5931\u8d25"));
-        });
-        action.addEventListener("keydown", (event) => {
-          if (event.key === "Escape") {
-            event.preventDefault();
-            input.focus();
-            _hideServiceSuggestions(tr);
-          }
-        });
-      }
-      return;
-    }
-    box.hidden = false;
-    box.innerHTML = matches.map((item) => {
-      const supplierName = _supplierMap[item.supplierId] || "";
-      const meta = [item.spec || "", item.unit || "", supplierName || "", window.AppUtils.formatCurrency(item.costPrice || 0, _currency)].filter(Boolean).join(" \u00b7 ");
-      return '<button type="button" class="service-suggestion-item" data-id="' + esc(String(item.id || "")) + '"><span class="service-suggestion-main">' + esc(item.nameZh || item.nameEn || "") + '</span><span>' + esc(meta) + '</span></button>';
-    }).join("");
-    box.querySelectorAll(".service-suggestion-item").forEach((button, index) => {
-      button.addEventListener("click", () => {
-        _fillFromCatalog(tr, groupEl, matches[index]);
-        _hideServiceSuggestions(tr);
+    unitInput.dataset.systemUnit = systemUnit;
+  }
+
+  function bindRowEvents(rowEl, groupEl) {
+    rowEl.querySelectorAll("input, select, textarea").forEach((field) => {
+      field.addEventListener("input", () => {
+        if (field.name === "remarks") autoSizeRemarks(field);
+        if (field.name === "itemType") syncRowUnit(rowEl);
+        refreshGroupTotals(groupEl);
+        refreshSummary();
       });
-      button.addEventListener("keydown", (event) => {
-        if (event.key === "ArrowDown") {
-          event.preventDefault();
-          button.nextElementSibling?.focus();
-        } else if (event.key === "ArrowUp") {
-          event.preventDefault();
-          (button.previousElementSibling || input).focus();
-        } else if (event.key === "Escape") {
-          event.preventDefault();
-          input.focus();
-          _hideServiceSuggestions(tr);
-        }
+      field.addEventListener("change", () => {
+        if (field.name === "itemType") syncRowUnit(rowEl);
+        refreshGroupTotals(groupEl);
+        refreshSummary();
       });
     });
-  }
-
-  function _bindRowCatalogExperience(tr, groupEl) {
-    if (!tr || tr.dataset.catalogExperienceBound === "1") return;
-    tr.dataset.catalogExperienceBound = "1";
-    const input = tr.querySelector("[name='itemName']");
-    const remarks = tr.querySelector(".remarks-textarea");
-    if (remarks) _autoSizeRemarks(remarks);
-    if (!input) return;
-    input.addEventListener("focus", () => {
-      _ensureSupplierCatalogLoaded().then(() => _renderServiceSuggestions(tr, groupEl));
-    });
-    input.addEventListener("input", () => {
-      _ensureSupplierCatalogLoaded().then(() => _renderServiceSuggestions(tr, groupEl));
-    });
-    input.addEventListener("keydown", (event) => {
-      if (event.key === "ArrowDown") {
-        const first = tr.querySelector(".service-suggestion-item, .service-candidate-action");
-        if (first) {
-          event.preventDefault();
-          first.focus();
-        }
-      } else if (event.key === "Escape") {
-        _hideServiceSuggestions(tr);
-      }
-    });
-    input.addEventListener("blur", () => {
-      window.setTimeout(() => {
-        const active = document.activeElement;
-        if (!active || !tr.contains(active) || (!active.classList.contains("service-suggestion-item") && !active.classList.contains("service-candidate-action"))) {
-          _hideServiceSuggestions(tr);
-        }
-      }, 120);
-    });
-  }
-  function _getGroupTypeOptions() {
-    return _dynamicGroupTypes.length > 0
-      ? _dynamicGroupTypes.map((item) => ({ value: item.code || item.value, label: item.nameZh || item.name_zh || item.label || item.code }))
-      : GROUP_TYPES;
-  }
-
-  function _refreshMasterDataOptions() {
-    if (!_container) return;
-    _container.querySelectorAll(".project-group").forEach((groupEl) => {
-      const groupSelect = groupEl.querySelector("[name='projectType']");
-      const currentGroup = groupSelect?.value || "travel";
-      if (groupSelect && _dynamicGroupTypes.length > 0) {
-        groupSelect.innerHTML = _getGroupTypeOptions().map((item) => `<option value="${item.value}"${item.value === currentGroup ? " selected" : ""}>${item.label}</option>`).join("");
-      }
-      groupEl.querySelectorAll(".items-tbody tr[data-item-id]").forEach((tr) => {
-        const select = tr.querySelector(".item-type-sel");
-        const currentType = select?.value || "misc";
-        if (select) {
-          let allowed = _getAllowedTypes(groupEl);
-          if (!allowed.find((item) => item.value === currentType)) {
-            allowed = [...allowed, { value: currentType, label: currentType }];
-          }
-          select.innerHTML = allowed.map((item) => `<option value="${item.value}"${item.value === currentType ? " selected" : ""}>${item.label}</option>`).join("");
-        }
-      });
-      _updateGroupHeaders(groupEl, groupSelect?.value || currentGroup);
-    });
-  }
-
-  function _ensureMasterDataLoaded() {
-    if (_masterDataPromise) return _masterDataPromise;
-    _masterDataPromise = Promise.all([
-      window.AppUtils.fetchJson("/api/project-group-types", null, "\u52a0\u8f7d\u9879\u76ee\u7ec4\u5206\u7c7b\u5931\u8d25"),
-      window.AppUtils.fetchJson("/api/quote-item-types", null, "\u52a0\u8f7d\u670d\u52a1\u7c7b\u578b\u5931\u8d25"),
-    ]).then(([groupsResult, itemTypesResult]) => {
-      _dynamicGroupTypes = Array.isArray(groupsResult) ? groupsResult : (groupsResult.items || groupsResult.projectGroupTypes || []);
-      _dynamicItemTypes = Array.isArray(itemTypesResult) ? itemTypesResult : (itemTypesResult.items || itemTypesResult.types || []);
-      _refreshMasterDataOptions();
-      return { groups: _dynamicGroupTypes, itemTypes: _dynamicItemTypes };
-    }).catch(() => ({ groups: _dynamicGroupTypes, itemTypes: _dynamicItemTypes }));
-    return _masterDataPromise;
-  }
-  function createItemRow(item, groupEl, allowedTypes) {
-    const tr    = document.createElement("tr");
-    const iType = item.itemType || "misc";
-    // 向后兼容：如果 item 自带的类型不在当前组的允许列表里，追加进去，避免丢失已有数据
-    let types = allowedTypes || ITEM_TYPES;
-    if (!types.find((t) => t.value === iType)) {
-      const entry = ITEM_TYPES.find((t) => t.value === iType);
-      if (entry) types = [...types, entry];
-    }
-    tr.dataset.itemId = item._id || _generateId();
-    item._id = tr.dataset.itemId;
-
-    const extra         = item.extraJson || {};
-    const nights        = Number(extra.nights || 1);
-    const transportDays = Number(extra.transportDays || 1);
-    const isHotel       = iType === "hotel";
-    const isTransport   = iType === "transport";
-    const isCatalog     = iType === "catalog_item";
-    const specLabel     = SPEC_LABELS[iType] || "规格";
-    const qtyUnitLabel  = QTY_UNIT_LABELS[iType] || "";
-
-    const groupType = groupEl?.querySelector("[name='projectType']")?.value || "event";
-    const nameHint  = (GROUP_ITEM_NAME_HINTS[groupType] || {})[iType] || "名称";
-
-    const qty      = Number(item.quantity || 1);
-    const costUnit = Number(item.costUnitPrice || 0);
-    const salesUnit= Number(item.salesUnitPrice || 0);
-    const n        = isHotel ? Math.max(nights, 1) : 1;
-    const costSub  = Math.round(qty * n * costUnit  * 100) / 100;
-    const salesSub = Math.round(qty * n * salesUnit * 100) / 100;
-    const margin   = salesSub > 0 ? ((salesSub - costSub) / salesSub * 100).toFixed(1) + "%" : "—";
-
-    // store catalog category as data attr for save mapping
-    if (item.itemCategory) tr.dataset.catalogCategory = item.itemCategory;
-
-    tr.innerHTML = `
-      <td>
-        <select class="cell-input item-type-sel" name="itemType" style="min-width:88px;height:28px;padding:2px 4px;font-size:12px">
-          ${types.map((t) => `<option value="${t.value}"${iType === t.value ? " selected" : ""}>${t.label}</option>`).join("")}
-        </select>
-      </td>
-      <td><div class="service-name-wrap"><input class="cell-input" name="itemName" value="${esc(item.itemName || "")}" placeholder="${esc(nameHint)}" style="min-width:110px" autocomplete="off" /><div class="service-suggestion-box" hidden></div></div></td>
-      <td><input class="cell-input spec-input" name="specification" value="${esc(item.specification || "")}" placeholder="${esc(specLabel)}" style="min-width:72px" /></td>
-      <td><input class="cell-input" name="unit" value="${esc(item.unit || _getDefaultUnit(iType))}" placeholder="单位" style="width:44px" data-system-unit="${esc(_getDefaultUnit(iType))}" /></td>
-      <td class="qty-td">
-        <div class="qty-stack">
-          <div class="qty-main-line">
-            <input class="cell-input qty-input" name="quantity" type="number" min="0" step="0.01" value="${qty}" />
-            <span class="qty-unit-label">${qtyUnitLabel}</span>
-          </div>
-          <div class="qty-sub-line nights-marker"${isHotel ? "" : ' style="display:none"'}>
-            <input class="cell-input qty-input" name="nights" type="number" min="1" step="1" value="${nights}" title="晚数" />
-            <span class="qty-unit-label">晚</span>
-          </div>
-          <div class="qty-sub-line transport-days-marker"${isTransport ? "" : ' style="display:none"'}>
-            <input class="cell-input qty-input" name="transportDays" type="number" min="1" step="1" value="${transportDays}" title="天数" />
-            <span class="qty-unit-label">天</span>
-          </div>
-        </div>
-      </td>
-      <td class="view-internal">
-        <input class="cell-input" name="costUnitPrice" type="number" min="0" step="0.01"
-          value="${costUnit > 0 ? costUnit : ""}" placeholder="0.00" style="width:78px;text-align:right" />
-      </td>
-      <td>
-        <input class="cell-input" name="salesUnitPrice" type="number" min="0" step="0.01"
-          value="${salesUnit > 0 ? salesUnit : ""}" placeholder="0.00" style="width:78px;text-align:right" />
-      </td>
-      <td class="view-internal computed-cell r" data-field="costSubtotal">${costSub > 0 ? fmt(costSub) : "—"}</td>
-      <td class="computed-cell r" data-field="salesSubtotal">${salesSub > 0 ? fmt(salesSub) : "—"}</td>
-      <td class="view-internal computed-cell r" data-field="margin">${margin}</td>
-      <td class="view-internal supplier-col">
-        <input class="cell-input" name="supplierDisplay" value="${esc(item.supplierDisplay || "")}" placeholder="供应商" style="min-width:72px" readonly tabindex="-1" />
-        <input type="hidden" name="supplierId" value="${esc(item.supplierId || "")}" />
-        <input type="hidden" name="supplierCatalogItemId" value="${esc(item.supplierCatalogItemId || "")}" />
-      </td>
-      <td class="remarks-cell"><textarea class="cell-input remarks-textarea" name="remarks" rows="1" placeholder="备注" style="min-width:180px;overflow:hidden" oninput="this.style.height=&quot;auto&quot;;this.style.height=Math.min(this.scrollHeight,72)+&quot;px&quot;;">${esc(item.remarks || "")}</textarea></td>
-      <td>
-        <div style="display:flex;gap:3px;align-items:center;justify-content:flex-end">
-          ${isCatalog ? '<button type="button" class="catalog-select-btn catalog-btn" title="从价格库选择" style="padding:4px 8px;font-size:11px">从库选</button>' : '<span style="width:4px"></span>'}
-          <button type="button" class="ghost mini-button delete-item-btn" title="删除此行" style="padding:4px 7px;font-size:11px;color:#b84040">✕</button>
-        </div>
-      </td>
-    `;
-
-    // 输入联动
-    tr.querySelectorAll("input, select, textarea").forEach((input) => {
-      input.addEventListener("input",  () => _updateRow(tr, groupEl));
-      input.addEventListener("change", () => {
-        _updateRow(tr, groupEl);
-        if (input.name === "itemType") _syncRowType(tr);
-      });
-    });
-
-    _bindRowCatalogExperience(tr, groupEl);
-
-    tr.querySelector(".delete-item-btn").addEventListener("click", () => {
-      tr.remove();
+    const remarks = rowEl.querySelector(".remarks-textarea");
+    autoSizeRemarks(remarks);
+    rowEl.querySelector(".delete-item-btn").addEventListener("click", () => {
+      rowEl.remove();
       const tbody = groupEl.querySelector(".items-tbody");
       if (!tbody.querySelector("tr[data-item-id]")) {
-        tbody.innerHTML = '<tr class="empty-row"><td colspan="13">暂无明细，点击下方按钮添加。</td></tr>';
+        tbody.appendChild(renderEmptyRow());
       }
-      _refreshGroupTotals(groupEl);
-      _refreshSummary();
+      refreshGroupTotals(groupEl);
+      refreshSummary();
     });
+  }
 
-    const catalogBtn = tr.querySelector(".catalog-btn");
-    if (catalogBtn) {
-      catalogBtn.addEventListener("click", () => _openCatalogPicker(tr, groupEl));
-    }
-
+  function renderEmptyRow() {
+    const tr = document.createElement("tr");
+    tr.className = "empty-row";
+    tr.innerHTML = '<td colspan="12">暂无明细，点击下方按钮添加。</td>';
     return tr;
   }
 
-  function _syncRowType(tr) {
-    const iType       = tr.querySelector("[name='itemType']").value;
-    const isHotel     = iType === "hotel";
-    const isTransport = iType === "transport";
-    const isCatalog   = iType === "catalog_item";
-
-    // qty 区：单位标签
-    const qtyUnitLabel = tr.querySelector(".qty-unit-label");
-    if (qtyUnitLabel) qtyUnitLabel.textContent = QTY_UNIT_LABELS[iType] || "";
-
-    // qty 区：hotel 晚数行
-    const nightsLine = tr.querySelector(".nights-marker");
-    if (nightsLine) nightsLine.style.display = isHotel ? "" : "none";
-
-    // qty 区：transport 天数行
-    const transportLine = tr.querySelector(".transport-days-marker");
-    if (transportLine) transportLine.style.display = isTransport ? "" : "none";
-
-    // spec 占位符
-    const specInput = tr.querySelector(".spec-input");
-    if (specInput) specInput.placeholder = SPEC_LABELS[iType] || "规格";
-
-    // name 占位符（按项目组类型 + 行类型）
-    const groupEl   = tr.closest(".project-group");
-    const groupType = groupEl?.querySelector("[name='projectType']")?.value || "event";
-    const nameInput = tr.querySelector("[name='itemName']");
-    if (nameInput && !nameInput.value) {
-      nameInput.placeholder = (GROUP_ITEM_NAME_HINTS[groupType] || {})[iType] || "名称";
-    }
-
-    // unit 自动联动：仅当当前单位仍等于系统上次设定的默认值时才跟随类型切换，用户已手动修改则保留
-    const unitInput = tr.querySelector("[name='unit']");
-    if (unitInput) {
-      const newDefault = _getDefaultUnit(iType);
-      if (!unitInput.value || unitInput.value === unitInput.dataset.systemUnit) {
-        unitInput.value = newDefault;
-      }
-      unitInput.dataset.systemUnit = newDefault;
-    }
-
-    const actionsCell = tr.querySelector("td:last-child > div");
-    if (actionsCell) {
-      const existing = actionsCell.querySelector(".catalog-btn");
-      if (isCatalog && !existing) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "catalog-select-btn catalog-btn";
-        btn.title = "从价格库选择";
-        btn.textContent = "从库选";
-        btn.style.cssText = "padding:4px 8px;font-size:11px";
-        btn.addEventListener("click", () => _openCatalogPicker(tr, tr.closest(".project-group")));
-        actionsCell.insertBefore(btn, actionsCell.querySelector(".delete-item-btn"));
-      } else if (!isCatalog && existing) {
-        existing.remove();
-        // clear catalog data when switching away
-        tr.querySelector("[name='supplierId']").value = "";
-        tr.querySelector("[name='supplierCatalogItemId']").value = "";
-        tr.querySelector("[name='supplierDisplay']").value = "";
-        tr.dataset.catalogCategory = "";
-      }
-    }
-  }
-
-  function _updateRow(tr, groupEl) {
-    const iType     = tr.querySelector("[name='itemType']").value;
-    const qty       = Number(tr.querySelector("[name='quantity']").value || 0);
-    const nightsEl  = tr.querySelector("[name='nights']");
-    const nights    = iType === "hotel" ? Math.max(Number(nightsEl ? nightsEl.value : 1), 1) : 1;
-    const costUnit  = Number(tr.querySelector("[name='costUnitPrice']").value  || 0);
-    const salesUnit = Number(tr.querySelector("[name='salesUnitPrice']").value || 0);
-    const costSub   = Math.round(qty * nights * costUnit  * 100) / 100;
-    const salesSub  = Math.round(qty * nights * salesUnit * 100) / 100;
-    const margin    = salesSub > 0 ? ((salesSub - costSub) / salesSub * 100).toFixed(1) + "%" : "—";
-
-    tr.querySelector("[data-field='costSubtotal']").textContent  = costSub  > 0 ? fmt(costSub)  : "—";
-    tr.querySelector("[data-field='salesSubtotal']").textContent = salesSub > 0 ? fmt(salesSub) : "—";
-    tr.querySelector("[data-field='margin']").textContent        = margin;
-
-    _refreshGroupTotals(groupEl);
-    _refreshSummary();
-  }
-
-  // ── 分组操作 ────────────────────────────────────────────────────────────────
-  function _addItemToGroup(groupEl, defaults) {
-    const tbody = groupEl.querySelector(".items-tbody");
-    const emptyRow = tbody.querySelector(".empty-row");
-    if (emptyRow) emptyRow.remove();
-    const allowedTypes = _getAllowedTypes(groupEl);
-    const defaultType = allowedTypes[0]?.value || "misc";
-    const item = { itemType: defaultType, unit: _getDefaultUnit(defaultType), quantity: 1, ...defaults };
-    const tr = createItemRow(item, groupEl, allowedTypes);
-    tbody.appendChild(tr);
-    tr.querySelector("[name='itemName']")?.focus();
-    _refreshGroupTotals(groupEl);
-    _refreshSummary();
-    applyViewMode();
-  }
-
-  function _refreshGroupTotals(groupEl) {
-    let cost = 0, sales = 0;
-    groupEl.querySelectorAll(".items-tbody tr[data-item-id]").forEach((tr) => {
-      const iType     = tr.querySelector("[name='itemType']").value;
-      const qty       = Number(tr.querySelector("[name='quantity']").value || 0);
-      const nightsEl  = tr.querySelector("[name='nights']");
-      const nights    = iType === "hotel" ? Math.max(Number(nightsEl ? nightsEl.value : 1), 1) : 1;
-      const costUnit  = Number(tr.querySelector("[name='costUnitPrice']").value  || 0);
-      const salesUnit = Number(tr.querySelector("[name='salesUnitPrice']").value || 0);
-      cost  += qty * nights * costUnit;
-      sales += qty * nights * salesUnit;
-    });
-    cost  = Math.round(cost  * 100) / 100;
-    sales = Math.round(sales * 100) / 100;
-    const profit = Math.round((sales - cost) * 100) / 100;
-
-    const get = (cls) => groupEl.querySelector(cls);
-    if (get(".group-cost-total"))   get(".group-cost-total").textContent   = fmt(cost);
-    if (get(".group-sales-total"))  get(".group-sales-total").textContent  = fmt(sales);
-    if (get(".group-profit-total")) get(".group-profit-total").textContent = profit >= 0 ? fmt(profit) : "(" + fmt(-profit) + ")";
-    if (get(".group-totals-badge")) get(".group-totals-badge").textContent = sales > 0 ? "销售 " + fmt(sales) + "  利润 " + fmt(profit) : "";
-  }
-
-  function _refreshSummary() {
-    if (!_container) return;
-    let totalCost = 0, totalSales = 0;
-    _container.querySelectorAll(".project-group .items-tbody tr[data-item-id]").forEach((tr) => {
-      const iType     = tr.querySelector("[name='itemType']").value;
-      const qty       = Number(tr.querySelector("[name='quantity']").value || 0);
-      const nightsEl  = tr.querySelector("[name='nights']");
-      const nights    = iType === "hotel" ? Math.max(Number(nightsEl ? nightsEl.value : 1), 1) : 1;
-      const costUnit  = Number(tr.querySelector("[name='costUnitPrice']").value  || 0);
-      const salesUnit = Number(tr.querySelector("[name='salesUnitPrice']").value || 0);
-      totalCost  += qty * nights * costUnit;
-      totalSales += qty * nights * salesUnit;
-    });
-    totalCost  = Math.round(totalCost  * 100) / 100;
-    totalSales = Math.round(totalSales * 100) / 100;
-    const totalProfit = Math.round((totalSales - totalCost) * 100) / 100;
-    const margin = totalSales > 0 ? ((totalProfit / totalSales) * 100).toFixed(1) : "0.0";
-
-    const el = (id) => _container.querySelector("#" + id);
-    if (el("proj-sum-cost"))   el("proj-sum-cost").textContent   = fmt(totalCost);
-    if (el("proj-sum-sales"))  el("proj-sum-sales").textContent  = fmt(totalSales);
-    if (el("proj-sum-profit")) el("proj-sum-profit").textContent = fmt(totalProfit);
-    if (el("proj-sum-margin")) el("proj-sum-margin").textContent = margin + "%";
-  }
-
-  // ── 从 DOM 提取分组数据 ──────────────────────────────────────────────────────
-  function _extractGroupData(groupEl) {
-    const projectType  = groupEl.querySelector("[name='projectType']").value;
-    const projectTitle = groupEl.querySelector("[name='projectTitle']").value.trim();
-    const items = [];
-
-    groupEl.querySelectorAll(".items-tbody tr[data-item-id]").forEach((tr, ii) => {
-      const iType          = tr.querySelector("[name='itemType']").value;
-      const nightsEl       = tr.querySelector("[name='nights']");
-      const transportDaysEl= tr.querySelector("[name='transportDays']");
-      const nights         = iType === "hotel" ? Math.max(Number(nightsEl ? nightsEl.value : 1), 1) : 1;
-      const transportDays  = iType === "transport" ? Math.max(Number(transportDaysEl ? transportDaysEl.value : 1), 1) : 1;
-      const qty      = Number(tr.querySelector("[name='quantity']").value || 1);
-      const costUnit = Number(tr.querySelector("[name='costUnitPrice']").value  || 0);
-      const salesUnit= Number(tr.querySelector("[name='salesUnitPrice']").value || 0);
-      const costSub  = Math.round(qty * nights * costUnit  * 100) / 100;
-      const salesSub = Math.round(qty * nights * salesUnit * 100) / 100;
-
-      // catalog_item → save as misc on backend; store catalogCategory in extraJson
-      const backendType = iType;
-      const catalogCat  = iType === "catalog_item" ? (tr.dataset.catalogCategory || "") : "";
-      const extraJson   = iType === "hotel"
-        ? { nights }
-        : iType === "transport"
-          ? { transportDays }
-          : iType === "catalog_item"
-            ? { catalogCategory: catalogCat }
-            : {};
-
-      items.push({
-        _id:                   tr.dataset.itemId,
-        itemType:              backendType,
-        itemCategory:          catalogCat,
-        itemName:              tr.querySelector("[name='itemName']").value.trim(),
-        specification:         tr.querySelector("[name='specification']").value.trim(),
-        unit:                  tr.querySelector("[name='unit']").value.trim(),
-        quantity:              qty,
-        currency:              _currency,
-        costUnitPrice:         costUnit,
-        salesUnitPrice:        salesUnit,
-        costSubtotal:          costSub,
-        salesSubtotal:         salesSub,
-        supplierId:            tr.querySelector("[name='supplierId']").value,
-        supplierCatalogItemId: tr.querySelector("[name='supplierCatalogItemId']").value,
-        supplierDisplay:       tr.querySelector("[name='supplierDisplay']").value,
-        remarks:               tr.querySelector("[name='remarks']").value.trim(),
-        sortOrder:             ii,
-        extraJson,
+  function renderItemRow(itemData, groupType) {
+    const allowed = getAllowedItemTypes(groupType);
+    const tr = document.createElement("tr");
+    const item = { ...createEmptyItem(groupType), ...(itemData || {}) };
+    tr.dataset.itemId = item._id || nextItemId();
+    const currentType = String(item.itemType || allowed[0]?.code || "misc").trim().toLowerCase();
+    const currentTypeMeta = (itemTypeCache || DEFAULT_ITEM_TYPES).find((entry) => entry.code === currentType);
+    const options = [...allowed];
+    if (currentType && !options.some((entry) => entry.code === currentType)) {
+      options.push(currentTypeMeta || {
+        code: currentType,
+        nameZh: LEGACY_ITEM_LABELS[currentType] || currentType,
+        defaultUnit: item.unit || "项",
       });
+    }
+    const unit = item.unit || currentTypeMeta?.defaultUnit || "项";
+    tr.innerHTML = `
+      <td>
+        <select class="cell-input item-type-sel" name="itemType" style="min-width:120px">
+          ${options.map((entry) => `<option value="${entry.code}"${entry.code === currentType ? " selected" : ""}>${entry.nameZh}</option>`).join("")}
+        </select>
+      </td>
+      <td><input class="cell-input" name="itemName" value="${escapeHtml(item.itemName || "")}" placeholder="服务名称" /></td>
+      <td><input class="cell-input" name="specification" value="${escapeHtml(item.specification || "")}" placeholder="规格 / 说明" /></td>
+      <td><input class="cell-input" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="单位" style="width:56px" /></td>
+      <td><input class="cell-input" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" style="width:84px;text-align:right" /></td>
+      <td class="view-internal"><input class="cell-input" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" style="width:88px;text-align:right" /></td>
+      <td><input class="cell-input" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" style="width:88px;text-align:right" /></td>
+      <td class="remarks-cell"><textarea class="cell-input remarks-textarea" name="remarks" rows="1" placeholder="备注">${escapeHtml(item.remarks || "")}</textarea></td>
+      <td class="view-internal computed-cell r" data-field="costSubtotal">—</td>
+      <td class="computed-cell r" data-field="salesSubtotal">—</td>
+      <td class="view-internal computed-cell r" data-field="margin">—</td>
+      <td><button type="button" class="ghost mini-button delete-item-btn" style="padding:4px 8px;width:auto">删除</button></td>
+    `;
+    return tr;
+  }
+
+  function rebuildItemTypeOptions(groupEl) {
+    const groupType = groupEl.querySelector("[name='projectType']")?.value || "travel";
+    const allowed = getAllowedItemTypes(groupType);
+    groupEl.querySelectorAll("tbody tr[data-item-id]").forEach((rowEl) => {
+      const select = rowEl.querySelector("[name='itemType']");
+      if (!select) return;
+      const currentValue = String(select.value || "").trim().toLowerCase();
+      select.innerHTML = allowed.map((entry) => `<option value="${entry.code}"${entry.code === currentValue ? " selected" : ""}>${entry.nameZh}</option>`).join("");
+      if (!allowed.some((entry) => entry.code === currentValue)) {
+        select.value = allowed[0]?.code || "misc";
+      }
+      syncRowUnit(rowEl);
     });
+  }
 
-    const cost  = items.reduce((s, i) => s + i.costSubtotal,  0);
-    const sales = items.reduce((s, i) => s + i.salesSubtotal, 0);
-
+  function extractRowData(rowEl) {
     return {
-      _id:                groupEl.dataset.groupId,
-      projectType,
-      projectTitle,
-      sortOrder:          Array.from(_container.querySelectorAll("#proj-groups-list .project-group")).indexOf(groupEl),
-      projectCostTotal:   Math.round(cost  * 100) / 100,
-      projectSalesTotal:  Math.round(sales * 100) / 100,
-      projectProfitTotal: Math.round((sales - cost) * 100) / 100,
-      items,
+      _id: rowEl.dataset.itemId || nextItemId(),
+      itemType: rowEl.querySelector("[name='itemType']")?.value || "misc",
+      itemName: rowEl.querySelector("[name='itemName']")?.value?.trim() || "",
+      specification: rowEl.querySelector("[name='specification']")?.value?.trim() || "",
+      unit: rowEl.querySelector("[name='unit']")?.value?.trim() || "",
+      quantity: Number(rowEl.querySelector("[name='quantity']")?.value || 0),
+      costUnitPrice: Number(rowEl.querySelector("[name='costUnitPrice']")?.value || 0),
+      salesUnitPrice: Number(rowEl.querySelector("[name='salesUnitPrice']")?.value || 0),
+      remarks: rowEl.querySelector("[name='remarks']")?.value || "",
+      supplierDisplay: "",
+      supplierId: "",
+      supplierCatalogItemId: "",
+      extraJson: {},
     };
   }
 
-  // ── 供应商价格库选择器（左右布局）─────────────────────────────────────────
-  function _openCatalogPicker(tr, groupEl) {
-    let picker = document.getElementById("catalog-picker-overlay");
-
-    if (!picker) {
-      picker = document.createElement("div");
-      picker.id = "catalog-picker-overlay";
-      picker.className = "catalog-modal-overlay";
-      picker.style.display = "none";
-
-      picker.innerHTML = `
-        <div class="catalog-modal">
-          <div class="catalog-modal-header">
-            <h3>价格库</h3>
-            <input id="catalog-search" class="catalog-modal-search" placeholder="搜索名称、规格、供应商…" autocomplete="off" />
-            <button type="button" id="catalog-close-btn" class="ghost mini-button" style="width:auto;flex-shrink:0;border-radius:8px">关闭</button>
-          </div>
-          <div class="catalog-modal-body">
-            <div class="catalog-sidebar">
-              ${CATALOG_CATS.map((c) =>
-                `<button type="button" class="catalog-cat-btn${c.value === "" ? " active" : ""}" data-cat="${c.value}">${c.label}</button>`
-              ).join("")}
-            </div>
-            <div class="catalog-main">
-              <div class="catalog-list-header">
-                <span>名称 / 规格</span>
-                <span>供应商</span>
-                <span>单位</span>
-                <span>成本价</span>
-                <span></span>
-              </div>
-              <div id="catalog-items-list"></div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(picker);
-
-      document.getElementById("catalog-close-btn").addEventListener("click", () => {
-        picker.style.display = "none";
-      });
-      picker.addEventListener("click", (e) => {
-        if (e.target === picker) picker.style.display = "none";
-      });
-
-      document.getElementById("catalog-search").addEventListener("input", () => {
-        if (picker._render) picker._render();
-      });
-
-      picker.querySelectorAll(".catalog-cat-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          picker.querySelectorAll(".catalog-cat-btn").forEach((b) => b.classList.remove("active"));
-          btn.classList.add("active");
-          picker._activeCat = btn.dataset.cat;
-          if (picker._render) picker._render();
-        });
-      });
-
-      picker._activeCat = "";
-
-      picker._render = function () {
-        const q   = (document.getElementById("catalog-search").value || "").toLowerCase();
-        const cat = picker._activeCat || "";
-        const filtered = _supplierItems.filter((item) => {
-          if (item.isActive === false) return false;
-          if (cat && item.category !== cat) return false;
-          if (q) {
-            const name = (item.nameZh || "").toLowerCase();
-            const spec = (item.spec   || "").toLowerCase();
-            const sup  = (_supplierMap[item.supplierId] || "").toLowerCase();
-            if (!name.includes(q) && !spec.includes(q) && !sup.includes(q)) return false;
-          }
-          return true;
-        });
-
-        const listEl = document.getElementById("catalog-items-list");
-        if (!listEl) return;
-
-        if (filtered.length === 0) {
-          listEl.innerHTML = '<div class="catalog-empty">暂无匹配条目，请调整关键词或分类。</div>';
-          return;
-        }
-
-        listEl.innerHTML = filtered.map((item) => {
-          const supName  = esc(_supplierMap[item.supplierId] || "");
-          const catLabel = window.AppUi
-            ? esc(window.AppUi.getLabel("supplierItemCategoryLabels", item.category || "") || "")
-            : esc(item.category || "");
-          return `
-            <div class="catalog-item-row" data-item-id="${esc(String(item.id))}">
-              <div>
-                <div class="catalog-item-name-main">${esc(item.nameZh || "")}</div>
-                <div class="catalog-item-meta">${esc(item.spec || "")}${item.spec && catLabel ? " · " : ""}${catLabel}</div>
-              </div>
-              <div class="catalog-item-supplier">${supName}</div>
-              <div class="catalog-item-unit">${esc(item.unit || "")}</div>
-              <div class="catalog-item-price">${window.AppUtils.formatCurrency(item.costPrice || 0, _currency)}</div>
-              <button type="button" class="catalog-select-btn">选用</button>
-            </div>
-          `;
-        }).join("");
-
-        listEl.querySelectorAll(".catalog-item-row").forEach((row) => {
-          row.addEventListener("click", () => {
-            const found = _supplierItems.find((i) => String(i.id) === row.dataset.itemId);
-            if (found) {
-              _fillFromCatalog(picker._currentTr, picker._currentGroupEl, found);
-              picker.style.display = "none";
-            }
-          });
-        });
-      };
-    }
-
-    // update target row/group for this open (fixes stale closure bug)
-    picker._currentTr       = tr;
-    picker._currentGroupEl  = groupEl;
-    picker.style.display    = "flex";
-
-    if (!_catalogLoaded) {
-      const listEl = document.getElementById("catalog-items-list");
-      if (listEl) listEl.innerHTML = '<div class="catalog-empty">加载中…</div>';
-
-      _ensureSupplierCatalogLoaded().then(() => {
-        if (picker._render) picker._render();
-      });
-    } else if (picker._render) {
-      picker._render();
-    }
+  function extractGroupData(groupEl) {
+    return {
+      _id: groupEl.dataset.groupId || nextGroupId(),
+      projectType: groupEl.querySelector("[name='projectType']")?.value || "travel",
+      projectTitle: groupEl.querySelector("[name='projectTitle']")?.value?.trim() || "",
+      items: Array.from(groupEl.querySelectorAll("tbody tr[data-item-id]")).map(extractRowData),
+    };
   }
 
-  function _fillFromCatalog(tr, groupEl, catalogItem) {
-    if (!tr) return;
-    tr.querySelector("[name='itemName']").value          = catalogItem.nameZh  || "";
-    tr.querySelector("[name='specification']").value     = catalogItem.spec    || "";
-    tr.querySelector("[name='unit']").value              = catalogItem.unit    || "项";
-    tr.querySelector("[name='costUnitPrice']").value     = catalogItem.costPrice || 0;
-    tr.querySelector("[name='supplierId']").value        = catalogItem.supplierId || "";
-    tr.querySelector("[name='supplierCatalogItemId']").value = String(catalogItem.id);
-    tr.querySelector("[name='supplierDisplay']").value   = _supplierMap[catalogItem.supplierId] || "";
-    tr.dataset.catalogCategory = catalogItem.category || "";
-    _updateRow(tr, groupEl);
-  }
-
-  // 更新分组的表头文字和 projectTitle 占位文字（与组类型联动）
-  function _updateGroupHeaders(div, groupType) {
-    const labels = GROUP_HEADER_LABELS[groupType] || GROUP_HEADER_LABELS.mixed;
-    const typeTh = div.querySelector(".type-th");
-    const nameTh = div.querySelector(".name-th");
-    const specTh = div.querySelector(".spec-th");
-    const groupLabel = div.querySelector(".project-group-classifier span");
-    if (typeTh) typeTh.textContent = "\u670d\u52a1\u7c7b\u578b";
-    if (groupLabel) groupLabel.textContent = "\u9879\u76ee\u7ec4\u5206\u7c7b";
-    if (nameTh) nameTh.textContent = labels.name;
-    if (specTh) specTh.textContent = labels.spec;
-    const titleInput = div.querySelector("[name='projectTitle']");
-    if (titleInput) titleInput.placeholder = GROUP_TITLE_HINTS[groupType] || GROUP_TITLE_HINTS.mixed;
-  }
-
-  // ── 分组渲染 ────────────────────────────────────────────────────────────────
-  function _renderGroup(group) {
-    const groupId = group._id || ("group-" + (++_groupCounter));
-    const div = document.createElement("div");
-    div.dataset.groupId = groupId;
-    div.className = "project-group group-type-" + (group.projectType || "event");
-
-    div.innerHTML = `
+  function renderGroup(groupData) {
+    const group = {
+      _id: groupData?._id || nextGroupId(),
+      projectType: String(groupData?.projectType || "travel").trim().toLowerCase() || "travel",
+      projectTitle: groupData?.projectTitle || "",
+      items: Array.isArray(groupData?.items) ? groupData.items : [],
+    };
+    const groupEl = document.createElement("div");
+    groupEl.className = "project-group";
+    groupEl.dataset.groupId = group._id;
+    groupEl.innerHTML = `
       <div class="project-group-header">
-        <label class="project-group-classifier"><span>项目组分类</span><select class="proj-type-select" name="projectType">
-          ${_getGroupTypeOptions().map((t) => `<option value="${t.value}"${(group.projectType || "travel") === t.value ? " selected" : ""}>${t.label}</option>`).join("")}
-        </select></label>
-        <input name="projectTitle" class="proj-title-input"
-          value="${esc(group.projectTitle || "")}"
-          placeholder="${esc(GROUP_TITLE_HINTS[group.projectType || "travel"] || GROUP_TITLE_HINTS.mixed)}" />
+        <label class="project-group-classifier">
+          <span>项目组分类</span>
+          <select class="proj-type-select" name="projectType">
+            ${getGroupTypeOptions().map((entry) => `<option value="${entry.code}"${entry.code === group.projectType ? " selected" : ""}>${entry.nameZh}</option>`).join("")}
+          </select>
+        </label>
+        <input class="proj-title-input" name="projectTitle" value="${escapeHtml(group.projectTitle)}" placeholder="项目组名称" />
         <span class="group-totals-badge proj-group-badge view-internal"></span>
         <div class="proj-header-actions">
-          <button type="button" class="ghost mini-button collapse-btn">折叠</button>
-          <button type="button" class="ghost mini-button copy-btn">复制</button>
-          <button type="button" class="ghost mini-button delete-btn">删除</button>
+          <button type="button" class="ghost mini-button add-item-btn" style="width:auto">新增明细</button>
+          <button type="button" class="ghost mini-button delete-group-btn" style="width:auto">删除组</button>
         </div>
       </div>
-
       <div class="project-group-body">
         <div style="overflow-x:auto">
           <table class="proj-item-table">
             <thead>
               <tr>
-                <th class="type-th" style="min-width:90px">类型</th>
-                <th class="name-th" style="min-width:120px">名称</th>
-                <th class="spec-th" style="min-width:80px">规格</th>
-                <th style="width:46px">单位</th>
-                <th class="r" style="width:80px">数量</th>
-                <th class="r view-internal" style="width:82px">成本单价</th>
-                <th class="r" style="width:82px">销售单价</th>
-                <th class="r view-internal" style="width:86px">成本小计</th>
-                <th class="r" style="width:86px">销售小计</th>
-                <th class="r view-internal" style="width:58px">毛利率</th>
-                <th class="view-internal supplier-col" style="min-width:80px">供应商</th>
-                <th style="min-width:80px">备注</th>
-                <th style="width:68px"></th>
+                <th class="type-th" style="min-width:120px">服务类型</th>
+                <th class="name-th" style="min-width:140px">服务名称</th>
+                <th class="spec-th" style="min-width:120px">规格 / 说明</th>
+                <th style="width:60px">单位</th>
+                <th class="r" style="width:90px">数量</th>
+                <th class="r view-internal" style="width:96px">成本单价</th>
+                <th class="r" style="width:96px">销售单价</th>
+                <th style="min-width:200px">备注</th>
+                <th class="r view-internal" style="width:100px">成本小计</th>
+                <th class="r" style="width:100px">销售小计</th>
+                <th class="r view-internal" style="width:80px">毛利率</th>
+                <th style="width:76px"></th>
               </tr>
             </thead>
-            <tbody class="items-tbody">
-              <tr class="empty-row">
-                <td colspan="13">暂无明细，点击下方按钮添加。</td>
-              </tr>
-            </tbody>
+            <tbody class="items-tbody"></tbody>
           </table>
         </div>
-
-        <div class="proj-group-footer">
-          <button type="button" class="proj-add-btn add-item-btn">＋ 新增明细</button>
-        </div>
-
         <div class="proj-group-totals view-internal">
           <span>成本合计：<strong class="group-cost-total">—</strong></span>
           <span>销售合计：<strong class="group-sales-total">—</strong></span>
@@ -990,288 +448,168 @@ window.ProjectEditor = (function () {
       </div>
     `;
 
-    // 按组类型设置正确的表头文字和 projectTitle 占位（HTML 模板占位为通用文字，此处覆盖）
-    _updateGroupHeaders(div, group.projectType || "travel");
-
-    // 分组操作绑定
-    div.querySelector(".delete-btn").addEventListener("click", () => {
-      const allGroups = _container.querySelectorAll("#proj-groups-list .project-group");
-      if (allGroups.length <= 1 && !confirm("确定删除最后一个项目组吗？")) return;
-      div.remove();
-      _refreshSummary();
+    const tbody = groupEl.querySelector(".items-tbody");
+    const items = group.items.length > 0 ? group.items : [createEmptyItem(group.projectType)];
+    items.forEach((item) => {
+      const rowEl = renderItemRow(item, group.projectType);
+      tbody.appendChild(rowEl);
+      bindRowEvents(rowEl, groupEl);
     });
+    if (!tbody.querySelector("tr[data-item-id]")) {
+      tbody.appendChild(renderEmptyRow());
+    }
 
-    div.querySelector(".copy-btn").addEventListener("click", () => {
-      const data = _extractGroupData(div);
-      const copy = JSON.parse(JSON.stringify(data));
-      copy._id = null;
-      copy.projectTitle = (copy.projectTitle || "") + "（复制）";
-      copy.items = copy.items.map((i) => { const n = { ...i }; n._id = null; return n; });
-      const newDiv = _renderGroup(copy);
-      div.parentNode.insertBefore(newDiv, div.nextSibling);
-      const tbody = newDiv.querySelector(".items-tbody");
-      copy.items.forEach((item) => {
-        tbody.querySelector(".empty-row")?.remove();
-        tbody.appendChild(createItemRow(item, newDiv));
-      });
-      _refreshGroupTotals(newDiv);
-      _refreshSummary();
+    groupEl.querySelector(".add-item-btn").addEventListener("click", () => {
+      tbody.querySelector(".empty-row")?.remove();
+      const rowEl = renderItemRow(createEmptyItem(groupEl.querySelector("[name='projectType']").value), groupEl.querySelector("[name='projectType']").value);
+      tbody.appendChild(rowEl);
+      bindRowEvents(rowEl, groupEl);
+      refreshGroupTotals(groupEl);
+      refreshSummary();
       applyViewMode();
     });
 
-    div.querySelector(".collapse-btn").addEventListener("click", () => {
-      const body = div.querySelector(".project-group-body");
-      const isCollapsed = body.style.display === "none";
-      body.style.display = isCollapsed ? "" : "none";
-      div.querySelector(".collapse-btn").textContent = isCollapsed ? "折叠" : "展开";
+    groupEl.querySelector(".delete-group-btn").addEventListener("click", () => {
+      const allGroups = containerEl?.querySelectorAll(".project-group") || [];
+      if (allGroups.length <= 1 && !window.confirm("确定删除最后一个项目组吗？")) return;
+      groupEl.remove();
+      refreshSummary();
     });
 
-    // 明细添加按钮
-    div.querySelector(".add-item-btn").addEventListener("click", () => _addItemToGroup(div, {}));
-
-    // 项目类型变更时，更新 CSS class、表头文字、类型下拉、行 hints
-    div.querySelector("[name='projectType']").addEventListener("change", () => {
-      const newType     = div.querySelector("[name='projectType']").value;
-      div.className     = "project-group group-type-" + newType;
-      _updateGroupHeaders(div, newType);
-      const allowedTypes = _getAllowedTypes(div);
-      div.querySelectorAll(".items-tbody tr[data-item-id]").forEach((tr) => {
-        const sel = tr.querySelector(".item-type-sel");
-        if (sel) {
-          const currentVal = sel.value;
-          sel.innerHTML = allowedTypes.map((t) => `<option value="${t.value}"${currentVal === t.value ? " selected" : ""}>${t.label}</option>`).join("");
-          if (!allowedTypes.find((t) => t.value === currentVal)) {
-            sel.value = allowedTypes[0]?.value || "misc";
-          }
-        }
-        _syncRowType(tr);
-      });
+    groupEl.querySelector("[name='projectType']").addEventListener("change", () => {
+      rebuildItemTypeOptions(groupEl);
+      refreshGroupTotals(groupEl);
+      refreshSummary();
     });
 
-    // 渲染已有 items（从 DB 加载时，按分组类型过滤可用类型）
-    const tbody = div.querySelector(".items-tbody");
-    if (Array.isArray(group.items) && group.items.length > 0) {
-      const allowedTypes = GROUP_TYPE_ITEM_TYPES[group.projectType] || ITEM_TYPES;
-      tbody.querySelector(".empty-row")?.remove();
-      group.items.forEach((item) => tbody.appendChild(createItemRow(item, div, allowedTypes)));
-    }
-
-    _refreshGroupTotals(div);
-    return div;
+    groupEl.querySelector("[name='projectTitle']").addEventListener("input", refreshSummary);
+    refreshGroupTotals(groupEl);
+    return groupEl;
   }
 
-  // ── 导出弹窗（单例，首次点击时创建，后续复用） ──────────────────────────────
-  let _exportModal = null;
+  function rerenderOptionsFromMasterData() {
+    if (!containerEl) return;
+    containerEl.querySelectorAll(".project-group").forEach((groupEl) => {
+      const groupSelect = groupEl.querySelector("[name='projectType']");
+      const currentValue = groupSelect?.value || "travel";
+      if (groupSelect) {
+        groupSelect.innerHTML = getGroupTypeOptions().map((entry) => `<option value="${entry.code}"${entry.code === currentValue ? " selected" : ""}>${entry.nameZh}</option>`).join("");
+      }
+      rebuildItemTypeOptions(groupEl);
+      refreshGroupTotals(groupEl);
+    });
+    refreshSummary();
+  }
 
-  function _ensureExportModal() {
-    if (_exportModal) return _exportModal;
-
-    _exportModal = document.createElement("div");
-    _exportModal.id = "proj-export-modal";
-    _exportModal.style.cssText =
-      "display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.45);align-items:center;justify-content:center";
-
-    _exportModal.innerHTML = `
-      <div style="background:#fff;border-radius:20px;padding:28px 30px;width:min(460px,92vw);box-shadow:0 20px 60px rgba(0,0,0,0.22);max-height:90vh;overflow-y:auto">
-        <h2 style="margin:0 0 6px;font-size:18px;font-weight:700">导出客户报价单</h2>
-        <p style="margin:0 0 22px;font-size:13px;color:#5f7188">配置后在新标签页打开正式报价预览，支持浏览器打印 / 导出 PDF。</p>
-        <div style="display:grid;gap:16px">
-          <label style="display:grid;gap:6px;font-size:13px;color:#5f7188">
-            语言版本
-            <select id="export-lang" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;padding:0 12px;font-size:14px;background:#fffdf9">
-              <option value="zh">中文</option>
-              <option value="zh-en">中文 + 英文</option>
-              <option value="zh-sr">中文 + 塞语</option>
-            </select>
-          </label>
-          <label style="display:grid;gap:6px;font-size:13px;color:#5f7188">
-            明细模式
-            <select id="export-mode" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;padding:0 12px;font-size:14px;background:#fffdf9">
-              <option value="professional">专业版（含逐项明细与单价）</option>
-              <option value="mixed">混合版（服务包 + 模块小计）</option>
-            </select>
-          </label>
-          <label style="display:grid;gap:6px;font-size:13px;color:#5f7188">
-            展示方式
-            <select id="export-grouping" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;padding:0 12px;font-size:14px;background:#fffdf9">
-              <option value="grouped">按组展示（分服务模块）</option>
-              <option value="flat">不按组展示（全部平铺）</option>
-            </select>
-          </label>
-          <div style="display:grid;gap:10px;padding:14px 16px;border:1px solid #dbcdb7;border-radius:12px;background:#fffcf7">
-            <p style="margin:0 0 4px;font-size:12px;color:#7f8d9f;letter-spacing:0.06em;text-transform:uppercase">可选页面</p>
-            <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
-              <input type="checkbox" id="export-overview" checked style="width:16px;height:16px;cursor:pointer" />
-              项目概述页（项目说明 + 服务范围摘要）
-            </label>
-            <label style="display:flex;align-items:center;gap:10px;font-size:14px;cursor:pointer">
-              <input type="checkbox" id="export-sign" checked style="width:16px;height:16px;cursor:pointer" />
-              签字盖章区（条款页末尾）
-            </label>
+  function renderShell(groups) {
+    containerEl.innerHTML = `
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h3 style="margin-bottom:6px">项目型报价</h3>
+            <span>按项目组分类录入服务明细</span>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button type="button" class="ghost mini-button" id="proj-add-group-btn" style="width:auto">新增项目组</button>
+            <button type="button" class="ghost mini-button" id="proj-toggle-view-btn" style="width:auto">切换客户视图</button>
           </div>
         </div>
-        <div style="display:flex;gap:12px;margin-top:26px;justify-content:flex-end">
-          <button id="export-cancel-btn" type="button" style="height:40px;border-radius:10px;border:1px solid #dbcdb7;background:#fff;padding:0 20px;font-size:14px;cursor:pointer;color:#5f7188">取消</button>
-          <button id="export-open-btn" type="button" style="height:40px;border-radius:10px;border:none;background:#132941;color:#fff;padding:0 24px;font-size:14px;cursor:pointer;font-weight:600">打开预览</button>
+        <div id="proj-groups-list"></div>
+        <div class="proj-summary-panel">
+          <div class="panel-label">报价汇总</div>
+          <div class="proj-summary-metrics">
+            <div class="metric-item view-internal">
+              <span>成本合计</span>
+              <strong id="proj-sum-cost">—</strong>
+            </div>
+            <div class="metric-item accent">
+              <span>销售合计</span>
+              <strong id="proj-sum-sales">—</strong>
+            </div>
+            <div class="metric-item view-internal">
+              <span>利润</span>
+              <strong id="proj-sum-profit">—</strong>
+            </div>
+            <div class="metric-item view-internal">
+              <span>综合毛利率</span>
+              <strong id="proj-sum-margin">—</strong>
+            </div>
+          </div>
         </div>
       </div>
     `;
 
-    document.body.appendChild(_exportModal);
-
-    // 点击遮罩关闭
-    _exportModal.addEventListener("click", (e) => {
-      if (e.target === _exportModal) _exportModal.style.display = "none";
+    const groupsList = containerEl.querySelector("#proj-groups-list");
+    const initialGroups = Array.isArray(groups) && groups.length > 0 ? groups : [{ projectType: "travel", projectTitle: "", items: [] }];
+    initialGroups.forEach((group) => {
+      groupsList.appendChild(renderGroup(group));
     });
 
-    // 取消按钮
-    _exportModal.querySelector("#export-cancel-btn").addEventListener("click", () => {
-      _exportModal.style.display = "none";
+    containerEl.querySelector("#proj-add-group-btn").addEventListener("click", () => {
+      groupsList.appendChild(renderGroup({ projectType: "travel", projectTitle: "", items: [] }));
+      refreshSummary();
+      applyViewMode();
     });
 
-    // 打开预览
-    _exportModal.querySelector("#export-open-btn").addEventListener("click", () => {
-      // 读取当前报价 ID（必须先保存）
-      const qid =
-        document.querySelector('#quote-form [name="quoteId"]')?.value ||
-        document.querySelector('input[name="quoteId"]')?.value ||
-        "";
-
-      if (!qid) {
-        alert("请先保存报价，再生成客户报价单。\n（点击页面底部「保存」按钮后再试）");
-        return;
-      }
-
-      const lang     = _exportModal.querySelector("#export-lang").value;
-      const mode     = _exportModal.querySelector("#export-mode").value;
-      const grouping = _exportModal.querySelector("#export-grouping").value;
-      const overview = _exportModal.querySelector("#export-overview").checked ? "1" : "0";
-      const sign     = _exportModal.querySelector("#export-sign").checked     ? "1" : "0";
-
-      const url = `/project-quotation.html?id=${encodeURIComponent(qid)}&lang=${encodeURIComponent(lang)}&mode=${encodeURIComponent(mode)}&grouping=${encodeURIComponent(grouping)}&overview=${overview}&sign=${sign}`;
-      window.open(url, "_blank");
-      _exportModal.style.display = "none";
+    containerEl.querySelector("#proj-toggle-view-btn").addEventListener("click", () => {
+      viewMode = viewMode === "internal" ? "client" : "internal";
+      containerEl.querySelector("#proj-toggle-view-btn").textContent = viewMode === "client" ? "切换内部视图" : "切换客户视图";
+      applyViewMode();
     });
 
-    return _exportModal;
+    containerEl.querySelectorAll(".remarks-textarea").forEach(autoSizeRemarks);
+    refreshSummary();
+    applyViewMode();
   }
 
-  // ── 公开 API ────────────────────────────────────────────────────────────────
   return {
     init(container, groups, currency) {
-      _container    = container;
-      _currency     = currency || "EUR";
-      _viewMode     = "internal";
-      _groupCounter = 0;
-
-      container.innerHTML = `
-        <div style="margin-top:18px">
-          <div class="proj-editor-toolbar">
-            <h2>项目组 &amp; 明细</h2>
-            <button type="button" id="proj-toggle-view-btn" class="proj-toggle-view-btn">切换客户视图</button>
-            <button type="button" id="proj-export-btn" class="proj-add-group-btn" style="background:#132941;color:#fff;border-color:#132941">客户报价单</button>
-            <button type="button" id="proj-add-group-btn" class="proj-add-group-btn">＋ 新增项目组</button>
-          </div>
-
-          <div id="proj-groups-list"></div>
-
-          <div class="proj-summary-panel">
-            <div class="panel-label">报价汇总</div>
-            <div class="proj-summary-metrics">
-              <div class="metric-item view-internal">
-                <span>成本合计</span>
-                <strong id="proj-sum-cost">—</strong>
-              </div>
-              <div class="metric-item accent">
-                <span>销售合计</span>
-                <strong id="proj-sum-sales">—</strong>
-              </div>
-              <div class="metric-item view-internal">
-                <span>毛利润</span>
-                <strong id="proj-sum-profit">—</strong>
-              </div>
-              <div class="metric-item view-internal">
-                <span>综合毛利率</span>
-                <strong id="proj-sum-margin">—</strong>
-              </div>
-            </div>
-          </div>
-        </div>
-      `;
-
-      const groupsList = container.querySelector("#proj-groups-list");
-
-      // 客户报价单按钮 → 打开导出设置弹窗
-      container.querySelector("#proj-export-btn").addEventListener("click", () => {
-        _ensureExportModal().style.display = "flex";
+      containerEl = container;
+      currencyCode = currency || "EUR";
+      viewMode = "internal";
+      renderShell(groups || []);
+      ensureMasterDataLoaded().then(() => {
+        rerenderOptionsFromMasterData();
+      }).catch(() => {
+        rerenderOptionsFromMasterData();
       });
-
-      container.querySelector("#proj-add-group-btn").addEventListener("click", () => {
-        const newGroup = { projectType: "travel", projectTitle: "", items: [] };
-        const newDiv   = _renderGroup(newGroup);
-        groupsList.appendChild(newDiv);
-        newDiv.querySelector("[name='projectTitle']")?.focus();
-        _refreshSummary();
-        applyViewMode();
-      });
-
-      container.querySelector("#proj-toggle-view-btn").addEventListener("click", () => {
-        _viewMode = _viewMode === "internal" ? "client" : "internal";
-        container.querySelector("#proj-toggle-view-btn").textContent =
-          _viewMode === "client" ? "切换内部视图" : "切换客户视图";
-        applyViewMode();
-      });
-
-      // 渲染初始分组（新建时默认一个空旅游接待分组）
-      const initGroups = Array.isArray(groups) && groups.length > 0
-        ? groups
-        : [{ projectType: "travel", projectTitle: "", items: [] }];
-      initGroups.forEach((g) => groupsList.appendChild(_renderGroup(g)));
-
-      applyViewMode();
-      _refreshSummary();
-      _ensureMasterDataLoaded();
     },
 
     getGroups() {
-      if (!_container) return [];
-      return Array.from(_container.querySelectorAll("#proj-groups-list .project-group"))
-        .map(_extractGroupData);
+      if (!containerEl) return [];
+      return Array.from(containerEl.querySelectorAll(".project-group")).map(extractGroupData);
     },
 
     getSummary() {
-      if (!_container) return { totalCost: 0, totalSales: 0, totalProfit: 0 };
-      let totalCost = 0, totalSales = 0;
-      _container.querySelectorAll(".project-group .items-tbody tr[data-item-id]").forEach((tr) => {
-        const iType     = tr.querySelector("[name='itemType']").value;
-        const qty       = Number(tr.querySelector("[name='quantity']").value || 0);
-        const nightsEl  = tr.querySelector("[name='nights']");
-        const nights    = iType === "hotel" ? Math.max(Number(nightsEl ? nightsEl.value : 1), 1) : 1;
-        const costUnit  = Number(tr.querySelector("[name='costUnitPrice']").value  || 0);
-        const salesUnit = Number(tr.querySelector("[name='salesUnitPrice']").value || 0);
-        totalCost  += qty * nights * costUnit;
-        totalSales += qty * nights * salesUnit;
+      if (!containerEl) {
+        return { totalCost: 0, totalSales: 0, totalProfit: 0 };
+      }
+      let totalCost = 0;
+      let totalSales = 0;
+      containerEl.querySelectorAll(".project-group tbody tr[data-item-id]").forEach((rowEl) => {
+        const qty = Number(rowEl.querySelector("[name='quantity']")?.value || 0);
+        const cost = Number(rowEl.querySelector("[name='costUnitPrice']")?.value || 0);
+        const sales = Number(rowEl.querySelector("[name='salesUnitPrice']")?.value || 0);
+        totalCost += qty * cost;
+        totalSales += qty * sales;
       });
-      totalCost  = Math.round(totalCost  * 100) / 100;
-      totalSales = Math.round(totalSales * 100) / 100;
       return {
         totalCost,
         totalSales,
-        totalProfit: Math.round((totalSales - totalCost) * 100) / 100,
+        totalProfit: totalSales - totalCost,
       };
     },
 
     setViewMode(mode) {
-      _viewMode = mode;
+      viewMode = mode === "client" ? "client" : "internal";
       applyViewMode();
     },
 
     setCurrency(currency) {
-      _currency = currency;
-      if (_container) {
-        _container.querySelectorAll(".project-group").forEach(_refreshGroupTotals);
-        _refreshSummary();
-      }
+      currencyCode = currency || "EUR";
+      if (!containerEl) return;
+      containerEl.querySelectorAll(".project-group").forEach(refreshGroupTotals);
+      refreshSummary();
     },
   };
 })();
