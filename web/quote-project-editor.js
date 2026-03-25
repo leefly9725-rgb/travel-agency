@@ -354,11 +354,17 @@ window.ProjectEditor = (function () {
       const select = rowEl.querySelector("[name='itemType']");
       if (!select) return;
       const currentValue = String(select.value || "").trim().toLowerCase();
-      select.innerHTML = allowed.map((entry) => `<option value="${entry.code}"${entry.code === currentValue ? " selected" : ""}>${entry.nameZh}</option>`).join("");
-      if (!allowed.some((entry) => entry.code === currentValue)) {
-        select.value = allowed[0]?.code || "misc";
+      if (allowed.length === 0) {
+        select.innerHTML = '<option value="" disabled selected>— 请在基础数据维护中添加 —</option>';
+      } else {
+        select.innerHTML = allowed.map((entry) =>
+          `<option value="${entry.code}"${entry.code === currentValue ? " selected" : ""}>${entry.nameZh}</option>`
+        ).join("");
+        if (!allowed.some((entry) => entry.code === currentValue)) {
+          select.value = allowed[0].code;
+        }
+        syncRowUnit(rowEl);
       }
-      syncRowUnit(rowEl);
     });
   }
 
