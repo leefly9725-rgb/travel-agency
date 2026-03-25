@@ -569,12 +569,11 @@ window.ProjectEditor = (function () {
       containerEl = container;
       currencyCode = currency || "EUR";
       viewMode = "internal";
-      renderShell(groups || []);
-      ensureMasterDataLoaded().then(() => {
-        rerenderOptionsFromMasterData();
-      }).catch(() => {
-        rerenderOptionsFromMasterData();
-      });
+      ensureMasterDataLoaded()
+        .catch(() => {})
+        .finally(() => {
+          renderShell(groups || []);
+        });
     },
 
     getGroups() {
