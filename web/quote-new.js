@@ -27,6 +27,184 @@ async function preloadProjectTypeMeta() {
   console.log("[init] _allItemTypes:", window._allItemTypes);
   console.log("[init] _groupTypes:", window._groupTypes);
 }
+let projectBasedTypeObserver = null;
+let projectBasedTypeSyncScheduled = false;
+let projectBasedTypeSyncing = false;
+
+function normalizeCodeList(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || "").trim().toLowerCase()).filter(Boolean);
+  }
+  if (value === null || value === undefined || value === "") {
+    return [];
+  }
+  return String(value)
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function normalizeGroupTypeRecord(record) {
+  if (!record || typeof record !== "object") return null;
+  const code = String(record.code || record.groupCode || "").trim().toLowerCase();
+  if (!code) return null;
+  return {
+    id: record.id || null,
+    code,
+    nameZh: record.nameZh || record.name_zh || code,
+    isActive: record.isActive !== false && record.is_active !== false,
+    sortOrder: Number(record.sortOrder ?? record.sort_order ?? 0),
+  };
+}
+
+function normalizeItemTypeRecord(record) {
+  if (!record || typeof record !== "object") return null;
+  const code = String(record.code || record.itemType || "").trim().toLowerCase();
+  if (!code) return null;
+  return {
+    id: record.id || null,
+    code,
+    nameZh: record.nameZh || record.name_zh || code,
+    isActive: record.isActive !== false && record.is_active !== false,
+    sortOrder: Number(record.sortOrder ?? record.sort_order ?? 0),
+    projectGroupCodes: normalizeCodeList(record.projectGroupCodes ?? record.project_group_codes),
+    projectGroupId: record.projectGroupId || record.project_group_id || null,
+  };
+}
+
+function getNormalizedGroupTypes() {
+  return (window._groupTypes || [])
+    .map(normalizeGroupTypeRecord)
+    .filter((record) => record && record.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function getNormalizedItemTypes() {
+  return (window._allItemTypes || [])
+    .map(normalizeItemTypeRecord)
+    .filter((record) => record && record.isActive)
+    .sort((a, b) => a.sortOrder - b.sortOrder);
+}
+
+function resolveGroupType(projectGroupId) {
+  const groups = getNormalizedGroupTypes();
+  if (!projectGroupId) return null;
+  const raw = String(projectGroupId).trim().toLowerCase();
+  return groups.find((group) => group.id === projectGroupId || group.code === raw) || null;
+}
+
+function getAllowedProjectBasedItemTypes(projectGroupId) {
+  const groups = getNormalizedGroupTypes();
+  const mixedGroup = groups.find((group) => group.code === "mixed") || null;
+  const currentGroup = resolveGroupType(projectGroupId);
+  const types = getNormalizedItemTypes();
+
+  if (!currentGroup || currentGroup.code === "mixed") {
+    return types;
+  }
+
+  return types.filter((type) => {
+    const codes = type.projectGroupCodes || [];
+    if (codes.length > 0) {
+      return codes.includes(currentGroup.code) || codes.includes("mixed");
+    }
+    if (type.projectGroupId) {
+      return type.projectGroupId === currentGroup.id || type.projectGroupId === mixedGroup?.id;
+    }
+    return true;
+  });
+}
+
+function buildServiceTypeOptions(currentValue, projectGroupId) {
+  const normalizedValue = String(currentValue || "").trim().toLowerCase();
+  const allowed = getAllowedProjectBasedItemTypes(projectGroupId);
+  const allowedCodes = new Set(allowed.map((type) => type.code));
+  const selectedCode = allowedCodes.has(normalizedValue)
+    ? normalizedValue
+    : (allowedCodes.has("misc") ? "misc" : (allowed[0]?.code || "misc"));
+
+  return allowed.map((type) => {
+    const selected = type.code === selectedCode ? " selected" : "";
+    return `<option value="${type.code}"${selected}>${type.nameZh}</option>`;
+  }).join("");
+}
+
+function rebuildAllServiceTypeSelects(projectGroupId, scope) {
+  const root = scope || document.getElementById("project-groups-editor");
+  if (!root) return;
+  projectBasedTypeSyncing = true;
+  try {
+    const groups = root.matches?.(".project-group") ? [root] : Array.from(root.querySelectorAll(".project-group"));
+    groups.forEach((groupEl) => {
+      const groupSelect = groupEl.querySelector("[name='projectType']");
+      const resolvedGroupId = projectGroupId || groupSelect?.value || "mixed";
+      const allowed = getAllowedProjectBasedItemTypes(resolvedGroupId);
+      const fallbackValue = allowed.find((type) => type.code === "misc")?.code || allowed[0]?.code || "misc";
+      groupEl.querySelectorAll("select[name='itemType'], .item-type-sel").forEach((select) => {
+        const currentValue = String(select.value || "").trim().toLowerCase();
+        const nextValue = allowed.some((type) => type.code === currentValue) ? currentValue : fallbackValue;
+        select.innerHTML = buildServiceTypeOptions(nextValue, resolvedGroupId);
+        if (select.value !== nextValue) {
+          select.value = nextValue;
+        }
+        if (currentValue !== select.value) {
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      });
+    });
+  } finally {
+    projectBasedTypeSyncing = false;
+  }
+}
+
+function scheduleProjectBasedTypeSync(projectGroupId, scope) {
+  if (projectBasedTypeSyncScheduled) return;
+  projectBasedTypeSyncScheduled = true;
+  window.requestAnimationFrame(() => {
+    projectBasedTypeSyncScheduled = false;
+    rebuildAllServiceTypeSelects(projectGroupId, scope);
+  });
+}
+
+function attachProjectBasedTypeSync(container) {
+  if (!container) return;
+  if (container.dataset.serviceTypeSyncBound === "1") {
+    scheduleProjectBasedTypeSync(null, container);
+    return;
+  }
+  container.dataset.serviceTypeSyncBound = "1";
+
+  container.addEventListener("change", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.matches("[name='projectType']")) {
+      const groupEl = target.closest(".project-group");
+      scheduleProjectBasedTypeSync(target.value, groupEl || container);
+    }
+  });
+
+  container.addEventListener("click", (event) => {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) return;
+    if (target.closest(".add-item-btn")) {
+      scheduleProjectBasedTypeSync(null, container);
+    }
+  });
+
+  if (projectBasedTypeObserver) {
+    projectBasedTypeObserver.disconnect();
+  }
+  projectBasedTypeObserver = new MutationObserver((mutations) => {
+    if (projectBasedTypeSyncing) return;
+    const shouldSync = mutations.some((mutation) => mutation.addedNodes.length > 0 || mutation.removedNodes.length > 0);
+    if (shouldSync) {
+      scheduleProjectBasedTypeSync(null, container);
+    }
+  });
+  projectBasedTypeObserver.observe(container, { childList: true, subtree: true });
+
+  scheduleProjectBasedTypeSync(null, container);
+}
 
 function syncReturnLinks(form) {
   const fallback = getListFallbackForMode(state.pricingMode);
@@ -957,6 +1135,7 @@ async function bootstrap() {
       // 初始化项目编辑器
       if (projectGroupsEditor && window.ProjectEditor) {
         window.ProjectEditor.init(projectGroupsEditor, initialGroups || [], currency || form.currency.value || "EUR");
+        attachProjectBasedTypeSync(projectGroupsEditor);
       }
       // 更新页面标题标签
       const titleEl = document.getElementById("quote-form-title");

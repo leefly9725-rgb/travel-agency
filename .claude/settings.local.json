@@ -18,7 +18,17 @@
       "Bash(node -e \":*)",
       "Read(//c/Program Files \\(x86\\)/Microsoft/Edge/Application/**)",
       "Read(//c/Program Files/Microsoft/Edge/**)",
-      "Bash(node -e \"require\\(''''./server/app.js''''\\)\")"
+      "Bash(node -e \"require\\(''''./server/app.js''''\\)\")",
+      "Bash(grep:*)",
+      "Read(//tmp/**)",
+      "Bash(timeout 8 node server/index.js)",
+      "Bash(node:*)",
+      "Bash(git stash:*)",
+      "Bash(npm install:*)",
+      "Bash(wc -l /d/LDS-OPS-v1/scripts/*.sql)",
+      "Bash(node -e \"require\\(''./server/app''\\)\")",
+      "Bash(node -e \"require\\(''./server/services/projectQuoteStore''\\)\")",
+      "Bash(ls:*)"
     ]
   }
 }
