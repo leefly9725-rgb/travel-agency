@@ -177,7 +177,7 @@ window.ProjectEditor = (function () {
       const groups = normalizeCodeList(item.projectGroupCodes);
       return normalizedGroupType === "mixed" || groups.length === 0 || groups.includes(normalizedGroupType) || groups.includes("mixed");
     });
-    return filtered.length > 0 ? sortByOrder(filtered) : sortByOrder(DEFAULT_ITEM_TYPES);
+    return sortByOrder(filtered);
   }
 
   function formatMoney(value) {
