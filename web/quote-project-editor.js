@@ -113,11 +113,11 @@ window.ProjectEditor = (function () {
     try {
       const result = await window.AppUtils.fetchJson("/api/project-group-types", null, "加载项目组分类失败");
       const remoteList = Array.isArray(result) ? result : asArray(result?.items || result?.projectGroupTypes);
-      const merged = DEFAULT_GROUP_TYPES.map((fallback) => {
-        const current = remoteList.find((item) => String(item?.code || "").trim().toLowerCase() === fallback.code) || fallback;
-        return normalizeGroupType(current, fallback);
-      }).filter(Boolean);
-      groupTypeCache = sortByOrder(merged);
+      if (remoteList.length > 0) {
+        groupTypeCache = sortByOrder(remoteList.map((item) => normalizeGroupType(item)).filter(Boolean));
+      } else {
+        groupTypeCache = sortByOrder(DEFAULT_GROUP_TYPES.map((item) => normalizeGroupType(item)).filter(Boolean));
+      }
     } catch (_) {
       groupTypeCache = sortByOrder(DEFAULT_GROUP_TYPES.map((item) => normalizeGroupType(item)).filter(Boolean));
     }
