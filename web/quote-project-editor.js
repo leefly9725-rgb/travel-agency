@@ -205,10 +205,10 @@ window.ProjectEditor = (function () {
 
   function createEmptyItem(groupType) {
     const allowed = getAllowedItemTypes(groupType);
-    const first = allowed[0] || DEFAULT_ITEM_TYPES[0];
+    const first = allowed[0] || null;
     return {
       _id: nextItemId(),
-      itemType: first?.code || "misc",
+      itemType: first?.code || "",
       itemName: "",
       specification: "",
       unit: first?.defaultUnit || "项",
@@ -320,14 +320,10 @@ window.ProjectEditor = (function () {
     const item = { ...createEmptyItem(groupType), ...(itemData || {}) };
     tr.dataset.itemId = item._id || nextItemId();
     const currentType = String(item.itemType || allowed[0]?.code || "misc").trim().toLowerCase();
-    const currentTypeMeta = (itemTypeCache || DEFAULT_ITEM_TYPES).find((entry) => entry.code === currentType);
+    const currentTypeMeta = (itemTypeCache || []).find((entry) => entry.code === currentType);
     const options = [...allowed];
     if (currentType && !options.some((entry) => entry.code === currentType)) {
-      options.push(currentTypeMeta || {
-        code: currentType,
-        nameZh: LEGACY_ITEM_LABELS[currentType] || currentType,
-        defaultUnit: item.unit || "项",
-      });
+      if (currentTypeMeta) options.push(currentTypeMeta);
     }
     const unit = item.unit || currentTypeMeta?.defaultUnit || "项";
     tr.innerHTML = `
