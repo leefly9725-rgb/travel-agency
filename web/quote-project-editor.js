@@ -172,7 +172,7 @@ window.ProjectEditor = (function () {
 
   function getAllowedItemTypes(groupType) {
     const normalizedGroupType = String(groupType || "travel").trim().toLowerCase();
-    const source = itemTypeCache || DEFAULT_ITEM_TYPES;
+    const source = itemTypeCache || [];
     const filtered = source.filter((item) => {
       const groups = normalizeCodeList(item.projectGroupCodes);
       return normalizedGroupType === "mixed" || groups.length === 0 || groups.includes(normalizedGroupType) || groups.includes("mixed");
@@ -270,7 +270,7 @@ window.ProjectEditor = (function () {
 
   function syncRowUnit(rowEl) {
     const typeCode = rowEl.querySelector("[name='itemType']")?.value || "misc";
-    const itemType = (itemTypeCache || DEFAULT_ITEM_TYPES).find((item) => item.code === typeCode);
+    const itemType = (itemTypeCache || []).find((item) => item.code === typeCode);
     const unitInput = rowEl.querySelector("[name='unit']");
     if (!unitInput) return;
     const systemUnit = itemType?.defaultUnit || "项";
