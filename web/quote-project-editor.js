@@ -291,117 +291,214 @@ window.ProjectEditor = (function () {
     management:      '管理费用',
   };
 
+
+  function getCatalogCategoryLabel(category) {
+    if (!category) return "\u672a\u5206\u7c7b";
+    return CATALOG_CATEGORY_LABELS[category] || category;
+  }
+
+  function normalizeCatalogItem(rawItem) {
+    return {
+      id: rawItem?.id || "",
+      supplierId: rawItem?.supplierId || rawItem?.supplier_id || "",
+      supplierName: rawItem?.supplierName || rawItem?.supplier_name || rawItem?.supplierDisplay || "",
+      category: String(rawItem?.category || rawItem?.supplierCategory || rawItem?.supplier_category || "").trim(),
+      nameZh: String(rawItem?.nameZh || rawItem?.name_zh || rawItem?.itemName || "").trim(),
+      spec: String(rawItem?.spec || rawItem?.specification || "").trim(),
+      unit: String(rawItem?.unit || "").trim(),
+      costPrice: rawItem?.costPrice ?? rawItem?.cost_price ?? rawItem?.costUnitPrice ?? null,
+    };
+  }
+
+  function applyCatalogItemToRow(rowEl, item) {
+    const nameInput = rowEl.querySelector('[name="itemName"]');
+    const specInput = rowEl.querySelector('[name="specification"]');
+    const unitInput = rowEl.querySelector('[name="unit"]');
+    const costInput = rowEl.querySelector('[name="costUnitPrice"]');
+    const supplierIdInput = rowEl.querySelector('[name="supplierId"]');
+    const supplierCatalogItemIdInput = rowEl.querySelector('[name="supplierCatalogItemId"]');
+    const supplierDisplayInput = rowEl.querySelector('[name="supplierDisplay"], [name="supplierName"]');
+    const supplierDisplay = item.supplierName || item.supplierId || "";
+
+    if (nameInput) nameInput.value = item.nameZh || "";
+    if (specInput) specInput.value = item.spec || "";
+    if (unitInput) {
+      unitInput.value = item.unit || "";
+      unitInput.dataset.systemUnit = item.unit || "";
+    }
+    if (costInput) {
+      costInput.value = item.costPrice != null && item.costPrice !== "" ? Number(item.costPrice) : "";
+    }
+    if (supplierIdInput) supplierIdInput.value = item.supplierId || "";
+    if (supplierCatalogItemIdInput) supplierCatalogItemIdInput.value = item.id || "";
+    if (supplierDisplayInput) supplierDisplayInput.value = supplierDisplay;
+
+    rowEl.dataset.supplierId = item.supplierId || "";
+    rowEl.dataset.supplierCatalogItemId = item.id || "";
+    rowEl.dataset.supplierDisplay = supplierDisplay;
+  }
+
+
   function openCatalogPicker(rowEl) {
     const overlay = document.createElement('div');
-    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center';
+    overlay.className = 'catalog-modal-overlay';
 
     const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;z-index:9999;background:#fff;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.25);width:min(760px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden';
-
+    modal.className = 'catalog-modal';
     modal.innerHTML = `
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e5e7eb">
-        <span style="font-weight:600;font-size:15px">从供应商目录选择</span>
-        <button type="button" id="catalog-close-btn" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:2px 6px">✕</button>
+      <div class="catalog-modal-header">
+        <h3>\u4ece\u4f9b\u5e94\u5546\u76ee\u5f55\u9009\u62e9</h3>
+        <div class="catalog-header-spacer"></div>
+        <button type="button" id="catalog-close-btn" class="catalog-close-btn" aria-label="\u5173\u95ed">\u00d7</button>
       </div>
-      <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid #e5e7eb">
-        <input id="catalog-search" type="text" placeholder="搜索物料名称…" style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:13px" />
-        <select id="catalog-category" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
-          <option value="">全部类别</option>
-          ${Object.entries(CATALOG_CATEGORY_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
-        </select>
-      </div>
-      <div id="catalog-list" style="overflow-y:auto;flex:1;padding:8px 0">
-        <div style="padding:24px;text-align:center;color:#6b7280">加载中…</div>
+      <div class="catalog-modal-body">
+        <aside class="catalog-sidebar" id="catalog-sidebar">
+          <div class="catalog-empty catalog-empty-sidebar">\u52a0\u8f7d\u4e2d...</div>
+        </aside>
+        <section class="catalog-main">
+          <div class="catalog-main-toolbar">
+            <input id="catalog-search" class="catalog-modal-search" type="text" placeholder="\u641c\u7d22\u7269\u6599\u540d\u79f0..." />
+            <div id="catalog-toolbar-summary" class="catalog-toolbar-summary"></div>
+          </div>
+          <div class="catalog-list-header">
+            <div>\u4f9b\u5e94\u5546</div>
+            <div>\u7269\u6599\u540d\u79f0</div>
+            <div>\u89c4\u683c</div>
+            <div>\u5355\u4f4d</div>
+            <div>\u6210\u672c\u4ef7</div>
+            <div>\u9009\u7528</div>
+          </div>
+          <div id="catalog-list" class="catalog-list-wrap">
+            <div class="catalog-empty">\u52a0\u8f7d\u4e2d...</div>
+          </div>
+        </section>
       </div>
     `;
 
     overlay.appendChild(modal);
     document.body.appendChild(overlay);
 
+    const sidebarEl = modal.querySelector('#catalog-sidebar');
+    const searchEl = modal.querySelector('#catalog-search');
+    const listEl = modal.querySelector('#catalog-list');
+    const summaryEl = modal.querySelector('#catalog-toolbar-summary');
     let allItems = [];
+    let activeCategory = '';
+
+    const closeModal = () => {
+      document.removeEventListener('keydown', onKeydown);
+      if (overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    };
+
+    const onKeydown = (event) => {
+      if (event.key === 'Escape') closeModal();
+    };
+
+    function getFilteredItems() {
+      const keyword = searchEl.value.trim().toLowerCase();
+      return allItems.filter((item) => {
+        const inCategory = !activeCategory || item.category === activeCategory;
+        const searchText = [item.nameZh, item.spec, item.supplierName, item.supplierId]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        const matchesKeyword = !keyword || searchText.includes(keyword);
+        return inCategory && matchesKeyword;
+      });
+    }
+
+    function renderCategories() {
+      const categories = Array.from(new Set(allItems.map((item) => item.category).filter(Boolean)))
+        .sort((a, b) => getCatalogCategoryLabel(a).localeCompare(getCatalogCategoryLabel(b), 'zh-Hans-CN'));
+      const defs = [
+        { value: '', label: '\u5168\u90e8\u7c7b\u522b', count: allItems.length },
+        ...categories.map((category) => ({
+          value: category,
+          label: getCatalogCategoryLabel(category),
+          count: allItems.filter((item) => item.category === category).length,
+        })),
+      ];
+
+      sidebarEl.innerHTML = defs.map((category) => `
+        <button type="button" class="catalog-cat-btn${category.value === activeCategory ? ' active' : ''}" data-category="${escapeHtml(category.value)}">
+          <span class="catalog-cat-label">${escapeHtml(category.label)}</span>
+          <span class="catalog-cat-count">${category.count}</span>
+        </button>
+      `).join('');
+
+      sidebarEl.querySelectorAll('.catalog-cat-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          activeCategory = btn.dataset.category || '';
+          renderCategories();
+          renderList(getFilteredItems());
+        });
+      });
+    }
 
     function renderList(items) {
-      const listEl = modal.querySelector('#catalog-list');
+      const currentLabel = activeCategory ? getCatalogCategoryLabel(activeCategory) : '\u5168\u90e8\u7c7b\u522b';
+      summaryEl.textContent = `${currentLabel} | ${items.length} \u6761`;
+
       if (!items.length) {
-        listEl.innerHTML = '<div style="padding:24px;text-align:center;color:#6b7280">暂无匹配记录</div>';
+        listEl.innerHTML = '<div class="catalog-empty">\u6682\u65e0\u5339\u914d\u8bb0\u5f55</div>';
         return;
       }
-      listEl.innerHTML = `
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <thead>
-            <tr style="background:#f9fafb;position:sticky;top:0">
-              <th style="padding:8px 12px;text-align:left;font-weight:500;color:#374151">供应商</th>
-              <th style="padding:8px 12px;text-align:left;font-weight:500;color:#374151">物料名称</th>
-              <th style="padding:8px 12px;text-align:left;font-weight:500;color:#374151">规格</th>
-              <th style="padding:8px 12px;text-align:center;font-weight:500;color:#374151">单位</th>
-              <th style="padding:8px 12px;text-align:right;font-weight:500;color:#374151">成本价</th>
-              <th style="padding:8px 12px"></th>
-            </tr>
-          </thead>
-          <tbody>
-            ${items.map((it) => `
-              <tr style="border-top:1px solid #f3f4f6" data-item-id="${it.id}" data-supplier-id="${it.supplierId || ''}">
-                <td style="padding:8px 12px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.supplierName || it.supplierId || '—')}</td>
-                <td style="padding:8px 12px;font-weight:500">${escapeHtml(it.nameZh || '')}</td>
-                <td style="padding:8px 12px;color:#6b7280">${escapeHtml(it.spec || '')}</td>
-                <td style="padding:8px 12px;text-align:center">${escapeHtml(it.unit || '')}</td>
-                <td style="padding:8px 12px;text-align:right">${it.costPrice != null ? Number(it.costPrice).toFixed(2) : '—'}</td>
-                <td style="padding:8px 12px;text-align:center">
-                  <button type="button" class="ghost mini-button catalog-pick-row" style="padding:3px 10px;width:auto">选用</button>
-                </td>
-              </tr>`).join('')}
-          </tbody>
-        </table>`;
+
+      listEl.innerHTML = items.map((item) => `
+        <div class="catalog-item-row" data-item-id="${escapeHtml(String(item.id || ''))}">
+          <div class="catalog-item-supplier" title="${escapeHtml(item.supplierName || item.supplierId || '-')}">${escapeHtml(item.supplierName || item.supplierId || '-')}</div>
+          <div class="catalog-col-name">
+            <div class="catalog-item-name-main">${escapeHtml(item.nameZh || '')}</div>
+            <div class="catalog-item-meta">${escapeHtml(getCatalogCategoryLabel(item.category || ''))}</div>
+          </div>
+          <div class="catalog-item-meta" title="${escapeHtml(item.spec || '-')}">${escapeHtml(item.spec || '-')}</div>
+          <div class="catalog-item-unit">${escapeHtml(item.unit || '-')}</div>
+          <div class="catalog-item-price">${item.costPrice != null && item.costPrice !== '' ? formatMoney(item.costPrice) : '-'}</div>
+          <div class="catalog-col-actions">
+            <button type="button" class="catalog-select-btn catalog-pick-row">\u9009\u7528</button>
+          </div>
+        </div>
+      `).join('');
 
       listEl.querySelectorAll('.catalog-pick-row').forEach((btn) => {
         btn.addEventListener('click', () => {
-          const rowData = btn.closest('tr');
-          const itemId = rowData.dataset.itemId;
-          const item = allItems.find((i) => String(i.id) === String(itemId));
+          const rowData = btn.closest('.catalog-item-row');
+          const itemId = rowData?.dataset.itemId;
+          const item = allItems.find((entry) => String(entry.id) === String(itemId));
           if (!item) return;
-          const nameInput = rowEl.querySelector('[name="itemName"]');
-          const specInput = rowEl.querySelector('[name="specification"]');
-          const unitInput = rowEl.querySelector('[name="unit"]');
-          const costInput = rowEl.querySelector('[name="costUnitPrice"]');
-          if (nameInput) nameInput.value = item.nameZh || '';
-          if (specInput) specInput.value = item.spec || '';
-          if (unitInput) { unitInput.value = item.unit || ''; unitInput.dataset.systemUnit = item.unit || ''; }
-          if (costInput) costInput.value = item.costPrice != null ? Number(item.costPrice) : '';
-          rowEl.dataset.supplierId = item.supplierId || '';
-          rowEl.dataset.supplierCatalogItemId = item.id || '';
-          document.body.removeChild(overlay);
-          refreshGroupTotals(rowEl.closest('.group-card'));
+          applyCatalogItemToRow(rowEl, item);
+          closeModal();
+          refreshGroupTotals(rowEl.closest('.project-group'));
           refreshSummary();
         });
       });
     }
 
     function applyFilter() {
-      const q = modal.querySelector('#catalog-search').value.trim().toLowerCase();
-      const cat = modal.querySelector('#catalog-category').value;
-      const filtered = allItems.filter((it) => {
-        const matchQ = !q || (it.nameZh || '').toLowerCase().includes(q);
-        const matchCat = !cat || it.category === cat;
-        return matchQ && matchCat;
-      });
-      renderList(filtered);
+      renderList(getFilteredItems());
     }
 
-    modal.querySelector('#catalog-close-btn').addEventListener('click', () => document.body.removeChild(overlay));
-    overlay.addEventListener('click', (e) => { if (e.target === overlay) document.body.removeChild(overlay); });
-    modal.querySelector('#catalog-search').addEventListener('input', applyFilter);
-    modal.querySelector('#catalog-category').addEventListener('change', applyFilter);
+    document.addEventListener('keydown', onKeydown);
+    modal.querySelector('#catalog-close-btn').addEventListener('click', closeModal);
+    overlay.addEventListener('click', (event) => {
+      if (event.target === overlay) closeModal();
+    });
+    searchEl.addEventListener('input', applyFilter);
 
-    window.AppUtils.fetchJson('/api/supplier-items', null, '加载供应商目录失败')
+    window.AppUtils.fetchJson('/api/supplier-items', null, '\u52a0\u8f7d\u4f9b\u5e94\u5546\u76ee\u5f55\u5931\u8d25')
       .then((data) => {
-        allItems = Array.isArray(data) ? data : (data.items || []);
+        allItems = (Array.isArray(data) ? data : (data.items || []))
+          .map(normalizeCatalogItem)
+          .filter((item) => item.nameZh);
+        renderCategories();
         applyFilter();
       })
       .catch(() => {
-        modal.querySelector('#catalog-list').innerHTML = '<div style="padding:24px;text-align:center;color:#ef4444">加载失败，请重试</div>';
+        sidebarEl.innerHTML = '<div class="catalog-empty catalog-empty-sidebar">\u52a0\u8f7d\u5931\u8d25</div>';
+        listEl.innerHTML = '<div class="catalog-empty">\u52a0\u8f7d\u5931\u8d25\uff0c\u8bf7\u91cd\u8bd5</div>';
+        summaryEl.textContent = '';
       });
   }
-
   function bindRowEvents(rowEl, groupEl) {
     rowEl.querySelectorAll("input, select, textarea").forEach((field) => {
       field.addEventListener("input", () => {
@@ -442,6 +539,9 @@ window.ProjectEditor = (function () {
     const tr = document.createElement("tr");
     const item = { ...createEmptyItem(groupType), ...(itemData || {}) };
     tr.dataset.itemId = item._id || nextItemId();
+    tr.dataset.supplierId = item.supplierId || '';
+    tr.dataset.supplierCatalogItemId = item.supplierCatalogItemId || '';
+    tr.dataset.supplierDisplay = item.supplierDisplay || item.supplierName || '';
     const currentType = String(item.itemType || allowed[0]?.code || "misc").trim().toLowerCase();
     const currentTypeMeta = (itemTypeCache || []).find((entry) => entry.code === currentType);
     const options = [...allowed];
@@ -502,9 +602,12 @@ window.ProjectEditor = (function () {
       costUnitPrice: Number(rowEl.querySelector("[name='costUnitPrice']")?.value || 0),
       salesUnitPrice: Number(rowEl.querySelector("[name='salesUnitPrice']")?.value || 0),
       remarks: rowEl.querySelector("[name='remarks']")?.value || "",
-      supplierDisplay: "",
-      supplierId: "",
-      supplierCatalogItemId: "",
+      supplierDisplay: rowEl.querySelector("[name='supplierDisplay'], [name='supplierName']")?.value?.trim()
+        || rowEl.dataset.supplierDisplay || "",
+      supplierId: rowEl.querySelector("[name='supplierId']")?.value?.trim()
+        || rowEl.dataset.supplierId || "",
+      supplierCatalogItemId: rowEl.querySelector("[name='supplierCatalogItemId']")?.value?.trim()
+        || rowEl.dataset.supplierCatalogItemId || "",
       extraJson: {},
     };
   }
