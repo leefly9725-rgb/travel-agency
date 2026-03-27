@@ -392,8 +392,7 @@ window.ProjectEditor = (function () {
     modal.querySelector('#catalog-search').addEventListener('input', applyFilter);
     modal.querySelector('#catalog-category').addEventListener('change', applyFilter);
 
-    fetch('/api/supplier-items', { credentials: 'include' })
-      .then((r) => r.json())
+    window.AppUtils.fetchJson('/api/supplier-items', null, '加载供应商目录失败')
       .then((data) => {
         allItems = Array.isArray(data) ? data : (data.items || []);
         applyFilter();
