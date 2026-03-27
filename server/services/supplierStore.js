@@ -12,15 +12,23 @@ function mapRemoteSupplier(row) {
 
 function mapRemoteItem(row) {
   return {
+    // snake_case fields (API response & frontend)
     id: String(row.id),
-    supplierId: row.supplier_id,
+    supplier_id: row.supplier_id,
+    supplierName: row.suppliers?.name || row.supplier_id || "—",
     category: row.category,
+    name_zh: row.name_zh,
+    name_en: row.name_en || "",
+    spec: row.spec || "",
+    unit: row.unit,
+    cost_price: Number(row.cost_price || 0),
+    notes: row.notes || "",
+    is_active: Boolean(row.is_active),
+    // camelCase aliases — kept for computeBestPriceItems compatibility
+    supplierId: row.supplier_id,
     nameZh: row.name_zh,
     nameEn: row.name_en || "",
-    unit: row.unit,
     costPrice: Number(row.cost_price || 0),
-    spec: row.spec || "",
-    notes: row.notes || "",
     isActive: Boolean(row.is_active),
   };
 }
@@ -31,7 +39,7 @@ async function listRemoteSuppliers(config) {
 }
 
 async function listRemoteItems(config, filters) {
-  let qs = "supplier_items?select=*&order=category.asc,name_zh.asc";
+  let qs = "supplier_items?select=*,suppliers(name)&is_active=eq.true&order=category.asc,name_zh.asc";
   if (filters.category) qs += `&category=eq.${encodeURIComponent(filters.category)}`;
   if (filters.supplierId) qs += `&supplier_id=eq.${encodeURIComponent(filters.supplierId)}`;
   const rows = await supabaseRequest(config, qs);
