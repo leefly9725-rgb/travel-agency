@@ -7,6 +7,7 @@ window.ProjectEditor = (function () {
   let groupTypeCache = null;
   let itemTypeCache = null;
   let masterDataPromise = null;
+  let quotationActionHandler = null;
 
   const DEFAULT_GROUP_TYPES = [
     { code: "event", nameZh: "活动服务", isActive: true, sortOrder: 1 },
@@ -740,6 +741,7 @@ window.ProjectEditor = (function () {
           <div style="display:flex;gap:8px;flex-wrap:wrap">
             <button type="button" class="ghost mini-button" id="proj-add-group-btn" style="width:auto">新增项目组</button>
             <button type="button" class="ghost mini-button" id="proj-toggle-view-btn" style="width:auto">切换客户视图</button>
+            <button type="button" class="ghost mini-button" id="proj-generate-quotation-btn" style="width:auto">生成报价单</button>
           </div>
         </div>
         <div id="proj-groups-list"></div>
@@ -783,6 +785,12 @@ window.ProjectEditor = (function () {
       viewMode = viewMode === "internal" ? "client" : "internal";
       containerEl.querySelector("#proj-toggle-view-btn").textContent = viewMode === "client" ? "切换内部视图" : "切换客户视图";
       applyViewMode();
+    });
+
+    containerEl.querySelector("#proj-generate-quotation-btn").addEventListener("click", () => {
+      if (typeof quotationActionHandler === "function") {
+        quotationActionHandler();
+      }
     });
 
     containerEl.querySelectorAll(".remarks-textarea").forEach(autoSizeRemarks);
@@ -837,6 +845,10 @@ window.ProjectEditor = (function () {
       if (!containerEl) return;
       containerEl.querySelectorAll(".project-group").forEach(refreshGroupTotals);
       refreshSummary();
+    },
+
+    setQuotationAction(handler) {
+      quotationActionHandler = typeof handler === "function" ? handler : null;
     },
   };
 })();

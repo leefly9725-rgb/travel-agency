@@ -1116,6 +1116,23 @@ async function bootstrap() {
 
   const previewAside = document.getElementById("preview-aside");
 
+  function openProjectQuotationFromEditor() {
+    const quoteId = String(form.quoteId.value || "").trim();
+    if (!quoteId) {
+      window.AppUtils.showMessage("quote-message", "\u8bf7\u5148\u4fdd\u5b58\u62a5\u4ef7\uff0c\u518d\u751f\u6210\u62a5\u4ef7\u5355", "error");
+      return;
+    }
+    const target = `/project-quotation.html?id=${encodeURIComponent(quoteId)}`;
+    const nextUrl = window.AppReturn
+      ? window.AppReturn.withReturn(target, window.AppReturn.getCurrentPath())
+      : target;
+    window.location.href = nextUrl;
+  }
+
+  if (window.ProjectEditor && typeof window.ProjectEditor.setQuotationAction === "function") {
+    window.ProjectEditor.setQuotationAction(openProjectQuotationFromEditor);
+  }
+
   function activatePricingMode(mode, initialGroups, currency) {
     state.pricingMode = mode;
     if (mode === "project_based") {
