@@ -280,6 +280,129 @@ window.ProjectEditor = (function () {
     unitInput.dataset.systemUnit = systemUnit;
   }
 
+  const CATALOG_CATEGORY_LABELS = {
+    av_equipment:    'AV设备',
+    stage_structure: '舞台搭建',
+    print_display:   '印刷展示',
+    decoration:      '装饰物料',
+    furniture:       '家具桌椅',
+    personnel:       '人员服务',
+    logistics:       '物流运输',
+    management:      '管理费用',
+  };
+
+  function openCatalogPicker(rowEl) {
+    const overlay = document.createElement('div');
+    overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:9998;display:flex;align-items:center;justify-content:center';
+
+    const modal = document.createElement('div');
+    modal.style.cssText = 'position:fixed;z-index:9999;background:#fff;border-radius:8px;box-shadow:0 4px 24px rgba(0,0,0,.25);width:min(760px,95vw);max-height:80vh;display:flex;flex-direction:column;overflow:hidden';
+
+    modal.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e5e7eb">
+        <span style="font-weight:600;font-size:15px">从供应商目录选择</span>
+        <button type="button" id="catalog-close-btn" style="background:none;border:none;cursor:pointer;font-size:18px;line-height:1;padding:2px 6px">✕</button>
+      </div>
+      <div style="display:flex;gap:8px;padding:10px 16px;border-bottom:1px solid #e5e7eb">
+        <input id="catalog-search" type="text" placeholder="搜索物料名称…" style="flex:1;padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:13px" />
+        <select id="catalog-category" style="padding:6px 10px;border:1px solid #d1d5db;border-radius:4px;font-size:13px">
+          <option value="">全部类别</option>
+          ${Object.entries(CATALOG_CATEGORY_LABELS).map(([v, l]) => `<option value="${v}">${l}</option>`).join('')}
+        </select>
+      </div>
+      <div id="catalog-list" style="overflow-y:auto;flex:1;padding:8px 0">
+        <div style="padding:24px;text-align:center;color:#6b7280">加载中…</div>
+      </div>
+    `;
+
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    let allItems = [];
+
+    function renderList(items) {
+      const listEl = modal.querySelector('#catalog-list');
+      if (!items.length) {
+        listEl.innerHTML = '<div style="padding:24px;text-align:center;color:#6b7280">暂无匹配记录</div>';
+        return;
+      }
+      listEl.innerHTML = `
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#f9fafb;position:sticky;top:0">
+              <th style="padding:8px 12px;text-align:left;font-weight:500;color:#374151">供应商</th>
+              <th style="padding:8px 12px;text-align:left;font-weight:500;color:#374151">物料名称</th>
+              <th style="padding:8px 12px;text-align:left;font-weight:500;color:#374151">规格</th>
+              <th style="padding:8px 12px;text-align:center;font-weight:500;color:#374151">单位</th>
+              <th style="padding:8px 12px;text-align:right;font-weight:500;color:#374151">成本价</th>
+              <th style="padding:8px 12px"></th>
+            </tr>
+          </thead>
+          <tbody>
+            ${items.map((it) => `
+              <tr style="border-top:1px solid #f3f4f6" data-item-id="${it.id}" data-supplier-id="${it.supplier_id || ''}">
+                <td style="padding:8px 12px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.supplierName || it.supplier_id || '—')}</td>
+                <td style="padding:8px 12px;font-weight:500">${escapeHtml(it.name_zh || '')}</td>
+                <td style="padding:8px 12px;color:#6b7280">${escapeHtml(it.spec || '')}</td>
+                <td style="padding:8px 12px;text-align:center">${escapeHtml(it.unit || '')}</td>
+                <td style="padding:8px 12px;text-align:right">${it.cost_price != null ? Number(it.cost_price).toFixed(2) : '—'}</td>
+                <td style="padding:8px 12px;text-align:center">
+                  <button type="button" class="ghost mini-button catalog-pick-row" style="padding:3px 10px;width:auto">选用</button>
+                </td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+
+      listEl.querySelectorAll('.catalog-pick-row').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const rowData = btn.closest('tr');
+          const itemId = rowData.dataset.itemId;
+          const item = allItems.find((i) => String(i.id) === String(itemId));
+          if (!item) return;
+          const nameInput = rowEl.querySelector('[name="itemName"]');
+          const specInput = rowEl.querySelector('[name="specification"]');
+          const unitInput = rowEl.querySelector('[name="unit"]');
+          const costInput = rowEl.querySelector('[name="costUnitPrice"]');
+          if (nameInput) nameInput.value = item.name_zh || '';
+          if (specInput) specInput.value = item.spec || '';
+          if (unitInput) { unitInput.value = item.unit || ''; unitInput.dataset.systemUnit = item.unit || ''; }
+          if (costInput) costInput.value = item.cost_price != null ? Number(item.cost_price) : '';
+          rowEl.dataset.supplierId = item.supplier_id || '';
+          rowEl.dataset.supplierCatalogItemId = item.id || '';
+          document.body.removeChild(overlay);
+          refreshGroupTotals(rowEl.closest('.group-card'));
+          refreshSummary();
+        });
+      });
+    }
+
+    function applyFilter() {
+      const q = modal.querySelector('#catalog-search').value.trim().toLowerCase();
+      const cat = modal.querySelector('#catalog-category').value;
+      const filtered = allItems.filter((it) => {
+        const matchQ = !q || (it.name_zh || '').toLowerCase().includes(q);
+        const matchCat = !cat || it.category === cat;
+        return matchQ && matchCat;
+      });
+      renderList(filtered);
+    }
+
+    modal.querySelector('#catalog-close-btn').addEventListener('click', () => document.body.removeChild(overlay));
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) document.body.removeChild(overlay); });
+    modal.querySelector('#catalog-search').addEventListener('input', applyFilter);
+    modal.querySelector('#catalog-category').addEventListener('change', applyFilter);
+
+    fetch('/api/supplier-items', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((data) => {
+        allItems = Array.isArray(data) ? data : (data.items || []);
+        applyFilter();
+      })
+      .catch(() => {
+        modal.querySelector('#catalog-list').innerHTML = '<div style="padding:24px;text-align:center;color:#ef4444">加载失败，请重试</div>';
+      });
+  }
+
   function bindRowEvents(rowEl, groupEl) {
     rowEl.querySelectorAll("input, select, textarea").forEach((field) => {
       field.addEventListener("input", () => {
@@ -296,6 +419,7 @@ window.ProjectEditor = (function () {
     });
     const remarks = rowEl.querySelector(".remarks-textarea");
     autoSizeRemarks(remarks);
+    rowEl.querySelector(".pick-catalog-btn")?.addEventListener("click", () => openCatalogPicker(rowEl));
     rowEl.querySelector(".delete-item-btn").addEventListener("click", () => {
       rowEl.remove();
       const tbody = groupEl.querySelector(".items-tbody");
@@ -342,7 +466,7 @@ window.ProjectEditor = (function () {
       <td class="view-internal computed-cell r" data-field="costSubtotal">—</td>
       <td class="computed-cell r" data-field="salesSubtotal">—</td>
       <td class="view-internal computed-cell r" data-field="margin">—</td>
-      <td><button type="button" class="ghost mini-button delete-item-btn" style="padding:4px 8px;width:auto">删除</button></td>
+      <td style="white-space:nowrap"><button type="button" class="ghost mini-button pick-catalog-btn" style="padding:4px 8px;width:auto;margin-right:4px">从库选</button><button type="button" class="ghost mini-button delete-item-btn" style="padding:4px 8px;width:auto">删除</button></td>
     `;
     return tr;
   }
