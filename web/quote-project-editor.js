@@ -340,12 +340,12 @@ window.ProjectEditor = (function () {
           </thead>
           <tbody>
             ${items.map((it) => `
-              <tr style="border-top:1px solid #f3f4f6" data-item-id="${it.id}" data-supplier-id="${it.supplier_id || ''}">
-                <td style="padding:8px 12px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.supplierName || it.supplier_id || '—')}</td>
-                <td style="padding:8px 12px;font-weight:500">${escapeHtml(it.name_zh || '')}</td>
+              <tr style="border-top:1px solid #f3f4f6" data-item-id="${it.id}" data-supplier-id="${it.supplierId || ''}">
+                <td style="padding:8px 12px;color:#6b7280;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${escapeHtml(it.supplierName || it.supplierId || '—')}</td>
+                <td style="padding:8px 12px;font-weight:500">${escapeHtml(it.nameZh || '')}</td>
                 <td style="padding:8px 12px;color:#6b7280">${escapeHtml(it.spec || '')}</td>
                 <td style="padding:8px 12px;text-align:center">${escapeHtml(it.unit || '')}</td>
-                <td style="padding:8px 12px;text-align:right">${it.cost_price != null ? Number(it.cost_price).toFixed(2) : '—'}</td>
+                <td style="padding:8px 12px;text-align:right">${it.costPrice != null ? Number(it.costPrice).toFixed(2) : '—'}</td>
                 <td style="padding:8px 12px;text-align:center">
                   <button type="button" class="ghost mini-button catalog-pick-row" style="padding:3px 10px;width:auto">选用</button>
                 </td>
@@ -363,11 +363,11 @@ window.ProjectEditor = (function () {
           const specInput = rowEl.querySelector('[name="specification"]');
           const unitInput = rowEl.querySelector('[name="unit"]');
           const costInput = rowEl.querySelector('[name="costUnitPrice"]');
-          if (nameInput) nameInput.value = item.name_zh || '';
+          if (nameInput) nameInput.value = item.nameZh || '';
           if (specInput) specInput.value = item.spec || '';
           if (unitInput) { unitInput.value = item.unit || ''; unitInput.dataset.systemUnit = item.unit || ''; }
-          if (costInput) costInput.value = item.cost_price != null ? Number(item.cost_price) : '';
-          rowEl.dataset.supplierId = item.supplier_id || '';
+          if (costInput) costInput.value = item.costPrice != null ? Number(item.costPrice) : '';
+          rowEl.dataset.supplierId = item.supplierId || '';
           rowEl.dataset.supplierCatalogItemId = item.id || '';
           document.body.removeChild(overlay);
           refreshGroupTotals(rowEl.closest('.group-card'));
@@ -380,7 +380,7 @@ window.ProjectEditor = (function () {
       const q = modal.querySelector('#catalog-search').value.trim().toLowerCase();
       const cat = modal.querySelector('#catalog-category').value;
       const filtered = allItems.filter((it) => {
-        const matchQ = !q || (it.name_zh || '').toLowerCase().includes(q);
+        const matchQ = !q || (it.nameZh || '').toLowerCase().includes(q);
         const matchCat = !cat || it.category === cat;
         return matchQ && matchCat;
       });
