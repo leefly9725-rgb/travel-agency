@@ -152,9 +152,9 @@
     shell.innerHTML = [
       '<header class="fy-app-topbar">',
       '  <a class="fy-app-brand" href="/index.html">',
-      '    <div class="fy-app-brand-mark"><img src="/assets/logo.png" alt="Feiyang" /></div>',
+      '    <div class="fy-app-brand-mark"><img src="/assets/logo.png" alt="LDS International Travel" /></div>',
       '    <div class="fy-app-brand-copy">',
-      '      <span class="fy-app-brand-title">\u98de\u626c\u56fd\u9645\u65c5\u884c\u793e</span>',
+      '      <span class="fy-app-brand-title">LDS International Travel</span>',
       '      <span class="fy-app-brand-subtitle">Business Travel Operations System</span>',
       '    </div>',
       '  </a>',

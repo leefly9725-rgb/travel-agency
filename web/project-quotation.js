@@ -1,8 +1,8 @@
 ﻿const COMPANY = {
-  logoText: 'FY',
-  cn: '飞扬国际旅行社',
-  en: 'FEIYANG TRIP',
-  legal: 'FEIYANG TRIP d.o.o Beograd',
+  logoText: 'LDS',
+  cn: 'LDS International Travel',
+  en: 'LDS International Travel',
+  legal: 'LDS International Travel d.o.o Beograd',
   address: 'Second Floor, TRG PRIJATELJSTVA SRBIJE KINE 4, BEOGRAD',
   contact: 'shen.summer@yahoo.com',
   pib: '112696746',
