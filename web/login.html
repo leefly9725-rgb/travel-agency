@@ -57,13 +57,14 @@
       backdrop-filter: blur(16px);
     }
     .fy-login-brand {
-      padding: 34px 34px 30px;
+      padding: 38px 36px 34px;
       background:
         radial-gradient(circle at top right, rgba(199, 160, 86, 0.2), transparent 22%),
         linear-gradient(135deg, rgba(255,255,255,0.95), rgba(247,240,229,0.96));
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
+      display: grid;
+      grid-template-rows: auto auto;
+      align-content: start;
+      gap: 34px;
       min-height: 620px;
     }
     .fy-login-brand::after {
@@ -77,23 +78,23 @@
       background: radial-gradient(circle, rgba(16, 35, 70, 0.08), transparent 68%);
       pointer-events: none;
     }
-    .fy-login-brand-top { position: relative; z-index: 1; display: grid; gap: 18px; }
-    .fy-login-brand-row { display: flex; align-items: center; gap: 16px; min-width: 0; }
+    .fy-login-brand-top { position: relative; z-index: 1; display: grid; gap: 22px; }
+    .fy-login-brand-row { display: flex; align-items: center; gap: 18px; min-width: 0; }
     .fy-login-mark {
-      width: 58px;
-      height: 58px;
+      width: 60px;
+      height: 60px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border-radius: 18px;
+      border-radius: 19px;
       background: linear-gradient(135deg, var(--fy-navy-strong), #1b3b69);
-      box-shadow: 0 18px 28px rgba(16, 35, 70, 0.2);
+      box-shadow: 0 20px 32px rgba(16, 35, 70, 0.22);
       margin-bottom: 0;
       flex-shrink: 0;
     }
     .fy-login-mark img {
-      width: 34px;
-      height: 34px;
+      width: 35px;
+      height: 35px;
       object-fit: contain;
       display: block;
     }
@@ -101,70 +102,75 @@
       display: inline-flex;
       align-items: center;
       min-width: 0;
-      max-width: 320px;
+      max-width: 380px;
       color: var(--fy-navy);
-      font-size: 17px;
-      font-weight: 700;
-      letter-spacing: 0.01em;
-      line-height: 1.2;
+      font-size: clamp(26px, 2.6vw, 29px);
+      font-weight: 750;
+      letter-spacing: -0.02em;
+      line-height: 1.08;
     }
     .fy-login-brand h1 {
-      font-size: clamp(30px, 4vw, 42px);
-      line-height: 1.08;
+      font-size: clamp(42px, 4.8vw, 50px);
+      line-height: 1.12;
       letter-spacing: -0.03em;
       color: var(--fy-navy);
       margin-bottom: 0;
-      max-width: 520px;
+      max-width: 560px;
+      font-weight: 800;
     }
     .fy-login-brand p {
-      max-width: 520px;
+      max-width: 560px;
       color: var(--fy-muted);
-      font-size: 15px;
+      font-size: 15.5px;
       line-height: 1.8;
     }
     .fy-login-brand-list {
       position: relative;
       z-index: 1;
       display: grid;
-      gap: 14px;
-      margin-top: 30px;
+      gap: 0;
+      margin-top: 0;
+      padding: 18px 0 0;
+      border-top: 1px solid rgba(20, 32, 51, 0.08);
     }
     .fy-login-brand-item {
       display: grid;
-      grid-template-columns: 30px minmax(0, 1fr);
-      gap: 14px;
-      align-items: center;
-      padding: 14px 0;
+      grid-template-columns: 32px minmax(0, 1fr);
+      gap: 16px;
+      align-items: start;
+      padding: 18px 0;
       border-top: 1px solid rgba(20, 32, 51, 0.08);
     }
     .fy-login-brand-item:first-child { border-top: none; }
     .fy-login-brand-index {
-      width: 30px;
-      height: 30px;
+      width: 32px;
+      height: 32px;
       border-radius: 50%;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
+      font-size: 14px;
       font-weight: 700;
       line-height: 1;
       text-align: center;
       font-variant-numeric: tabular-nums;
-      color: #9b6f1d;
-      background: rgba(199, 160, 86, 0.14);
-      border: 1px solid rgba(199, 160, 86, 0.24);
+      color: #8f6517;
+      background: rgba(199, 160, 86, 0.18);
+      border: 1px solid rgba(199, 160, 86, 0.28);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55);
     }
     .fy-login-brand-item strong {
       display: block;
-      font-size: 13px;
+      font-size: 15px;
       color: var(--fy-navy);
-      margin-bottom: 4px;
+      margin-bottom: 6px;
+      line-height: 1.35;
     }
     .fy-login-brand-item span {
       display: block;
-      font-size: 12px;
+      font-size: 13px;
       color: var(--fy-muted);
-      line-height: 1.7;
+      line-height: 1.75;
     }
     .fy-login-card {
       padding: 32px 30px 28px;
@@ -282,10 +288,11 @@
       .fy-login-brand { min-height: auto; }
     }
     @media (max-width: 680px) {
+      .fy-login-brand { gap: 28px; }
       .fy-login-brand-row { gap: 14px; }
-      .fy-login-kicker { font-size: 16px; max-width: 260px; }
+      .fy-login-kicker { font-size: 23px; max-width: 300px; }
       .fy-login-brand h1 { max-width: none; }
-      .fy-login-brand-list { margin-top: 26px; }
+      .fy-login-brand-list { padding-top: 16px; }
     }
     @media (max-width: 520px) {
       body { padding: 18px 12px; }
@@ -295,8 +302,12 @@
       .fy-login-brand-row { gap: 12px; }
       .fy-login-mark { width: 52px; height: 52px; border-radius: 16px; }
       .fy-login-mark img { width: 30px; height: 30px; }
-      .fy-login-kicker { font-size: 15px; max-width: 220px; }
-      .fy-login-brand-item { grid-template-columns: 30px minmax(0, 1fr); gap: 12px; }
+      .fy-login-kicker { font-size: 20px; max-width: 240px; }
+      .fy-login-brand h1 { font-size: 38px; }
+      .fy-login-brand p { font-size: 14px; }
+      .fy-login-brand-item { grid-template-columns: 30px minmax(0, 1fr); gap: 12px; padding: 16px 0; }
+      .fy-login-brand-item strong { font-size: 14px; }
+      .fy-login-brand-item span { font-size: 12.5px; }
       .fy-login-card-head h2 { font-size: 24px; }
     }
   </style>
@@ -457,3 +468,5 @@
   </script>
 </body>
 </html>
+
+
