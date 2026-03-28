@@ -566,7 +566,7 @@ window.ProjectEditor = (function () {
       <td class="view-internal computed-cell r" data-field="costSubtotal">—</td>
       <td class="computed-cell r" data-field="salesSubtotal">—</td>
       <td class="view-internal computed-cell r" data-field="margin">—</td>
-      <td style="white-space:nowrap"><button type="button" class="ghost mini-button pick-catalog-btn" style="padding:4px 8px;width:auto;margin-right:4px">从库选</button><button type="button" class="ghost mini-button delete-item-btn" style="padding:4px 8px;width:auto">删除</button></td>
+      <td class="proj-row-actions"><div class="proj-row-action-stack"><button type="button" class="ghost mini-button proj-row-action-btn pick-catalog-btn">从库选</button><button type="button" class="ghost mini-button proj-row-action-btn delete-item-btn">删除</button></div></td>
     `;
     return tr;
   }
@@ -663,7 +663,7 @@ window.ProjectEditor = (function () {
                 <th class="r view-internal" style="width:100px">成本小计</th>
                 <th class="r" style="width:100px">销售小计</th>
                 <th class="r view-internal" style="width:80px">毛利率</th>
-                <th style="width:76px"></th>
+                <th class="proj-actions-th"></th>
               </tr>
             </thead>
             <tbody class="items-tbody"></tbody>
@@ -738,10 +738,10 @@ window.ProjectEditor = (function () {
             <h3 style="margin-bottom:6px">项目型报价</h3>
             <span>按项目组分类录入服务明细</span>
           </div>
-          <div style="display:flex;gap:8px;flex-wrap:wrap">
-            <button type="button" class="ghost mini-button" id="proj-add-group-btn" style="width:auto">新增项目组</button>
-            <button type="button" class="ghost mini-button" id="proj-toggle-view-btn" style="width:auto">切换客户视图</button>
-            <button type="button" class="ghost mini-button" id="proj-generate-quotation-btn" style="width:auto">生成报价单</button>
+          <div class="proj-toolbar-actions">
+            <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-secondary" id="proj-add-group-btn" style="width:auto">新增项目组</button>
+            <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-utility" id="proj-toggle-view-btn" style="width:auto">切换客户视图</button>
+            <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-primary" id="proj-generate-quotation-btn" style="width:auto">生成报价单</button>
           </div>
         </div>
         <div id="proj-groups-list"></div>

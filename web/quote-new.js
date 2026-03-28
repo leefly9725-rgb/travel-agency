@@ -1126,7 +1126,7 @@ async function bootstrap() {
     const nextUrl = window.AppReturn
       ? window.AppReturn.withReturn(target, window.AppReturn.getCurrentPath())
       : target;
-    window.location.href = nextUrl;
+    window.open(nextUrl, "_blank", "noopener");
   }
 
   if (window.ProjectEditor && typeof window.ProjectEditor.setQuotationAction === "function") {
