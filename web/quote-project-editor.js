@@ -551,22 +551,22 @@ window.ProjectEditor = (function () {
     }
     const unit = item.unit || currentTypeMeta?.defaultUnit || "项";
     tr.innerHTML = `
-      <td>
-        <select class="cell-input item-type-sel" name="itemType" style="min-width:120px">
+      <td class="proj-col-type">
+        <select class="cell-input item-type-sel proj-cell-input-type" name="itemType">
           ${options.map((entry) => `<option value="${entry.code}"${entry.code === currentType ? " selected" : ""}>${entry.nameZh}</option>`).join("")}
         </select>
       </td>
-      <td><input class="cell-input" name="itemName" value="${escapeHtml(item.itemName || "")}" placeholder="服务名称" /></td>
-      <td><input class="cell-input" name="specification" value="${escapeHtml(item.specification || "")}" placeholder="规格 / 说明" /></td>
-      <td><input class="cell-input" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="单位" style="width:56px" /></td>
-      <td><input class="cell-input" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" style="width:84px;text-align:right" /></td>
-      <td class="view-internal"><input class="cell-input" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" style="width:88px;text-align:right" /></td>
-      <td><input class="cell-input" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" style="width:88px;text-align:right" /></td>
-      <td class="remarks-cell"><textarea class="cell-input remarks-textarea" name="remarks" rows="1" placeholder="备注">${escapeHtml(item.remarks || "")}</textarea></td>
-      <td class="view-internal computed-cell r" data-field="costSubtotal">—</td>
-      <td class="computed-cell r" data-field="salesSubtotal">—</td>
-      <td class="view-internal computed-cell r" data-field="margin">—</td>
-      <td class="proj-row-actions"><div class="proj-row-action-stack"><button type="button" class="ghost mini-button proj-row-action-btn pick-catalog-btn">从库选</button><button type="button" class="ghost mini-button proj-row-action-btn delete-item-btn">删除</button></div></td>
+      <td class="proj-col-name"><input class="cell-input proj-cell-input-name" name="itemName" value="${escapeHtml(item.itemName || "")}" placeholder="服务名称" /></td>
+      <td class="proj-col-spec"><input class="cell-input proj-cell-input-spec" name="specification" value="${escapeHtml(item.specification || "")}" placeholder="规格 / 说明" /></td>
+      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="单位" /></td>
+      <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
+      <td class="proj-col-cost-unit view-internal"><input class="cell-input proj-cell-input-number" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" /></td>
+      <td class="proj-col-sales-unit"><input class="cell-input proj-cell-input-number" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" /></td>
+      <td class="proj-col-remarks remarks-cell"><textarea class="cell-input remarks-textarea" name="remarks" rows="1" placeholder="备注">${escapeHtml(item.remarks || "")}</textarea></td>
+      <td class="proj-col-cost-subtotal view-internal computed-cell r" data-field="costSubtotal">—</td>
+      <td class="proj-col-sales-subtotal computed-cell r" data-field="salesSubtotal">—</td>
+      <td class="proj-col-margin view-internal computed-cell r" data-field="margin">—</td>
+      <td class="proj-col-actions proj-row-actions"><div class="proj-row-action-stack"><button type="button" class="ghost mini-button proj-row-action-btn pick-catalog-btn">从库选</button><button type="button" class="ghost mini-button proj-row-action-btn delete-item-btn">删除</button></div></td>
     `;
     return tr;
   }
@@ -650,20 +650,34 @@ window.ProjectEditor = (function () {
       <div class="project-group-body">
         <div style="overflow-x:auto">
           <table class="proj-item-table">
+            <colgroup>
+              <col class="proj-col-type" />
+              <col class="proj-col-name" />
+              <col class="proj-col-spec" />
+              <col class="proj-col-unit" />
+              <col class="proj-col-qty" />
+              <col class="proj-col-cost-unit view-internal" />
+              <col class="proj-col-sales-unit" />
+              <col class="proj-col-remarks" />
+              <col class="proj-col-cost-subtotal view-internal" />
+              <col class="proj-col-sales-subtotal" />
+              <col class="proj-col-margin view-internal" />
+              <col class="proj-col-actions" />
+            </colgroup>
             <thead>
               <tr>
-                <th class="type-th" style="min-width:120px">服务类型</th>
-                <th class="name-th" style="min-width:140px">服务名称</th>
-                <th class="spec-th" style="min-width:120px">规格 / 说明</th>
-                <th style="width:60px">单位</th>
-                <th class="r" style="width:90px">数量</th>
-                <th class="r view-internal" style="width:96px">成本单价</th>
-                <th class="r" style="width:96px">销售单价</th>
-                <th style="min-width:200px">备注</th>
-                <th class="r view-internal" style="width:100px">成本小计</th>
-                <th class="r" style="width:100px">销售小计</th>
-                <th class="r view-internal" style="width:80px">毛利率</th>
-                <th class="proj-actions-th"></th>
+                <th class="proj-col-type">服务类型</th>
+                <th class="proj-col-name">服务名称</th>
+                <th class="proj-col-spec">规格 / 说明</th>
+                <th class="proj-col-unit">单位</th>
+                <th class="proj-col-qty r">数量</th>
+                <th class="proj-col-cost-unit r view-internal">成本单价</th>
+                <th class="proj-col-sales-unit r">销售单价</th>
+                <th class="proj-col-remarks">备注</th>
+                <th class="proj-col-cost-subtotal r view-internal">成本小计</th>
+                <th class="proj-col-sales-subtotal r">销售小计</th>
+                <th class="proj-col-margin r view-internal">毛利率</th>
+                <th class="proj-col-actions proj-actions-th"></th>
               </tr>
             </thead>
             <tbody class="items-tbody"></tbody>

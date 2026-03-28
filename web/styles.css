@@ -2213,6 +2213,141 @@ button.ghost,
   display: none;
 }
 
+.proj-item-table {
+  width: 100%;
+  min-width: 1620px;
+  table-layout: fixed;
+}
+
+.proj-item-table col.proj-col-type,
+.proj-item-table th.proj-col-type,
+.proj-item-table td.proj-col-type {
+  width: 132px;
+}
+
+.proj-item-table col.proj-col-name,
+.proj-item-table th.proj-col-name,
+.proj-item-table td.proj-col-name {
+  width: 180px;
+}
+
+.proj-item-table col.proj-col-spec,
+.proj-item-table th.proj-col-spec,
+.proj-item-table td.proj-col-spec {
+  width: 172px;
+}
+
+.proj-item-table col.proj-col-unit,
+.proj-item-table th.proj-col-unit,
+.proj-item-table td.proj-col-unit {
+  width: 72px;
+}
+
+.proj-item-table col.proj-col-qty,
+.proj-item-table th.proj-col-qty,
+.proj-item-table td.proj-col-qty {
+  width: 96px;
+}
+
+.proj-item-table col.proj-col-cost-unit,
+.proj-item-table th.proj-col-cost-unit,
+.proj-item-table td.proj-col-cost-unit,
+.proj-item-table col.proj-col-sales-unit,
+.proj-item-table th.proj-col-sales-unit,
+.proj-item-table td.proj-col-sales-unit {
+  width: 112px;
+}
+
+.proj-item-table col.proj-col-remarks,
+.proj-item-table th.proj-col-remarks,
+.proj-item-table td.proj-col-remarks {
+  width: 248px;
+}
+
+.proj-item-table col.proj-col-cost-subtotal,
+.proj-item-table th.proj-col-cost-subtotal,
+.proj-item-table td.proj-col-cost-subtotal,
+.proj-item-table col.proj-col-sales-subtotal,
+.proj-item-table th.proj-col-sales-subtotal,
+.proj-item-table td.proj-col-sales-subtotal {
+  width: 128px;
+}
+
+.proj-item-table col.proj-col-margin,
+.proj-item-table th.proj-col-margin,
+.proj-item-table td.proj-col-margin {
+  width: 92px;
+}
+
+.proj-item-table col.proj-col-actions,
+.proj-item-table th.proj-col-actions,
+.proj-item-table td.proj-col-actions,
+.proj-actions-th {
+  width: 144px;
+  min-width: 144px;
+}
+
+.proj-item-table th.proj-col-qty,
+.proj-item-table th.proj-col-cost-unit,
+.proj-item-table th.proj-col-sales-unit,
+.proj-item-table th.proj-col-cost-subtotal,
+.proj-item-table th.proj-col-sales-subtotal,
+.proj-item-table th.proj-col-margin,
+.proj-item-table td.proj-col-qty,
+.proj-item-table td.proj-col-cost-unit,
+.proj-item-table td.proj-col-sales-unit,
+.proj-item-table td.proj-col-cost-subtotal,
+.proj-item-table td.proj-col-sales-subtotal,
+.proj-item-table td.proj-col-margin {
+  text-align: right;
+}
+
+.proj-item-table td.proj-col-actions {
+  overflow: visible;
+}
+
+.proj-item-table .cell-input {
+  width: 100%;
+}
+
+.proj-item-table .proj-cell-input-number {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.proj-item-table .proj-cell-input-unit {
+  text-align: center;
+}
+
+.proj-item-table .computed-cell {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.proj-item-table .remarks-textarea {
+  min-width: 0;
+  width: 100%;
+}
+
+.proj-row-actions {
+  white-space: nowrap;
+}
+
+.proj-row-action-stack {
+  display: inline-flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 6px;
+  min-width: 132px;
+  white-space: nowrap;
+}
+
+.proj-row-action-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
 
 
 
