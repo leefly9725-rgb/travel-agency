@@ -8,6 +8,24 @@ window.ProjectEditor = (function () {
   let itemTypeCache = null;
   let masterDataPromise = null;
   let quotationActionHandler = null;
+  const COLUMN_WIDTH_STORAGE_KEY = "project_quote_editor_column_widths";
+  const COLUMN_CONFIG = {
+    type: { className: "proj-col-type", defaultWidth: 132, minWidth: 120 },
+    name: { className: "proj-col-name", defaultWidth: 180, minWidth: 160, resizable: true, multiline: true, maxHeight: 88 },
+    spec: { className: "proj-col-spec", defaultWidth: 172, minWidth: 148, resizable: true, multiline: true, maxHeight: 88 },
+    unit: { className: "proj-col-unit", defaultWidth: 72, minWidth: 68 },
+    qty: { className: "proj-col-qty", defaultWidth: 96, minWidth: 90 },
+    costUnit: { className: "proj-col-cost-unit", defaultWidth: 112, minWidth: 108 },
+    salesUnit: { className: "proj-col-sales-unit", defaultWidth: 112, minWidth: 108 },
+    remarks: { className: "proj-col-remarks", defaultWidth: 248, minWidth: 188, resizable: true, multiline: true, maxHeight: 104 },
+    costSubtotal: { className: "proj-col-cost-subtotal", defaultWidth: 128, minWidth: 118, resizable: true },
+    salesSubtotal: { className: "proj-col-sales-subtotal", defaultWidth: 128, minWidth: 118, resizable: true },
+    margin: { className: "proj-col-margin", defaultWidth: 92, minWidth: 84 },
+    actions: { className: "proj-col-actions", defaultWidth: 144, minWidth: 144, fixed: true },
+  };
+  let columnWidths = {};
+  let activeResizeState = null;
+
 
   const DEFAULT_GROUP_TYPES = [
     { code: "event", nameZh: "活动服务", isActive: true, sortOrder: 1 },
@@ -188,12 +206,131 @@ window.ProjectEditor = (function () {
     return `${currencyCode} ${(Number(value) || 0).toFixed(2)}`;
   }
 
-  function autoSizeRemarks(textarea) {
+  function autoSizeField(textarea, options = {}) {
     if (!textarea) return;
+    const minHeight = Number(options.minHeight || 28);
+    const maxHeight = Number(options.maxHeight || 72);
     textarea.style.height = "auto";
-    const nextHeight = Math.min(textarea.scrollHeight, 72);
-    textarea.style.height = `${Math.max(nextHeight, 28)}px`;
-    textarea.style.overflowY = textarea.scrollHeight > 72 ? "auto" : "hidden";
+    const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+    textarea.style.height = `${Math.max(nextHeight, minHeight)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }
+
+  function autoSizeRemarks(textarea) {
+    autoSizeField(textarea, { minHeight: 28, maxHeight: 72 });
+  }
+
+  function autoSizeTextCell(textarea) {
+    const field = textarea?.dataset?.autosizeField || "itemName";
+    const maxHeight = field === "remarks" ? 104 : 88;
+    autoSizeField(textarea, { minHeight: 32, maxHeight });
+  }
+
+  function getDefaultColumnWidths() {
+    return Object.fromEntries(Object.entries(COLUMN_CONFIG).map(([key, config]) => [key, config.defaultWidth]));
+  }
+
+  function clampColumnWidth(key, value) {
+    const config = COLUMN_CONFIG[key];
+    if (!config) return Number(value) || 0;
+    return Math.max(config.minWidth || config.defaultWidth, Math.round(Number(value) || config.defaultWidth));
+  }
+
+  function loadColumnWidths() {
+    const defaults = getDefaultColumnWidths();
+    try {
+      const raw = window.localStorage?.getItem(COLUMN_WIDTH_STORAGE_KEY);
+      if (!raw) return defaults;
+      const parsed = JSON.parse(raw);
+      if (!parsed || typeof parsed !== "object") return defaults;
+      return Object.fromEntries(Object.keys(COLUMN_CONFIG).map((key) => [key, clampColumnWidth(key, parsed[key] ?? defaults[key])]));
+    } catch (_) {
+      return defaults;
+    }
+  }
+
+  function persistColumnWidths() {
+    try {
+      window.localStorage?.setItem(COLUMN_WIDTH_STORAGE_KEY, JSON.stringify(columnWidths));
+    } catch (_) {}
+  }
+
+  function applyColumnWidths(root = containerEl) {
+    if (!root) return;
+    Object.entries(COLUMN_CONFIG).forEach(([key, config]) => {
+      const width = clampColumnWidth(key, columnWidths[key] ?? config.defaultWidth);
+      root.querySelectorAll(`col.${config.className}`).forEach((col) => {
+        col.style.width = `${width}px`;
+      });
+      root.querySelectorAll(`th.${config.className}, td.${config.className}`).forEach((cell) => {
+        cell.style.width = `${width}px`;
+        cell.style.minWidth = `${config.minWidth || width}px`;
+      });
+    });
+  }
+
+  function setColumnWidth(key, value, options = {}) {
+    if (!COLUMN_CONFIG[key]) return;
+    columnWidths[key] = clampColumnWidth(key, value);
+    applyColumnWidths();
+    if (options.persist !== false) persistColumnWidths();
+  }
+
+  function resetColumnWidths() {
+    columnWidths = getDefaultColumnWidths();
+    try {
+      window.localStorage?.removeItem(COLUMN_WIDTH_STORAGE_KEY);
+    } catch (_) {}
+    applyColumnWidths();
+  }
+
+  function renderColumnHeader(key, label, options = {}) {
+    const config = COLUMN_CONFIG[key];
+    const extraClasses = options.classes ? ` ${options.classes}` : "";
+    if (!config?.resizable) {
+      return `<th class="${config.className}${extraClasses}" data-col-key="${key}">${label}</th>`;
+    }
+    return `<th class="${config.className}${extraClasses}" data-col-key="${key}"><div class="proj-col-head"><span>${label}</span><button type="button" class="proj-col-resizer" data-col-key="${key}" aria-label="调整${label}列宽"></button></div></th>`;
+  }
+
+  function stopColumnResize() {
+    if (!activeResizeState) return;
+    activeResizeState = null;
+    document.body.classList.remove("proj-column-resizing");
+    window.removeEventListener("pointermove", handleColumnResizeMove);
+    window.removeEventListener("pointerup", stopColumnResize);
+    persistColumnWidths();
+  }
+
+  function handleColumnResizeMove(event) {
+    if (!activeResizeState) return;
+    event.preventDefault();
+    const delta = event.clientX - activeResizeState.startX;
+    setColumnWidth(activeResizeState.key, activeResizeState.startWidth + delta, { persist: false });
+  }
+
+  function beginColumnResize(event) {
+    const key = event.currentTarget?.dataset?.colKey;
+    if (!key || !COLUMN_CONFIG[key]?.resizable) return;
+    event.preventDefault();
+    event.stopPropagation();
+    activeResizeState = {
+      key,
+      startX: event.clientX,
+      startWidth: clampColumnWidth(key, columnWidths[key] ?? COLUMN_CONFIG[key].defaultWidth),
+    };
+    document.body.classList.add("proj-column-resizing");
+    window.addEventListener("pointermove", handleColumnResizeMove);
+    window.addEventListener("pointerup", stopColumnResize);
+  }
+
+  function bindColumnResizeHandles(scope = containerEl) {
+    if (!scope) return;
+    scope.querySelectorAll(".proj-col-resizer").forEach((handle) => {
+      if (handle.dataset.bound === "1") return;
+      handle.dataset.bound = "1";
+      handle.addEventListener("pointerdown", beginColumnResize);
+    });
   }
 
   function applyViewMode() {
@@ -503,7 +640,7 @@ window.ProjectEditor = (function () {
   function bindRowEvents(rowEl, groupEl) {
     rowEl.querySelectorAll("input, select, textarea").forEach((field) => {
       field.addEventListener("input", () => {
-        if (field.name === "remarks") autoSizeRemarks(field);
+        if (["itemName", "specification", "remarks"].includes(field.name)) autoSizeTextCell(field);
         if (field.name === "itemType") syncRowUnit(rowEl);
         refreshGroupTotals(groupEl);
         refreshSummary();
@@ -514,8 +651,7 @@ window.ProjectEditor = (function () {
         refreshSummary();
       });
     });
-    const remarks = rowEl.querySelector(".remarks-textarea");
-    autoSizeRemarks(remarks);
+    rowEl.querySelectorAll(".proj-cell-textarea").forEach(autoSizeTextCell);
     rowEl.querySelector(".pick-catalog-btn")?.addEventListener("click", () => openCatalogPicker(rowEl));
     rowEl.querySelector(".delete-item-btn").addEventListener("click", () => {
       rowEl.remove();
@@ -540,9 +676,9 @@ window.ProjectEditor = (function () {
     const tr = document.createElement("tr");
     const item = { ...createEmptyItem(groupType), ...(itemData || {}) };
     tr.dataset.itemId = item._id || nextItemId();
-    tr.dataset.supplierId = item.supplierId || '';
-    tr.dataset.supplierCatalogItemId = item.supplierCatalogItemId || '';
-    tr.dataset.supplierDisplay = item.supplierDisplay || item.supplierName || '';
+    tr.dataset.supplierId = item.supplierId || "";
+    tr.dataset.supplierCatalogItemId = item.supplierCatalogItemId || "";
+    tr.dataset.supplierDisplay = item.supplierDisplay || item.supplierName || "";
     const currentType = String(item.itemType || allowed[0]?.code || "misc").trim().toLowerCase();
     const currentTypeMeta = (itemTypeCache || []).find((entry) => entry.code === currentType);
     const options = [...allowed];
@@ -556,13 +692,13 @@ window.ProjectEditor = (function () {
           ${options.map((entry) => `<option value="${entry.code}"${entry.code === currentType ? " selected" : ""}>${entry.nameZh}</option>`).join("")}
         </select>
       </td>
-      <td class="proj-col-name"><input class="cell-input proj-cell-input-name" name="itemName" value="${escapeHtml(item.itemName || "")}" placeholder="服务名称" /></td>
-      <td class="proj-col-spec"><input class="cell-input proj-cell-input-spec" name="specification" value="${escapeHtml(item.specification || "")}" placeholder="规格 / 说明" /></td>
+      <td class="proj-col-name"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="服务名称">${escapeHtml(item.itemName || "")}</textarea></td>
+      <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="规格 / 说明">${escapeHtml(item.specification || "")}</textarea></td>
       <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="单位" /></td>
       <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
       <td class="proj-col-cost-unit view-internal"><input class="cell-input proj-cell-input-number" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" /></td>
       <td class="proj-col-sales-unit"><input class="cell-input proj-cell-input-number" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" /></td>
-      <td class="proj-col-remarks remarks-cell"><textarea class="cell-input remarks-textarea" name="remarks" rows="1" placeholder="备注">${escapeHtml(item.remarks || "")}</textarea></td>
+      <td class="proj-col-remarks remarks-cell"><textarea class="cell-input proj-cell-textarea remarks-textarea" name="remarks" rows="1" data-autosize-field="remarks" placeholder="备注">${escapeHtml(item.remarks || "")}</textarea></td>
       <td class="proj-col-cost-subtotal view-internal computed-cell r" data-field="costSubtotal">—</td>
       <td class="proj-col-sales-subtotal computed-cell r" data-field="salesSubtotal">—</td>
       <td class="proj-col-margin view-internal computed-cell r" data-field="margin">—</td>
@@ -648,7 +784,7 @@ window.ProjectEditor = (function () {
         </div>
       </div>
       <div class="project-group-body">
-        <div style="overflow-x:auto">
+        <div class="proj-table-scroll">
           <table class="proj-item-table">
             <colgroup>
               <col class="proj-col-type" />
@@ -666,17 +802,17 @@ window.ProjectEditor = (function () {
             </colgroup>
             <thead>
               <tr>
-                <th class="proj-col-type">服务类型</th>
-                <th class="proj-col-name">服务名称</th>
-                <th class="proj-col-spec">规格 / 说明</th>
-                <th class="proj-col-unit">单位</th>
-                <th class="proj-col-qty r">数量</th>
-                <th class="proj-col-cost-unit r view-internal">成本单价</th>
-                <th class="proj-col-sales-unit r">销售单价</th>
-                <th class="proj-col-remarks">备注</th>
-                <th class="proj-col-cost-subtotal r view-internal">成本小计</th>
-                <th class="proj-col-sales-subtotal r">销售小计</th>
-                <th class="proj-col-margin r view-internal">毛利率</th>
+                ${renderColumnHeader("type", "服务类型")}
+                ${renderColumnHeader("name", "服务名称")}
+                ${renderColumnHeader("spec", "规格 / 说明")}
+                ${renderColumnHeader("unit", "单位")}
+                ${renderColumnHeader("qty", "数量", { classes: "r" })}
+                ${renderColumnHeader("costUnit", "成本单价", { classes: "r view-internal" })}
+                ${renderColumnHeader("salesUnit", "销售单价", { classes: "r" })}
+                ${renderColumnHeader("remarks", "备注")}
+                ${renderColumnHeader("costSubtotal", "成本小计", { classes: "r view-internal" })}
+                ${renderColumnHeader("salesSubtotal", "销售小计", { classes: "r" })}
+                ${renderColumnHeader("margin", "毛利率", { classes: "r view-internal" })}
                 <th class="proj-col-actions proj-actions-th"></th>
               </tr>
             </thead>
@@ -704,9 +840,11 @@ window.ProjectEditor = (function () {
 
     groupEl.querySelector(".add-item-btn").addEventListener("click", () => {
       tbody.querySelector(".empty-row")?.remove();
-      const rowEl = renderItemRow(createEmptyItem(groupEl.querySelector("[name='projectType']").value), groupEl.querySelector("[name='projectType']").value);
+      const nextGroupType = groupEl.querySelector("[name='projectType']").value;
+      const rowEl = renderItemRow(createEmptyItem(nextGroupType), nextGroupType);
       tbody.appendChild(rowEl);
       bindRowEvents(rowEl, groupEl);
+      applyColumnWidths(groupEl);
       refreshGroupTotals(groupEl);
       refreshSummary();
       applyViewMode();
@@ -726,6 +864,8 @@ window.ProjectEditor = (function () {
     });
 
     groupEl.querySelector("[name='projectTitle']").addEventListener("input", refreshSummary);
+    applyColumnWidths(groupEl);
+    bindColumnResizeHandles(groupEl);
     refreshGroupTotals(groupEl);
     return groupEl;
   }
@@ -754,6 +894,7 @@ window.ProjectEditor = (function () {
           </div>
           <div class="proj-toolbar-actions">
             <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-secondary" id="proj-add-group-btn" style="width:auto">新增项目组</button>
+            <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-muted" id="proj-reset-width-btn" style="width:auto">恢复默认列宽</button>
             <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-utility" id="proj-toggle-view-btn" style="width:auto">切换客户视图</button>
             <button type="button" class="ghost mini-button proj-toolbar-btn proj-toolbar-btn-primary" id="proj-generate-quotation-btn" style="width:auto">生成报价单</button>
           </div>
@@ -791,8 +932,14 @@ window.ProjectEditor = (function () {
 
     containerEl.querySelector("#proj-add-group-btn").addEventListener("click", () => {
       groupsList.appendChild(renderGroup({ projectType: "travel", projectTitle: "", items: [] }));
+      applyColumnWidths();
+      bindColumnResizeHandles();
       refreshSummary();
       applyViewMode();
+    });
+
+    containerEl.querySelector("#proj-reset-width-btn").addEventListener("click", () => {
+      resetColumnWidths();
     });
 
     containerEl.querySelector("#proj-toggle-view-btn").addEventListener("click", () => {
@@ -807,7 +954,9 @@ window.ProjectEditor = (function () {
       }
     });
 
-    containerEl.querySelectorAll(".remarks-textarea").forEach(autoSizeRemarks);
+    containerEl.querySelectorAll(".proj-cell-textarea").forEach(autoSizeTextCell);
+    applyColumnWidths();
+    bindColumnResizeHandles();
     refreshSummary();
     applyViewMode();
   }
@@ -817,6 +966,7 @@ window.ProjectEditor = (function () {
       containerEl = container;
       currencyCode = currency || "EUR";
       viewMode = "internal";
+      columnWidths = loadColumnWidths();
       ensureMasterDataLoaded()
         .catch(() => {})
         .finally(() => {
