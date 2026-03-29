@@ -55,6 +55,12 @@
     };
   }
 
+
+  function renderBrandTitle(company, size, spacing) {
+    const brandName = (company && (company.en || company.cn)) || '';
+    return `<div style="font-size:${size};font-weight:700;color:#F5F2EC;letter-spacing:${spacing};">${brandName}</div>`;
+  }
+
   function renderCoverContent(vm, runtime) {
     const { company, utils } = getRuntime(runtime);
     const { esc, money } = utils;
@@ -94,10 +100,7 @@
         <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
           <div style="display:flex;align-items:center;gap:10px;">
             <img src="/assets/logo.png" style="height:32px;width:auto;display:block;flex-shrink:0;">
-            <div>
-              <div style="font-size:15px;font-weight:700;color:#F5F2EC;letter-spacing:1px;">${esc(company.cn)}</div>
-              <div style="font-size:8px;letter-spacing:3px;color:#C9A84C;margin-top:3px;text-transform:uppercase;">${esc(company.en)}</div>
-            </div>
+            <div>${renderBrandTitle(company, '15px', '1px')}</div>
           </div>
           <div style="text-align:right;font-size:9px;color:#7B8FAD;line-height:1.9;">
             <div>Belgrade, Serbia</div>
@@ -204,10 +207,7 @@
       <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
         <div style="display:flex;align-items:center;gap:8px;">
           <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:#F5F2EC;">${esc(company.cn)}</div>
-            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-top:2px;">${esc(company.en)}</div>
-          </div>
+          <div>${renderBrandTitle(company, '12px', '0')}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:10px;color:#7B8FAD;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
@@ -249,10 +249,7 @@
       <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
         <div style="display:flex;align-items:center;gap:8px;">
           <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:#F5F2EC;">${esc(company.cn)}</div>
-            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-top:2px;">${esc(company.en)}</div>
-          </div>
+          <div>${renderBrandTitle(company, '12px', '0')}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:10px;color:#7B8FAD;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
@@ -486,10 +483,7 @@
       <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;grid-column:1/-1;">
         <div style="display:flex;align-items:center;gap:8px;">
           <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
-          <div>
-            <div style="font-size:12px;font-weight:700;color:#F5F2EC;">${esc(company.cn)}</div>
-            <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-top:2px;">${esc(company.en)}</div>
-          </div>
+          <div>${renderBrandTitle(company, '12px', '0')}</div>
         </div>
         <div style="text-align:right;">
           <div style="font-size:10px;color:#7B8FAD;">以下条款请双方签署前仔细阅读</div>
