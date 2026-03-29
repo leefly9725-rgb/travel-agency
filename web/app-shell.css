@@ -78,10 +78,12 @@ body.fy-app-body > .fy-app-shell {
 }
 
 .fy-app-brand-title {
-  font-size: 17px;
-  font-weight: 700;
+  font-size: 20px;
+  font-weight: 800;
   color: var(--fy-shell-navy);
-  letter-spacing: 0.01em;
+  letter-spacing: 0.015em;
+  line-height: 1.08;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
 
 .fy-app-brand-subtitle,

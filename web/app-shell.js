@@ -175,7 +175,7 @@
       '  <aside class="fy-app-sidebar">',
       '    <div class="fy-app-sidebar-head">',
       '      <span class="fy-app-brand-subtitle">\u5168\u5c40\u5bfc\u822a</span>',
-      '      <strong class="fy-app-sidebar-title">\u8fd0\u8425\u4e2d\u53f0\u6a21\u5757\u5165\u53e3</strong>',
+      '      <strong class="fy-app-sidebar-title">\u8fd0\u8425\u7cfb\u7edf\u6a21\u5757\u5165\u53e3</strong>',
       '      <p class="fy-app-sidebar-copy">\u5de5\u4f5c\u53f0\u8d1f\u8d23\u4efb\u52a1\u7126\u70b9\uff0c\u5de6\u4fa7\u5bfc\u822a\u627f\u62c5\u7a33\u5b9a\u957f\u671f\u5165\u53e3\u3002</p>',
       '    </div>',
       '    <nav class="fy-app-nav" id="fy-app-nav"></nav>',
