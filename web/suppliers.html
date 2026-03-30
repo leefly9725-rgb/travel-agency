@@ -28,9 +28,9 @@
       --sup-shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.04);
       display: flex;
       flex-direction: column;
-      gap: 18px;
+      gap: 14px;
       min-height: 100vh;
-      padding: 20px 24px 28px;
+      padding: 16px 20px 22px;
       background:
         radial-gradient(circle at top left, rgba(71, 105, 164, 0.08), transparent 32%),
         linear-gradient(180deg, #f8fafd 0%, var(--sup-bg) 100%);
@@ -55,9 +55,9 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 10px 14px;
-      background: rgba(255, 255, 255, 0.82);
-      box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.78);
+      box-shadow: 0 4px 10px rgba(15, 23, 42, 0.03);
     }
 
     .sup-page-topbar-label {
@@ -69,9 +69,9 @@
 
     .sup-page-hero {
       display: grid;
-      gap: 12px;
-      padding: 20px 24px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 253, 0.98) 100%);
+      gap: 10px;
+      padding: 14px 20px;
+      background: #fff;
     }
 
     .sup-page-kicker,
@@ -127,7 +127,7 @@
     }
 
     .sup-page-hero h1 {
-      font-size: 30px;
+      font-size: 26px;
       line-height: 1.08;
       letter-spacing: -0.03em;
     }
@@ -161,8 +161,8 @@
     }
 
     .sup-page-hero p {
-      max-width: 760px;
-      font-size: 14px;
+      max-width: 720px;
+      font-size: 13px;
     }
 
     .sup-page-hero-side {
@@ -261,14 +261,17 @@
     }
 
     .sup-toolbar {
-      display: grid;
-      grid-template-columns: minmax(0, 1.35fr) auto;
-      gap: 18px;
-      padding: 20px 22px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 18px;
     }
 
     .sup-toolbar-section {
-      gap: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
       min-width: 0;
     }
 
@@ -285,7 +288,7 @@
     dialog select,
     dialog textarea {
       width: 100%;
-      min-height: 46px;
+      min-height: 42px;
       padding: 0 14px;
       border: 1px solid var(--sup-line);
       border-radius: 14px;
@@ -304,11 +307,11 @@
 
     .sup-toolbar-filters input[type="search"] {
       flex: 1 1 320px;
-      min-width: 220px;
+      min-width: 240px;
     }
 
     .sup-toolbar-filters select {
-      flex: 0 0 164px;
+      flex: 0 0 150px;
     }
 
     .switch-label,
@@ -401,8 +404,8 @@
 
     .kpi-card {
       gap: 12px;
-      min-height: 142px;
-      padding: 18px 20px;
+      min-height: 124px;
+      padding: 14px 16px;
       border: 1px solid var(--sup-line);
       border-radius: 22px;
       background: #fff;
@@ -418,15 +421,15 @@
     }
 
     .kpi-icon {
-      width: 42px;
-      height: 42px;
+      width: 36px;
+      height: 36px;
       border-radius: 14px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
       background: var(--sup-accent-soft);
       color: var(--sup-accent-ink);
-      font-size: 18px;
+      font-size: 15px;
       font-weight: 700;
     }
 
@@ -452,8 +455,8 @@
 
     .sup-workspace {
       display: grid;
-      grid-template-columns: minmax(360px, 420px) minmax(0, 1fr);
-      gap: 20px;
+      grid-template-columns: minmax(320px, 360px) minmax(0, 1fr);
+      gap: 18px;
       align-items: start;
     }
 
@@ -466,7 +469,7 @@
     .sup-sidebar {
       display: flex;
       flex-direction: column;
-      min-height: 760px;
+      min-height: 700px;
     }
 
     .sup-main {
@@ -479,7 +482,7 @@
     .sup-main-head,
     .sup-section-head,
     .cat-panel-head {
-      padding: 22px 24px 20px;
+      padding: 16px 18px 14px;
       border-bottom: 1px solid var(--sup-line);
       background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
     }
@@ -487,15 +490,15 @@
     .sup-sidebar-title,
     .sup-main-head h2,
     .sup-section-head h2 {
-      font-size: 24px;
+      font-size: 21px;
       line-height: 1.12;
       letter-spacing: -0.02em;
     }
 
     .sup-sidebar-all-btn {
-      width: calc(100% - 28px);
-      margin: 16px auto 0;
-      padding: 14px 16px;
+      width: calc(100% - 24px);
+      margin: 12px auto 0;
+      padding: 12px 14px;
       border: 1px solid var(--sup-line);
       border-radius: 16px;
       background: var(--sup-panel-muted);
@@ -526,16 +529,16 @@
     .sup-supplier-list,
     .cat-list {
       flex: 1;
-      padding: 16px;
+      padding: 12px;
       display: grid;
-      gap: 12px;
+      gap: 10px;
       align-content: start;
       overflow-y: auto;
     }
 
     .sup-empty-state,
     .empty {
-      padding: 34px 22px;
+      padding: 24px 18px;
       border: 1px dashed var(--sup-line-strong);
       border-radius: 18px;
       background: var(--sup-panel-muted);
@@ -553,7 +556,7 @@
 
     .sup-supplier-card {
       display: grid;
-      gap: 12px;
+      gap: 10px;
       cursor: pointer;
       transition: border-color 0.14s ease, box-shadow 0.14s ease, transform 0.14s ease, background 0.14s ease;
     }
@@ -628,7 +631,7 @@
     #item-table-container,
     #best-price-content,
     .cat-dialog-body {
-      padding: 18px 20px 22px;
+      padding: 14px 16px 18px;
     }
 
     .sup-table-wrap {
@@ -650,7 +653,7 @@
 
     .sup-table th,
     .sup-table td {
-      padding: 15px 16px;
+      padding: 13px 14px;
       text-align: left;
       vertical-align: middle;
       border-bottom: 1px solid #eef2f7;
@@ -707,7 +710,7 @@
     }
 
     #dlg-categories {
-      width: min(980px, 94vw);
+      width: min(920px, 92vw);
     }
 
     dialog::backdrop {
@@ -723,7 +726,7 @@
 
     .dlg-head,
     .dlg-footer {
-      padding: 18px 22px;
+      padding: 12px 16px;
       border-bottom: 1px solid var(--sup-line);
       background: linear-gradient(180deg, rgba(248, 250, 252, 0.98) 0%, rgba(255, 255, 255, 0.98) 100%);
     }
@@ -736,8 +739,8 @@
 
     .form-stack {
       display: grid;
-      gap: 14px;
-      padding: 18px 22px 22px;
+      gap: 12px;
+      padding: 14px 16px 16px;
     }
 
     .form-stack label {
@@ -767,7 +770,7 @@
 
     .cat-panel {
       border: 1px solid var(--sup-line);
-      border-radius: 20px;
+      border-radius: 16px;
       background: #fff;
       overflow: hidden;
       box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.78);
@@ -788,8 +791,8 @@
     }
 
     .cat-list {
-      max-height: 320px;
-      gap: 14px;
+      max-height: 280px;
+      gap: 10px;
     }
 
     .cat-row {
@@ -797,7 +800,7 @@
       grid-template-columns: minmax(0, 1fr) auto;
       gap: 16px;
       align-items: center;
-      padding: 18px 20px;
+      padding: 14px 16px;
     }
 
     .cat-row-icon {
@@ -812,7 +815,7 @@
     }
 
     .cat-form-head {
-      padding: 20px 22px 0;
+      padding: 14px 16px 0;
     }
 
     #cat-form.form-stack {
@@ -829,7 +832,7 @@
 
     .cat-form-actions {
       justify-content: flex-end;
-      padding: 0 22px 22px;
+      padding: 0 16px 16px;
     }
 
     .cat-dialog-footer {
@@ -900,7 +903,6 @@
 
     <section class="sup-toolbar">
       <div class="sup-toolbar-section">
-        <p class="sup-toolbar-label">搜索与筛选</p>
         <div class="sup-toolbar-filters">
           <input type="search" id="global-search" placeholder="搜索供应商或物料名称" />
           <select id="filter-category">
@@ -918,7 +920,6 @@
         </div>
       </div>
       <div class="sup-toolbar-section">
-        <p class="sup-toolbar-label">快捷操作</p>
         <div class="sup-toolbar-actions">
           <button class="mini-button ghost" id="btn-manage-categories">分类管理</button>
           <button class="mini-button ghost" id="btn-batch-import">批量导入</button>
@@ -969,13 +970,13 @@
           <div class="sup-sidebar-head-copy">
             <span class="sup-sidebar-label">供应商列表</span>
             <h2 class="sup-sidebar-title">供应商主档</h2>
-            <p class="sup-sidebar-meta">浏览供应商资料、联系人信息和已录入的物料数量，并快速切换右侧价格库视图。</p>
+            <p class="sup-sidebar-meta">??????????????????</p>
           </div>
           <input type="search" id="supplier-search" placeholder="搜索名称 / 联系人" />
         </div>
         <button class="sup-sidebar-all-btn active" id="btn-show-all-suppliers">
           <span class="sup-sidebar-all-title">全部供应商</span>
-          <span class="sup-sidebar-all-meta">查看全部供应商的价格库与跨供应商条目</span>
+          <span class="sup-sidebar-all-meta">?????????????????</span>
         </button>
         <div id="supplier-list" class="sup-supplier-list"></div>
       </aside>
@@ -1051,7 +1052,7 @@
         <input type="hidden" name="id" />
         <label><span>供应商名称 *</span><input name="name" required placeholder="例如：Congress Rental l.t.d." /></label>
         <label><span>联系人</span><input name="contact" placeholder="联系人姓名" /></label>
-        <label><span>电话</span><input name="phone" placeholder="例如：+381 11 1234567" /></label>
+        <label><span>电话</span><input name="phone" placeholder="???+381 11 1234567" /></label>
         <label><span>邮箱</span><input name="email" type="email" placeholder="info@example.com" /></label>
         <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注信息"></textarea></label>
         <label class="checkbox-label">
