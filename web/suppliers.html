@@ -8,368 +8,937 @@
   <script src="/auth-guard.js"></script>
   <link rel="stylesheet" href="/app-shell.css" />
   <style>
-    /* ── Suppliers V2 专用布局 ───────────────────────────────────────────────── */
-
-    .page-shell {
+    .suppliers-page {
+      --sup-bg: #f3f6fb;
+      --sup-bg-soft: #fbfcfe;
+      --sup-panel: #ffffff;
+      --sup-panel-strong: #f7f9fc;
+      --sup-line: #dde4ee;
+      --sup-line-strong: #c9d3e0;
+      --sup-text: #142033;
+      --sup-text-soft: #5d6b80;
+      --sup-text-faint: #8693a5;
+      --sup-accent: #b7652c;
+      --sup-accent-strong: #9d4d1d;
+      --sup-accent-soft: #f8e8dc;
+      --sup-success: #157255;
+      --sup-success-soft: #e8f6ef;
+      --sup-danger: #c74d45;
+      --sup-danger-soft: #fdeceb;
+      --sup-radius-lg: 24px;
+      --sup-radius-md: 18px;
+      --sup-radius-sm: 12px;
+      --sup-shadow: 0 18px 48px rgba(16, 28, 45, 0.08);
+      --sup-shadow-soft: 0 10px 24px rgba(16, 28, 45, 0.06);
       display: flex;
       flex-direction: column;
+      gap: 18px;
+      min-height: 100vh;
+      padding: 24px;
+      background:
+        radial-gradient(circle at top left, rgba(214, 225, 244, 0.58), transparent 34%),
+        linear-gradient(180deg, #f8fafc 0%, #eef3f9 100%);
     }
-
-    /* 工具栏 */
-    .sup-toolbar {
+    .sup-page-topbar {
       display: flex;
       align-items: center;
-      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 14px 18px;
+      border: 1px solid rgba(201, 211, 224, 0.78);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.8);
+      box-shadow: 0 10px 28px rgba(16, 28, 45, 0.05);
+      backdrop-filter: blur(14px);
+    }
+    .sup-page-topbar-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sup-text-soft);
+      letter-spacing: 0.02em;
+    }
+    .sup-page-hero,
+    .sup-toolbar,
+    .sup-sidebar,
+    .sup-main,
+    .sup-best-price-section,
+    dialog .dlg-inner {
+      border: 1px solid rgba(201, 211, 224, 0.76);
+      background: var(--sup-panel);
+      box-shadow: var(--sup-shadow);
+    }
+    .sup-page-hero {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 20px;
+      padding: 24px 26px;
+      border-radius: var(--sup-radius-lg);
+      background: linear-gradient(135deg, rgba(255, 255, 255, 0.98) 0%, rgba(248, 250, 253, 0.96) 100%);
+    }
+    .sup-page-hero-copy {
+      min-width: 0;
+      display: grid;
       gap: 8px;
-      padding: 10px 20px;
-      background: #fff;
-      border-bottom: 1px solid #e5e7eb;
+    }
+    .sup-page-kicker {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--sup-accent);
+    }
+    .sup-page-hero h1 {
+      margin: 0;
+      font-size: 30px;
+      line-height: 1.12;
+      color: var(--sup-text);
+      letter-spacing: -0.03em;
+    }
+    .sup-page-hero p {
+      margin: 0;
+      max-width: 720px;
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--sup-text-soft);
+    }
+    .sup-page-hero-pills {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+    .sup-page-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 34px;
+      padding: 0 12px;
+      border-radius: 999px;
+      border: 1px solid rgba(185, 101, 44, 0.16);
+      background: rgba(248, 232, 220, 0.66);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sup-accent-strong);
+      white-space: nowrap;
+    }
+    #sup-message {
+      margin: 0;
+      border-radius: 16px;
+      box-shadow: var(--sup-shadow-soft);
+    }
+    .sup-toolbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 20px 22px;
+      border-radius: var(--sup-radius-lg);
     }
     .sup-toolbar-filters {
       display: flex;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 8px;
       flex: 1;
+      flex-wrap: wrap;
+      gap: 10px;
+      min-width: 0;
     }
     .sup-toolbar-filters input[type="search"],
-    .sup-toolbar-filters select {
-      padding: 5px 10px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      font-size: 13px;
+    .sup-toolbar-filters select,
+    .sup-sidebar-head input[type="search"],
+    dialog input,
+    dialog select,
+    dialog textarea {
+      min-height: 42px;
+      height: 42px;
+      border: 1px solid var(--sup-line);
+      border-radius: 12px;
       background: #fff;
-      height: 32px;
-      color: inherit;
+      color: var(--sup-text);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
     }
-    .sup-toolbar-filters input[type="search"] { min-width: 180px; }
-    .sup-toolbar-filters select { min-width: 110px; }
+    .sup-toolbar-filters input[type="search"] {
+      min-width: 230px;
+      flex: 1 1 260px;
+    }
+    .sup-toolbar-filters select {
+      min-width: 148px;
+      flex: 0 1 170px;
+    }
+    .switch-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      height: 42px;
+      padding: 0 14px;
+      border: 1px solid var(--sup-line);
+      border-radius: 12px;
+      background: var(--sup-panel-strong);
+      color: var(--sup-text-soft);
+      font-size: 13px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .switch-label input[type="checkbox"] {
+      width: auto;
+      margin: 0;
+      accent-color: var(--sup-accent);
+    }
     .sup-toolbar-actions {
       display: flex;
       align-items: center;
-      gap: 6px;
-      flex-shrink: 0;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 10px;
+      flex: 0 0 auto;
     }
-    .switch-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: #374151;
-      cursor: pointer;
+    .sup-toolbar-actions .mini-button,
+    .sup-section-head .mini-button,
+    .dlg-head-actions .mini-button,
+    .dlg-footer button,
+    .cat-form-actions button {
+      width: auto;
+      min-width: 108px;
+      min-height: 42px;
+      padding: 0 16px;
+      border-radius: 12px;
       white-space: nowrap;
-      padding: 4px 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 6px;
-      height: 32px;
+      font-size: 13px;
+      font-weight: 700;
     }
-    .switch-label input[type="checkbox"] { cursor: pointer; margin: 0; }
-
-    /* KPI 卡片 */
+    #btn-manage-categories,
+    #btn-batch-import,
+    #btn-refresh-best-price,
+    .dlg-footer .ghost,
+    #btn-cancel-cat-form {
+      background: #fff;
+      color: var(--sup-text-soft);
+      border: 1px solid var(--sup-line);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+    }
+    #btn-new-supplier {
+      background: linear-gradient(180deg, #f8f0e8 0%, #f1e1d4 100%);
+      color: var(--sup-accent-strong);
+      border: 1px solid rgba(183, 101, 44, 0.18);
+      box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.72);
+    }
+    #btn-new-item,
+    #btn-save-supplier,
+    #btn-save-item,
+    #btn-save-category {
+      background: linear-gradient(180deg, #c86f34 0%, #a85322 100%);
+      color: #fff;
+      border: 1px solid rgba(157, 77, 29, 0.22);
+      box-shadow: 0 12px 22px rgba(168, 83, 34, 0.2);
+    }
+    .sup-toolbar-actions .mini-button:hover,
+    .sup-section-head .mini-button:hover,
+    .dlg-footer button:hover,
+    .cat-form-actions button:hover {
+      transform: translateY(-1px);
+    }
     .sup-kpi-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-      padding: 12px 20px;
-      background: #f9fafb;
-      border-bottom: 1px solid #e5e7eb;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
     }
     .kpi-card {
-      background: #fff;
-      border: 1px solid #e5e7eb;
-      border-radius: 8px;
-      padding: 12px 16px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
+      min-height: 128px;
+      padding: 18px 18px 16px;
+      border: 1px solid rgba(201, 211, 224, 0.76);
+      border-radius: 20px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(247,249,252,0.98) 100%);
+      box-shadow: var(--sup-shadow-soft);
+      display: grid;
+      gap: 10px;
+      align-content: space-between;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, rgba(183,101,44,0.92), rgba(183,101,44,0.12));
     }
     .kpi-label {
       font-size: 11px;
-      color: #6b7280;
-      font-weight: 600;
+      font-weight: 800;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.04em;
+      color: var(--sup-text-faint);
     }
     .kpi-value {
-      font-size: 22px;
-      font-weight: 700;
-      color: #111827;
-      line-height: 1.2;
+      font-size: 30px;
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      color: var(--sup-text);
+      line-height: 1;
     }
-    .kpi-value-sm { font-size: 14px; font-weight: 600; }
-
-    /* 主工作区 */
+    .kpi-value-sm {
+      font-size: 16px;
+      line-height: 1.35;
+      color: var(--sup-text-soft);
+    }
     .sup-workspace {
-      display: flex;
-      flex: 1;
-      min-height: 480px;
+      display: grid;
+      grid-template-columns: minmax(300px, 340px) minmax(0, 1fr);
+      gap: 18px;
+      align-items: start;
+    }
+    .sup-sidebar,
+    .sup-main,
+    .sup-best-price-section {
+      border-radius: var(--sup-radius-lg);
       overflow: hidden;
     }
-
-    /* 左侧供应商列表 */
     .sup-sidebar {
-      width: 256px;
-      flex-shrink: 0;
-      border-right: 1px solid #e5e7eb;
+      min-height: 760px;
       display: flex;
       flex-direction: column;
-      overflow: hidden;
-      background: #fff;
     }
     .sup-sidebar-head {
-      padding: 10px 12px;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      background: #f9fafb;
+      padding: 18px 18px 16px;
+      border-bottom: 1px solid var(--sup-line);
+      background: linear-gradient(180deg, rgba(247,249,252,0.98) 0%, rgba(255,255,255,0.98) 100%);
+      display: grid;
+      gap: 10px;
     }
     .sup-sidebar-label {
-      font-size: 10px;
-      font-weight: 700;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
       text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: #9ca3af;
-    }
-    .sup-sidebar-head input[type="search"] {
-      padding: 5px 8px;
-      border: 1px solid #d1d5db;
-      border-radius: 5px;
-      font-size: 12px;
-      width: 100%;
+      color: var(--sup-text-faint);
     }
     .sup-sidebar-all-btn {
-      padding: 8px 12px;
-      background: none;
-      border: none;
+      width: calc(100% - 24px);
+      margin: 12px auto 0;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 14px;
+      border: 1px solid transparent;
+      background: transparent;
+      color: var(--sup-text-soft);
+      font-size: 13px;
+      font-weight: 700;
       text-align: left;
-      font-size: 12px;
-      font-weight: 600;
-      color: #6b7280;
-      cursor: pointer;
-      border-bottom: 1px solid #f3f4f6;
+      box-shadow: none;
     }
-    .sup-sidebar-all-btn.active { color: #2563eb; background: #eff6ff; }
+    .sup-sidebar-all-btn.active {
+      background: rgba(183, 101, 44, 0.08);
+      color: var(--sup-accent-strong);
+      border-color: rgba(183, 101, 44, 0.18);
+    }
     .sup-supplier-list {
       flex: 1;
+      padding: 14px 12px 16px;
       overflow-y: auto;
-      padding: 6px;
+      display: grid;
+      gap: 10px;
+      align-content: start;
+    }
+    .sup-empty-state {
+      padding: 24px 18px;
+      border: 1px dashed var(--sup-line-strong);
+      border-radius: 18px;
+      background: rgba(247, 249, 252, 0.8);
+      color: var(--sup-text-faint);
+      font-size: 13px;
+      text-align: center;
     }
     .sup-supplier-card {
-      padding: 9px 11px;
-      border-radius: 6px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      margin-bottom: 3px;
-      transition: background 0.12s;
-    }
-    .sup-supplier-card:hover { background: #f3f4f6; }
-    .sup-supplier-card.active { background: #eff6ff; border-color: #bfdbfe; }
-    .sup-supplier-card.inactive { opacity: 0.55; }
-    .sup-card-name {
-      font-size: 13px;
-      font-weight: 600;
-      color: #111827;
-      margin-bottom: 2px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .sup-card-meta {
-      font-size: 11px;
-      color: #9ca3af;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .sup-card-actions {
-      display: flex;
-      gap: 4px;
-      margin-top: 6px;
-    }
-
-    /* 右侧主区 */
-    .sup-main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      background: #fff;
-    }
-    .sup-main-head {
-      padding: 11px 16px;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      align-items: baseline;
+      display: grid;
       gap: 10px;
-      background: #f9fafb;
-      flex-shrink: 0;
+      padding: 14px 14px 13px;
+      border-radius: 18px;
+      border: 1px solid transparent;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(249,250,252,0.98) 100%);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.8);
+      cursor: pointer;
+      transition: transform 0.14s ease, border-color 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
     }
-    .sup-main-head h2 { font-size: 14px; margin: 0; font-weight: 700; }
-    #item-table-container { flex: 1; overflow: auto; }
-
-    /* 物料表格 */
-    .sup-table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
+    .sup-supplier-card:hover {
+      transform: translateY(-1px);
+      border-color: rgba(183,101,44,0.14);
+      box-shadow: 0 10px 24px rgba(20, 32, 51, 0.08);
     }
-    .sup-table th {
-      background: #f9fafb;
-      padding: 7px 12px;
-      text-align: left;
+    .sup-supplier-card.active {
+      border-color: rgba(183,101,44,0.26);
+      background: linear-gradient(180deg, rgba(250, 241, 234, 0.96) 0%, rgba(255,255,255,0.98) 100%);
+      box-shadow: 0 12px 26px rgba(183,101,44,0.12);
+    }
+    .sup-supplier-card.inactive {
+      opacity: 0.75;
+    }
+    .sup-card-head,
+    .sup-card-foot {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .sup-card-title-wrap {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-width: 0;
+      flex: 1;
+    }
+    .sup-card-name {
+      min-width: 0;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sup-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sup-card-count {
+      flex: 0 0 auto;
       font-size: 11px;
       font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      color: #6b7280;
-      border-bottom: 1px solid #e5e7eb;
-      position: sticky;
-      top: 0;
-      z-index: 1;
+      color: var(--sup-text-faint);
+      border-radius: 999px;
+      background: rgba(217, 224, 234, 0.55);
+      padding: 4px 8px;
     }
-    .sup-table td {
-      padding: 7px 12px;
-      border-bottom: 1px solid #f3f4f6;
-      vertical-align: middle;
+    .sup-card-meta,
+    .sup-card-hint {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--sup-text-soft);
     }
-    .sup-table tr:hover td { background: #f9fafb; }
-    .sup-table tr.row-inactive td { opacity: 0.5; }
-    .col-actions { width: 160px; }
-
-    .status-dot {
-      display: inline-block;
-      width: 6px;
-      height: 6px;
-      border-radius: 50%;
-      margin-right: 4px;
-      vertical-align: middle;
+    .sup-card-hint {
+      color: var(--sup-text-faint);
     }
-    .dot-active { background: #10b981; }
-    .dot-inactive { background: #d1d5db; }
-
-    /* 比价视图 */
-    .sup-best-price-section {
-      border-top: 2px solid #e5e7eb;
-      padding: 14px 20px 20px;
+    .sup-card-actions,
+    .sup-action-group,
+    .cat-row-actions,
+    .cat-form-actions {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .sup-inline-action {
+      width: auto;
+      min-height: 30px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+      border: 1px solid var(--sup-line);
       background: #fff;
+      color: var(--sup-text-soft);
+      white-space: nowrap;
     }
+    .sup-inline-action.is-danger {
+      color: var(--sup-danger);
+      border-color: rgba(199, 77, 69, 0.24);
+      background: rgba(253, 236, 235, 0.68);
+    }
+    .sup-inline-action.is-success {
+      color: var(--sup-success);
+      border-color: rgba(21, 114, 85, 0.18);
+      background: rgba(232, 246, 239, 0.9);
+    }
+    .sup-status-tag,
+    .sup-status-pill,
+    .sup-category-pill {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      border-radius: 999px;
+      font-weight: 700;
+    }
+    .sup-status-tag {
+      min-height: 24px;
+      padding: 0 8px;
+      font-size: 10px;
+      background: rgba(216, 223, 231, 0.7);
+      color: var(--sup-text-faint);
+    }
+    .sup-status-tag.is-active,
+    .sup-status-pill.is-active {
+      background: var(--sup-success-soft);
+      color: var(--sup-success);
+    }
+    .sup-status-tag.is-inactive,
+    .sup-status-pill.is-inactive {
+      background: rgba(216, 223, 231, 0.72);
+      color: var(--sup-text-faint);
+    }
+    .sup-main {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+    .sup-main-head,
     .sup-section-head {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 20px 22px;
+      border-bottom: 1px solid var(--sup-line);
+      background: linear-gradient(180deg, rgba(247,249,252,0.96) 0%, rgba(255,255,255,0.98) 100%);
+    }
+    .sup-main-head-copy,
+    .sup-section-head-copy {
+      min-width: 0;
+      display: grid;
+      gap: 5px;
+    }
+    .sup-main-kicker,
+    .sup-section-kicker {
+      margin: 0;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--sup-text-faint);
+    }
+    .sup-main-head h2,
+    .sup-section-head h2 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.15;
+      color: var(--sup-text);
+      letter-spacing: -0.02em;
+    }
+    .sup-main-head .meta,
+    .sup-section-head .meta {
+      margin: 0;
+      font-size: 13px;
+      color: var(--sup-text-soft);
+    }
+    .sup-main-head-actions,
+    .sup-section-head-actions {
       display: flex;
       align-items: center;
       gap: 10px;
-      margin-bottom: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
     }
-    .sup-section-head h2 { font-size: 14px; margin: 0; font-weight: 700; }
-
-    /* 弹层 */
+    #item-table-container,
+    #best-price-content {
+      padding: 12px 14px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,251,253,0.98) 100%);
+    }
+    .sup-table {
+      width: 100%;
+      border-collapse: separate;
+      border-spacing: 0;
+      font-size: 13px;
+      overflow: hidden;
+      border: 1px solid var(--sup-line);
+      border-radius: 18px;
+      background: #fff;
+    }
+    .sup-table th,
+    .sup-table td {
+      padding: 14px 14px;
+      text-align: left;
+      vertical-align: middle;
+      border-bottom: 1px solid rgba(221, 228, 238, 0.78);
+    }
+    .sup-table thead th {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--sup-text-faint);
+      background: #f6f8fb;
+      white-space: nowrap;
+    }
+    .sup-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+    .sup-table tbody tr:hover td {
+      background: rgba(247, 240, 232, 0.3);
+    }
+    .sup-table tr.row-inactive td {
+      opacity: 0.68;
+    }
+    .sup-table .col-actions {
+      width: 186px;
+    }
+    .sup-category-pill {
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid rgba(183, 101, 44, 0.14);
+      background: rgba(248, 232, 220, 0.56);
+      color: var(--sup-accent-strong);
+      font-size: 11px;
+    }
+    .sup-item-main,
+    .sup-best-item-main {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+    .sup-item-name,
+    .sup-best-item-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--sup-text);
+    }
+    .sup-item-sub,
+    .sup-best-item-sub,
+    .sup-item-spec,
+    .sup-best-item-spec {
+      font-size: 12px;
+      color: var(--sup-text-faint);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sup-table .sup-col-unit,
+    .sup-table .sup-col-price {
+      white-space: nowrap;
+    }
+    .sup-col-price,
+    .sup-price-value {
+      font-weight: 800;
+      color: var(--sup-accent-strong);
+      font-variant-numeric: tabular-nums;
+    }
+    .sup-status-pill {
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: 11px;
+    }
+    .sup-best-price-section {
+      display: flex;
+      flex-direction: column;
+      border-radius: var(--sup-radius-lg);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.98) 100%);
+    }
+    #best-price-empty,
+    #item-empty {
+      margin: 0;
+      padding: 36px 18px !important;
+    }
     dialog {
-      border: none;
-      border-radius: 10px;
+      width: min(680px, 94vw);
+      max-width: none;
+      max-height: min(88vh, 860px);
       padding: 0;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
-      max-width: 520px;
-      width: 96%;
-      max-height: 90vh;
-      overflow-y: auto;
+      border: none;
+      border-radius: 24px;
+      background: transparent;
+      overflow: visible;
     }
     dialog::backdrop {
-      background: rgba(0, 0, 0, 0.32);
+      background: rgba(12, 20, 33, 0.42);
+      backdrop-filter: blur(6px);
+    }
+    #dlg-categories {
+      width: min(760px, 94vw);
     }
     .dlg-inner {
       display: flex;
       flex-direction: column;
+      border-radius: 24px;
+      overflow: hidden;
+      background: var(--sup-panel);
     }
     .dlg-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
-      padding: 14px 20px;
-      border-bottom: 1px solid #e5e7eb;
+      gap: 14px;
+      padding: 18px 22px;
+      border-bottom: 1px solid var(--sup-line);
+      background: linear-gradient(180deg, rgba(247,249,252,0.98) 0%, rgba(255,255,255,0.98) 100%);
     }
     .dlg-head h2 {
       margin: 0;
-      font-size: 15px;
+      font-size: 18px;
+      line-height: 1.2;
+      color: var(--sup-text);
+      letter-spacing: -0.02em;
       flex: 1;
       min-width: 0;
     }
     .dlg-head-actions {
       display: flex;
       align-items: center;
-      justify-content: flex-end;
       gap: 10px;
       flex: 0 0 auto;
-      min-width: 0;
     }
     .dlg-head-actions .mini-button {
-      width: auto;
-      min-width: 96px;
-      padding: 8px 12px;
-      white-space: nowrap;
-      flex: 0 0 auto;
+      min-width: 104px;
+      background: #fff;
+      color: var(--sup-accent-strong);
+      border: 1px solid rgba(183, 101, 44, 0.16);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.75);
     }
     .dlg-close {
       width: auto;
-      flex: 0 0 auto;
-      background: none;
-      border: none;
+      min-width: 40px;
+      min-height: 40px;
+      padding: 0 12px;
+      border-radius: 12px;
+      background: #fff;
+      color: var(--sup-text-faint);
+      border: 1px solid var(--sup-line);
+      box-shadow: none;
       font-size: 16px;
-      cursor: pointer;
-      color: #9ca3af;
-      padding: 4px 8px;
-      border-radius: 4px;
       line-height: 1;
+      flex: 0 0 auto;
     }
-    .dlg-close:hover { background: #f3f4f6; color: #374151; }
-    @media (max-width: 520px) {
+    .dlg-close:hover {
+      background: #f5f7fa;
+      color: var(--sup-text-soft);
+    }
+    dialog .form-stack {
+      display: grid;
+      gap: 14px;
+      padding: 22px;
+      background: #fff;
+    }
+    dialog .form-stack label {
+      display: grid;
+      gap: 7px;
+    }
+    dialog .form-stack label span {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--sup-text-soft);
+    }
+    dialog textarea {
+      min-height: 92px;
+      height: auto;
+      padding-top: 12px;
+      padding-bottom: 12px;
+      resize: vertical;
+    }
+    .dlg-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 14px 22px 18px;
+      border-top: 1px solid var(--sup-line);
+      background: var(--sup-panel-strong);
+    }
+    .sup-modal-message {
+      margin: 12px 22px 0 !important;
+      border-radius: 14px;
+    }
+    .cat-list {
+      padding: 14px 22px 10px;
+      min-height: 120px;
+      max-height: 320px;
+      overflow-y: auto;
+      display: grid;
+      gap: 10px;
+      background: #fff;
+    }
+    .cat-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border: 1px solid rgba(221, 228, 238, 0.9);
+      border-radius: 18px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(249,250,252,0.98) 100%);
+    }
+    .cat-row-icon {
+      flex: 0 0 auto;
+      width: 40px;
+      height: 40px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(248, 232, 220, 0.64);
+      font-size: 18px;
+    }
+    .cat-row-main {
+      min-width: 0;
+      flex: 1;
+      display: grid;
+      gap: 4px;
+    }
+    .cat-row-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sup-text);
+    }
+    .cat-row-meta {
+      font-size: 11px;
+      color: var(--sup-text-faint);
+      font-family: Consolas, Menlo, monospace;
+    }
+    .cat-form-section {
+      display: none;
+      padding: 18px 22px 22px;
+      border-top: 1px solid var(--sup-line);
+      background: linear-gradient(180deg, rgba(247,249,252,0.9) 0%, rgba(255,255,255,0.98) 100%);
+    }
+    .cat-form-title {
+      margin: 0 0 14px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--sup-text);
+    }
+    .cat-form-grid {
+      display: grid;
+      gap: 12px;
+    }
+    .cat-form-row {
+      display: flex;
+      gap: 12px;
+    }
+    .cat-form-code,
+    .cat-form-sort {
+      min-width: 0;
+    }
+    .cat-form-code {
+      flex: 1;
+    }
+    .cat-form-sort {
+      width: 112px;
+      flex: 0 0 auto;
+    }
+    .cat-code-hint {
+      margin: 0;
+      font-size: 11px;
+      color: var(--sup-text-faint);
+    }
+    .sup-table-wrap {
+      overflow: auto;
+      border-radius: 18px;
+    }
+    .meta {
+      color: var(--sup-text-faint);
+    }
+    @media (max-width: 1240px) {
+      .sup-workspace {
+        grid-template-columns: minmax(280px, 312px) minmax(0, 1fr);
+      }
+      .sup-kpi-row {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+    }
+    @media (max-width: 980px) {
+      .suppliers-page {
+        padding: 16px;
+      }
+      .sup-page-hero,
+      .sup-toolbar,
+      .sup-main-head,
+      .sup-section-head {
+        padding: 18px;
+      }
+      .sup-page-hero,
+      .sup-toolbar,
+      .sup-workspace {
+        flex-direction: column;
+        display: flex;
+      }
+      .sup-page-hero-pills,
+      .sup-toolbar-actions,
+      .sup-main-head-actions,
+      .sup-section-head-actions {
+        width: 100%;
+        justify-content: flex-start;
+      }
+      .sup-toolbar-actions .mini-button,
+      .sup-section-head .mini-button {
+        min-width: 0;
+      }
+      .sup-sidebar {
+        min-height: 0;
+      }
+    }
+    @media (max-width: 720px) {
+      .suppliers-page {
+        padding: 12px;
+      }
+      .sup-page-hero h1 {
+        font-size: 24px;
+      }
+      .sup-kpi-row {
+        grid-template-columns: 1fr;
+      }
+      .sup-toolbar-filters,
+      .sup-toolbar-actions,
+      .sup-card-actions,
+      .sup-action-group,
+      .cat-row-actions,
+      .cat-form-actions,
+      .dlg-footer {
+        width: 100%;
+      }
+      .sup-toolbar-actions .mini-button,
+      .sup-section-head .mini-button,
+      .dlg-head-actions .mini-button,
+      .dlg-footer button,
+      .cat-form-actions button {
+        flex: 1 1 auto;
+      }
+      .sup-table th,
+      .sup-table td {
+        padding: 12px 10px;
+      }
+      .cat-row {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+      .cat-form-row {
+        flex-direction: column;
+      }
+      .cat-form-sort {
+        width: 100%;
+      }
       .dlg-head {
-        padding: 12px 16px;
+        padding: 16px 18px;
+        align-items: flex-start;
       }
       .dlg-head-actions {
         gap: 8px;
       }
-      .dlg-head-actions .mini-button {
-        min-width: 88px;
-        padding: 7px 10px;
-        font-size: 12px;
-      }
-    }
-    dialog .form-stack { padding: 16px 20px; }
-    .dlg-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      padding: 12px 20px;
-      border-top: 1px solid #e5e7eb;
-      background: #f9fafb;
-    }
-
-    /* 全局消息 */
-    #sup-message { margin: 8px 20px 0; }
-
-    /* 响应式 */
-    @media (max-width: 960px) {
-      .sup-kpi-row { grid-template-columns: repeat(2, 1fr); }
-      .sup-workspace { flex-direction: column; }
-      .sup-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; max-height: 220px; }
     }
   </style>
 </head>
 <body style="visibility: hidden">
-  <div class="page-shell">
-    <header class="topbar">
+  <div class="page-shell suppliers-page">
+    <header class="topbar sup-page-topbar">
       <a class="topbar-link" href="/">← 首页</a>
-      <span style="font-weight:700;font-size:15px;color:#374151">供应商管理 · 价格库工作台</span>
+      <span class="sup-page-topbar-label">供应商管理 · 价格库工作台</span>
     </header>
 
-    <!-- 全局消息 -->
+    <section class="sup-page-hero">
+      <div class="sup-page-hero-copy">
+        <p class="sup-page-kicker">Supplier Workspace</p>
+        <h1>供应商管理 / 价格库工作台</h1>
+        <p>围绕供应商档案、分类维护、价格表与最优成本比价视图，将常用数据运营能力收口到同一张工作台里，方便快速查库、维护与比价。</p>
+      </div>
+      <div class="sup-page-hero-pills">
+        <span class="sup-page-pill">供应商主数据</span>
+        <span class="sup-page-pill">价格库工作区</span>
+        <span class="sup-page-pill">成本比价视图</span>
+      </div>
+    </section>
+
+    <!-- 全局消息条 -->
     <div id="sup-message" class="message-box hidden"></div>
 
     <!-- 工具栏 -->
     <div class="sup-toolbar">
       <div class="sup-toolbar-filters">
-        <input type="search" id="global-search" placeholder="搜索供应商或物料名称…" />
+        <input type="search" id="global-search" placeholder="搜索供应商或物料名称" />
         <select id="filter-category">
           <option value="">全部类别</option>
         </select>
@@ -386,12 +955,11 @@
       <div class="sup-toolbar-actions">
         <button class="mini-button ghost" id="btn-manage-categories">分类管理</button>
         <button class="mini-button ghost" id="btn-batch-import">批量导入</button>
-        <button class="mini-button" id="btn-new-supplier">+ 新增供应商</button>
-        <button class="mini-button" id="btn-new-item">+ 新增物料</button>
+        <button class="mini-button" id="btn-new-supplier">+ 新建供应商</button>
+        <button class="mini-button" id="btn-new-item">+ 新建物料</button>
       </div>
     </div>
 
-    <!-- KPI 卡片 -->
     <div class="sup-kpi-row">
       <div class="kpi-card">
         <span class="kpi-label">供应商总数</span>
@@ -411,28 +979,25 @@
       </div>
     </div>
 
-    <!-- 主工作区 -->
     <div class="sup-workspace">
-
-      <!-- 左侧供应商列表 -->
       <aside class="sup-sidebar">
         <div class="sup-sidebar-head">
           <span class="sup-sidebar-label">供应商列表</span>
-          <input type="search" id="supplier-search" placeholder="搜索名称 / 联系人…" />
+          <input type="search" id="supplier-search" placeholder="搜索名称 / 联系人" />
         </div>
-        <button class="sup-sidebar-all-btn active" id="btn-show-all-suppliers">
-          全部供应商
-        </button>
+        <button class="sup-sidebar-all-btn active" id="btn-show-all-suppliers">全部供应商</button>
         <div id="supplier-list" class="sup-supplier-list"></div>
       </aside>
 
-      <!-- 右侧价格库表格 -->
       <main class="sup-main">
         <div class="sup-main-head">
-          <h2 id="items-table-title">价格库</h2>
-          <span id="items-table-subtitle" class="meta"></span>
+          <div class="sup-main-head-copy">
+            <p class="sup-main-kicker">Catalog Workspace</p>
+            <h2 id="items-table-title">价格库</h2>
+            <span id="items-table-subtitle" class="meta"></span>
+          </div>
         </div>
-        <div id="item-table-container">
+        <div id="item-table-container" class="sup-table-wrap">
           <table class="sup-table">
             <thead>
               <tr>
@@ -452,12 +1017,16 @@
       </main>
     </div>
 
-    <!-- 比价 / 最低价汇总视图 -->
     <div class="sup-best-price-section">
       <div class="sup-section-head">
-        <h2>最低价物料汇总</h2>
-        <span class="meta" id="best-price-meta"></span>
-        <button class="mini-button ghost" id="btn-refresh-best-price">↻ 刷新</button>
+        <div class="sup-section-head-copy">
+          <p class="sup-section-kicker">Benchmark View</p>
+          <h2>最低价物料汇总</h2>
+          <span class="meta" id="best-price-meta"></span>
+        </div>
+        <div class="sup-section-head-actions">
+          <button class="mini-button ghost" id="btn-refresh-best-price">↻ 刷新</button>
+        </div>
       </div>
       <div id="best-price-content">
         <table class="sup-table" id="best-price-table" style="display:none">
@@ -478,12 +1047,11 @@
     </div>
   </div>
 
-  <!-- ── 供应商弹层 ──────────────────────────────────────────────────────────── -->
   <dialog id="dlg-supplier">
     <div class="dlg-inner">
       <div class="dlg-head">
-        <h2 id="dlg-supplier-title">新增供应商</h2>
-        <button type="button" class="dlg-close" data-close-dlg="dlg-supplier">✕</button>
+        <h2 id="dlg-supplier-title">新建供应商</h2>
+        <button type="button" class="dlg-close" data-close-dlg="dlg-supplier">&times;</button>
       </div>
       <form class="form-stack" id="supplier-form">
         <input type="hidden" name="id" />
@@ -491,7 +1059,7 @@
         <label><span>联系人</span><input name="contact" placeholder="联系人姓名" /></label>
         <label><span>电话</span><input name="phone" placeholder="例如：+381 11 1234567" /></label>
         <label><span>邮箱</span><input name="email" type="email" placeholder="info@example.com" /></label>
-        <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注说明"></textarea></label>
+        <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注信息"></textarea></label>
         <label class="checkbox-label">
           <input type="checkbox" name="isActiveSupplier" checked />
           <span>启用（活跃供应商）</span>
@@ -504,21 +1072,20 @@
     </div>
   </dialog>
 
-  <!-- ── 物料弹层 ────────────────────────────────────────────────────────────── -->
   <dialog id="dlg-item">
     <div class="dlg-inner">
       <div class="dlg-head">
-        <h2 id="dlg-item-title">新增物料</h2>
-        <button type="button" class="dlg-close" data-close-dlg="dlg-item">✕</button>
+        <h2 id="dlg-item-title">新建物料</h2>
+        <button type="button" class="dlg-close" data-close-dlg="dlg-item">&times;</button>
       </div>
       <form class="form-stack" id="item-form">
         <input type="hidden" name="id" />
         <label><span>所属供应商 *</span><select name="supplierIdSel" id="item-supplier-select"></select></label>
         <label><span>类别 *</span><select name="category" id="item-category-select" required></select></label>
-        <label><span>中文名称 *</span><input name="nameZh" required placeholder="例如：LED墙8x3m" /></label>
+        <label><span>中文名称 *</span><input name="nameZh" required placeholder="例如：LED墙 8x3m" /></label>
         <label><span>英文名称</span><input name="nameEn" placeholder="例如：LED Wall 8x3m" /></label>
         <label><span>规格说明</span><input name="spec" placeholder="例如：含运输安装" /></label>
-        <label><span>单位 *</span><input name="unit" required placeholder="例如：套 / m² / 个 / 人" /></label>
+        <label><span>单位 *</span><input name="unit" required placeholder="例如：套 / m² / 个 / 天" /></label>
         <label><span>成本价（EUR）</span><input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" /></label>
         <label><span>备注</span><textarea name="notes" rows="2" placeholder="其他说明"></textarea></label>
         <label class="checkbox-label">
@@ -533,50 +1100,39 @@
     </div>
   </dialog>
 
-  <!-- ── 分类管理弹层 ───────────────────────────────────────────────────────── -->
   <dialog id="dlg-categories">
     <div class="dlg-inner">
       <div class="dlg-head">
         <h2>物料分类管理</h2>
         <div class="dlg-head-actions">
-          <button type="button" class="mini-button" id="btn-new-category">+ 新增分类</button>
-          <button type="button" class="dlg-close" data-close-dlg="dlg-categories">✕</button>
+          <button type="button" class="mini-button" id="btn-new-category">+ 新建分类</button>
+          <button type="button" class="dlg-close" data-close-dlg="dlg-categories">&times;</button>
         </div>
       </div>
-
-      <!-- 弹层内消息区 -->
-      <div id="cat-message" class="message-box hidden" style="margin:8px 16px 0"></div>
-
-      <!-- 分类列表 -->
-      <div id="categories-list" style="padding:8px 16px;min-height:80px;max-height:280px;overflow-y:auto"></div>
-
-      <!-- 新增 / 编辑表单（默认隐藏） -->
-      <div id="cat-form-section" style="display:none;padding:14px 16px;border-top:2px solid #e5e7eb;background:#f9fafb">
-        <h3 id="cat-form-title" style="font-size:13px;font-weight:700;margin:0 0 12px;color:#374151">新增分类</h3>
-        <form id="cat-form" class="form-stack" style="gap:12px">
+      <div id="cat-message" class="message-box hidden sup-modal-message"></div>
+      <div id="categories-list" class="cat-list"></div>
+      <div id="cat-form-section" class="cat-form-section">
+        <h3 id="cat-form-title" class="cat-form-title">新建分类</h3>
+        <form id="cat-form" class="form-stack cat-form-grid">
           <input type="hidden" name="id" />
           <label><span>中文名称 *</span><input name="nameZh" required placeholder="例如：音视频设备" /></label>
-          <div style="display:flex;gap:12px">
-            <label style="flex:1">
+          <div class="cat-form-row">
+            <label class="cat-form-code">
               <span>分类代码 *</span>
-              <input name="code" id="cat-code-input" required placeholder="例如：av_equipment"
-                     style="width:100%;font-family:monospace" />
+              <input name="code" id="cat-code-input" required placeholder="例如：av_equipment" style="width:100%;font-family:monospace" />
             </label>
-            <label style="width:100px">
+            <label class="cat-form-sort">
               <span>排序号</span>
               <input name="sortOrder" type="number" min="0" placeholder="0" style="width:100%" />
             </label>
           </div>
-          <p id="cat-code-hint" style="font-size:11px;color:#9ca3af;margin:0">
-            编辑时分类代码不可修改
-          </p>
+          <p id="cat-code-hint" class="cat-code-hint">编辑时分类代码不可修改</p>
         </form>
-        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+        <div class="cat-form-actions">
           <button type="button" class="ghost" id="btn-cancel-cat-form">取消</button>
           <button type="button" id="btn-save-category">保存分类</button>
         </div>
       </div>
-
       <div class="dlg-footer">
         <button type="button" class="ghost" data-close-dlg="dlg-categories">关闭</button>
       </div>
