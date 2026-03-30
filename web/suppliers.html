@@ -3,96 +3,586 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>供应商价格库</title>
+  <title>供应商管理 · 价格库工作台</title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
   <link rel="stylesheet" href="/app-shell.css" />
+  <style>
+    /* ── Suppliers V2 专用布局 ───────────────────────────────────────────────── */
+
+    .page-shell {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 工具栏 */
+    .sup-toolbar {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding: 10px 20px;
+      background: #fff;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .sup-toolbar-filters {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 8px;
+      flex: 1;
+    }
+    .sup-toolbar-filters input[type="search"],
+    .sup-toolbar-filters select {
+      padding: 5px 10px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      font-size: 13px;
+      background: #fff;
+      height: 32px;
+      color: inherit;
+    }
+    .sup-toolbar-filters input[type="search"] { min-width: 180px; }
+    .sup-toolbar-filters select { min-width: 110px; }
+    .sup-toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .switch-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #374151;
+      cursor: pointer;
+      white-space: nowrap;
+      padding: 4px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 6px;
+      height: 32px;
+    }
+    .switch-label input[type="checkbox"] { cursor: pointer; margin: 0; }
+
+    /* KPI 卡片 */
+    .sup-kpi-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 12px 20px;
+      background: #f9fafb;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .kpi-card {
+      background: #fff;
+      border: 1px solid #e5e7eb;
+      border-radius: 8px;
+      padding: 12px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .kpi-label {
+      font-size: 11px;
+      color: #6b7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .kpi-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+      line-height: 1.2;
+    }
+    .kpi-value-sm { font-size: 14px; font-weight: 600; }
+
+    /* 主工作区 */
+    .sup-workspace {
+      display: flex;
+      flex: 1;
+      min-height: 480px;
+      overflow: hidden;
+    }
+
+    /* 左侧供应商列表 */
+    .sup-sidebar {
+      width: 256px;
+      flex-shrink: 0;
+      border-right: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #fff;
+    }
+    .sup-sidebar-head {
+      padding: 10px 12px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: #f9fafb;
+    }
+    .sup-sidebar-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: #9ca3af;
+    }
+    .sup-sidebar-head input[type="search"] {
+      padding: 5px 8px;
+      border: 1px solid #d1d5db;
+      border-radius: 5px;
+      font-size: 12px;
+      width: 100%;
+    }
+    .sup-sidebar-all-btn {
+      padding: 8px 12px;
+      background: none;
+      border: none;
+      text-align: left;
+      font-size: 12px;
+      font-weight: 600;
+      color: #6b7280;
+      cursor: pointer;
+      border-bottom: 1px solid #f3f4f6;
+    }
+    .sup-sidebar-all-btn.active { color: #2563eb; background: #eff6ff; }
+    .sup-supplier-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+    }
+    .sup-supplier-card {
+      padding: 9px 11px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      margin-bottom: 3px;
+      transition: background 0.12s;
+    }
+    .sup-supplier-card:hover { background: #f3f4f6; }
+    .sup-supplier-card.active { background: #eff6ff; border-color: #bfdbfe; }
+    .sup-supplier-card.inactive { opacity: 0.55; }
+    .sup-card-name {
+      font-size: 13px;
+      font-weight: 600;
+      color: #111827;
+      margin-bottom: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sup-card-meta {
+      font-size: 11px;
+      color: #9ca3af;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .sup-card-actions {
+      display: flex;
+      gap: 4px;
+      margin-top: 6px;
+    }
+
+    /* 右侧主区 */
+    .sup-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #fff;
+    }
+    .sup-main-head {
+      padding: 11px 16px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      background: #f9fafb;
+      flex-shrink: 0;
+    }
+    .sup-main-head h2 { font-size: 14px; margin: 0; font-weight: 700; }
+    #item-table-container { flex: 1; overflow: auto; }
+
+    /* 物料表格 */
+    .sup-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .sup-table th {
+      background: #f9fafb;
+      padding: 7px 12px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #6b7280;
+      border-bottom: 1px solid #e5e7eb;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+    .sup-table td {
+      padding: 7px 12px;
+      border-bottom: 1px solid #f3f4f6;
+      vertical-align: middle;
+    }
+    .sup-table tr:hover td { background: #f9fafb; }
+    .sup-table tr.row-inactive td { opacity: 0.5; }
+    .col-actions { width: 160px; }
+
+    .status-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+    .dot-active { background: #10b981; }
+    .dot-inactive { background: #d1d5db; }
+
+    /* 比价视图 */
+    .sup-best-price-section {
+      border-top: 2px solid #e5e7eb;
+      padding: 14px 20px 20px;
+      background: #fff;
+    }
+    .sup-section-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .sup-section-head h2 { font-size: 14px; margin: 0; font-weight: 700; }
+
+    /* 弹层 */
+    dialog {
+      border: none;
+      border-radius: 10px;
+      padding: 0;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.18);
+      max-width: 520px;
+      width: 96%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+    dialog::backdrop {
+      background: rgba(0, 0, 0, 0.32);
+    }
+    .dlg-inner {
+      display: flex;
+      flex-direction: column;
+    }
+    .dlg-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 20px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .dlg-head h2 {
+      margin: 0;
+      font-size: 15px;
+      flex: 1;
+      min-width: 0;
+    }
+    .dlg-head-actions {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      gap: 10px;
+      flex: 0 0 auto;
+      min-width: 0;
+    }
+    .dlg-head-actions .mini-button {
+      width: auto;
+      min-width: 96px;
+      padding: 8px 12px;
+      white-space: nowrap;
+      flex: 0 0 auto;
+    }
+    .dlg-close {
+      width: auto;
+      flex: 0 0 auto;
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      color: #9ca3af;
+      padding: 4px 8px;
+      border-radius: 4px;
+      line-height: 1;
+    }
+    .dlg-close:hover { background: #f3f4f6; color: #374151; }
+    @media (max-width: 520px) {
+      .dlg-head {
+        padding: 12px 16px;
+      }
+      .dlg-head-actions {
+        gap: 8px;
+      }
+      .dlg-head-actions .mini-button {
+        min-width: 88px;
+        padding: 7px 10px;
+        font-size: 12px;
+      }
+    }
+    dialog .form-stack { padding: 16px 20px; }
+    .dlg-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      padding: 12px 20px;
+      border-top: 1px solid #e5e7eb;
+      background: #f9fafb;
+    }
+
+    /* 全局消息 */
+    #sup-message { margin: 8px 20px 0; }
+
+    /* 响应式 */
+    @media (max-width: 960px) {
+      .sup-kpi-row { grid-template-columns: repeat(2, 1fr); }
+      .sup-workspace { flex-direction: column; }
+      .sup-sidebar { width: 100%; border-right: none; border-bottom: 1px solid #e5e7eb; max-height: 220px; }
+    }
+  </style>
 </head>
 <body style="visibility: hidden">
   <div class="page-shell">
     <header class="topbar">
       <a class="topbar-link" href="/">← 首页</a>
+      <span style="font-weight:700;font-size:15px;color:#374151">供应商管理 · 价格库工作台</span>
     </header>
 
-    <div class="page-grid page-grid-wide">
-      <section class="panel">
-        <div class="panel-head">
-          <h1>供应商价格库</h1>
-          <span>大型活动物料成本数据库</span>
-        </div>
-        <div id="supplier-message" class="message-box hidden"></div>
+    <!-- 全局消息 -->
+    <div id="sup-message" class="message-box hidden"></div>
 
-        <!-- Supplier list -->
-        <div class="section-spacing-sm">
-          <div class="list-row">
-            <h2 class="section-title">供应商</h2>
-            <button class="mini-button" id="btn-new-supplier">+ 新建供应商</button>
-          </div>
-          <div id="supplier-list" class="stack"></div>
-        </div>
+    <!-- 工具栏 -->
+    <div class="sup-toolbar">
+      <div class="sup-toolbar-filters">
+        <input type="search" id="global-search" placeholder="搜索供应商或物料名称…" />
+        <select id="filter-category">
+          <option value="">全部类别</option>
+        </select>
+        <select id="filter-status">
+          <option value="">全部状态</option>
+          <option value="active">仅启用</option>
+          <option value="inactive">仅停用</option>
+        </select>
+        <label class="switch-label">
+          <input type="checkbox" id="toggle-best-price" />
+          <span>只看最低价</span>
+        </label>
+      </div>
+      <div class="sup-toolbar-actions">
+        <button class="mini-button ghost" id="btn-manage-categories">分类管理</button>
+        <button class="mini-button ghost" id="btn-batch-import">批量导入</button>
+        <button class="mini-button" id="btn-new-supplier">+ 新增供应商</button>
+        <button class="mini-button" id="btn-new-item">+ 新增物料</button>
+      </div>
+    </div>
 
-        <!-- Items section -->
-        <div class="section-spacing" id="items-section" style="display:none">
-          <div class="list-row">
-            <h2 class="section-title" id="items-section-title">物料列表</h2>
-            <button class="mini-button" id="btn-new-item">+ 添加物料</button>
-          </div>
-          <div class="inline-form filter-form" id="item-filter-row">
-            <label><span>类别</span><select id="category-filter"><option value="">全部类别</option></select></label>
-            <label><span>搜索</span><input type="search" id="item-search" placeholder="搜索物料名称…" /></label>
-          </div>
-          <div id="item-list" class="stack section-spacing-sm"></div>
-        </div>
-      </section>
+    <!-- KPI 卡片 -->
+    <div class="sup-kpi-row">
+      <div class="kpi-card">
+        <span class="kpi-label">供应商总数</span>
+        <span class="kpi-value" id="kpi-supplier-count">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">物料 / 服务总数</span>
+        <span class="kpi-value" id="kpi-item-count">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">最低价条目</span>
+        <span class="kpi-value" id="kpi-best-price-count">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">最近更新</span>
+        <span class="kpi-value kpi-value-sm" id="kpi-last-update">—</span>
+      </div>
+    </div>
 
-      <aside class="panel sticky-panel wide-preview-panel">
-        <!-- Supplier form -->
-        <div id="supplier-form-section">
-          <div class="panel-head">
-            <h2>供应商信息</h2>
-            <span id="supplier-mode">新建</span>
-          </div>
-          <form id="supplier-form" class="form-stack">
-            <input type="hidden" name="id" />
-            <label><span>供应商名称</span><input name="name" placeholder="例如：Congress Rental l.t.d." required /></label>
-            <label><span>联系人</span><input name="contact" placeholder="联系人姓名" /></label>
-            <label><span>电话</span><input name="phone" placeholder="例如：+381 11 1234567" /></label>
-            <label><span>邮箱</span><input name="email" type="email" placeholder="例如：info@example.com" /></label>
-            <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注说明"></textarea></label>
-            <label class="checkbox-label"><input type="checkbox" name="isActiveSupplier" checked /><span>启用（活跃供应商）</span></label>
-            <div class="button-row">
-              <button type="submit">保存供应商</button>
-              <button type="button" class="ghost" id="btn-cancel-supplier">取消</button>
-            </div>
-          </form>
-        </div>
+    <!-- 主工作区 -->
+    <div class="sup-workspace">
 
-        <!-- Item form -->
-        <div id="item-form-section" style="display:none">
-          <div class="panel-head">
-            <h2>物料信息</h2>
-            <span id="item-mode">新建物料</span>
-          </div>
-          <form id="item-form" class="form-stack">
-            <input type="hidden" name="id" />
-            <input type="hidden" name="supplierId" />
-            <label><span>类别</span><select name="category" required></select></label>
-            <label><span>中文名称</span><input name="nameZh" placeholder="例如：LED墙8x3m" required /></label>
-            <label><span>英文名称</span><input name="nameEn" placeholder="例如：LED Wall 8x3m" /></label>
-            <label><span>规格说明</span><input name="spec" placeholder="例如：含运输安装" /></label>
-            <label><span>单位</span><input name="unit" placeholder="例如：套 / m² / 个 / 人" required /></label>
-            <label><span>成本价（EUR）</span><input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" /></label>
-            <label><span>备注</span><textarea name="notes" rows="2" placeholder="其他说明"></textarea></label>
-            <label class="checkbox-label"><input type="checkbox" name="isActive" checked /><span>启用（纳入价格库）</span></label>
-            <div class="button-row">
-              <button type="submit">保存物料</button>
-              <button type="button" class="ghost" id="btn-cancel-item">取消</button>
-            </div>
-          </form>
+      <!-- 左侧供应商列表 -->
+      <aside class="sup-sidebar">
+        <div class="sup-sidebar-head">
+          <span class="sup-sidebar-label">供应商列表</span>
+          <input type="search" id="supplier-search" placeholder="搜索名称 / 联系人…" />
         </div>
+        <button class="sup-sidebar-all-btn active" id="btn-show-all-suppliers">
+          全部供应商
+        </button>
+        <div id="supplier-list" class="sup-supplier-list"></div>
       </aside>
+
+      <!-- 右侧价格库表格 -->
+      <main class="sup-main">
+        <div class="sup-main-head">
+          <h2 id="items-table-title">价格库</h2>
+          <span id="items-table-subtitle" class="meta"></span>
+        </div>
+        <div id="item-table-container">
+          <table class="sup-table">
+            <thead>
+              <tr>
+                <th>类别</th>
+                <th>名称</th>
+                <th>规格</th>
+                <th>单位</th>
+                <th>成本价</th>
+                <th>状态</th>
+                <th class="col-actions">操作</th>
+              </tr>
+            </thead>
+            <tbody id="item-table-body"></tbody>
+          </table>
+          <p class="empty" id="item-empty" style="display:none;padding:24px">暂无物料记录。</p>
+        </div>
+      </main>
+    </div>
+
+    <!-- 比价 / 最低价汇总视图 -->
+    <div class="sup-best-price-section">
+      <div class="sup-section-head">
+        <h2>最低价物料汇总</h2>
+        <span class="meta" id="best-price-meta"></span>
+        <button class="mini-button ghost" id="btn-refresh-best-price">↻ 刷新</button>
+      </div>
+      <div id="best-price-content">
+        <table class="sup-table" id="best-price-table" style="display:none">
+          <thead>
+            <tr>
+              <th>类别</th>
+              <th>名称</th>
+              <th>规格</th>
+              <th>单位</th>
+              <th>最低成本价</th>
+              <th>最优供应商</th>
+            </tr>
+          </thead>
+          <tbody id="best-price-body"></tbody>
+        </table>
+        <p class="empty" id="best-price-empty" style="padding:16px">加载中…</p>
+      </div>
     </div>
   </div>
+
+  <!-- ── 供应商弹层 ──────────────────────────────────────────────────────────── -->
+  <dialog id="dlg-supplier">
+    <div class="dlg-inner">
+      <div class="dlg-head">
+        <h2 id="dlg-supplier-title">新增供应商</h2>
+        <button type="button" class="dlg-close" data-close-dlg="dlg-supplier">✕</button>
+      </div>
+      <form class="form-stack" id="supplier-form">
+        <input type="hidden" name="id" />
+        <label><span>供应商名称 *</span><input name="name" required placeholder="例如：Congress Rental l.t.d." /></label>
+        <label><span>联系人</span><input name="contact" placeholder="联系人姓名" /></label>
+        <label><span>电话</span><input name="phone" placeholder="例如：+381 11 1234567" /></label>
+        <label><span>邮箱</span><input name="email" type="email" placeholder="info@example.com" /></label>
+        <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注说明"></textarea></label>
+        <label class="checkbox-label">
+          <input type="checkbox" name="isActiveSupplier" checked />
+          <span>启用（活跃供应商）</span>
+        </label>
+      </form>
+      <div class="dlg-footer">
+        <button type="button" class="ghost" data-close-dlg="dlg-supplier">取消</button>
+        <button type="button" id="btn-save-supplier">保存供应商</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ── 物料弹层 ────────────────────────────────────────────────────────────── -->
+  <dialog id="dlg-item">
+    <div class="dlg-inner">
+      <div class="dlg-head">
+        <h2 id="dlg-item-title">新增物料</h2>
+        <button type="button" class="dlg-close" data-close-dlg="dlg-item">✕</button>
+      </div>
+      <form class="form-stack" id="item-form">
+        <input type="hidden" name="id" />
+        <label><span>所属供应商 *</span><select name="supplierIdSel" id="item-supplier-select"></select></label>
+        <label><span>类别 *</span><select name="category" id="item-category-select" required></select></label>
+        <label><span>中文名称 *</span><input name="nameZh" required placeholder="例如：LED墙8x3m" /></label>
+        <label><span>英文名称</span><input name="nameEn" placeholder="例如：LED Wall 8x3m" /></label>
+        <label><span>规格说明</span><input name="spec" placeholder="例如：含运输安装" /></label>
+        <label><span>单位 *</span><input name="unit" required placeholder="例如：套 / m² / 个 / 人" /></label>
+        <label><span>成本价（EUR）</span><input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" /></label>
+        <label><span>备注</span><textarea name="notes" rows="2" placeholder="其他说明"></textarea></label>
+        <label class="checkbox-label">
+          <input type="checkbox" name="isActive" checked />
+          <span>启用（纳入价格库）</span>
+        </label>
+      </form>
+      <div class="dlg-footer">
+        <button type="button" class="ghost" data-close-dlg="dlg-item">取消</button>
+        <button type="button" id="btn-save-item">保存物料</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- ── 分类管理弹层 ───────────────────────────────────────────────────────── -->
+  <dialog id="dlg-categories">
+    <div class="dlg-inner">
+      <div class="dlg-head">
+        <h2>物料分类管理</h2>
+        <div class="dlg-head-actions">
+          <button type="button" class="mini-button" id="btn-new-category">+ 新增分类</button>
+          <button type="button" class="dlg-close" data-close-dlg="dlg-categories">✕</button>
+        </div>
+      </div>
+
+      <!-- 弹层内消息区 -->
+      <div id="cat-message" class="message-box hidden" style="margin:8px 16px 0"></div>
+
+      <!-- 分类列表 -->
+      <div id="categories-list" style="padding:8px 16px;min-height:80px;max-height:280px;overflow-y:auto"></div>
+
+      <!-- 新增 / 编辑表单（默认隐藏） -->
+      <div id="cat-form-section" style="display:none;padding:14px 16px;border-top:2px solid #e5e7eb;background:#f9fafb">
+        <h3 id="cat-form-title" style="font-size:13px;font-weight:700;margin:0 0 12px;color:#374151">新增分类</h3>
+        <form id="cat-form" class="form-stack" style="gap:12px">
+          <input type="hidden" name="id" />
+          <label><span>中文名称 *</span><input name="nameZh" required placeholder="例如：音视频设备" /></label>
+          <div style="display:flex;gap:12px">
+            <label style="flex:1">
+              <span>分类代码 *</span>
+              <input name="code" id="cat-code-input" required placeholder="例如：av_equipment"
+                     style="width:100%;font-family:monospace" />
+            </label>
+            <label style="width:100px">
+              <span>排序号</span>
+              <input name="sortOrder" type="number" min="0" placeholder="0" style="width:100%" />
+            </label>
+          </div>
+          <p id="cat-code-hint" style="font-size:11px;color:#9ca3af;margin:0">
+            编辑时分类代码不可修改
+          </p>
+        </form>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px">
+          <button type="button" class="ghost" id="btn-cancel-cat-form">取消</button>
+          <button type="button" id="btn-save-category">保存分类</button>
+        </div>
+      </div>
+
+      <div class="dlg-footer">
+        <button type="button" class="ghost" data-close-dlg="dlg-categories">关闭</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="/ui-labels.js"></script>
   <script src="/app-utils.js"></script>
   <script src="/suppliers.js"></script>
