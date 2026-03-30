@@ -176,7 +176,9 @@ function renderSupplierList() {
     const isActive = sup.isActive !== false;
     const itemCount = state.items.filter((i) => itemSupplierId(i) === sup.id).length;
     const isSelected = sup.id === state.selectedSupplierId;
-    const contact = [sup.contact, sup.phone, sup.email].filter(Boolean).join(" / ") || "暂无联系方式";
+    const contact = sup.contact || EMPTY_TEXT;
+    const phone = sup.phone || EMPTY_TEXT;
+    const email = sup.email || EMPTY_TEXT;
     return `
       <div class="sup-supplier-card${isSelected ? " active" : ""}${!isActive ? " inactive" : ""}" data-select-supplier="${sup.id}">
         <div class="sup-card-head">
@@ -186,9 +188,21 @@ function renderSupplierList() {
           </div>
           <span class="sup-card-count">${itemCount} 项</span>
         </div>
-        <div class="sup-card-meta">${contact}</div>
+        <div class="sup-card-meta-list">
+          <div class="sup-card-meta-row">
+            <span class="sup-card-meta-label">联系人</span>
+            <span class="sup-card-meta-value">${contact}</span>
+          </div>
+          <div class="sup-card-meta-row">
+            <span class="sup-card-meta-label">电话</span>
+            <span class="sup-card-meta-value">${phone}</span>
+          </div>
+          <div class="sup-card-meta-row">
+            <span class="sup-card-meta-label">邮箱</span>
+            <span class="sup-card-meta-value">${email}</span>
+          </div>
+        </div>
         <div class="sup-card-foot">
-          <span class="sup-card-hint">${isActive ? "支持快速选库与价格维护" : "当前供应商已停用"}</span>
           <div class="sup-card-actions">
             ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-supplier="${sup.id}">编辑</button>` : ""}
             ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}

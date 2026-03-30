@@ -17,9 +17,9 @@
       --sup-text: #162033;
       --sup-text-soft: #5d6879;
       --sup-text-faint: #8893a5;
-      --sup-accent: #955126;
-      --sup-accent-soft: #f5e7dd;
-      --sup-accent-ink: #7e421b;
+      --sup-accent: #2563eb;
+      --sup-accent-soft: #eff6ff;
+      --sup-accent-ink: #1d4ed8;
       --sup-success: #166534;
       --sup-success-soft: #ebf8ee;
       --sup-danger: #b42318;
@@ -28,9 +28,9 @@
       --sup-shadow-soft: 0 10px 24px rgba(15, 23, 42, 0.04);
       display: flex;
       flex-direction: column;
-      gap: 22px;
+      gap: 18px;
       min-height: 100vh;
-      padding: 24px;
+      padding: 20px 24px 28px;
       background:
         radial-gradient(circle at top left, rgba(71, 105, 164, 0.08), transparent 32%),
         linear-gradient(180deg, #f8fafd 0%, var(--sup-bg) 100%);
@@ -55,26 +55,23 @@
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      padding: 12px 16px;
+      padding: 10px 14px;
       background: rgba(255, 255, 255, 0.82);
       box-shadow: 0 8px 18px rgba(15, 23, 42, 0.03);
     }
 
     .sup-page-topbar-label {
-      font-size: 13px;
+      font-size: 12px;
       font-weight: 600;
-      color: var(--sup-text-soft);
+      color: var(--sup-text-faint);
       letter-spacing: 0.02em;
     }
 
     .sup-page-hero {
       display: grid;
-      grid-template-columns: minmax(0, 1.7fr) minmax(320px, 0.88fr);
-      gap: 22px;
-      padding: 26px 28px;
-      background:
-        radial-gradient(circle at top right, rgba(149, 81, 38, 0.08), transparent 38%),
-        linear-gradient(135deg, rgba(255, 255, 255, 0.99) 0%, rgba(246, 249, 252, 0.98) 100%);
+      gap: 12px;
+      padding: 20px 24px;
+      background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(247, 250, 253, 0.98) 100%);
     }
 
     .sup-page-kicker,
@@ -130,7 +127,7 @@
     }
 
     .sup-page-hero h1 {
-      font-size: 34px;
+      font-size: 30px;
       line-height: 1.08;
       letter-spacing: -0.03em;
     }
@@ -404,25 +401,33 @@
 
     .kpi-card {
       gap: 12px;
-      min-height: 138px;
+      min-height: 142px;
       padding: 18px 20px;
       border: 1px solid var(--sup-line);
-      border-radius: 20px;
-      background: linear-gradient(180deg, rgba(255, 255, 255, 0.99) 0%, rgba(248, 250, 252, 0.98) 100%);
+      border-radius: 22px;
+      background: #fff;
       box-shadow: var(--sup-shadow-soft);
       align-content: space-between;
-      position: relative;
-      overflow: hidden;
     }
 
-    .kpi-card::before {
-      content: "";
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 4px;
-      background: linear-gradient(90deg, rgba(31, 75, 122, 0.92), rgba(31, 75, 122, 0.14));
+    .kpi-card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .kpi-icon {
+      width: 42px;
+      height: 42px;
+      border-radius: 14px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--sup-accent-soft);
+      color: var(--sup-accent-ink);
+      font-size: 18px;
+      font-weight: 700;
     }
 
     .kpi-value {
@@ -554,15 +559,15 @@
     }
 
     .sup-supplier-card:hover {
-      border-color: #d4c3b8;
+      border-color: #c6d4e6;
       box-shadow: 0 12px 20px rgba(15, 23, 42, 0.06);
       transform: translateY(-1px);
     }
 
     .sup-supplier-card.active {
-      border-color: #d7bda9;
-      background: linear-gradient(180deg, rgba(249, 240, 232, 0.92) 0%, rgba(255, 255, 255, 0.99) 100%);
-      box-shadow: 0 14px 24px rgba(149, 81, 38, 0.08);
+      border-color: #93c5fd;
+      background: linear-gradient(180deg, rgba(239, 246, 255, 0.98) 0%, rgba(255, 255, 255, 0.99) 100%);
+      box-shadow: 0 14px 28px rgba(37, 99, 235, 0.12);
     }
 
     .sup-supplier-card.inactive,
@@ -882,23 +887,12 @@
       <div class="sup-page-hero-copy">
         <p class="sup-page-kicker">Supplier Workspace</p>
         <h1>供应商管理 / 价格库工作台</h1>
-        <p>集中管理供应商主档、物料价格库与最低价对比视图，支持在同一页面完成筛选、录入、编辑和分类维护。</p>
+        <p>集中维护供应商主档、价格库与最低价对比视图。</p>
       </div>
-      <div class="sup-page-hero-side">
-        <div class="sup-hero-side-card">
-          <p class="sup-hero-side-label">当前工作区</p>
-          <div class="sup-hero-side-title">供应商主档、价格库与最低价汇总联动维护</div>
-          <p class="sup-hero-side-copy">左侧切换供应商，右侧维护价格条目，下方查看最低价物料汇总，分类管理在同弹窗内完成新增与编辑。</p>
-        </div>
-        <div class="sup-page-hero-pills">
-          <span class="sup-page-pill">供应商主数据</span>
-          <span class="sup-page-pill">价格库工作区</span>
-          <span class="sup-page-pill">最低价汇总</span>
-        </div>
-        <div class="sup-hero-side-stats">
-          <span class="sup-hero-side-stat is-accent">统一工作台视图</span>
-          <span class="sup-hero-side-stat">分类管理面板</span>
-        </div>
+      <div class="sup-page-hero-pills">
+        <span class="sup-page-pill">供应商主档</span>
+        <span class="sup-page-pill">价格库</span>
+        <span class="sup-page-pill">最低价汇总</span>
       </div>
     </section>
 
@@ -922,9 +916,6 @@
             <span>只看最低价</span>
           </label>
         </div>
-        <div class="sup-toolbar-meta">
-          <span>支持供应商、分类与状态联合筛选</span>
-        </div>
       </div>
       <div class="sup-toolbar-section">
         <p class="sup-toolbar-label">快捷操作</p>
@@ -939,22 +930,34 @@
 
     <section class="sup-kpi-row">
       <div class="kpi-card">
-        <span class="kpi-label">供应商总数</span>
+        <div class="kpi-card-head">
+          <span class="kpi-label">供应商总数</span>
+          <span class="kpi-icon">S</span>
+        </div>
         <span class="kpi-value" id="kpi-supplier-count">--</span>
         <span class="kpi-meta">显示启用与全部供应商数量。</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">物料 / 服务总数</span>
+        <div class="kpi-card-head">
+          <span class="kpi-label">物料 / 服务总数</span>
+          <span class="kpi-icon">I</span>
+        </div>
         <span class="kpi-value" id="kpi-item-count">--</span>
-        <span class="kpi-meta">统计当前已录入价格库的条目数量。</span>
+        <span class="kpi-meta">统计当前已录入的价格库条目。</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">最低价条目</span>
+        <div class="kpi-card-head">
+          <span class="kpi-label">最低价条目</span>
+          <span class="kpi-icon">€</span>
+        </div>
         <span class="kpi-value" id="kpi-best-price-count">--</span>
         <span class="kpi-meta">对应下方最低价物料汇总视图。</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">最近更新</span>
+        <div class="kpi-card-head">
+          <span class="kpi-label">最近更新</span>
+          <span class="kpi-icon">↻</span>
+        </div>
         <span class="kpi-value kpi-value-sm" id="kpi-last-update">--</span>
         <span class="kpi-meta">根据当前物料更新时间自动显示。</span>
       </div>
@@ -984,9 +987,8 @@
             <h2 id="items-table-title">价格库</h2>
             <span id="items-table-subtitle" class="meta"></span>
           </div>
-          <div class="sup-main-head-note">
-            <span>主工作区</span>
-            <p>支持查看当前供应商或全局价格库，并在同一工作区内维护物料状态、规格、单位与成本价。</p>
+          <div class="sup-main-head-actions">
+            <span class="meta">主工作区</span>
           </div>
         </div>
         <div id="item-table-container" class="sup-table-wrap">
@@ -1049,7 +1051,7 @@
         <input type="hidden" name="id" />
         <label><span>供应商名称 *</span><input name="name" required placeholder="例如：Congress Rental l.t.d." /></label>
         <label><span>联系人</span><input name="contact" placeholder="联系人姓名" /></label>
-        <label><span>电话</span><input name="phone" placeholder="例如：+81 11 1234567" /></label>
+        <label><span>电话</span><input name="phone" placeholder="例如：+381 11 1234567" /></label>
         <label><span>邮箱</span><input name="email" type="email" placeholder="info@example.com" /></label>
         <label><span>备注</span><textarea name="notes" rows="2" placeholder="供应商备注信息"></textarea></label>
         <label class="checkbox-label">
