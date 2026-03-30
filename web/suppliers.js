@@ -1,13 +1,69 @@
 const FALLBACK_CATEGORIES = [
-  { code: "av_equipment", nameZh: "\u97f3\u89c6\u9891\u8bbe\u5907" },
-  { code: "stage_structure", nameZh: "\u821e\u53f0\u7ed3\u6784" },
-  { code: "print_display", nameZh: "\u5370\u5237\u5c55\u793a" },
-  { code: "decoration", nameZh: "\u88c5\u9970\u7269\u6599" },
-  { code: "furniture", nameZh: "\u5bb6\u5177\u684c\u6905" },
-  { code: "personnel", nameZh: "\u4eba\u5458\u670d\u52a1" },
-  { code: "logistics", nameZh: "\u7269\u6d41\u8bbe\u5907" },
-  { code: "management", nameZh: "\u7ba1\u7406\u670d\u52a1" },
+  { code: "av_equipment", nameZh: "音视频设备" },
+  { code: "stage_structure", nameZh: "舞台结构" },
+  { code: "print_display", nameZh: "印刷展示" },
+  { code: "decoration", nameZh: "装饰物料" },
+  { code: "furniture", nameZh: "家具桌椅" },
+  { code: "personnel", nameZh: "人员服务" },
+  { code: "logistics", nameZh: "物流设备" },
+  { code: "management", nameZh: "管理服务" },
 ];
+
+const EMPTY_TEXT = "--";
+
+const SUPPLIERS_REQUIRED_DOM_IDS = [
+  "sup-message",
+  "global-search",
+  "filter-category",
+  "filter-status",
+  "toggle-best-price",
+  "btn-manage-categories",
+  "btn-batch-import",
+  "btn-new-supplier",
+  "btn-new-item",
+  "kpi-supplier-count",
+  "kpi-item-count",
+  "kpi-best-price-count",
+  "kpi-last-update",
+  "supplier-list",
+  "supplier-search",
+  "btn-show-all-suppliers",
+  "items-table-title",
+  "items-table-subtitle",
+  "item-table-body",
+  "item-empty",
+  "best-price-meta",
+  "best-price-table",
+  "best-price-body",
+  "best-price-empty",
+  "btn-refresh-best-price",
+  "dlg-supplier",
+  "dlg-supplier-title",
+  "supplier-form",
+  "btn-save-supplier",
+  "dlg-item",
+  "dlg-item-title",
+  "item-form",
+  "item-supplier-select",
+  "item-category-select",
+  "btn-save-item",
+  "dlg-categories",
+  "cat-message",
+  "categories-list",
+  "cat-list-summary",
+  "cat-dialog-summary",
+  "cat-form-section",
+  "cat-form",
+  "cat-form-title",
+  "cat-form-caption",
+  "cat-code-input",
+  "cat-code-hint",
+  "btn-new-category",
+  "btn-cancel-cat-form",
+  "btn-save-category",
+];
+
+let suppliersDom = null;
 
 const state = {
   suppliers: [],
@@ -25,6 +81,33 @@ const state = {
 
 function t(text) {
   return text.replace(/\\u([0-9a-fA-F]{4})/g, (_, code) => String.fromCharCode(parseInt(code, 16)));
+}
+
+function getOptionalElement(id) {
+  return document.getElementById(id);
+}
+
+function getRequiredElement(id) {
+  const el = getOptionalElement(id);
+  if (!el) {
+    throw new Error(`[suppliers] DOM contract mismatch: missing required element #${id}`);
+  }
+  return el;
+}
+
+function validateSuppliersPageDom() {
+  const missing = SUPPLIERS_REQUIRED_DOM_IDS.filter((id) => !getOptionalElement(id));
+  if (missing.length > 0) {
+    throw new Error(`[suppliers] DOM contract mismatch. Missing required ids: ${missing.map((id) => `#${id}`).join(", ")}`);
+  }
+  suppliersDom = Object.fromEntries(
+    SUPPLIERS_REQUIRED_DOM_IDS.map((id) => [id, getRequiredElement(id)])
+  );
+  return suppliersDom;
+}
+
+function getSuppliersDom() {
+  return suppliersDom || validateSuppliersPageDom();
 }
 
 function itemNameZh(item) { return item.nameZh || item.name_zh || ""; }
@@ -49,28 +132,34 @@ function categoryLabel(code) {
 
 function updateKPI() {
   const activeCount = state.suppliers.filter((s) => s.isActive !== false).length;
-  const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const setText = (id, val) => {
+    getRequiredElement(id).textContent = String(val);
+  };
+
   setText("kpi-supplier-count", `${activeCount} / ${state.suppliers.length}`);
   setText("kpi-item-count", state.items.length);
-  setText("kpi-best-price-count", state.bestPriceItems.length > 0 ? state.bestPriceItems.length : "—");
+  setText("kpi-best-price-count", state.bestPriceItems.length > 0 ? state.bestPriceItems.length : EMPTY_TEXT);
+
   const times = state.items
     .map((i) => i.updated_at || i.updatedAt)
     .filter(Boolean)
     .sort();
-  setText("kpi-last-update", times.length > 0
-    ? new Date(times[times.length - 1]).toLocaleDateString("zh-CN")
-    : "—");
+
+  setText(
+    "kpi-last-update",
+    times.length > 0 ? new Date(times[times.length - 1]).toLocaleDateString("zh-CN") : EMPTY_TEXT
+  );
 }
 
 function renderSupplierList() {
-  const container = document.getElementById("supplier-list");
-  const allBtn = document.getElementById("btn-show-all-suppliers");
-  if (allBtn) {
-    allBtn.className = "sup-sidebar-all-btn" + (state.selectedSupplierId === null ? " active" : "");
-  }
-
-  const sideSearch = (document.getElementById("supplier-search").value || "").trim().toLowerCase();
+  const dom = getSuppliersDom();
+  const container = dom["supplier-list"];
+  const allBtn = dom["btn-show-all-suppliers"];
+  const sideSearch = (dom["supplier-search"].value || "").trim().toLowerCase();
   const global = state.filters.global.toLowerCase();
+
+  allBtn.className = "sup-sidebar-all-btn" + (state.selectedSupplierId === null ? " active" : "");
+
   const list = state.suppliers.filter((sup) => {
     const haystack = [sup.name, sup.contact, sup.phone, sup.email].filter(Boolean).join(" ").toLowerCase();
     if (sideSearch && !haystack.includes(sideSearch)) return false;
@@ -79,7 +168,7 @@ function renderSupplierList() {
   });
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="sup-empty-state">${t("\\u6682\\u65e0\\u5339\\u914d\\u4f9b\\u5e94\\u5546")}</div>`;
+    container.innerHTML = `<div class="sup-empty-state">暂无匹配供应商</div>`;
     return;
   }
 
@@ -87,22 +176,22 @@ function renderSupplierList() {
     const isActive = sup.isActive !== false;
     const itemCount = state.items.filter((i) => itemSupplierId(i) === sup.id).length;
     const isSelected = sup.id === state.selectedSupplierId;
-    const contact = [sup.contact, sup.phone, sup.email].filter(Boolean).join(" / ") || t("\\u6682\\u65e0\\u8054\\u7cfb\\u65b9\\u5f0f");
+    const contact = [sup.contact, sup.phone, sup.email].filter(Boolean).join(" / ") || "暂无联系方式";
     return `
       <div class="sup-supplier-card${isSelected ? " active" : ""}${!isActive ? " inactive" : ""}" data-select-supplier="${sup.id}">
         <div class="sup-card-head">
           <div class="sup-card-title-wrap">
             <div class="sup-card-name">${sup.name}</div>
-            <span class="sup-status-tag ${isActive ? "is-active" : "is-inactive"}">${isActive ? t("\\u542f\\u7528") : t("\\u505c\\u7528")}</span>
+            <span class="sup-status-tag ${isActive ? "is-active" : "is-inactive"}">${isActive ? "启用" : "停用"}</span>
           </div>
-          <span class="sup-card-count">${itemCount} ${t("\\u9879")}</span>
+          <span class="sup-card-count">${itemCount} 项</span>
         </div>
         <div class="sup-card-meta">${contact}</div>
         <div class="sup-card-foot">
-          <span class="sup-card-hint">${isActive ? t("\\u652f\\u6301\\u5feb\\u901f\\u9009\\u5e93\\u4e0e\\u4ef7\\u683c\\u7ef4\\u62a4") : t("\\u5f53\\u524d\\u4f9b\\u5e94\\u5546\\u5df2\\u505c\\u7528")}</span>
+          <span class="sup-card-hint">${isActive ? "支持快速选库与价格维护" : "当前供应商已停用"}</span>
           <div class="sup-card-actions">
-            ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-supplier="${sup.id}">${t("\\u7f16\\u8f91")}</button>` : ""}
-            ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-supplier="${sup.id}" data-name="${sup.name}">${t("\\u5220\\u9664")}</button>` : ""}
+            ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-supplier="${sup.id}">编辑</button>` : ""}
+            ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}
           </div>
         </div>
       </div>
@@ -134,22 +223,23 @@ function getFilteredItems() {
 }
 
 function renderItemTable() {
-  const tbody = document.getElementById("item-table-body");
-  const emptyEl = document.getElementById("item-empty");
-  const titleEl = document.getElementById("items-table-title");
-  const subtitleEl = document.getElementById("items-table-subtitle");
+  const dom = getSuppliersDom();
+  const tbody = dom["item-table-body"];
+  const emptyEl = dom["item-empty"];
+  const titleEl = dom["items-table-title"];
+  const subtitleEl = dom["items-table-subtitle"];
 
   if (state.selectedSupplierId) {
     const sup = state.suppliers.find((s) => s.id === state.selectedSupplierId);
-    titleEl.textContent = sup ? sup.name : t("\\u4ef7\\u683c\\u5e93");
+    titleEl.textContent = sup ? sup.name : "价格库";
     subtitleEl.textContent = state.filters.bestPriceOnly
-      ? t("\\u5f53\\u524d\\u89c6\\u56fe\\u4ec5\\u663e\\u793a\\u6700\\u4f18\\u6210\\u672c\\u6761\\u76ee")
-      : t("\\u5f53\\u524d\\u4f9b\\u5e94\\u5546\\u7684\\u7269\\u6599\\u4e0e\\u670d\\u52a1\\u6761\\u76ee");
+      ? "当前视图仅显示最低成本条目"
+      : "当前供应商的物料与服务条目";
   } else {
-    titleEl.textContent = t("\\u4ef7\\u683c\\u5e93");
+    titleEl.textContent = "价格库";
     subtitleEl.textContent = state.filters.bestPriceOnly
-      ? t("\\u5f53\\u524d\\u89c6\\u56fe\\u4ec5\\u663e\\u793a\\u5168\\u5c40\\u6700\\u4f18\\u6210\\u672c\\u6761\\u76ee")
-      : t("\\u67e5\\u770b\\u5168\\u90e8\\u4f9b\\u5e94\\u5546\\u7684\\u4ef7\\u683c\\u5e93\\u4e0e\\u670d\\u52a1\\u660e\\u7ec6");
+      ? "当前视图仅显示全局最低成本条目"
+      : "查看全部供应商的价格库与服务明细";
   }
 
   const items = getFilteredItems();
@@ -174,16 +264,16 @@ function renderItemTable() {
             ${supName && !state.selectedSupplierId ? `<div class="sup-item-sub">${supName}</div>` : ""}
           </div>
         </td>
-        <td><div class="sup-item-spec" title="${item.spec || ""}">${item.spec || "—"}</div></td>
-        <td class="sup-col-unit">${item.unit || "—"}</td>
-        <td class="sup-col-price">${price > 0 ? window.AppUtils.formatCurrency(price, "EUR") : "—"}</td>
-        <td><span class="sup-status-pill ${active ? "is-active" : "is-inactive"}">${active ? t("\\u542f\\u7528") : t("\\u505c\\u7528")}</span></td>
+        <td><div class="sup-item-spec" title="${item.spec || ""}">${item.spec || EMPTY_TEXT}</div></td>
+        <td class="sup-col-unit">${item.unit || EMPTY_TEXT}</td>
+        <td class="sup-col-price">${price > 0 ? window.AppUtils.formatCurrency(price, "EUR") : EMPTY_TEXT}</td>
+        <td><span class="sup-status-pill ${active ? "is-active" : "is-inactive"}">${active ? "启用" : "停用"}</span></td>
         <td class="col-actions">
           <div class="sup-action-group">
-            ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-item="${item.id}">${t("\\u7f16\\u8f91")}</button>` : ""}
-            ${window.can("supplier.edit") && active ? `<button class="sup-inline-action" data-toggle-item="${item.id}" data-current-active="true">${t("\\u505c\\u7528")}</button>` : ""}
-            ${window.can("supplier.edit") && !active ? `<button class="sup-inline-action is-success" data-toggle-item="${item.id}" data-current-active="false">${t("\\u542f\\u7528")}</button>` : ""}
-            ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">${t("\\u5220\\u9664")}</button>` : ""}
+            ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-item="${item.id}">编辑</button>` : ""}
+            ${window.can("supplier.edit") && active ? `<button class="sup-inline-action" data-toggle-item="${item.id}" data-current-active="true">停用</button>` : ""}
+            ${window.can("supplier.edit") && !active ? `<button class="sup-inline-action is-success" data-toggle-item="${item.id}" data-current-active="false">启用</button>` : ""}
+            ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">删除</button>` : ""}
           </div>
         </td>
       </tr>
@@ -192,19 +282,20 @@ function renderItemTable() {
 }
 
 function renderBestPriceTable() {
-  const tableEl = document.getElementById("best-price-table");
-  const tbody = document.getElementById("best-price-body");
-  const emptyEl = document.getElementById("best-price-empty");
-  const metaEl = document.getElementById("best-price-meta");
+  const dom = getSuppliersDom();
+  const tableEl = dom["best-price-table"];
+  const tbody = dom["best-price-body"];
+  const emptyEl = dom["best-price-empty"];
+  const metaEl = dom["best-price-meta"];
   const items = state.bestPriceItems;
 
-  if (!tableEl || !tbody || !emptyEl) return;
-  if (metaEl) metaEl.textContent = items.length > 0 ? `${t("\\u5171")} ${items.length} ${t("\\u6761\\u6700\\u4f18\\u6210\\u672c\\u8bb0\\u5f55")}` : "";
+  metaEl.textContent = items.length > 0 ? `共 ${items.length} 条最低成本记录` : "";
 
   if (items.length === 0) {
     tableEl.style.display = "none";
     emptyEl.style.display = "";
-    emptyEl.textContent = t("\\u6682\\u65e0\\u53ef\\u7528\\u7684\\u6700\\u4f18\\u6210\\u672c\\u6570\\u636e");
+    emptyEl.textContent = "暂无可用的最低成本数据";
+    tbody.innerHTML = "";
     return;
   }
 
@@ -212,7 +303,7 @@ function renderBestPriceTable() {
   emptyEl.style.display = "none";
   tbody.innerHTML = items.map((item) => {
     const price = itemCostPrice(item);
-    const supName = item.supplierName || item.supplier_name || "—";
+    const supName = item.supplierName || item.supplier_name || EMPTY_TEXT;
     return `
       <tr>
         <td><span class="sup-category-pill">${categoryLabel(item.category)}</span></td>
@@ -222,9 +313,9 @@ function renderBestPriceTable() {
             ${itemNameEn(item) ? `<div class="sup-best-item-sub">${itemNameEn(item)}</div>` : ""}
           </div>
         </td>
-        <td><div class="sup-best-item-spec">${item.spec || "—"}</div></td>
-        <td class="sup-col-unit">${item.unit || "—"}</td>
-        <td class="sup-price-value">${price > 0 ? window.AppUtils.formatCurrency(price, "EUR") : "—"}</td>
+        <td><div class="sup-best-item-spec">${item.spec || EMPTY_TEXT}</div></td>
+        <td class="sup-col-unit">${item.unit || EMPTY_TEXT}</td>
+        <td class="sup-price-value">${price > 0 ? window.AppUtils.formatCurrency(price, "EUR") : EMPTY_TEXT}</td>
         <td><div class="sup-best-item-sub">${supName}</div></td>
       </tr>
     `;
@@ -232,23 +323,29 @@ function renderBestPriceTable() {
 }
 
 function showCatMessage(text, type) {
-  const el = document.getElementById("cat-message");
-  if (!el) return;
+  const el = getRequiredElement("cat-message");
   el.textContent = text;
   el.className = `message-box sup-modal-message ${type === "error" ? "error" : "success"}`;
 }
 
 function hideCatMessage() {
-  const el = document.getElementById("cat-message");
-  if (el) el.className = "message-box hidden sup-modal-message";
+  const el = getRequiredElement("cat-message");
+  el.className = "message-box hidden sup-modal-message";
 }
 
 function renderCategoryManagementList() {
-  const listEl = document.getElementById("categories-list");
-  if (!listEl) return;
+  const listEl = getRequiredElement("categories-list");
+  const summaryEl = getRequiredElement("cat-dialog-summary");
+  const listSummaryEl = getRequiredElement("cat-list-summary");
+  const total = state.categories.length;
 
-  if (state.categories.length === 0) {
-    listEl.innerHTML = `<div class="sup-empty-state">${t("\\u6682\\u65e0\\u53ef\\u7ba1\\u7406\\u7684\\u7269\\u6599\\u5206\\u7c7b")}</div>`;
+  summaryEl.textContent = total > 0 ? `共 ${total} 个分类` : "暂无分类";
+  listSummaryEl.textContent = total > 0
+    ? `已建 ${total} 个分类，可在下方继续新增或编辑。`
+    : "还没有分类，可以从右上角新建分类开始。";
+
+  if (total === 0) {
+    listEl.innerHTML = `<div class="sup-empty-state">暂无可管理的物料分类</div>`;
     return;
   }
 
@@ -256,18 +353,28 @@ function renderCategoryManagementList() {
     const code = c.code || "";
     const label = c.nameZh || c.name_zh || code;
     const sortOrder = c.sortOrder || c.sort_order || 0;
-    const icon = window.AppUi.getLabel("supplierItemCategoryIcons", code);
+    const icon = window.AppUi.getLabel("supplierItemCategoryIcons", code) || "📦";
     const catId = String(c.id);
+    const linkedItemCount = state.items.filter((item) => item.category === code).length;
     return `
       <div class="cat-row">
-        <span class="cat-row-icon">${icon || "📁"}</span>
         <div class="cat-row-main">
-          <div class="cat-row-title">${label}</div>
-          <div class="cat-row-meta">${code}${sortOrder ? ` / ${t("\\u6392\\u5e8f")} ${sortOrder}` : ""}</div>
+          <div class="cat-row-top">
+            <span class="cat-row-icon">${icon}</span>
+            <div class="cat-row-title-wrap">
+              <div class="cat-row-title">${label}</div>
+              <div class="cat-row-subtitle">物料分类主数据</div>
+            </div>
+          </div>
+          <div class="cat-row-meta-wrap">
+            <span class="cat-row-chip cat-row-code">${code}</span>
+            <span class="cat-row-chip">排序 ${sortOrder}</span>
+            <span class="cat-row-chip">${linkedItemCount} 项物料</span>
+          </div>
         </div>
         <div class="cat-row-actions">
-          <button class="sup-inline-action" data-edit-cat="${catId}">${t("\\u7f16\\u8f91")}</button>
-          <button class="sup-inline-action is-danger" data-delete-cat="${catId}" data-cat-name="${label}">${t("\\u5220\\u9664")}</button>
+          <button class="sup-inline-action" data-edit-cat="${catId}">编辑</button>
+          <button class="sup-inline-action is-danger" data-delete-cat="${catId}" data-cat-name="${label}">删除</button>
         </div>
       </div>
     `;
@@ -275,11 +382,12 @@ function renderCategoryManagementList() {
 }
 
 function openCatForm(cat) {
-  const section = document.getElementById("cat-form-section");
-  const form = document.getElementById("cat-form");
-  const titleEl = document.getElementById("cat-form-title");
-  const codeInput = document.getElementById("cat-code-input");
-  const codeHint = document.getElementById("cat-code-hint");
+  const section = getRequiredElement("cat-form-section");
+  const form = getRequiredElement("cat-form");
+  const titleEl = getRequiredElement("cat-form-title");
+  const captionEl = getRequiredElement("cat-form-caption");
+  const codeInput = getRequiredElement("cat-code-input");
+  const codeHint = getRequiredElement("cat-code-hint");
   const isEdit = !!cat;
 
   form.id.value = isEdit ? String(cat.id) : "";
@@ -289,15 +397,23 @@ function openCatForm(cat) {
 
   codeInput.readOnly = isEdit;
   codeInput.style.background = isEdit ? "#f3f4f6" : "";
-  codeInput.style.color = isEdit ? "#9ca3af" : "";
+  codeInput.style.color = isEdit ? "#6b7280" : "";
   codeHint.style.display = isEdit ? "" : "none";
 
-  titleEl.textContent = isEdit
-    ? `${t("\\u7f16\\u8f91\\u5206\\u7c7b")} · ${cat.nameZh || cat.name_zh || cat.code}`
-    : t("\\u65b0\\u589e\\u5206\\u7c7b");
+  titleEl.textContent = isEdit ? `编辑分类 · ${cat.nameZh || cat.name_zh || cat.code}` : "新建分类";
+  captionEl.textContent = isEdit
+    ? "调整分类名称、排序与代码展示方式，保持价格库引用清晰。"
+    : "创建新的物料分类，让供应商价格库维护更有秩序。";
 
-  section.style.display = "";
+  section.style.display = "block";
+  section.classList.add("is-open");
   form.nameZh.focus();
+}
+
+function closeCatForm() {
+  const section = getRequiredElement("cat-form-section");
+  section.style.display = "none";
+  section.classList.remove("is-open");
 }
 
 async function reloadCategories() {
@@ -306,11 +422,11 @@ async function reloadCategories() {
   renderCategoryManagementList();
 }
 
-function openDialog(id) { document.getElementById(id).showModal(); }
-function closeDialog(id) { document.getElementById(id).close(); }
+function openDialog(id) { getRequiredElement(id).showModal(); }
+function closeDialog(id) { getRequiredElement(id).close(); }
 
 function openSupplierForm(supplier) {
-  const form = document.getElementById("supplier-form");
+  const form = getRequiredElement("supplier-form");
   form.id.value = supplier ? supplier.id : "";
   form.name.value = supplier ? supplier.name : "";
   form.contact.value = supplier ? (supplier.contact || "") : "";
@@ -318,13 +434,12 @@ function openSupplierForm(supplier) {
   form.email.value = supplier ? (supplier.email || "") : "";
   form.notes.value = supplier ? (supplier.notes || "") : "";
   form.isActiveSupplier.checked = supplier ? (supplier.isActive !== false) : true;
-  document.getElementById("dlg-supplier-title").textContent =
-    supplier ? `${t("\\u7f16\\u8f91\\u4f9b\\u5e94\\u5546")} · ${supplier.name}` : t("\\u65b0\\u589e\\u4f9b\\u5e94\\u5546");
+  getRequiredElement("dlg-supplier-title").textContent = supplier ? `编辑供应商 · ${supplier.name}` : "新建供应商";
   openDialog("dlg-supplier");
 }
 
 function buildItemSupplierSelect(selectedId) {
-  const sel = document.getElementById("item-supplier-select");
+  const sel = getRequiredElement("item-supplier-select");
   const currentId = selectedId || state.selectedSupplierId || "";
   sel.innerHTML = state.suppliers
     .map((s) => `<option value="${s.id}"${s.id === currentId ? " selected" : ""}>${s.name}</option>`)
@@ -333,7 +448,7 @@ function buildItemSupplierSelect(selectedId) {
 
 function openItemForm(item) {
   buildItemSupplierSelect(item ? itemSupplierId(item) : null);
-  const form = document.getElementById("item-form");
+  const form = getRequiredElement("item-form");
   form.id.value = item ? item.id : "";
   const supplierId = item ? itemSupplierId(item) : (state.selectedSupplierId || "");
   if (supplierId) form.supplierIdSel.value = supplierId;
@@ -345,14 +460,13 @@ function openItemForm(item) {
   form.costPrice.value = item && itemCostPrice(item) > 0 ? itemCostPrice(item) : "";
   form.notes.value = item ? (item.notes || "") : "";
   form.isActive.checked = item ? itemIsActive(item) : true;
-  document.getElementById("dlg-item-title").textContent =
-    item ? `${t("\\u7f16\\u8f91\\u7269\\u6599")} · ${itemNameZh(item)}` : t("\\u65b0\\u589e\\u7269\\u6599");
+  getRequiredElement("dlg-item-title").textContent = item ? `编辑物料 · ${itemNameZh(item)}` : "新建物料";
   openDialog("dlg-item");
 }
 
 async function loadCategories() {
   try {
-    const cats = await window.AppUtils.fetchJson("/api/supplier-categories", null, t("\\u5206\\u7c7b\\u52a0\\u8f7d\\u5931\\u8d25"));
+    const cats = await window.AppUtils.fetchJson("/api/supplier-categories", null, "分类加载失败");
     if (Array.isArray(cats) && cats.length > 0) {
       state.categories = cats;
       return;
@@ -370,14 +484,14 @@ function buildCategorySelects() {
     return `<option value="${code}">${label}</option>`;
   }).join("");
 
-  const filterCat = document.getElementById("filter-category");
-  if (filterCat) filterCat.innerHTML = `<option value="">${t("\\u5168\\u90e8\\u7c7b\\u522b")}</option>` + opts;
-  const itemCatSel = document.getElementById("item-category-select");
-  if (itemCatSel) itemCatSel.innerHTML = opts;
+  const filterCat = getRequiredElement("filter-category");
+  const itemCatSel = getRequiredElement("item-category-select");
+  filterCat.innerHTML = `<option value="">全部类别</option>${opts}`;
+  itemCatSel.innerHTML = opts;
 }
 
 async function loadSuppliers() {
-  const result = await window.AppUtils.fetchJson("/api/suppliers", null, t("\\u4f9b\\u5e94\\u5546\\u5217\\u8868\\u52a0\\u8f7d\\u5931\\u8d25"));
+  const result = await window.AppUtils.fetchJson("/api/suppliers", null, "供应商列表加载失败");
   state.suppliers = Array.isArray(result) ? result : [];
 }
 
@@ -391,14 +505,14 @@ async function loadItems() {
   const items = await window.AppUtils.fetchJson(
     `/api/supplier-items?${params.toString()}`,
     null,
-    t("\\u7269\\u6599\\u5217\\u8868\\u52a0\\u8f7d\\u5931\\u8d25")
+    "物料列表加载失败"
   );
   state.items = Array.isArray(items) ? items : [];
 }
 
 async function loadBestPriceItems() {
   try {
-    const items = await window.AppUtils.fetchJson("/api/supplier-items/best-price", null, t("\\u6700\\u4f4e\\u4ef7\\u52a0\\u8f7d\\u5931\\u8d25"));
+    const items = await window.AppUtils.fetchJson("/api/supplier-items/best-price", null, "最低价加载失败");
     state.bestPriceItems = Array.isArray(items) ? items : [];
   } catch (_) {
     state.bestPriceItems = [];
@@ -420,14 +534,15 @@ async function reloadItems() {
 }
 
 async function bootstrap() {
+  validateSuppliersPageDom();
   window.AppUtils.applyFlash("sup-message");
   await loadCategories();
   buildCategorySelects();
 
-  const supForm = document.getElementById("supplier-form");
-  const itemForm = document.getElementById("item-form");
-  if (supForm) window.AppUtils.setChineseValidity(supForm);
-  if (itemForm) window.AppUtils.setChineseValidity(itemForm);
+  const supForm = getRequiredElement("supplier-form");
+  const itemForm = getRequiredElement("item-form");
+  window.AppUtils.setChineseValidity(supForm);
+  window.AppUtils.setChineseValidity(itemForm);
 
   await reloadAll();
 
@@ -443,8 +558,7 @@ async function bootstrap() {
   renderBestPriceTable();
 
   function on(id, event, handler) {
-    const el = document.getElementById(id);
-    if (el) el.addEventListener(event, handler);
+    getRequiredElement(id).addEventListener(event, handler);
   }
 
   on("global-search", "input", (e) => {
@@ -494,8 +608,7 @@ async function bootstrap() {
 
   on("btn-manage-categories", "click", () => {
     hideCatMessage();
-    const catFormSec = document.getElementById("cat-form-section");
-    if (catFormSec) catFormSec.style.display = "none";
+    closeCatForm();
     renderCategoryManagementList();
     openDialog("dlg-categories");
   });
@@ -506,13 +619,12 @@ async function bootstrap() {
   });
 
   on("btn-cancel-cat-form", "click", () => {
-    const catFormSec = document.getElementById("cat-form-section");
-    if (catFormSec) catFormSec.style.display = "none";
+    closeCatForm();
     hideCatMessage();
   });
 
   on("btn-save-category", "click", async () => {
-    const form = document.getElementById("cat-form");
+    const form = getRequiredElement("cat-form");
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
@@ -524,6 +636,7 @@ async function bootstrap() {
       nameZh: form.nameZh.value.trim(),
       sortOrder: Number(form.sortOrder.value || 0),
     };
+
     if (!isEdit) {
       payload.code = form.code.value.trim();
     }
@@ -535,11 +648,10 @@ async function bootstrap() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }, isEdit ? t("\\u7f16\\u8f91\\u5206\\u7c7b\\u5931\\u8d25") : t("\\u65b0\\u589e\\u5206\\u7c7b\\u5931\\u8d25"));
+      }, isEdit ? "编辑分类失败" : "新建分类失败");
 
-      const catFormSec2 = document.getElementById("cat-form-section");
-      if (catFormSec2) catFormSec2.style.display = "none";
-      showCatMessage(isEdit ? t("\\u5206\\u7c7b\\u5df2\\u66f4\\u65b0\\u3002") : t("\\u5206\\u7c7b\\u5df2\\u521b\\u5efa\\u3002"), "success");
+      closeCatForm();
+      showCatMessage(isEdit ? "分类已更新。" : "分类已创建。", "success");
       await reloadCategories();
     } catch (err) {
       showCatMessage(err.message, "error");
@@ -547,14 +659,16 @@ async function bootstrap() {
   });
 
   on("btn-batch-import", "click", () => {
-    window.AppUtils.showMessage("sup-message", t("\\u6279\\u91cf\\u5bfc\\u5165\\u529f\\u80fd\\u6b63\\u5728\\u5f00\\u53d1\\u4e2d\\uff0c\\u8bf7\\u4f7f\\u7528 scripts/import-supplier-catalog.js \\u811a\\u672c\\u5bfc\\u5165\\u3002"), "success");
+    window.AppUtils.showMessage("sup-message", "批量导入功能正在开发中，请使用 scripts/import-supplier-catalog.js 脚本导入。", "success");
   });
 
   on("btn-refresh-best-price", "click", async () => {
-    const emptyEl = document.getElementById("best-price-empty");
-    const tableEl = document.getElementById("best-price-table");
-    if (emptyEl) { emptyEl.textContent = t("\\u52a0\\u8f7d\\u4e2d\\u2026"); emptyEl.style.display = ""; }
-    if (tableEl) tableEl.style.display = "none";
+    const dom = getSuppliersDom();
+    const emptyEl = dom["best-price-empty"];
+    const tableEl = dom["best-price-table"];
+    emptyEl.textContent = "加载中…";
+    emptyEl.style.display = "";
+    tableEl.style.display = "none";
     await loadBestPriceItems();
     renderBestPriceTable();
     updateKPI();
@@ -568,8 +682,7 @@ async function bootstrap() {
   });
 
   on("btn-save-supplier", "click", async () => {
-    const form = document.getElementById("supplier-form");
-    if (!form) return;
+    const form = getRequiredElement("supplier-form");
     if (!form.checkValidity()) {
       form.reportValidity();
       return;
@@ -592,9 +705,9 @@ async function bootstrap() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }, t("\\u4fdd\\u5b58\\u4f9b\\u5e94\\u5546\\u5931\\u8d25"));
+      }, "保存供应商失败");
       closeDialog("dlg-supplier");
-      window.AppUtils.showMessage("sup-message", id ? t("\\u4f9b\\u5e94\\u5546\\u5df2\\u66f4\\u65b0\\u3002") : t("\\u4f9b\\u5e94\\u5546\\u5df2\\u521b\\u5efa\\u3002"), "success");
+      window.AppUtils.showMessage("sup-message", id ? "供应商已更新。" : "供应商已创建。", "success");
       state.selectedSupplierId = saved.id;
       await reloadAll();
     } catch (err) {
@@ -603,8 +716,8 @@ async function bootstrap() {
   });
 
   on("btn-save-item", "click", async () => {
-    const form = document.getElementById("item-form");
-    if (!form || !form.checkValidity()) {
+    const form = getRequiredElement("item-form");
+    if (!form.checkValidity()) {
       form.reportValidity();
       return;
     }
@@ -612,9 +725,10 @@ async function bootstrap() {
     const id = form.id.value.trim();
     const supplierId = form.supplierIdSel.value;
     if (!supplierId) {
-      window.AppUtils.showMessage("sup-message", t("\\u8bf7\\u5148\\u9009\\u62e9\\u4f9b\\u5e94\\u5546\\u3002"), "error");
+      window.AppUtils.showMessage("sup-message", "请先选择供应商。", "error");
       return;
     }
+
     const payload = {
       supplierId,
       category: form.category.value,
@@ -634,9 +748,9 @@ async function bootstrap() {
         method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
-      }, t("\\u4fdd\\u5b58\\u7269\\u6599\\u5931\\u8d25"));
+      }, "保存物料失败");
       closeDialog("dlg-item");
-      window.AppUtils.showMessage("sup-message", id ? t("\\u7269\\u6599\\u5df2\\u66f4\\u65b0\\u3002") : t("\\u7269\\u6599\\u5df2\\u6dfb\\u52a0\\u3002"), "success");
+      window.AppUtils.showMessage("sup-message", id ? "物料已更新。" : "物料已添加。", "success");
       await reloadItems();
     } catch (err) {
       window.AppUtils.showMessage("sup-message", err.message, "error");
@@ -662,11 +776,11 @@ async function bootstrap() {
 
     const delSupId = e.target.getAttribute("data-delete-supplier");
     if (delSupId) {
-      const name = e.target.getAttribute("data-name") || t("\\u8be5\\u4f9b\\u5e94\\u5546");
-      if (!window.confirm(`${t("\\u786e\\u5b9a\\u5220\\u9664\\u4f9b\\u5e94\\u5546\\u300c")}${name}${t("\\u300d\\u53ca\\u5176\\u6240\\u6709\\u7269\\u6599\\u5417\\uff1f\\u6b64\\u64cd\\u4f5c\\u4e0d\\u53ef\\u6062\\u590d\\u3002")}`)) return;
+      const name = e.target.getAttribute("data-name") || "该供应商";
+      if (!window.confirm(`确定删除供应商「${name}」及其所有物料吗？此操作不可恢复。`)) return;
       try {
-        await window.AppUtils.fetchJson(`/api/suppliers/${encodeURIComponent(delSupId)}`, { method: "DELETE" }, t("\\u5220\\u9664\\u4f9b\\u5e94\\u5546\\u5931\\u8d25"));
-        window.AppUtils.showMessage("sup-message", t("\\u4f9b\\u5e94\\u5546\\u5df2\\u5220\\u9664\\u3002"), "success");
+        await window.AppUtils.fetchJson(`/api/suppliers/${encodeURIComponent(delSupId)}`, { method: "DELETE" }, "删除供应商失败");
+        window.AppUtils.showMessage("sup-message", "供应商已删除。", "success");
         if (state.selectedSupplierId === delSupId) state.selectedSupplierId = null;
         await reloadAll();
       } catch (err) {
@@ -704,7 +818,7 @@ async function bootstrap() {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
-        }, t("\\u72b6\\u6001\\u66f4\\u65b0\\u5931\\u8d25"));
+        }, "状态更新失败");
         await reloadItems();
       } catch (err) {
         window.AppUtils.showMessage("sup-message", err.message, "error");
@@ -714,11 +828,11 @@ async function bootstrap() {
 
     const delItemId = e.target.getAttribute("data-delete-item");
     if (delItemId) {
-      const name = e.target.getAttribute("data-name") || t("\\u8be5\\u7269\\u6599");
-      if (!window.confirm(`${t("\\u786e\\u5b9a\\u5220\\u9664\\u7269\\u6599\\u300c")}${name}${t("\\u300d\\u5417\\uff1f")}`)) return;
+      const name = e.target.getAttribute("data-name") || "该物料";
+      if (!window.confirm(`确定删除物料「${name}」吗？`)) return;
       try {
-        await window.AppUtils.fetchJson(`/api/supplier-items/${encodeURIComponent(delItemId)}`, { method: "DELETE" }, t("\\u5220\\u9664\\u7269\\u6599\\u5931\\u8d25"));
-        window.AppUtils.showMessage("sup-message", t("\\u7269\\u6599\\u5df2\\u5220\\u9664\\u3002"), "success");
+        await window.AppUtils.fetchJson(`/api/supplier-items/${encodeURIComponent(delItemId)}`, { method: "DELETE" }, "删除物料失败");
+        window.AppUtils.showMessage("sup-message", "物料已删除。", "success");
         await reloadItems();
       } catch (err) {
         window.AppUtils.showMessage("sup-message", err.message, "error");
@@ -736,11 +850,11 @@ async function bootstrap() {
 
     const deleteCatId = e.target.getAttribute("data-delete-cat");
     if (deleteCatId) {
-      const name = e.target.getAttribute("data-cat-name") || t("\\u8be5\\u5206\\u7c7b");
-      if (!window.confirm(`${t("\\u786e\\u5b9a\\u5220\\u9664/\\u505c\\u7528\\u5206\\u7c7b\\u300c")}${name}${t("\\u300d\\u5417\\uff1f\\n\\n\\u6ce8\\u610f\\uff1a\\u5df2\\u5173\\u8054\\u7269\\u6599\\u7684 category \\u5b57\\u6bb5\\u4e0d\\u4f1a\\u81ea\\u52a8\\u66f4\\u6539\\uff0c\\u4ec5\\u5206\\u7c7b\\u4e3b\\u6570\\u636e\\u88ab\\u79fb\\u9664\\u3002")}`)) return;
+      const name = e.target.getAttribute("data-cat-name") || "该分类";
+      if (!window.confirm(`确定删除/停用分类「${name}」吗？\n\n注意：已关联物料的 category 字段不会自动更改，仅分类主数据会被移除。`)) return;
       try {
-        const result = await window.AppUtils.fetchJson(`/api/supplier-categories/${encodeURIComponent(deleteCatId)}`, { method: "DELETE" }, t("\\u5220\\u9664\\u5206\\u7c7b\\u5931\\u8d25"));
-        showCatMessage(result.message || t("\\u5206\\u7c7b\\u5df2\\u5220\\u9664\\u3002"), "success");
+        const result = await window.AppUtils.fetchJson(`/api/supplier-categories/${encodeURIComponent(deleteCatId)}`, { method: "DELETE" }, "删除分类失败");
+        showCatMessage(result.message || "分类已删除。", "success");
         await reloadCategories();
       } catch (err) {
         showCatMessage(err.message, "error");
@@ -751,9 +865,9 @@ async function bootstrap() {
 
 bootstrap().catch((err) => {
   console.error("[suppliers] bootstrap error:", err);
-  const msgEl = document.getElementById("sup-message");
+  const msgEl = getOptionalElement("sup-message");
   if (msgEl) {
-    msgEl.textContent = `${t("\\u9875\\u9762\\u52a0\\u8f7d\\u5931\\u8d25\\uff1a")} ${err.message}`;
+    msgEl.textContent = `页面加载失败：${err.message}`;
     msgEl.className = "message-box error";
   }
 });
@@ -761,7 +875,7 @@ bootstrap().catch((err) => {
 document.addEventListener("authReady", () => {
   if (!window.can("supplier.create")) {
     ["btn-new-supplier", "btn-new-item"].forEach((id) => {
-      const btn = document.getElementById(id);
+      const btn = getOptionalElement(id);
       if (btn) btn.style.display = "none";
     });
   }
