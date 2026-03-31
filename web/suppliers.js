@@ -15,6 +15,7 @@ const EMPTY_TEXT = "--";
 const SUPPLIERS_REQUIRED_DOM_IDS = [
   "sup-message",
   "global-search",
+  "filter-supplier-bar",
   "filter-category",
   "filter-status",
   "toggle-best-price",
@@ -38,9 +39,14 @@ const SUPPLIERS_REQUIRED_DOM_IDS = [
   "items-table-subtitle",
   "item-table-body",
   "item-empty",
+  "btn-view-all-items",
   "best-price-table",
   "best-price-body",
   "best-price-empty",
+  "compare-item-sel",
+  "compare-date-from",
+  "compare-date-to",
+  "btn-compare",
   "btn-refresh-best-price",
   "dlg-supplier",
   "dlg-supplier-title",
@@ -542,6 +548,7 @@ async function loadItems() {
     `/api/supplier-items?${params.toString()}`, null, "物料列表加载失败"
   );
   state.items = Array.isArray(items) ? items : [];
+  buildCompareItemSelect();
 }
 
 async function loadBestPriceItems() {
@@ -571,6 +578,16 @@ function buildSupplierBarSelect() {
   if (!sel) return;
   sel.innerHTML = `<option value="">供应商：全部</option>` +
     state.suppliers.map((s) => `<option value="${s.id}">${s.name}</option>`).join("");
+}
+
+function buildCompareItemSelect() {
+  const sel = getOptionalElement("compare-item-sel");
+  if (!sel) return;
+  const currentValue = sel.value || "";
+  const names = [...new Set(state.items.map((item) => itemNameZh(item)).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, "zh-CN"));
+  sel.innerHTML = `<option value="">-- 请选择物料 --</option>` +
+    names.map((name) => `<option value="${name}"${name === currentValue ? " selected" : ""}>${name}</option>`).join("");
 }
 
 // ── Bootstrap ─────────────────────────────────────────────

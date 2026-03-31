@@ -605,6 +605,166 @@
     .cat-dialog-summary { margin: 0; font-size: 11px; color: var(--s-faint); }
     .sup-modal-message { margin-bottom: 10px; }
 
+    /* -- suppliers workspace compatibility + compact desktop overrides -- */
+    .suppliers-page .sup-toolbar,
+    .suppliers-page .sup-toolbar-filters {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      min-width: 0;
+    }
+
+    .suppliers-page .sup-toolbar {
+      justify-content: space-between;
+      padding: 10px 14px;
+    }
+
+    .suppliers-page .sup-toolbar-actions,
+    .suppliers-page .s-page-head-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: nowrap;
+      justify-content: flex-end;
+    }
+
+    .suppliers-page .sup-toolbar input[type="search"],
+    .suppliers-page .sup-toolbar select,
+    .suppliers-page .sup-toolbar .mini-button,
+    .suppliers-page .sup-toolbar .s-btn,
+    .suppliers-page .sup-toolbar-actions .s-btn,
+    .suppliers-page .s-page-head-actions .s-btn {
+      width: auto !important;
+      min-height: 32px !important;
+      height: 32px;
+      flex: 0 0 auto;
+    }
+
+    .suppliers-page .sup-toolbar input[type="search"] {
+      flex: 1 1 280px;
+      min-width: 240px;
+      max-width: 360px;
+      padding-inline: 10px;
+    }
+
+    .suppliers-page .sup-toolbar select {
+      min-width: 128px;
+    }
+
+    .suppliers-page .sup-kpi-row {
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .suppliers-page .sup-workspace {
+      grid-template-columns: minmax(240px, 256px) minmax(0, 1fr);
+      gap: 12px;
+    }
+
+    .suppliers-page .sup-sidebar,
+    .suppliers-page .sup-main {
+      min-width: 0;
+    }
+
+    .suppliers-page .sup-table th,
+    .suppliers-page .sup-table td {
+      padding-block: 8px;
+    }
+
+    .suppliers-page .sup-table th {
+      font-size: 11px;
+      letter-spacing: 0.02em;
+    }
+
+    .suppliers-page .s-row-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 0;
+      flex-wrap: nowrap;
+    }
+
+    .suppliers-page .s-act {
+      width: auto !important;
+      min-height: 0 !important;
+      height: auto;
+      padding: 0 4px;
+      border: none;
+      background: none;
+      border-radius: 0;
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .suppliers-page .s-act:hover {
+      background: none;
+      text-decoration: underline;
+    }
+
+    .suppliers-page .s-act:focus-visible {
+      outline: 2px solid rgba(37, 99, 235, 0.28);
+      outline-offset: 2px;
+      border-radius: 3px;
+    }
+
+    .suppliers-page .s-act.danger { color: var(--s-danger); }
+    .suppliers-page .s-act.ok { color: var(--s-success); }
+    .suppliers-page .s-act-sep { padding: 0 3px; }
+
+    .suppliers-page .s-type-badge {
+      height: 18px;
+      padding: 0 7px;
+      border: 1px solid transparent;
+      border-radius: 999px;
+      letter-spacing: 0.01em;
+    }
+
+    .suppliers-page .sb-hotel { border-color: #93c5fd; }
+    .suppliers-page .sb-dmc { border-color: #86efac; }
+    .suppliers-page .sb-trans { border-color: #fde047; }
+    .suppliers-page .sb-food { border-color: #fda4af; }
+    .suppliers-page .sb-venue { border-color: #d8b4fe; }
+    .suppliers-page .sb-other { border-color: #cbd5e1; }
+
+    .suppliers-page .s-badge,
+    .suppliers-page .s-cat-pill {
+      min-height: 0;
+      height: 20px;
+      padding: 0 8px;
+      border-radius: 999px;
+    }
+
+    .suppliers-page .s-compare-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      flex-wrap: nowrap;
+    }
+
+    .suppliers-page .s-compare-bar select,
+    .suppliers-page .s-compare-bar input[type="date"],
+    .suppliers-page .s-compare-bar .s-btn {
+      width: auto !important;
+      min-height: 32px !important;
+      height: 32px;
+      flex: 0 0 auto;
+    }
+
+    .suppliers-page .s-compare-bar select { min-width: 220px; }
+    .suppliers-page .s-compare-date { flex-wrap: nowrap; }
+
+    @media (max-width: 1240px) {
+      .suppliers-page .sup-toolbar,
+      .suppliers-page .sup-toolbar-filters,
+      .suppliers-page .sup-toolbar-actions,
+      .suppliers-page .s-page-head-actions,
+      .suppliers-page .s-compare-bar {
+        flex-wrap: wrap;
+      }
+    }
+
     /* ── 响应式 ── */
     @media (max-width: 1100px) {
       .s-kpi-row { grid-template-columns: repeat(2,1fr); }
@@ -615,6 +775,10 @@
       .s-page-head { flex-direction: column; align-items: flex-start; }
       .s-kpi-row { grid-template-columns: 1fr 1fr; }
       .s-filter-bar input[type="search"] { width: 100%; }
+      .suppliers-page .sup-toolbar input[type="search"] {
+        min-width: 0;
+        max-width: none;
+      }
     }
   </style>
 </head>
@@ -629,7 +793,7 @@
         <h1>供应商管理 / 价格库工作台</h1>
         <p>维护供应商信息与价格库，支持比价与选库</p>
       </div>
-      <div class="s-page-head-actions">
+      <div class="s-page-head-actions sup-toolbar-actions">
         <button class="s-btn" id="btn-manage-categories">⊞ 分类管理</button>
         <button class="s-btn" id="btn-batch-import">↑ 批量导入物料价格</button>
         <button class="s-btn" id="btn-new-supplier">＋ 新增供应商</button>
@@ -641,7 +805,7 @@
     <div id="sup-message" class="message-box hidden"></div>
 
     <!-- ── 筛选栏 ── -->
-    <div class="s-filter-bar">
+    <div class="s-filter-bar sup-toolbar sup-toolbar-filters">
       <input type="search" id="global-search" placeholder="🔍 搜索供应商 / 物料名称 / 规格..." />
       <select id="filter-supplier-bar"><option value="">供应商：全部</option></select>
       <select id="filter-category"><option value="">类别：全部</option></select>
@@ -655,9 +819,13 @@
         <input type="checkbox" id="toggle-best-price" /> 只看最低价
       </label>
     </div>
+      <label class="s-toggle-label">
+        <input type="checkbox" id="toggle-best-price" /> 只看最低价
+      </label>
+    </div>
 
     <!-- ── KPI 行 ── -->
-    <div class="s-kpi-row">
+    <div class="s-kpi-row sup-kpi-row">
       <div class="s-kpi-card">
         <div class="s-kpi-icon s-ki-blue">👤</div>
         <div class="s-kpi-body">
@@ -693,10 +861,10 @@
     </div>
 
     <!-- ── 主工作区 ── -->
-    <div class="s-workspace">
+    <div class="s-workspace sup-workspace">
 
       <!-- 左侧供应商列表 -->
-      <div class="s-sup-panel">
+      <div class="s-sup-panel sup-sidebar">
         <div class="s-panel-head">
           <div class="s-panel-head-top">
             <h3 class="s-panel-title">供应商列表</h3>
@@ -710,7 +878,7 @@
       </div>
 
       <!-- 右侧主列 -->
-      <div class="s-main-col">
+      <div class="s-main-col sup-main">
 
         <!-- 价格库卡片 -->
         <div class="s-card">
@@ -725,12 +893,12 @@
           </div>
 
           <div class="s-table-wrap" id="item-table-container">
-            <table class="s-table">
+            <table class="s-table sup-table">
               <thead>
                 <tr>
                   <th>类别</th>
-                  <th>物料 / 服务名称</th>
-                  <th>规格 / 描述</th>
+                  <th>名称</th>
+                  <th>规格</th>
                   <th>单位</th>
                   <th>成本价</th>
                   <th>币种</th>
@@ -786,15 +954,15 @@
           </div>
 
           <div class="s-table-wrap" id="best-price-content">
-            <table class="s-table" id="best-price-table" style="display:none">
+            <table class="s-table sup-table" id="best-price-table" style="display:none">
               <thead>
                 <tr>
                   <th>供应商</th>
-                  <th>规格 / 描述</th>
+                  <th>规格</th>
                   <th>单位</th>
                   <th>报价</th>
                   <th>币种</th>
-                  <th>总价（2晚）</th>
+                  <th>总价</th>
                   <th>状态</th>
                   <th>操作</th>
                 </tr>
@@ -825,7 +993,7 @@
         <input type="hidden" name="id" />
         <label>供应商名称 *<input name="name" required placeholder="例如：海景酒店集团" /></label>
         <label>联系人<input name="contact" placeholder="联系人姓名" /></label>
-        <label>电话<input name="phone" placeholder="例如：+86 138 0013 8000" /></label>
+        <label>电话<input name="phone" placeholder="+381 11 1234567" /></label>
         <label>邮箱<input name="email" type="email" placeholder="info@example.com" /></label>
         <label>供应商类别
           <select name="supplierType">
