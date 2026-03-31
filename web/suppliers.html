@@ -8,47 +8,44 @@
   <script src="/auth-guard.js"></script>
   <link rel="stylesheet" href="/app-shell.css" />
   <style>
-    /* ── 全局重置 ── */
     *, *::before, *::after { box-sizing: border-box; }
 
     .suppliers-page {
-      --c-bg: #f0f2f5;
-      --c-white: #ffffff;
-      --c-border: #e4e8ef;
-      --c-border-strong: #d0d7e3;
-      --c-text: #1a2233;
-      --c-text-soft: #5b6478;
-      --c-text-faint: #8b95a8;
-      --c-navy: #1B2A4A;
-      --c-gold: #C9A84C;
-      --c-accent: #2563eb;
-      --c-accent-soft: #eff6ff;
-      --c-success: #15803d;
-      --c-success-bg: #f0fdf4;
+      --c-bg:             #f0f2f5;
+      --c-white:          #ffffff;
+      --c-border:         #e4e8ef;
+      --c-border-strong:  #cdd4e0;
+      --c-text:           #1a2233;
+      --c-text-soft:      #5b6478;
+      --c-text-faint:     #8b95a8;
+      --c-navy:           #1B2A4A;
+      --c-gold:           #C9A84C;
+      --c-accent:         #2563eb;
+      --c-accent-soft:    #eff6ff;
+      --c-accent-dark:    #1d4ed8;
+      --c-success:        #15803d;
+      --c-success-bg:     #f0fdf4;
       --c-success-border: #bbf7d0;
-      --c-danger: #dc2626;
-      --c-danger-bg: #fef2f2;
-      --c-danger-border: #fecaca;
-      --c-warning: #d97706;
-      --c-warning-bg: #fffbeb;
-      --c-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-      --c-shadow-md: 0 4px 12px rgba(0,0,0,0.08);
-      --c-radius: 10px;
-      --c-radius-sm: 6px;
-      --c-radius-lg: 14px;
+      --c-danger:         #dc2626;
+      --c-danger-bg:      #fef2f2;
+      --c-danger-border:  #fecaca;
+      --c-shadow:         0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --c-radius:         10px;
+      --c-radius-sm:      6px;
+      --c-radius-lg:      14px;
 
       display: flex;
       flex-direction: column;
-      gap: 0;
       min-height: 100vh;
       background: var(--c-bg);
       color: var(--c-text);
       font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+      font-size: 14px;
     }
 
-    /* ── 页面内容区 ── */
+    /* ── 页面主体内容区 ── */
     .page-content {
-      padding: 20px 24px 28px;
+      padding: 20px 24px 32px;
       display: flex;
       flex-direction: column;
       gap: 16px;
@@ -57,14 +54,15 @@
     /* ── 页面标题区 ── */
     .page-header {
       display: flex;
-      align-items: flex-start;
+      align-items: center;
       justify-content: space-between;
       gap: 16px;
+      flex-wrap: wrap;
     }
 
     .page-header-left h1 {
       margin: 0 0 4px;
-      font-size: 22px;
+      font-size: 21px;
       font-weight: 700;
       color: var(--c-text);
       letter-spacing: -0.01em;
@@ -80,28 +78,29 @@
       display: flex;
       align-items: center;
       gap: 8px;
+      flex-wrap: wrap;
       flex-shrink: 0;
     }
 
-    /* ── 按钮基础 ── */
+    /* ── 通用按钮 ── */
     .btn {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 5px;
       height: 36px;
       padding: 0 14px;
-      border-radius: var(--c-radius-sm);
       border: 1px solid var(--c-border);
+      border-radius: var(--c-radius-sm);
       background: var(--c-white);
       color: var(--c-text);
       font: 600 13px/1 inherit;
       cursor: pointer;
-      transition: all 0.15s;
       white-space: nowrap;
+      transition: background 0.13s, border-color 0.13s;
+      text-decoration: none;
     }
 
-    .btn:hover { border-color: var(--c-border-strong); background: #f8fafc; }
-    .btn-icon { font-size: 15px; }
+    .btn:hover { background: #f5f7fa; border-color: var(--c-border-strong); }
 
     .btn-primary {
       background: var(--c-navy);
@@ -110,133 +109,121 @@
     }
     .btn-primary:hover { background: #243d68; border-color: #243d68; }
 
-    .btn-outline-blue {
-      border-color: #93c5fd;
-      color: var(--c-accent);
+    .btn-ghost-blue {
       background: var(--c-accent-soft);
+      border-color: #bfdbfe;
+      color: var(--c-accent-dark);
     }
-    .btn-outline-blue:hover { background: #dbeafe; }
+    .btn-ghost-blue:hover { background: #dbeafe; border-color: #93c5fd; }
 
-    .btn-sm {
-      height: 28px;
-      padding: 0 10px;
-      font-size: 12px;
-      border-radius: 4px;
-    }
+    .btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
+    .btn-icon { font-size: 14px; line-height: 1; }
 
     /* ── 筛选栏 ── */
     .filter-bar {
       display: flex;
       align-items: center;
-      gap: 10px;
-      padding: 12px 16px;
+      gap: 8px;
+      padding: 10px 14px;
       background: var(--c-white);
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius);
       box-shadow: var(--c-shadow);
+      flex-wrap: wrap;
     }
 
     .filter-bar input[type="search"],
     .filter-bar select {
-      height: 34px;
-      padding: 0 12px;
+      height: 32px;
+      padding: 0 10px;
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius-sm);
       background: #f8fafc;
       color: var(--c-text);
       font: 13px/1 inherit;
+      outline: none;
     }
 
-    .filter-bar input[type="search"] { min-width: 220px; flex: 1; max-width: 280px; }
-    .filter-bar select { min-width: 110px; }
+    .filter-bar input[type="search"] { width: 260px; }
+    .filter-bar select { min-width: 120px; }
 
-    .filter-separator {
-      width: 1px;
-      height: 20px;
-      background: var(--c-border);
-      flex-shrink: 0;
-    }
+    .filter-bar input[type="search"]:focus,
+    .filter-bar select:focus { border-color: #93c5fd; background: var(--c-white); }
 
-    .toggle-wrap {
+    .filter-sep { width: 1px; height: 18px; background: var(--c-border); flex-shrink: 0; }
+
+    .toggle-label {
       display: inline-flex;
       align-items: center;
-      gap: 7px;
+      gap: 6px;
       font-size: 13px;
       color: var(--c-text-soft);
       cursor: pointer;
       white-space: nowrap;
+      user-select: none;
     }
 
-    /* ── KPI 卡片区 ── */
-    .kpi-grid {
+    /* ── KPI 卡片行 ── */
+    .kpi-row {
       display: grid;
       grid-template-columns: repeat(4, 1fr);
       gap: 12px;
     }
 
     .kpi-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 16px 18px;
       background: var(--c-white);
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius);
       box-shadow: var(--c-shadow);
-      padding: 16px 18px;
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
     }
 
-    .kpi-icon-wrap {
-      width: 44px;
-      height: 44px;
+    .kpi-icon {
+      width: 44px; height: 44px;
       border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       font-size: 20px;
       flex-shrink: 0;
     }
 
-    .kpi-icon-blue  { background: #eff6ff; }
-    .kpi-icon-orange{ background: #fff7ed; }
-    .kpi-icon-green { background: #f0fdf4; }
-    .kpi-icon-purple{ background: #f5f3ff; }
+    .kpi-icon-blue   { background: #eff6ff; }
+    .kpi-icon-orange { background: #fff7ed; }
+    .kpi-icon-green  { background: #f0fdf4; }
+    .kpi-icon-purple { background: #f5f3ff; }
 
     .kpi-body { flex: 1; min-width: 0; }
 
     .kpi-label {
+      margin: 0 0 5px;
       font-size: 12px;
       color: var(--c-text-soft);
-      margin: 0 0 6px;
       font-weight: 500;
     }
 
     .kpi-value {
-      font-size: 28px;
+      margin: 0 0 5px;
+      font-size: 26px;
       font-weight: 800;
       color: var(--c-text);
       letter-spacing: -0.03em;
-      line-height: 1;
-      margin: 0 0 6px;
+      line-height: 1.1;
     }
 
-    .kpi-meta {
-      font-size: 12px;
-      color: var(--c-text-faint);
-      margin: 0;
-    }
-
+    .kpi-meta { margin: 0; font-size: 12px; color: var(--c-text-faint); }
     .kpi-meta .hi { color: var(--c-success); font-weight: 600; }
-    .kpi-meta .lo { color: var(--c-text-faint); }
 
-    /* ── 主工作区 ── */
+    /* ── 主工作区：左右分栏 ── */
     .workspace {
       display: grid;
-      grid-template-columns: 280px 1fr;
+      grid-template-columns: 272px 1fr;
       gap: 14px;
       align-items: start;
     }
 
-    /* ── 侧边供应商列表 ── */
+    /* ── 左侧供应商面板 ── */
     .supplier-panel {
       background: var(--c-white);
       border: 1px solid var(--c-border);
@@ -247,114 +234,113 @@
       flex-direction: column;
     }
 
-    .panel-header {
-      padding: 14px 16px 12px;
+    .panel-head {
+      padding: 12px 14px 10px;
       border-bottom: 1px solid var(--c-border);
+      background: #fafbfd;
     }
 
-    .panel-header-top {
+    .panel-head-top {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      margin-bottom: 10px;
+      margin-bottom: 9px;
     }
 
-    .panel-title {
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--c-text);
-      margin: 0;
-    }
+    .panel-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--c-text); }
 
-    .panel-count {
-      font-size: 12px;
+    .panel-count-badge {
+      font-size: 11px;
       color: var(--c-text-faint);
       background: #f0f2f5;
       padding: 2px 8px;
       border-radius: 99px;
+      font-weight: 600;
     }
 
     .panel-search {
+      display: block;
       width: 100%;
-      height: 32px;
+      height: 30px;
       padding: 0 10px;
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius-sm);
-      background: #f8fafc;
+      background: var(--c-white);
       font: 13px/1 inherit;
       color: var(--c-text);
+      outline: none;
     }
+
+    .panel-search:focus { border-color: #93c5fd; }
 
     .supplier-list {
       padding: 8px;
       overflow-y: auto;
-      max-height: 600px;
+      max-height: 640px;
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 3px;
     }
 
-    .supplier-card {
-      padding: 12px 12px 10px;
+    /* 供应商卡片 */
+    .sup-card {
+      padding: 10px 11px 9px;
       border: 1px solid transparent;
-      border-radius: 8px;
+      border-radius: 7px;
       cursor: pointer;
-      transition: all 0.12s;
-      background: transparent;
+      transition: background 0.12s, border-color 0.12s;
     }
 
-    .supplier-card:hover { background: #f8fafc; border-color: var(--c-border); }
+    .sup-card:hover { background: #f5f7fa; border-color: var(--c-border); }
+    .sup-card.active { background: var(--c-accent-soft); border-color: #93c5fd; }
+    .sup-card.inactive { opacity: 0.58; }
 
-    .supplier-card.active {
-      background: var(--c-accent-soft);
-      border-color: #93c5fd;
-    }
-
-    .supplier-card.inactive { opacity: 0.6; }
-
-    .supplier-card-head {
+    .sup-card-head {
       display: flex;
       align-items: center;
-      gap: 8px;
-      margin-bottom: 7px;
+      gap: 7px;
+      margin-bottom: 6px;
     }
 
-    .supplier-name {
-      font-size: 14px;
-      font-weight: 700;
-      color: var(--c-text);
+    .sup-card-name {
       flex: 1;
       min-width: 0;
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--c-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     /* 供应商类别 badge */
-    .sup-badge {
+    .sup-type-badge {
       display: inline-flex;
       align-items: center;
-      height: 20px;
-      padding: 0 7px;
+      height: 18px;
+      padding: 0 6px;
       border-radius: 4px;
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 700;
-      white-space: nowrap;
       flex-shrink: 0;
     }
-    .badge-hotel   { background: #dbeafe; color: #1d4ed8; }
-    .badge-dmc     { background: #dcfce7; color: #15803d; }
-    .badge-trans   { background: #fef9c3; color: #a16207; }
-    .badge-food    { background: #ffe4e6; color: #be123c; }
-    .badge-venue   { background: #f3e8ff; color: #7e22ce; }
-    .badge-default { background: #f0f2f5; color: var(--c-text-soft); }
 
-    .supplier-meta {
-      font-size: 12px;
-      color: var(--c-text-soft);
+    .badge-hotel { background: #dbeafe; color: #1d4ed8; }
+    .badge-dmc   { background: #dcfce7; color: #15803d; }
+    .badge-trans { background: #fef9c3; color: #a16207; }
+    .badge-food  { background: #ffe4e6; color: #be123c; }
+    .badge-venue { background: #f3e8ff; color: #7e22ce; }
+    .badge-other { background: #f1f5f9; color: #64748b; }
+
+    .sup-card-meta {
+      font-size: 11px;
+      color: var(--c-text-faint);
       display: flex;
       flex-direction: column;
       gap: 2px;
     }
 
-    .supplier-meta-row {
+    .sup-card-meta-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -365,29 +351,30 @@
       align-items: center;
       gap: 4px;
       font-size: 11px;
+      font-weight: 600;
     }
 
     .sup-status-dot::before {
       content: '';
+      display: block;
       width: 6px; height: 6px;
       border-radius: 50%;
-      flex-shrink: 0;
     }
 
-    .sup-status-dot.active::before  { background: var(--c-success); }
-    .sup-status-dot.inactive::before { background: var(--c-text-faint); }
     .sup-status-dot.active  { color: var(--c-success); }
+    .sup-status-dot.active::before  { background: var(--c-success); }
     .sup-status-dot.inactive { color: var(--c-text-faint); }
+    .sup-status-dot.inactive::before { background: var(--c-text-faint); }
 
-    /* ── 右侧主内容区 ── */
-    .main-content {
+    /* ── 右侧主内容列 ── */
+    .main-col {
       display: flex;
       flex-direction: column;
       gap: 14px;
       min-width: 0;
     }
 
-    /* ── 卡片面板 ── */
+    /* ── 通用卡片 ── */
     .card {
       background: var(--c-white);
       border: 1px solid var(--c-border);
@@ -396,33 +383,28 @@
       overflow: hidden;
     }
 
-    .card-header {
+    .card-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 14px 18px 12px;
+      gap: 12px;
+      padding: 12px 16px 11px;
       border-bottom: 1px solid var(--c-border);
       background: #fafbfd;
     }
 
-    .card-header-left { min-width: 0; }
+    .card-head-left { min-width: 0; }
 
     .card-title {
-      font-size: 15px;
+      margin: 0 0 2px;
+      font-size: 14px;
       font-weight: 700;
       color: var(--c-text);
-      margin: 0 0 2px;
     }
 
-    .card-subtitle {
-      font-size: 12px;
-      color: var(--c-text-faint);
-      margin: 0;
-    }
+    .card-subtitle { margin: 0; font-size: 12px; color: var(--c-text-faint); }
 
-    .card-header-actions { display: flex; align-items: center; gap: 8px; }
-
-    .card-body { padding: 0; }
+    .card-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
     /* ── 数据表格 ── */
     .data-table-wrap { overflow-x: auto; }
@@ -434,89 +416,87 @@
     }
 
     .data-table th {
-      padding: 10px 14px;
+      padding: 9px 13px;
       text-align: left;
       font-size: 11px;
       font-weight: 700;
       color: var(--c-text-faint);
       text-transform: uppercase;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.05em;
       background: #f8fafc;
       border-bottom: 1px solid var(--c-border);
       white-space: nowrap;
     }
 
     .data-table td {
-      padding: 11px 14px;
-      border-bottom: 1px solid #f0f2f5;
+      padding: 10px 13px;
+      border-bottom: 1px solid #f0f3f7;
       vertical-align: middle;
+      color: var(--c-text);
     }
 
     .data-table tbody tr:last-child td { border-bottom: none; }
     .data-table tbody tr:hover td { background: #f8fafc; }
-    .data-table tbody tr.row-inactive td { opacity: 0.6; }
+    .data-table tbody tr.row-inactive { opacity: 0.55; }
 
-    /* 状态 badge */
+    /* 状态标签 */
     .status-badge {
       display: inline-flex;
       align-items: center;
-      height: 22px;
-      padding: 0 9px;
+      height: 20px;
+      padding: 0 8px;
       border-radius: 4px;
       font-size: 11px;
       font-weight: 700;
-    }
-    .status-badge.active   { background: var(--c-success-bg); color: var(--c-success); border: 1px solid var(--c-success-border); }
-    .status-badge.inactive { background: #f8fafc; color: var(--c-text-faint); border: 1px solid var(--c-border); }
-    .status-badge.lowest   { background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
-
-    /* 价格值 */
-    .price-val {
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      color: var(--c-text);
+      border: 1px solid;
     }
 
-    /* 行内操作按钮 */
-    .row-actions { display: flex; align-items: center; gap: 6px; }
+    .status-badge.active   { background: var(--c-success-bg); color: var(--c-success); border-color: var(--c-success-border); }
+    .status-badge.inactive { background: #f8fafc; color: var(--c-text-faint); border-color: var(--c-border); }
+    .status-badge.lowest   { background: #dcfce7; color: var(--c-success); border-color: var(--c-success-border); }
 
-    .action-link {
+    /* 行内操作链接 */
+    .row-actions { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+
+    .act-btn {
       background: none;
       border: none;
-      padding: 0;
+      padding: 2px 5px;
       font: 13px/1 inherit;
       cursor: pointer;
       color: var(--c-accent);
-      transition: color 0.1s;
+      border-radius: 3px;
+      transition: background 0.1s;
     }
-    .action-link:hover { color: #1d4ed8; }
-    .action-link.danger { color: var(--c-danger); }
-    .action-link.danger:hover { color: #b91c1c; }
-    .action-link.warn { color: var(--c-success); }
-    .action-link.warn:hover { color: #166534; }
 
-    .action-sep {
-      color: var(--c-border-strong);
-      font-size: 12px;
-      user-select: none;
-    }
+    .act-btn:hover { background: var(--c-accent-soft); }
+    .act-btn.danger { color: var(--c-danger); }
+    .act-btn.danger:hover { background: var(--c-danger-bg); }
+    .act-btn.success { color: var(--c-success); }
+    .act-btn.success:hover { background: var(--c-success-bg); }
+
+    .act-sep { color: var(--c-border-strong); font-size: 11px; padding: 0 1px; }
+
+    .price-val { font-weight: 700; font-variant-numeric: tabular-nums; }
 
     /* ── 分页 ── */
     .pagination {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 10px 16px;
+      padding: 9px 14px;
       border-top: 1px solid var(--c-border);
+      background: #fafbfd;
       font-size: 12px;
       color: var(--c-text-soft);
+      flex-wrap: wrap;
+      gap: 8px;
     }
 
-    .page-btns { display: flex; align-items: center; gap: 4px; }
+    .page-btns { display: flex; align-items: center; gap: 3px; }
 
     .page-btn {
-      min-width: 28px;
-      height: 28px;
+      min-width: 28px; height: 26px;
       padding: 0 6px;
       border: 1px solid var(--c-border);
       border-radius: 4px;
@@ -524,16 +504,16 @@
       font: 12px/1 inherit;
       cursor: pointer;
       color: var(--c-text-soft);
-      transition: all 0.12s;
+      transition: all 0.1s;
     }
 
-    .page-btn:hover { border-color: var(--c-border-strong); }
+    .page-btn:hover:not(:disabled) { border-color: var(--c-border-strong); background: #f5f7fa; }
     .page-btn.active { background: var(--c-navy); border-color: var(--c-navy); color: #fff; }
-    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .page-btn:disabled { opacity: 0.38; cursor: default; }
 
     .page-size-sel {
-      height: 28px;
-      padding: 0 8px;
+      height: 26px;
+      padding: 0 6px;
       border: 1px solid var(--c-border);
       border-radius: 4px;
       font: 12px/1 inherit;
@@ -541,40 +521,42 @@
       background: var(--c-white);
     }
 
-    /* ── 比价视图区 ── */
-    .compare-toolbar {
+    /* ── 比价工具栏 ── */
+    .compare-bar {
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 12px 18px;
+      padding: 10px 16px;
       border-bottom: 1px solid var(--c-border);
       background: #fafbfd;
       flex-wrap: wrap;
     }
 
-    .compare-toolbar label {
-      font-size: 12px;
-      color: var(--c-text-soft);
-      font-weight: 500;
-      white-space: nowrap;
-    }
+    .compare-bar label { font-size: 12px; color: var(--c-text-soft); font-weight: 500; white-space: nowrap; }
 
-    .compare-toolbar select,
-    .compare-toolbar input[type="date"] {
-      height: 32px;
-      padding: 0 10px;
+    .compare-bar select,
+    .compare-bar input[type="date"] {
+      height: 30px;
+      padding: 0 8px;
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius-sm);
       background: var(--c-white);
       font: 13px/1 inherit;
       color: var(--c-text);
+      outline: none;
     }
 
-    .compare-toolbar select { min-width: 180px; }
-    .compare-date-range { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--c-text-faint); }
+    .compare-bar select { min-width: 200px; }
+    .compare-bar input[type="date"]:focus,
+    .compare-bar select:focus { border-color: #93c5fd; }
+
+    .compare-date-wrap {
+      display: flex; align-items: center; gap: 5px;
+      font-size: 12px; color: var(--c-text-faint);
+    }
 
     .compare-hint {
-      padding: 10px 18px 12px;
+      padding: 8px 16px;
       font-size: 12px;
       color: var(--c-text-faint);
       border-top: 1px solid var(--c-border);
@@ -583,26 +565,27 @@
 
     /* ── 消息提示 ── */
     .message-box {
-      padding: 10px 16px;
+      padding: 9px 14px;
       border-radius: var(--c-radius-sm);
       font-size: 13px;
       border: 1px solid;
     }
+
     .message-box.success { background: var(--c-success-bg); color: var(--c-success); border-color: var(--c-success-border); }
     .message-box.error   { background: var(--c-danger-bg);  color: var(--c-danger);  border-color: var(--c-danger-border); }
     .message-box.hidden  { display: none; }
 
     /* ── 空状态 ── */
     .empty-state {
-      padding: 32px 16px;
+      padding: 28px 16px;
       text-align: center;
-      color: var(--c-text-faint);
       font-size: 13px;
+      color: var(--c-text-faint);
     }
 
-    /* ── 对话框 ── */
+    /* ── Dialog 对话框 ── */
     dialog {
-      width: min(720px, 94vw);
+      width: min(680px, 94vw);
       max-width: none;
       max-height: 90vh;
       padding: 0;
@@ -619,594 +602,580 @@
       backdrop-filter: blur(4px);
     }
 
-    .dlg-inner { display: flex; flex-direction: column; overflow: hidden; max-height: 90vh; }
+    .dlg-inner {
+      display: flex; flex-direction: column;
+      max-height: 90vh; overflow: hidden;
+    }
 
     .dlg-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 20px;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      padding: 14px 18px;
       border-bottom: 1px solid var(--c-border);
       background: #fafbfd;
       border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0;
+      flex-shrink: 0;
     }
 
-    .dlg-head h2 {
-      margin: 0;
-      font-size: 17px;
-      font-weight: 700;
-      color: var(--c-text);
-    }
-
+    .dlg-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--c-text); }
     .dlg-head-actions { display: flex; align-items: center; gap: 8px; }
 
     .dlg-close {
-      width: 32px; height: 32px;
+      width: 30px; height: 30px;
+      display: flex; align-items: center; justify-content: center;
       border: 1px solid var(--c-border);
-      border-radius: 6px;
+      border-radius: var(--c-radius-sm);
       background: var(--c-white);
       color: var(--c-text-soft);
       font-size: 16px;
       cursor: pointer;
-      display: flex; align-items: center; justify-content: center;
-      transition: all 0.12s;
+      transition: background 0.12s;
     }
 
     .dlg-close:hover { background: #f0f2f5; }
 
-    .dlg-body { overflow-y: auto; padding: 20px; }
+    .dlg-body { overflow-y: auto; padding: 18px; flex: 1; }
 
     .dlg-footer {
-      display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      gap: 8px;
-      padding: 12px 20px;
+      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
+      padding: 11px 18px;
       border-top: 1px solid var(--c-border);
       background: #fafbfd;
       border-radius: 0 0 var(--c-radius-lg) var(--c-radius-lg);
+      flex-shrink: 0;
     }
 
     /* ── 表单 ── */
-    .form-stack { display: grid; gap: 14px; }
+    .form-stack { display: grid; gap: 13px; }
 
     .form-stack label {
-      display: grid;
-      gap: 6px;
-      font-size: 13px;
-      color: var(--c-text-soft);
-      font-weight: 500;
+      display: grid; gap: 5px;
+      font-size: 12px; color: var(--c-text-soft); font-weight: 600;
     }
 
     .form-stack input,
     .form-stack select,
     .form-stack textarea {
-      width: 100%;
-      height: 36px;
-      padding: 0 12px;
+      width: 100%; height: 34px;
+      padding: 0 10px;
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius-sm);
       background: #f8fafc;
       color: var(--c-text);
       font: 13px/1 inherit;
-      transition: border-color 0.12s;
+      outline: none;
+      transition: border-color 0.12s, background 0.12s;
     }
 
     .form-stack input:focus,
     .form-stack select:focus,
-    .form-stack textarea:focus {
-      outline: none;
-      border-color: #93c5fd;
-      background: var(--c-white);
-    }
+    .form-stack textarea:focus { border-color: #93c5fd; background: var(--c-white); }
 
-    .form-stack textarea { height: 80px; padding: 8px 12px; resize: vertical; }
+    .form-stack textarea { height: 76px; padding: 8px 10px; resize: vertical; }
 
     .checkbox-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 13px;
-      color: var(--c-text-soft);
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--c-text-soft);
     }
 
-    .checkbox-row input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--c-navy); }
+    .checkbox-row input[type="checkbox"] {
+      width: 15px; height: 15px;
+      accent-color: var(--c-navy); flex-shrink: 0;
+    }
 
-    /* 分类管理弹窗 */
-    .cat-dialog-body { display: grid; gap: 16px; }
+    /* ── 分类管理弹窗 ── */
+    .cat-dialog-body { display: grid; gap: 14px; }
 
     .cat-panel {
       border: 1px solid var(--c-border);
       border-radius: var(--c-radius);
       overflow: hidden;
+      background: var(--c-white);
     }
 
-    .cat-panel-head {
-      padding: 12px 16px;
-      border-bottom: 1px solid var(--c-border);
-      background: #fafbfd;
-    }
+    .cat-panel-head { padding: 11px 14px; border-bottom: 1px solid var(--c-border); background: #fafbfd; }
+    .cat-panel-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: var(--c-text); }
+    .cat-panel-summary { margin: 0; font-size: 12px; color: var(--c-text-faint); }
 
-    .cat-panel-head h3 {
-      margin: 0;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--c-text);
+    .cat-list {
+      padding: 8px; display: flex; flex-direction: column; gap: 5px;
+      max-height: 260px; overflow-y: auto;
     }
-
-    .cat-list { padding: 8px; display: grid; gap: 6px; max-height: 260px; overflow-y: auto; }
 
     .cat-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 10px 12px;
-      border: 1px solid var(--c-border);
-      border-radius: 6px;
-      background: var(--c-white);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 9px 11px;
+      border: 1px solid var(--c-border); border-radius: 6px; background: var(--c-white);
     }
 
     .cat-row-left { display: flex; align-items: center; gap: 10px; }
 
     .cat-row-icon {
-      width: 36px; height: 36px;
-      border-radius: 8px;
+      width: 34px; height: 34px; border-radius: 7px;
       background: var(--c-accent-soft);
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
+      font-size: 15px; flex-shrink: 0;
     }
 
-    .cat-row-title { font-size: 14px; font-weight: 600; color: var(--c-text); margin: 0 0 2px; }
-    .cat-row-code  { font-size: 11px; color: var(--c-text-faint); font-family: monospace; }
-    .cat-row-actions { display: flex; gap: 6px; }
+    .cat-row-title { font-size: 13px; font-weight: 600; color: var(--c-text); margin: 0 0 2px; }
+    .cat-row-code  { font-size: 11px; color: var(--c-text-faint); font-family: 'Consolas','Menlo',monospace; }
+    .cat-row-actions { display: flex; gap: 5px; }
 
     .cat-form-section { display: none; }
     .cat-form-section.is-open { display: block; }
 
-    .cat-form-head { padding: 12px 16px 0; }
-    .cat-form-head h3 { margin: 0 0 4px; font-size: 14px; font-weight: 700; color: var(--c-text); }
-    .cat-form-head p { margin: 0; font-size: 12px; color: var(--c-text-faint); }
+    .cat-form-head { padding: 11px 14px 0; }
+    .cat-form-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: var(--c-text); }
+    .cat-form-head p  { margin: 0 0 12px; font-size: 12px; color: var(--c-text-faint); }
 
-    .cat-form-row { display: grid; grid-template-columns: 1fr 140px; gap: 12px; }
+    #cat-form.form-stack { padding: 0 14px 14px; }
 
-    .cat-form-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px 14px; }
+    #cat-form .cat-form-row {
+      display: grid; grid-template-columns: 1fr 130px; gap: 10px;
+    }
+
+    .cat-form-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 14px 13px; }
 
     .cat-dialog-footer {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding-top: 8px;
+      display: flex; align-items: center; justify-content: space-between; padding-top: 10px;
     }
 
     .cat-dialog-summary { margin: 0; font-size: 12px; color: var(--c-text-faint); }
-
     .sup-modal-message { margin-bottom: 12px; }
 
+    /* ── 响应式 ── */
     @media (max-width: 1100px) {
-      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .kpi-row { grid-template-columns: repeat(2, 1fr); }
       .workspace { grid-template-columns: 1fr; }
     }
 
     @media (max-width: 640px) {
-      .page-content { padding: 14px; }
-      .kpi-grid { grid-template-columns: 1fr 1fr; }
-      .page-header { flex-direction: column; }
-      .page-header-actions { width: 100%; flex-wrap: wrap; }
+      .page-content { padding: 12px; }
+      .page-header { flex-direction: column; align-items: flex-start; }
+      .kpi-row { grid-template-columns: 1fr 1fr; }
+      .filter-bar input[type="search"] { width: 100%; }
     }
   </style>
 </head>
 <body style="visibility: hidden">
-  <div class="page-shell suppliers-page">
+<div class="page-shell suppliers-page">
 
-    <!-- 顶部导航由 app-shell 注入 -->
+  <!-- app-shell 注入导航栏 -->
 
-    <div class="page-content">
+  <div class="page-content">
 
-      <!-- ── 页面标题区 ── -->
-      <div class="page-header">
-        <div class="page-header-left">
-          <h1>供应商管理 / 价格库工作台</h1>
-          <p>维护供应商信息与价格库，支持比价与选库</p>
+    <!-- ── 页面标题 ── -->
+    <div class="page-header">
+      <div class="page-header-left">
+        <h1>供应商管理 / 价格库工作台</h1>
+        <p>维护供应商信息与价格库，支持比价与选库</p>
+      </div>
+      <div class="page-header-actions">
+        <button class="btn" id="btn-manage-categories">
+          <span class="btn-icon">⊞</span> 分类管理
+        </button>
+        <button class="btn" id="btn-batch-import">
+          <span class="btn-icon">↑</span> 批量导入物料价格
+        </button>
+        <button class="btn" id="btn-new-supplier">
+          <span class="btn-icon">＋</span> 新增供应商
+        </button>
+        <button class="btn btn-primary" id="btn-new-item">
+          <span class="btn-icon">＋</span> 新增物料价格
+        </button>
+      </div>
+    </div>
+
+    <!-- ── 消息提示 ── -->
+    <div id="sup-message" class="message-box hidden"></div>
+
+    <!-- ── 筛选栏 ── -->
+    <div class="filter-bar">
+      <input type="search" id="global-search" placeholder="🔍  搜索供应商 / 物料名称 / 规格..." />
+      <select id="filter-supplier-bar">
+        <option value="">供应商：全部</option>
+      </select>
+      <select id="filter-category">
+        <option value="">类别：全部</option>
+      </select>
+      <select id="filter-status">
+        <option value="active" selected>状态：启用中</option>
+        <option value="">状态：全部</option>
+        <option value="inactive">状态：停用</option>
+      </select>
+      <div class="filter-sep"></div>
+      <label class="toggle-label">
+        <input type="checkbox" id="toggle-best-price" />
+        只看最低价
+      </label>
+    </div>
+
+    <!-- ── KPI 卡片行 ── -->
+    <div class="kpi-row">
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-blue">👤</div>
+        <div class="kpi-body">
+          <p class="kpi-label">供应商总数</p>
+          <p class="kpi-value" id="kpi-supplier-count">--</p>
+          <p class="kpi-meta">
+            启用：<span class="hi" id="kpi-sup-active">--</span> &nbsp;
+            停用：<span id="kpi-sup-inactive">--</span>
+          </p>
         </div>
-        <div class="page-header-actions">
-          <button class="btn" id="btn-manage-categories">
-            <span class="btn-icon">⊞</span> 分类管理
-          </button>
-          <button class="btn" id="btn-batch-import">
-            <span class="btn-icon">↑</span> 批量导入物料价格
-          </button>
-          <button class="btn" id="btn-new-supplier">
-            <span class="btn-icon">+</span> 新增供应商
-          </button>
-          <button class="btn btn-primary" id="btn-new-item">
-            <span class="btn-icon">+</span> 新增物料价格
-          </button>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-orange">📦</div>
+        <div class="kpi-body">
+          <p class="kpi-label">物料 / 服务总数</p>
+          <p class="kpi-value" id="kpi-item-count">--</p>
+          <p class="kpi-meta">
+            启用：<span class="hi" id="kpi-item-active">--</span> &nbsp;
+            停用：<span id="kpi-item-inactive">--</span>
+          </p>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-green">⚡</div>
+        <div class="kpi-body">
+          <p class="kpi-label">最低价物料占比</p>
+          <p class="kpi-value" id="kpi-best-price-count">--</p>
+          <p class="kpi-meta" id="kpi-best-price-meta">对应最低价汇总视图</p>
+        </div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-icon kpi-icon-purple">🕐</div>
+        <div class="kpi-body">
+          <p class="kpi-label">最近更新</p>
+          <p class="kpi-value" id="kpi-last-update" style="font-size:17px;letter-spacing:0;">--</p>
+          <p class="kpi-meta" id="kpi-last-update-source">根据物料更新时间自动显示</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── 主工作区 ── -->
+    <div class="workspace">
+
+      <!-- 左侧：供应商列表 -->
+      <div class="supplier-panel">
+        <div class="panel-head">
+          <div class="panel-head-top">
+            <h3 class="panel-title">供应商列表</h3>
+            <span class="panel-count-badge" id="supplier-panel-count">共 -- 家</span>
+          </div>
+          <input type="search" class="panel-search" id="supplier-search"
+            placeholder="搜索供应商名称 / 联系人..." />
+        </div>
+        <div id="supplier-list" class="supplier-list">
+          <div class="empty-state">加载中...</div>
         </div>
       </div>
 
-      <!-- ── 消息提示 ── -->
-      <div id="sup-message" class="message-box hidden"></div>
+      <!-- 右侧：主内容列 -->
+      <div class="main-col">
 
-      <!-- ── 筛选栏 ── -->
-      <div class="filter-bar">
-        <input type="search" id="global-search" placeholder="🔍 搜索供应商 / 物料名称 / 规格..." />
-        <select id="filter-supplier-bar">
-          <option value="">供应商：全部</option>
-        </select>
-        <select id="filter-category">
-          <option value="">类别：全部</option>
-        </select>
-        <select id="filter-status">
-          <option value="">状态：全部</option>
-          <option value="active" selected>启用中</option>
-          <option value="inactive">停用</option>
-        </select>
-        <div class="filter-separator"></div>
-        <label class="toggle-wrap">
-          <input type="checkbox" id="toggle-best-price" />
-          只看最低价
-        </label>
-      </div>
-
-      <!-- ── KPI 卡片行 ── -->
-      <div class="kpi-grid">
-        <div class="kpi-card">
-          <div class="kpi-icon-wrap kpi-icon-blue">👤</div>
-          <div class="kpi-body">
-            <p class="kpi-label">供应商总数</p>
-            <p class="kpi-value" id="kpi-supplier-count">--</p>
-            <p class="kpi-meta">
-              <span class="hi" id="kpi-sup-active">--</span> 启用 &nbsp;
-              <span class="lo" id="kpi-sup-inactive">--</span> 停用
-            </p>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrap kpi-icon-orange">📦</div>
-          <div class="kpi-body">
-            <p class="kpi-label">物料 / 服务总数</p>
-            <p class="kpi-value" id="kpi-item-count">--</p>
-            <p class="kpi-meta">
-              <span class="hi" id="kpi-item-active">--</span> 启用 &nbsp;
-              <span class="lo" id="kpi-item-inactive">--</span> 停用
-            </p>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrap kpi-icon-green">⚡</div>
-          <div class="kpi-body">
-            <p class="kpi-label">最低价物料占比</p>
-            <p class="kpi-value" id="kpi-best-price-count">--</p>
-            <p class="kpi-meta" id="kpi-best-price-meta">对应最低价汇总视图</p>
-          </div>
-        </div>
-        <div class="kpi-card">
-          <div class="kpi-icon-wrap kpi-icon-purple">🕐</div>
-          <div class="kpi-body">
-            <p class="kpi-label">最近更新</p>
-            <p class="kpi-value" id="kpi-last-update" style="font-size:18px;">--</p>
-            <p class="kpi-meta" id="kpi-last-update-source">根据物料更新时间自动显示</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- ── 主工作区 ── -->
-      <div class="workspace">
-
-        <!-- 左侧供应商列表 -->
-        <div class="supplier-panel">
-          <div class="panel-header">
-            <div class="panel-header-top">
-              <h3 class="panel-title">供应商列表</h3>
-              <span class="panel-count" id="supplier-panel-count">共 -- 家</span>
+        <!-- 价格库卡片 -->
+        <div class="card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <h2 class="card-title" id="items-table-title">价格库</h2>
+              <p class="card-subtitle" id="items-table-subtitle">共 -- 条</p>
             </div>
-            <input type="search" class="panel-search" id="supplier-search" placeholder="🔍 搜索供应商名称 / 联系人..." />
+            <div class="card-head-actions">
+              <button class="btn btn-sm btn-ghost-blue" id="btn-view-all-items">
+                ⊞ 按物料看全部供应商
+              </button>
+            </div>
           </div>
-          <div id="supplier-list" class="supplier-list">
+
+          <div class="data-table-wrap" id="item-table-container">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>类别</th>
+                  <th>物料 / 服务名称</th>
+                  <th>规格 / 描述</th>
+                  <th>单位</th>
+                  <th>成本价</th>
+                  <th>币种</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="item-table-body"></tbody>
+            </table>
+            <div class="empty-state" id="item-empty" style="display:none">暂无物料数据</div>
+          </div>
+
+          <!-- 分页 -->
+          <div class="pagination" id="item-pagination">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <div class="page-btns" id="page-btn-group">
+                <button class="page-btn" id="page-prev" disabled>‹</button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn" id="page-next">›</button>
+              </div>
+              <span id="page-info" style="color:var(--c-text-faint)"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <select class="page-size-sel" id="page-size-sel">
+                <option value="10" selected>10 条/页</option>
+                <option value="20">20 条/页</option>
+                <option value="50">50 条/页</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- 比价 / 选库视图卡片 -->
+        <div class="card" id="best-price-card">
+          <div class="card-head">
+            <div class="card-head-left">
+              <h2 class="card-title">比价 / 选库视图</h2>
+              <p class="card-subtitle">选择物料查看多供应商报价</p>
+            </div>
+            <div class="card-head-actions">
+              <button class="btn btn-sm" id="btn-refresh-best-price">刷新</button>
+            </div>
+          </div>
+
+          <!-- 比价工具栏 -->
+          <div class="compare-bar">
+            <label>物料名称：</label>
+            <select id="compare-item-sel">
+              <option value="">-- 请选择物料 --</option>
+            </select>
+            <div class="compare-date-wrap">
+              <label>日期（可选）：</label>
+              <input type="date" id="compare-date-from" />
+              <span>～</span>
+              <input type="date" id="compare-date-to" />
+            </div>
+            <button class="btn btn-sm btn-ghost-blue" id="btn-compare">查看比价</button>
+          </div>
+
+          <!-- 比价结果 -->
+          <div class="data-table-wrap" id="best-price-content">
+            <table class="data-table" id="best-price-table" style="display:none">
+              <thead>
+                <tr>
+                  <th>供应商</th>
+                  <th>规格 / 描述</th>
+                  <th>单位</th>
+                  <th>报价</th>
+                  <th>币种</th>
+                  <th>总价（2晚）</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="best-price-body"></tbody>
+            </table>
+            <div class="empty-state" id="best-price-empty">
+              点击"查看比价"可对比多个供应商的报价
+            </div>
+          </div>
+
+          <div class="compare-hint">
+            提示：点击"选用"可在新建报价单或项目型报价单中快速添加该物料。
+          </div>
+        </div>
+
+      </div><!-- /main-col -->
+    </div><!-- /workspace -->
+
+  </div><!-- /page-content -->
+</div><!-- /page-shell -->
+
+<!-- ── 新建/编辑供应商 ── -->
+<dialog id="dlg-supplier">
+  <div class="dlg-inner">
+    <div class="dlg-head">
+      <h2 id="dlg-supplier-title">新增供应商</h2>
+      <button type="button" class="dlg-close" data-close-dlg="dlg-supplier">✕</button>
+    </div>
+    <div class="dlg-body">
+      <form class="form-stack" id="supplier-form">
+        <input type="hidden" name="id" />
+        <label>
+          供应商名称 *
+          <input name="name" required placeholder="例如：海景酒店集团" />
+        </label>
+        <label>
+          联系人
+          <input name="contact" placeholder="联系人姓名" />
+        </label>
+        <label>
+          电话
+          <input name="phone" placeholder="例如：+86 138 0013 8000" />
+        </label>
+        <label>
+          邮箱
+          <input name="email" type="email" placeholder="info@example.com" />
+        </label>
+        <label>
+          供应商类别
+          <select name="supplierType">
+            <option value="">-- 请选择 --</option>
+            <option value="hotel">酒店</option>
+            <option value="dmc">地接</option>
+            <option value="trans">交通</option>
+            <option value="food">餐饮</option>
+            <option value="venue">场地</option>
+            <option value="other">其他</option>
+          </select>
+        </label>
+        <label>
+          备注
+          <textarea name="notes" placeholder="供应商备注信息"></textarea>
+        </label>
+        <div class="checkbox-row">
+          <input type="checkbox" name="isActiveSupplier" id="chk-sup-active" checked />
+          <label for="chk-sup-active">启用（活跃供应商）</label>
+        </div>
+      </form>
+    </div>
+    <div class="dlg-footer">
+      <button class="btn" type="button" data-close-dlg="dlg-supplier">取消</button>
+      <button class="btn btn-primary" type="button" id="btn-save-supplier">保存供应商</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ── 新建/编辑物料 ── -->
+<dialog id="dlg-item">
+  <div class="dlg-inner">
+    <div class="dlg-head">
+      <h2 id="dlg-item-title">新增物料价格</h2>
+      <button type="button" class="dlg-close" data-close-dlg="dlg-item">✕</button>
+    </div>
+    <div class="dlg-body">
+      <form class="form-stack" id="item-form">
+        <input type="hidden" name="id" />
+        <label>
+          所属供应商 *
+          <select name="supplierIdSel" id="item-supplier-select"></select>
+        </label>
+        <label>
+          类别 *
+          <select name="category" id="item-category-select" required></select>
+        </label>
+        <label>
+          中文名称 *
+          <input name="nameZh" required placeholder="例如：豪华海景房" />
+        </label>
+        <label>
+          英文名称
+          <input name="nameEn" placeholder="例如：Deluxe Sea View Room" />
+        </label>
+        <label>
+          规格说明
+          <input name="spec" placeholder="例如：含早餐 / 2人" />
+        </label>
+        <label>
+          单位 *
+          <input name="unit" required placeholder="例如：间/晚、套、位" />
+        </label>
+        <label>
+          成本价
+          <input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" />
+        </label>
+        <label>
+          币种
+          <select name="currency">
+            <option value="CNY">CNY 人民币</option>
+            <option value="EUR">EUR 欧元</option>
+            <option value="USD">USD 美元</option>
+            <option value="RSD">RSD 第纳尔</option>
+          </select>
+        </label>
+        <label>
+          备注
+          <textarea name="notes" placeholder="其他说明"></textarea>
+        </label>
+        <div class="checkbox-row">
+          <input type="checkbox" name="isActive" id="chk-item-active" checked />
+          <label for="chk-item-active">启用（纳入价格库）</label>
+        </div>
+      </form>
+    </div>
+    <div class="dlg-footer">
+      <button class="btn" type="button" data-close-dlg="dlg-item">取消</button>
+      <button class="btn btn-primary" type="button" id="btn-save-item">保存物料</button>
+    </div>
+  </div>
+</dialog>
+
+<!-- ── 分类管理 ── -->
+<dialog id="dlg-categories">
+  <div class="dlg-inner">
+    <div class="dlg-head">
+      <h2>物料分类管理</h2>
+      <div class="dlg-head-actions">
+        <button class="btn btn-primary btn-sm" type="button" id="btn-new-category">＋ 新建分类</button>
+        <button type="button" class="dlg-close" data-close-dlg="dlg-categories">✕</button>
+      </div>
+    </div>
+    <div class="dlg-body">
+      <div id="cat-message" class="message-box hidden sup-modal-message"></div>
+      <div class="cat-dialog-body">
+
+        <!-- 分类列表 -->
+        <div class="cat-panel">
+          <div class="cat-panel-head">
+            <h3>分类列表</h3>
+            <p class="cat-panel-summary" id="cat-list-summary">已建分类可在下方继续新增或编辑。</p>
+          </div>
+          <div id="categories-list" class="cat-list">
             <div class="empty-state">加载中...</div>
           </div>
         </div>
 
-        <!-- 右侧主内容 -->
-        <div class="main-content">
-
-          <!-- 价格库表格 -->
-          <div class="card">
-            <div class="card-header">
-              <div class="card-header-left">
-                <h2 class="card-title" id="items-table-title">价格库</h2>
-                <p class="card-subtitle" id="items-table-subtitle">共 -- 条</p>
-              </div>
-              <div class="card-header-actions">
-                <button class="btn btn-sm" id="btn-view-all-items">
-                  ⊞ 按物料看全部供应商
-                </button>
-              </div>
-            </div>
-            <div class="card-body">
-              <div class="data-table-wrap" id="item-table-container">
-                <table class="data-table">
-                  <thead>
-                    <tr>
-                      <th>类别</th>
-                      <th>物料 / 服务名称</th>
-                      <th>规格 / 描述</th>
-                      <th>单位</th>
-                      <th>成本价</th>
-                      <th>币种</th>
-                      <th>状态</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody id="item-table-body"></tbody>
-                </table>
-                <div class="empty-state" id="item-empty" style="display:none">暂无物料数据</div>
-              </div>
-
-              <!-- 分页 -->
-              <div class="pagination" id="item-pagination">
-                <div class="page-btns" id="page-btn-group">
-                  <button class="page-btn" id="page-prev" disabled>‹</button>
-                  <button class="page-btn active">1</button>
-                  <button class="page-btn" id="page-next">›</button>
-                </div>
-                <div style="display:flex; align-items:center; gap:10px;">
-                  <span id="page-info" style="color: var(--c-text-faint)"></span>
-                  <select class="page-size-sel" id="page-size-sel">
-                    <option value="10" selected>10 条/页</option>
-                    <option value="20">20 条/页</option>
-                    <option value="50">50 条/页</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+        <!-- 分类编辑表单 -->
+        <div id="cat-form-section" class="cat-panel cat-form-section">
+          <div class="cat-form-head">
+            <h3 id="cat-form-title">新建分类</h3>
+            <p id="cat-form-caption">在这里维护分类名称、代码与排序号。</p>
           </div>
-
-          <!-- 比价 / 选库视图 -->
-          <div class="card" id="best-price-card">
-            <div class="card-header">
-              <div class="card-header-left">
-                <h2 class="card-title">比价 / 选库视图</h2>
-                <p class="card-subtitle">选择物料查看多供应商报价</p>
-              </div>
-              <div class="card-header-actions">
-                <button class="btn btn-sm" id="btn-refresh-best-price">刷新</button>
-              </div>
-            </div>
-            <div class="card-body">
-              <!-- 比价工具栏 -->
-              <div class="compare-toolbar">
-                <label>物料名称：</label>
-                <select id="compare-item-sel">
-                  <option value="">-- 请选择物料 --</option>
-                </select>
-                <div class="compare-date-range">
-                  <label>日期（可选）：</label>
-                  <input type="date" id="compare-date-from" />
-                  <span>～</span>
-                  <input type="date" id="compare-date-to" />
-                </div>
-                <button class="btn btn-outline-blue" id="btn-compare">查看比价</button>
-              </div>
-
-              <!-- 比价结果表格 -->
-              <div class="data-table-wrap" id="best-price-content">
-                <table class="data-table" id="best-price-table" style="display:none">
-                  <thead>
-                    <tr>
-                      <th>供应商</th>
-                      <th>规格 / 描述</th>
-                      <th>单位</th>
-                      <th>报价</th>
-                      <th>币种</th>
-                      <th>总价（2晚）</th>
-                      <th>状态</th>
-                      <th>操作</th>
-                    </tr>
-                  </thead>
-                  <tbody id="best-price-body"></tbody>
-                </table>
-                <div class="empty-state" id="best-price-empty">点击"查看比价"可对比多个供应商的报价</div>
-              </div>
-
-              <div class="compare-hint">
-                提示：点击"选用"可在新建报价单或项目型报价单中快速添加该物料。
-              </div>
-            </div>
-          </div>
-
-        </div><!-- /main-content -->
-      </div><!-- /workspace -->
-
-    </div><!-- /page-content -->
-  </div><!-- /page-shell -->
-
-  <!-- ── 新建/编辑供应商 对话框 ── -->
-  <dialog id="dlg-supplier">
-    <div class="dlg-inner">
-      <div class="dlg-head">
-        <h2 id="dlg-supplier-title">新增供应商</h2>
-        <button type="button" class="dlg-close" data-close-dlg="dlg-supplier">✕</button>
-      </div>
-      <div class="dlg-body">
-        <form class="form-stack" id="supplier-form">
-          <input type="hidden" name="id" />
-          <label>
-            <span>供应商名称 *</span>
-            <input name="name" required placeholder="例如：海景酒店集团" />
-          </label>
-          <label>
-            <span>联系人</span>
-            <input name="contact" placeholder="联系人姓名" />
-          </label>
-          <label>
-            <span>电话</span>
-            <input name="phone" placeholder="例如：+381 11 123 4567" />
-          </label>
-          <label>
-            <span>邮箱</span>
-            <input name="email" type="email" placeholder="info@example.com" />
-          </label>
-          <label>
-            <span>供应商类别</span>
-            <select name="supplierType">
-              <option value="">-- 请选择 --</option>
-              <option value="hotel">酒店</option>
-              <option value="dmc">地接</option>
-              <option value="trans">交通</option>
-              <option value="food">餐饮</option>
-              <option value="venue">场地</option>
-              <option value="other">其他</option>
-            </select>
-          </label>
-          <label>
-            <span>备注</span>
-            <textarea name="notes" rows="2" placeholder="供应商备注信息"></textarea>
-          </label>
-          <div class="checkbox-row">
-            <input type="checkbox" name="isActiveSupplier" id="chk-supplier-active" checked />
-            <label for="chk-supplier-active">启用（活跃供应商）</label>
-          </div>
-        </form>
-      </div>
-      <div class="dlg-footer">
-        <button type="button" class="btn" data-close-dlg="dlg-supplier">取消</button>
-        <button type="button" class="btn btn-primary" id="btn-save-supplier">保存供应商</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- ── 新建/编辑物料 对话框 ── -->
-  <dialog id="dlg-item">
-    <div class="dlg-inner">
-      <div class="dlg-head">
-        <h2 id="dlg-item-title">新增物料价格</h2>
-        <button type="button" class="dlg-close" data-close-dlg="dlg-item">✕</button>
-      </div>
-      <div class="dlg-body">
-        <form class="form-stack" id="item-form">
-          <input type="hidden" name="id" />
-          <label>
-            <span>所属供应商 *</span>
-            <select name="supplierIdSel" id="item-supplier-select"></select>
-          </label>
-          <label>
-            <span>类别 *</span>
-            <select name="category" id="item-category-select" required></select>
-          </label>
-          <label>
-            <span>中文名称 *</span>
-            <input name="nameZh" required placeholder="例如：豪华海景房" />
-          </label>
-          <label>
-            <span>英文名称</span>
-            <input name="nameEn" placeholder="例如：Deluxe Sea View Room" />
-          </label>
-          <label>
-            <span>规格说明</span>
-            <input name="spec" placeholder="例如：含早餐 / 2人" />
-          </label>
-          <label>
-            <span>单位 *</span>
-            <input name="unit" required placeholder="例如：间/晚、套、位" />
-          </label>
-          <label>
-            <span>成本价</span>
-            <input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" />
-          </label>
-          <label>
-            <span>币种</span>
-            <select name="currency">
-              <option value="CNY">CNY 人民币</option>
-              <option value="EUR">EUR 欧元</option>
-              <option value="USD">USD 美元</option>
-              <option value="RSD">RSD 塞尔维亚第纳尔</option>
-            </select>
-          </label>
-          <label>
-            <span>备注</span>
-            <textarea name="notes" rows="2" placeholder="其他说明"></textarea>
-          </label>
-          <div class="checkbox-row">
-            <input type="checkbox" name="isActive" id="chk-item-active" checked />
-            <label for="chk-item-active">启用（纳入价格库）</label>
-          </div>
-        </form>
-      </div>
-      <div class="dlg-footer">
-        <button type="button" class="btn" data-close-dlg="dlg-item">取消</button>
-        <button type="button" class="btn btn-primary" id="btn-save-item">保存物料</button>
-      </div>
-    </div>
-  </dialog>
-
-  <!-- ── 分类管理 对话框 ── -->
-  <dialog id="dlg-categories">
-    <div class="dlg-inner">
-      <div class="dlg-head">
-        <h2>物料分类管理</h2>
-        <div class="dlg-head-actions">
-          <button type="button" class="btn btn-primary btn-sm" id="btn-new-category">+ 新建分类</button>
-          <button type="button" class="dlg-close" data-close-dlg="dlg-categories">✕</button>
-        </div>
-      </div>
-      <div class="dlg-body">
-        <div id="cat-message" class="message-box hidden sup-modal-message"></div>
-        <div class="cat-dialog-body">
-
-          <!-- 分类列表 -->
-          <div class="cat-panel">
-            <div class="cat-panel-head">
-              <h3>分类列表</h3>
-            </div>
-            <div id="categories-list" class="cat-list">
-              <div class="empty-state">加载中...</div>
-            </div>
-          </div>
-
-          <!-- 分类编辑表单 -->
-          <div id="cat-form-section" class="cat-panel cat-form-section">
-            <div class="cat-form-head">
-              <h3 id="cat-form-title">新建分类</h3>
-              <p id="cat-form-caption">在这里维护分类名称、代码与排序号。</p>
-            </div>
-            <form id="cat-form" class="form-stack" style="padding: 14px 16px 0">
-              <input type="hidden" name="id" />
+          <form id="cat-form" class="form-stack">
+            <input type="hidden" name="id" />
+            <label>
+              中文名称 *
+              <input name="nameZh" required placeholder="例如：酒店住宿" />
+            </label>
+            <div class="cat-form-row">
               <label>
-                <span>中文名称 *</span>
-                <input name="nameZh" required placeholder="例如：酒店住宿" />
+                分类代码 *
+                <input name="code" id="cat-code-input" required placeholder="例如：hotel"
+                  style="font-family:'Consolas','Menlo',monospace;" />
               </label>
-              <div class="cat-form-row">
-                <label>
-                  <span>分类代码 *</span>
-                  <input name="code" id="cat-code-input" required placeholder="例如：hotel" style="font-family: monospace;" />
-                </label>
-                <label>
-                  <span>排序号</span>
-                  <input name="sortOrder" type="number" min="0" placeholder="0" />
-                </label>
-              </div>
-              <p id="cat-code-hint" style="font-size:12px; color: var(--c-text-faint); margin:0;">编辑时分类代码不可修改。</p>
-            </form>
-            <div class="cat-form-actions">
-              <button type="button" class="btn" id="btn-cancel-cat-form">取消</button>
-              <button type="button" class="btn btn-primary" id="btn-save-category">保存分类</button>
+              <label>
+                排序号
+                <input name="sortOrder" type="number" min="0" placeholder="0" />
+              </label>
             </div>
+            <p id="cat-code-hint"
+              style="font-size:12px;color:var(--c-text-faint);margin:0;">
+              编辑时分类代码不可修改。
+            </p>
+          </form>
+          <div class="cat-form-actions">
+            <button class="btn" type="button" id="btn-cancel-cat-form">取消</button>
+            <button class="btn btn-primary" type="button" id="btn-save-category">保存分类</button>
           </div>
-
         </div>
 
-        <div class="cat-dialog-footer" style="margin-top:12px;">
-          <p id="cat-dialog-summary" class="cat-dialog-summary">共 0 个分类</p>
-          <button type="button" class="btn" data-close-dlg="dlg-categories">关闭面板</button>
-        </div>
+      </div><!-- /cat-dialog-body -->
+
+      <div class="cat-dialog-footer">
+        <p id="cat-dialog-summary" class="cat-dialog-summary">共 0 个分类</p>
+        <button class="btn" type="button" data-close-dlg="dlg-categories">关闭面板</button>
       </div>
-    </div>
-  </dialog>
+    </div><!-- /dlg-body -->
+  </div>
+</dialog>
 
-  <script src="/ui-labels.js"></script>
-  <script src="/app-utils.js"></script>
-  <script src="/suppliers.js"></script>
-  <script src="/app-shell.js"></script>
+<script src="/ui-labels.js"></script>
+<script src="/app-utils.js"></script>
+<script src="/suppliers.js"></script>
+<script src="/app-shell.js"></script>
 </body>
 </html>
