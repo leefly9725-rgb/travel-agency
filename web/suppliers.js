@@ -27,12 +27,10 @@ const SUPPLIERS_REQUIRED_DOM_IDS = [
   "kpi-last-update",
   "supplier-list",
   "supplier-search",
-  "btn-show-all-suppliers",
   "items-table-title",
   "items-table-subtitle",
   "item-table-body",
   "item-empty",
-  "best-price-meta",
   "best-price-table",
   "best-price-body",
   "best-price-empty",
@@ -61,6 +59,13 @@ const SUPPLIERS_REQUIRED_DOM_IDS = [
   "btn-new-category",
   "btn-cancel-cat-form",
   "btn-save-category",
+  "kpi-sup-active",
+  "kpi-sup-inactive",
+  "kpi-item-active",
+  "kpi-item-inactive",
+  "kpi-last-update-source",
+  "supplier-panel-count",
+  "filter-supplier-bar",
 ];
 
 let suppliersDom = null;
@@ -131,44 +136,80 @@ function categoryLabel(code) {
 }
 
 function updateKPI() {
-  const activeCount = state.suppliers.filter((s) => s.isActive !== false).length;
+  const total = state.suppliers.length;
+  const activeSupCount = state.suppliers.filter((s) => s.isActive !== false).length;
+  const inactiveSupCount = total - activeSupCount;
+
+  const totalItems = state.items.length;
+  const activeItemCount = state.items.filter((i) => itemIsActive(i)).length;
+  const inactiveItemCount = totalItems - activeItemCount;
+
   const setText = (id, val) => {
-    getRequiredElement(id).textContent = String(val);
+    const el = getOptionalElement(id);
+    if (el) el.textContent = String(val);
   };
 
-  setText("kpi-supplier-count", `${activeCount} / ${state.suppliers.length}`);
-  setText("kpi-item-count", state.items.length);
-  setText("kpi-best-price-count", state.bestPriceItems.length > 0 ? state.bestPriceItems.length : EMPTY_TEXT);
+  setText("kpi-supplier-count", total);
+  setText("kpi-sup-active", activeSupCount);
+  setText("kpi-sup-inactive", inactiveSupCount);
+  setText("supplier-panel-count", `共 ${total} 家`);
+
+  setText("kpi-item-count", totalItems);
+  setText("kpi-item-active", activeItemCount);
+  setText("kpi-item-inactive", inactiveItemCount);
+
+  const bestCount = state.bestPriceItems.length;
+  setText("kpi-best-price-count", bestCount > 0 ? bestCount : EMPTY_TEXT);
+  setText("kpi-best-price-meta", bestCount > 0 && totalItems > 0
+    ? `${bestCount} / ${totalItems} 条`
+    : "对应最低价汇总视图");
 
   const times = state.items
     .map((i) => i.updated_at || i.updatedAt)
     .filter(Boolean)
     .sort();
 
-  setText(
-    "kpi-last-update",
-    times.length > 0 ? new Date(times[times.length - 1]).toLocaleDateString("zh-CN") : EMPTY_TEXT
-  );
+  if (times.length > 0) {
+    const latest = new Date(times[times.length - 1]);
+    setText("kpi-last-update", latest.toLocaleDateString("zh-CN"));
+    // 找到最近更新的物料对应的供应商名
+    const latestItem = state.items.find(
+      (i) => (i.updated_at || i.updatedAt) === times[times.length - 1]
+    );
+    if (latestItem) {
+      const sup = state.suppliers.find((s) => s.id === itemSupplierId(latestItem));
+      setText("kpi-last-update-source", sup ? `来源：${sup.name}` : "根据物料更新时间自动显示");
+    }
+  } else {
+    setText("kpi-last-update", EMPTY_TEXT);
+    setText("kpi-last-update-source", "根据物料更新时间自动显示");
+  }
 }
 
 function renderSupplierList() {
-  const dom = getSuppliersDom();
-  const container = dom["supplier-list"];
-  const allBtn = dom["btn-show-all-suppliers"];
-  const sideSearch = (dom["supplier-search"].value || "").trim().toLowerCase();
+  const container = getRequiredElement("supplier-list");
+  const sideSearch = (getRequiredElement("supplier-search").value || "").trim().toLowerCase();
   const global = state.filters.global.toLowerCase();
 
-  allBtn.className = "sup-sidebar-all-btn" + (state.selectedSupplierId === null ? " active" : "");
+  // 供应商类别 badge 映射
+  const TYPE_BADGE = {
+    hotel: { cls: "badge-hotel", label: "酒店" },
+    dmc:   { cls: "badge-dmc",   label: "地接" },
+    trans: { cls: "badge-trans", label: "交通" },
+    food:  { cls: "badge-food",  label: "餐饮" },
+    venue: { cls: "badge-venue", label: "场地" },
+  };
 
   const list = state.suppliers.filter((sup) => {
-    const haystack = [sup.name, sup.contact, sup.phone, sup.email].filter(Boolean).join(" ").toLowerCase();
+    const haystack = [sup.name, sup.contact, sup.phone, sup.email]
+      .filter(Boolean).join(" ").toLowerCase();
     if (sideSearch && !haystack.includes(sideSearch)) return false;
     if (global && !haystack.includes(global)) return false;
     return true;
   });
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="sup-empty-state">暂无匹配供应商</div>`;
+    container.innerHTML = `<div class="empty-state">暂无匹配供应商</div>`;
     return;
   }
 
@@ -176,38 +217,32 @@ function renderSupplierList() {
     const isActive = sup.isActive !== false;
     const itemCount = state.items.filter((i) => itemSupplierId(i) === sup.id).length;
     const isSelected = sup.id === state.selectedSupplierId;
-    const contact = sup.contact || EMPTY_TEXT;
-    const phone = sup.phone || EMPTY_TEXT;
-    const email = sup.email || EMPTY_TEXT;
+    const typeKey = sup.supplierType || sup.supplier_type || "";
+    const badge = TYPE_BADGE[typeKey];
+    const badgeHtml = badge
+      ? `<span class="sup-type-badge ${badge.cls}">${badge.label}</span>`
+      : (typeKey ? `<span class="sup-type-badge badge-other">${typeKey}</span>` : "");
+
     return `
-      <div class="sup-supplier-card${isSelected ? " active" : ""}${!isActive ? " inactive" : ""}" data-select-supplier="${sup.id}">
+      <div class="sup-card${isSelected ? " active" : ""}${!isActive ? " inactive" : ""}"
+           data-select-supplier="${sup.id}">
         <div class="sup-card-head">
-          <div class="sup-card-title-wrap">
-            <div class="sup-card-name">${sup.name}</div>
-            <span class="sup-status-tag ${isActive ? "is-active" : "is-inactive"}">${isActive ? "启用" : "停用"}</span>
-          </div>
-          <span class="sup-card-count">${itemCount} 项</span>
+          <span class="sup-card-name">${sup.name}</span>
+          ${badgeHtml}
         </div>
-        <div class="sup-card-meta-list">
+        <div class="sup-card-meta">
+          ${sup.contact ? `<div class="sup-card-meta-row"><span>联系人：${sup.contact}</span><span class="sup-status-dot ${isActive ? "active" : "inactive"}">${isActive ? "启用" : "停用"}</span></div>` : `<div class="sup-card-meta-row"><span></span><span class="sup-status-dot ${isActive ? "active" : "inactive"}">${isActive ? "启用" : "停用"}</span></div>`}
+          ${sup.phone ? `<span>${sup.phone}</span>` : ""}
           <div class="sup-card-meta-row">
-            <span class="sup-card-meta-label">联系人</span>
-            <span class="sup-card-meta-value">${contact}</span>
-          </div>
-          <div class="sup-card-meta-row">
-            <span class="sup-card-meta-label">电话</span>
-            <span class="sup-card-meta-value">${phone}</span>
-          </div>
-          <div class="sup-card-meta-row">
-            <span class="sup-card-meta-label">邮箱</span>
-            <span class="sup-card-meta-value">${email}</span>
+            <span>${sup.email || ""}</span>
+            <span>物料 ${itemCount} 项</span>
           </div>
         </div>
-        <div class="sup-card-foot">
-          <div class="sup-card-actions">
-            ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-supplier="${sup.id}">编辑</button>` : ""}
-            ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}
-          </div>
-        </div>
+        ${window.can("supplier.edit") || window.can("supplier.delete") ? `
+        <div style="display:flex;gap:6px;margin-top:6px;">
+          ${window.can("supplier.edit") ? `<button class="act-btn" style="font-size:12px;" data-edit-supplier="${sup.id}">编辑</button>` : ""}
+          ${window.can("supplier.delete") ? `<button class="act-btn danger" style="font-size:12px;" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}
+        </div>` : ""}
       </div>
     `;
   }).join("");
@@ -243,20 +278,18 @@ function renderItemTable() {
   const titleEl = dom["items-table-title"];
   const subtitleEl = dom["items-table-subtitle"];
 
+  const filteredItems = getFilteredItems();
+
   if (state.selectedSupplierId) {
     const sup = state.suppliers.find((s) => s.id === state.selectedSupplierId);
-    titleEl.textContent = sup ? sup.name : "价格库";
-    subtitleEl.textContent = state.filters.bestPriceOnly
-      ? "当前视图仅显示最低成本条目"
-      : "当前供应商的物料与服务条目";
+    titleEl.textContent = sup ? `价格库（供应商：${sup.name}）` : "价格库";
+    subtitleEl.textContent = `共 ${filteredItems.length} 条`;
   } else {
     titleEl.textContent = "价格库";
-    subtitleEl.textContent = state.filters.bestPriceOnly
-      ? "当前视图仅显示全局最低成本条目"
-      : "查看全部供应商的价格库与服务明细";
+    subtitleEl.textContent = `共 ${filteredItems.length} 条`;
   }
 
-  const items = getFilteredItems();
+  const items = filteredItems;
   if (items.length === 0) {
     tbody.innerHTML = "";
     emptyEl.style.display = "";
@@ -267,27 +300,29 @@ function renderItemTable() {
   tbody.innerHTML = items.map((item) => {
     const active = itemIsActive(item);
     const price = itemCostPrice(item);
+    const currency = item.currency || "CNY";
     const supName = item.supplierName || item.supplier_name || "";
     return `
       <tr class="${!active ? "row-inactive" : ""}" data-item-id="${item.id}">
         <td><span class="sup-category-pill">${categoryLabel(item.category)}</span></td>
         <td>
-          <div class="sup-item-main">
-            <div class="sup-item-name">${itemNameZh(item)}</div>
-            ${itemNameEn(item) ? `<div class="sup-item-sub">${itemNameEn(item)}</div>` : ""}
-            ${supName && !state.selectedSupplierId ? `<div class="sup-item-sub">${supName}</div>` : ""}
+          <div style="display:grid;gap:2px;">
+            <div style="font-weight:600;">${itemNameZh(item)}</div>
+            ${itemNameEn(item) ? `<div style="font-size:12px;color:var(--c-text-faint);">${itemNameEn(item)}</div>` : ""}
+            ${supName && !state.selectedSupplierId ? `<div style="font-size:12px;color:var(--c-text-faint);">${supName}</div>` : ""}
           </div>
         </td>
-        <td><div class="sup-item-spec" title="${item.spec || ""}">${item.spec || EMPTY_TEXT}</div></td>
-        <td class="sup-col-unit">${item.unit || EMPTY_TEXT}</td>
-        <td class="sup-col-price">${price > 0 ? window.AppUtils.formatCurrency(price, "EUR") : EMPTY_TEXT}</td>
-        <td><span class="sup-status-pill ${active ? "is-active" : "is-inactive"}">${active ? "启用" : "停用"}</span></td>
-        <td class="col-actions">
-          <div class="sup-action-group">
-            ${window.can("supplier.edit") ? `<button class="sup-inline-action" data-edit-item="${item.id}">编辑</button>` : ""}
-            ${window.can("supplier.edit") && active ? `<button class="sup-inline-action" data-toggle-item="${item.id}" data-current-active="true">停用</button>` : ""}
-            ${window.can("supplier.edit") && !active ? `<button class="sup-inline-action is-success" data-toggle-item="${item.id}" data-current-active="false">启用</button>` : ""}
-            ${window.can("supplier.delete") ? `<button class="sup-inline-action is-danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">删除</button>` : ""}
+        <td style="color:var(--c-text-soft);font-size:13px;">${item.spec || EMPTY_TEXT}</td>
+        <td style="white-space:nowrap;">${item.unit || EMPTY_TEXT}</td>
+        <td class="price-val">${price > 0 ? price.toLocaleString("zh-CN", {minimumFractionDigits:2, maximumFractionDigits:2}) : EMPTY_TEXT}</td>
+        <td style="color:var(--c-text-soft);font-size:12px;">${currency}</td>
+        <td><span class="status-badge ${active ? "active" : "inactive"}">${active ? "启用" : "停用"}</span></td>
+        <td>
+          <div class="row-actions">
+            ${window.can("supplier.edit") ? `<button class="act-btn" data-edit-item="${item.id}">编辑</button><span class="act-sep">|</span>` : ""}
+            ${window.can("supplier.edit") && active ? `<button class="act-btn danger" data-toggle-item="${item.id}" data-current-active="true">停用</button>` : ""}
+            ${window.can("supplier.edit") && !active ? `<button class="act-btn success" data-toggle-item="${item.id}" data-current-active="false">启用</button>` : ""}
+            ${window.can("supplier.delete") ? `<span class="act-sep">|</span><button class="act-btn danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">删除</button>` : ""}
           </div>
         </td>
       </tr>
@@ -300,10 +335,10 @@ function renderBestPriceTable() {
   const tableEl = dom["best-price-table"];
   const tbody = dom["best-price-body"];
   const emptyEl = dom["best-price-empty"];
-  const metaEl = dom["best-price-meta"];
+  const metaEl = getOptionalElement("best-price-meta");
   const items = state.bestPriceItems;
 
-  metaEl.textContent = items.length > 0 ? `共 ${items.length} 条最低成本记录` : "";
+  if (metaEl) metaEl.textContent = items.length > 0 ? `共 ${items.length} 条最低成本记录` : "";
 
   if (items.length === 0) {
     tableEl.style.display = "none";
@@ -602,13 +637,27 @@ async function bootstrap() {
     renderSupplierList();
   });
 
-  on("btn-show-all-suppliers", "click", async () => {
-    state.selectedSupplierId = null;
-    await loadItems();
-    renderSupplierList();
-    renderItemTable();
-    updateKPI();
-  });
+  // 顶部筛选栏供应商下拉联动
+  const supBarSel = getOptionalElement("filter-supplier-bar");
+  if (supBarSel) {
+    // 填充供应商选项
+    function buildSupplierBarSelect() {
+      supBarSel.innerHTML = `<option value="">供应商：全部</option>` +
+        state.suppliers.map((s) =>
+          `<option value="${s.id}">${s.name}</option>`
+        ).join("");
+    }
+    buildSupplierBarSelect();
+
+    supBarSel.addEventListener("change", async (e) => {
+      state.selectedSupplierId = e.target.value || null;
+      // 同步左侧列表选中状态
+      renderSupplierList();
+      await loadItems();
+      renderItemTable();
+      updateKPI();
+    });
+  }
 
   on("btn-new-supplier", "click", () => {
     if (!window.can("supplier.create")) return;
