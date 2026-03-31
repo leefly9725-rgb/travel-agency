@@ -441,10 +441,36 @@
     .s-page-btn.active { background: var(--s-navy); border-color: var(--s-navy); color: #fff; }
     .s-page-btn:disabled { opacity: 0.35; cursor: default; }
 
+    .s-page-meta {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      min-height: 24px;
+    }
+
+    .s-page-info {
+      color: var(--s-faint);
+      white-space: nowrap;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .s-page-size-wrap {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+      color: var(--s-faint);
+    }
+
     .s-page-size {
       height: 24px; padding: 0 5px;
       border: 1px solid var(--s-border); border-radius: 3px;
       font: 11px/1 inherit; color: var(--s-soft); background: #fff;
+    }
+
+    .s-pagination-light {
+      background: #fcfbf8;
+      color: var(--s-faint);
     }
 
     /* ── 比价工具栏 ── */
@@ -909,19 +935,21 @@
 
           <!-- 分页 -->
           <div class="s-pagination" id="item-pagination">
-            <div style="display:flex;align-items:center;gap:7px;">
-              <div class="s-page-btns" id="page-btn-group">
-                <button class="s-page-btn" id="page-prev" disabled>‹</button>
-                <button class="s-page-btn active">1</button>
-                <button class="s-page-btn" id="page-next">›</button>
+            <div class="s-page-meta">
+              <div class="s-page-btns">
+                <button class="s-page-btn" id="page-prev" type="button" disabled>&lsaquo;</button>
+                <button class="s-page-btn" id="page-next" type="button" disabled>&rsaquo;</button>
               </div>
-              <span id="page-info" style="color:var(--s-faint)"></span>
+              <span class="s-page-info" id="page-info">&#x7B2C; 1 / 1 &#x9875;&#xFF0C;&#x5171; 0 &#x6761;</span>
             </div>
-            <select class="s-page-size" id="page-size-sel">
-              <option value="10" selected>10 条/页</option>
-              <option value="20">20 条/页</option>
-              <option value="50">50 条/页</option>
-            </select>
+            <label class="s-page-size-wrap" for="page-size-sel">
+              <span>&#x6BCF;&#x9875;</span>
+              <select class="s-page-size" id="page-size-sel">
+                <option value="5" selected>5 &#x6761;/&#x9875;</option>
+                <option value="10">10 &#x6761;/&#x9875;</option>
+                <option value="20">20 &#x6761;/&#x9875;</option>
+              </select>
+            </label>
           </div>
         </div>
 
@@ -966,6 +994,24 @@
               <tbody id="best-price-body"></tbody>
             </table>
             <div class="s-empty" id="best-price-empty">点击「查看比价」可对比多个供应商的报价</div>
+          </div>
+
+          <div class="s-pagination s-pagination-light" id="best-price-pagination">
+            <div class="s-page-meta">
+              <div class="s-page-btns">
+                <button class="s-page-btn" id="best-price-page-prev" type="button" disabled>&lsaquo;</button>
+                <button class="s-page-btn" id="best-price-page-next" type="button" disabled>&rsaquo;</button>
+              </div>
+              <span class="s-page-info" id="best-price-page-info">&#x7B2C; 1 / 1 &#x9875;&#xFF0C;&#x5171; 0 &#x6761;</span>
+            </div>
+            <label class="s-page-size-wrap" for="best-price-page-size">
+              <span>&#x6BCF;&#x9875;</span>
+              <select class="s-page-size" id="best-price-page-size">
+                <option value="5" selected>5 &#x6761;/&#x9875;</option>
+                <option value="10">10 &#x6761;/&#x9875;</option>
+                <option value="20">20 &#x6761;/&#x9875;</option>
+              </select>
+            </label>
           </div>
 
           <div class="s-compare-hint">提示：点击「选用」可在新建报价单或项目型报价单中快速添加该物料。</div>

@@ -39,10 +39,20 @@ const SUPPLIERS_REQUIRED_DOM_IDS = [
   "items-table-subtitle",
   "item-table-body",
   "item-empty",
+  "item-pagination",
+  "page-prev",
+  "page-next",
+  "page-info",
+  "page-size-sel",
   "btn-view-all-items",
   "best-price-table",
   "best-price-body",
   "best-price-empty",
+  "best-price-pagination",
+  "best-price-page-prev",
+  "best-price-page-next",
+  "best-price-page-info",
+  "best-price-page-size",
   "compare-item-sel",
   "compare-date-from",
   "compare-date-to",
@@ -85,6 +95,12 @@ const SUP_TYPE_BADGE = {
 
 let suppliersDom = null;
 
+const DEFAULT_PAGE_SIZE = 5;
+
+function createPaginationState() {
+  return { page: 1, pageSize: DEFAULT_PAGE_SIZE };
+}
+
 const state = {
   suppliers: [],
   items: [],
@@ -97,10 +113,55 @@ const state = {
     status: "active",
     bestPriceOnly: false,
   },
+  pagination: {
+    items: createPaginationState(),
+    bestPrice: createPaginationState(),
+  },
 };
 
 function getOptionalElement(id) {
   return document.getElementById(id);
+}
+
+function resetPagination(key) {
+  if (state.pagination[key]) state.pagination[key].page = 1;
+}
+
+function setPaginationPageSize(key, pageSize) {
+  const pagination = state.pagination[key];
+  if (!pagination) return;
+  pagination.pageSize = pageSize;
+  pagination.page = 1;
+}
+
+function paginateRows(rows, pagination) {
+  const totalItems = rows.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / pagination.pageSize) || 1);
+  pagination.page = Math.min(Math.max(1, pagination.page), totalPages);
+  const startIndex = totalItems === 0 ? 0 : (pagination.page - 1) * pagination.pageSize;
+  return {
+    totalItems,
+    totalPages,
+    page: pagination.page,
+    rows: rows.slice(startIndex, startIndex + pagination.pageSize),
+  };
+}
+
+function renderPaginationControls(config, detail) {
+  const prevBtn = getOptionalElement(config.prevId);
+  const nextBtn = getOptionalElement(config.nextId);
+  const infoEl = getOptionalElement(config.infoId);
+  const sizeEl = getOptionalElement(config.sizeId);
+  if (prevBtn) prevBtn.disabled = detail.page <= 1 || detail.totalItems === 0;
+  if (nextBtn) nextBtn.disabled = detail.page >= detail.totalPages || detail.totalItems === 0;
+  if (infoEl) {
+    infoEl.textContent = detail.totalItems > 0
+      ? `\u7b2c ${detail.page} / ${detail.totalPages} \u9875\uff0c\u5171 ${detail.totalItems} \u6761`
+      : "\u7b2c 1 / 1 \u9875\uff0c\u5171 0 \u6761";
+  }
+  if (sizeEl && String(sizeEl.value) !== String(config.pagination.pageSize)) {
+    sizeEl.value = String(config.pagination.pageSize);
+  }
 }
 
 function getRequiredElement(id) {
@@ -273,22 +334,29 @@ function getFilteredItems() {
 
 // ── 价格库表格渲染 ─────────────────────────────────────────
 function renderItemTable() {
-  const dom       = getSuppliersDom();
-  const tbody     = dom["item-table-body"];
-  const emptyEl   = dom["item-empty"];
-  const titleEl   = dom["items-table-title"];
-  const subtitleEl= dom["items-table-subtitle"];
-
+  const dom = getSuppliersDom();
+  const tbody = dom["item-table-body"];
+  const emptyEl = dom["item-empty"];
+  const titleEl = dom["items-table-title"];
+  const subtitleEl = dom["items-table-subtitle"];
   const items = getFilteredItems();
+  const pageDetail = paginateRows(items, state.pagination.items);
 
-  // 标题与副标题
   if (state.selectedSupplierId) {
     const sup = state.suppliers.find((s) => s.id === state.selectedSupplierId);
-    titleEl.textContent = sup ? `价格库（供应商：${sup.name}）` : "价格库";
+    titleEl.textContent = sup ? `\u4ef7\u683c\u5e93\uff08\u4f9b\u5e94\u5546\uff1a${sup.name}\uff09` : "\u4ef7\u683c\u5e93";
   } else {
-    titleEl.textContent = "价格库";
+    titleEl.textContent = "\u4ef7\u683c\u5e93";
   }
-  subtitleEl.textContent = `共 ${items.length} 条`;
+  subtitleEl.textContent = `\u5171 ${items.length} \u6761`;
+
+  renderPaginationControls({
+    prevId: "page-prev",
+    nextId: "page-next",
+    infoId: "page-info",
+    sizeId: "page-size-sel",
+    pagination: state.pagination.items,
+  }, pageDetail);
 
   if (items.length === 0) {
     tbody.innerHTML = "";
@@ -297,11 +365,11 @@ function renderItemTable() {
   }
   emptyEl.style.display = "none";
 
-  tbody.innerHTML = items.map((item) => {
-    const active   = itemIsActive(item);
-    const price    = itemCostPrice(item);
+  tbody.innerHTML = pageDetail.rows.map((item) => {
+    const active = itemIsActive(item);
+    const price = itemCostPrice(item);
     const currency = item.currency || "EUR";
-    const supName  = item.supplierName || item.supplier_name || "";
+    const supName = item.supplierName || item.supplier_name || "";
     const priceStr = price > 0
       ? price.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : EMPTY_TEXT;
@@ -320,31 +388,39 @@ function renderItemTable() {
         <td style="white-space:nowrap;font-size:13px;">${item.unit || EMPTY_TEXT}</td>
         <td class="s-price">${priceStr}</td>
         <td style="font-size:12px;color:var(--s-soft);">${currency}</td>
-        <td><span class="s-badge ${active ? "on" : "off"}">${active ? "启用" : "停用"}</span></td>
+        <td><span class="s-badge ${active ? "on" : "off"}">${active ? "\u542f\u7528" : "\u505c\u7528"}</span></td>
         <td>
           <div class="s-row-actions">
-            ${window.can("supplier.edit") ? `<button class="s-act" data-edit-item="${item.id}">编辑</button>` : ""}
-            ${window.can("supplier.edit") && active  ? `<span class="s-act-sep">|</span><button class="s-act danger"  data-toggle-item="${item.id}" data-current-active="true">停用</button>`  : ""}
-            ${window.can("supplier.edit") && !active ? `<span class="s-act-sep">|</span><button class="s-act ok" data-toggle-item="${item.id}" data-current-active="false">启用</button>` : ""}
-            ${window.can("supplier.delete") ? `<span class="s-act-sep">|</span><button class="s-act danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">删除</button>` : ""}
+            ${window.can("supplier.edit") ? `<button class="s-act" data-edit-item="${item.id}">\u7f16\u8f91</button>` : ""}
+            ${window.can("supplier.edit") && active  ? `<span class="s-act-sep">|</span><button class="s-act danger"  data-toggle-item="${item.id}" data-current-active="true">\u505c\u7528</button>`  : ""}
+            ${window.can("supplier.edit") && !active ? `<span class="s-act-sep">|</span><button class="s-act ok" data-toggle-item="${item.id}" data-current-active="false">\u542f\u7528</button>` : ""}
+            ${window.can("supplier.delete") ? `<span class="s-act-sep">|</span><button class="s-act danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">\u5220\u9664</button>` : ""}
           </div>
         </td>
       </tr>`;
   }).join("");
 }
 
-// ── 比价表格渲染 ───────────────────────────────────────────
 function renderBestPriceTable() {
-  const dom     = getSuppliersDom();
+  const dom = getSuppliersDom();
   const tableEl = dom["best-price-table"];
-  const tbody   = dom["best-price-body"];
+  const tbody = dom["best-price-body"];
   const emptyEl = dom["best-price-empty"];
-  const items   = state.bestPriceItems;
+  const items = state.bestPriceItems;
+  const pageDetail = paginateRows(items, state.pagination.bestPrice);
+
+  renderPaginationControls({
+    prevId: "best-price-page-prev",
+    nextId: "best-price-page-next",
+    infoId: "best-price-page-info",
+    sizeId: "best-price-page-size",
+    pagination: state.pagination.bestPrice,
+  }, pageDetail);
 
   if (items.length === 0) {
     tableEl.style.display = "none";
     emptyEl.style.display = "";
-    emptyEl.textContent   = "点击「查看比价」可对比多个供应商的报价";
+    emptyEl.textContent = "\u70b9\u51fb\u300c\u67e5\u770b\u6bd4\u4ef7\u300d\u53ef\u5bf9\u6bd4\u591a\u4e2a\u4f9b\u5e94\u5546\u7684\u62a5\u4ef7";
     tbody.innerHTML = "";
     return;
   }
@@ -352,10 +428,10 @@ function renderBestPriceTable() {
   tableEl.style.display = "";
   emptyEl.style.display = "none";
 
-  tbody.innerHTML = items.map((item) => {
-    const price    = itemCostPrice(item);
+  tbody.innerHTML = pageDetail.rows.map((item) => {
+    const price = itemCostPrice(item);
     const currency = item.currency || "EUR";
-    const supName  = item.supplierName || item.supplier_name || EMPTY_TEXT;
+    const supName = item.supplierName || item.supplier_name || EMPTY_TEXT;
     const priceStr = price > 0
       ? price.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : EMPTY_TEXT;
@@ -366,16 +442,15 @@ function renderBestPriceTable() {
         <td style="font-weight:600;">${supName}</td>
         <td style="font-size:13px;color:var(--s-soft);">${item.spec || EMPTY_TEXT}</td>
         <td style="white-space:nowrap;">${item.unit || EMPTY_TEXT}</td>
-        <td class="s-price">¥${priceStr}</td>
+        <td class="s-price">\u00A5${priceStr}</td>
         <td style="font-size:12px;color:var(--s-soft);">${currency}</td>
         <td class="s-price">${EMPTY_TEXT}</td>
-        <td>${isLowest ? `<span class="s-badge lowest">最低价</span>` : ""}</td>
-        <td><button class="s-act ok" data-select-compare-item="${item.id}">选用</button></td>
+        <td>${isLowest ? `<span class="s-badge lowest">\u6700\u4f4e\u4ef7</span>` : ""}</td>
+        <td><button class="s-act ok" data-select-compare-item="${item.id}">\u9009\u7528</button></td>
       </tr>`;
   }).join("");
 }
 
-// ── 分类管理弹窗渲染 ───────────────────────────────────────
 function showCatMessage(text, type) {
   const el = getRequiredElement("cat-message");
   el.textContent = text;
@@ -622,12 +697,14 @@ async function bootstrap() {
   // 筛选栏事件
   on("global-search", "input", (e) => {
     state.filters.global = e.target.value.trim();
+    resetPagination("items");
     renderSupplierList();
     renderItemTable();
   });
 
   on("filter-supplier-bar", "change", async (e) => {
     state.selectedSupplierId = e.target.value || null;
+    resetPagination("items");
     renderSupplierList();
     await loadItems();
     renderItemTable();
@@ -636,11 +713,13 @@ async function bootstrap() {
 
   on("filter-category", "change", (e) => {
     state.filters.category = e.target.value;
+    resetPagination("items");
     renderItemTable();
   });
 
   on("filter-status", "change", async (e) => {
     state.filters.status = e.target.value;
+    resetPagination("items");
     await loadItems();
     renderItemTable();
     updateKPI();
@@ -648,13 +727,45 @@ async function bootstrap() {
 
   on("toggle-best-price", "change", (e) => {
     state.filters.bestPriceOnly = e.target.checked;
+    resetPagination("items");
     renderItemTable();
   });
 
   on("supplier-search", "input", () => renderSupplierList());
 
+  on("page-prev", "click", () => {
+    state.pagination.items.page = Math.max(1, state.pagination.items.page - 1);
+    renderItemTable();
+  });
+
+  on("page-next", "click", () => {
+    state.pagination.items.page += 1;
+    renderItemTable();
+  });
+
+  on("page-size-sel", "change", (e) => {
+    setPaginationPageSize("items", Number(e.target.value) || DEFAULT_PAGE_SIZE);
+    renderItemTable();
+  });
+
+  on("best-price-page-prev", "click", () => {
+    state.pagination.bestPrice.page = Math.max(1, state.pagination.bestPrice.page - 1);
+    renderBestPriceTable();
+  });
+
+  on("best-price-page-next", "click", () => {
+    state.pagination.bestPrice.page += 1;
+    renderBestPriceTable();
+  });
+
+  on("best-price-page-size", "change", (e) => {
+    setPaginationPageSize("bestPrice", Number(e.target.value) || DEFAULT_PAGE_SIZE);
+    renderBestPriceTable();
+  });
+
   // 比价按钮
   on("btn-compare", "click", async () => {
+    resetPagination("bestPrice");
     const itemSel  = getOptionalElement("compare-item-sel");
     const dateFrom = getOptionalElement("compare-date-from");
     const dateTo   = getOptionalElement("compare-date-to");
@@ -674,6 +785,7 @@ async function bootstrap() {
   on("btn-refresh-best-price", "click", async () => {
     const emptyEl = getRequiredElement("best-price-empty");
     const tableEl = getRequiredElement("best-price-table");
+    resetPagination("bestPrice");
     emptyEl.textContent   = "加载中…";
     emptyEl.style.display = "";
     tableEl.style.display = "none";
@@ -695,6 +807,7 @@ async function bootstrap() {
 
   on("btn-view-all-items", "click", async () => {
     state.selectedSupplierId = null;
+    resetPagination("items");
     const sel = getOptionalElement("filter-supplier-bar");
     if (sel) sel.value = "";
     renderSupplierList();
@@ -815,6 +928,7 @@ async function bootstrap() {
     const supCard = e.target.closest("[data-select-supplier]");
     if (supCard && !e.target.closest("button")) {
       state.selectedSupplierId = supCard.dataset.selectSupplier;
+      resetPagination("items");
       const sel = getOptionalElement("filter-supplier-bar");
       if (sel) sel.value = state.selectedSupplierId;
       await loadItems();
