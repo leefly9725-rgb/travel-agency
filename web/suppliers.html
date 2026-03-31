@@ -1064,6 +1064,264 @@
       padding-bottom: 6px;
     }
 
+    .suppliers-page .s-page-head-left h1,
+    .suppliers-page .s-kpi-value,
+    .suppliers-page .sup-main > .s-card:first-child .s-card-title,
+    .suppliers-page .s-sup-name,
+    .suppliers-page .sup-main .s-price {
+      color: #132238;
+    }
+
+    .suppliers-page .s-page-head-left p,
+    .suppliers-page .s-card-sub,
+    .suppliers-page .s-kpi-meta,
+    .suppliers-page .s-sup-meta,
+    .suppliers-page .s-compare-hint,
+    .suppliers-page .s-panel-badge {
+      color: #718096;
+    }
+
+    .suppliers-page .s-page-head {
+      align-items: flex-end;
+      justify-content: space-between;
+    }
+
+    .suppliers-page .s-page-head-left {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .suppliers-page .s-page-head-left h1 {
+      font-size: 19px;
+      font-weight: 700;
+      margin-bottom: 0;
+    }
+
+    .suppliers-page .s-page-head-left p {
+      margin: 0;
+      max-width: 720px;
+    }
+
+    .suppliers-page .sup-toolbar {
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      border-color: rgba(20, 36, 60, 0.12);
+      background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+    }
+
+    .suppliers-page .sup-toolbar-left,
+    .suppliers-page .sup-toolbar-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+      flex-wrap: nowrap;
+    }
+
+    .suppliers-page .sup-toolbar-left {
+      flex: 1 1 auto;
+      justify-content: flex-start;
+    }
+
+    .suppliers-page .sup-toolbar-right {
+      flex: 0 0 auto;
+      justify-content: flex-end;
+    }
+
+    .suppliers-page .sup-toolbar .s-filter-sep {
+      margin-inline: 1px;
+      height: 18px;
+      background: rgba(148, 163, 184, 0.45);
+    }
+
+    .suppliers-page .sup-toolbar input[type="search"] {
+      flex: 0 1 320px;
+      min-width: 260px;
+      max-width: 340px;
+      background: #ffffff;
+    }
+
+    .suppliers-page .sup-toolbar select {
+      min-width: 122px;
+      background: #ffffff;
+    }
+
+    .suppliers-page .sup-filter-toggle {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      color: #526072;
+    }
+
+    .suppliers-page .sup-toolbar .s-btn {
+      font-weight: 500;
+    }
+
+    .suppliers-page .sup-toolbar-right .s-btn {
+      background: #ffffff;
+      color: #516072;
+      border-color: rgba(20, 36, 60, 0.10);
+    }
+
+    .suppliers-page .sup-toolbar-right .s-btn:hover {
+      background: #f8fafc;
+      color: #1f2c3d;
+    }
+
+    .suppliers-page #btn-new-supplier {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+      color: #1d4ed8;
+    }
+
+    .suppliers-page #btn-new-item {
+      border-color: #1d4ed8;
+      box-shadow: 0 7px 16px rgba(29, 78, 216, 0.16);
+    }
+
+    .suppliers-page .s-kpi-card {
+      align-items: center;
+      border-color: rgba(20, 36, 60, 0.08);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.04);
+    }
+
+    .suppliers-page .s-kpi-body {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .suppliers-page .s-kpi-label {
+      color: #6b7280;
+      font-weight: 600;
+    }
+
+    .suppliers-page .s-kpi-value {
+      font-size: 23px;
+      font-weight: 700;
+    }
+
+    .suppliers-page .sup-sidebar {
+      background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+    }
+
+    .suppliers-page .s-sup-card-head {
+      align-items: flex-start;
+    }
+
+    .suppliers-page .s-sup-name {
+      font-weight: 600;
+    }
+
+    .suppliers-page .s-sup-meta {
+      gap: 4px;
+    }
+
+    .suppliers-page .s-sup-card.active {
+      background: linear-gradient(180deg, #f3f7ff 0%, #edf4ff 100%);
+      border-color: #bfd7ff;
+      box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.28);
+    }
+
+    .suppliers-page .sup-main > .s-card:first-child .s-card-head {
+      padding-bottom: 11px;
+      border-bottom-color: rgba(20, 36, 60, 0.08);
+    }
+
+    .suppliers-page .sup-main > .s-card:first-child .s-card-title,
+    .suppliers-page #best-price-card .s-card-title {
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .suppliers-page .sup-main .sup-table th,
+    .suppliers-page #best-price-card .sup-table th {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #475467;
+      border-bottom-width: 1px;
+      border-bottom-color: rgba(20, 36, 60, 0.10);
+    }
+
+    .suppliers-page .sup-main .sup-table th {
+      background: #f5f7fb;
+    }
+
+    .suppliers-page #best-price-card .sup-table th {
+      background: #f8fafc;
+      color: #667085;
+    }
+
+    .suppliers-page .sup-main .sup-table td,
+    .suppliers-page #best-price-card .sup-table td {
+      vertical-align: middle;
+    }
+
+    .suppliers-page .sup-main .sup-table tbody tr:hover {
+      background: #f8fbff;
+    }
+
+    .suppliers-page #best-price-card .sup-table tbody tr:hover {
+      background: #fbfdff;
+    }
+
+    .suppliers-page .sup-main .sup-table th:nth-child(5),
+    .suppliers-page .sup-main .sup-table td:nth-child(5),
+    .suppliers-page #best-price-card .sup-table th:nth-child(4),
+    .suppliers-page #best-price-card .sup-table td:nth-child(4),
+    .suppliers-page #best-price-card .sup-table th:nth-child(6),
+    .suppliers-page #best-price-card .sup-table td:nth-child(6) {
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .suppliers-page .sup-main .sup-table td:nth-child(5),
+    .suppliers-page #best-price-card .sup-table td:nth-child(4),
+    .suppliers-page #best-price-card .sup-table td:nth-child(6) {
+      font-weight: 600;
+      color: #132238;
+    }
+
+    .suppliers-page .sup-main .sup-table th:last-child,
+    .suppliers-page .sup-main .sup-table td:last-child,
+    .suppliers-page #best-price-card .sup-table th:last-child,
+    .suppliers-page #best-price-card .sup-table td:last-child {
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .suppliers-page .sup-main .s-row-actions,
+    .suppliers-page #best-price-card .s-row-actions {
+      gap: 8px;
+    }
+
+    .suppliers-page .sup-main .s-row-actions a,
+    .suppliers-page #best-price-card .s-row-actions a {
+      color: #667085;
+    }
+
+    .suppliers-page .sup-main .s-row-actions a:hover,
+    .suppliers-page #best-price-card .s-row-actions a:hover {
+      color: #1d4ed8;
+    }
+
+    .suppliers-page #best-price-card {
+      border-color: rgba(20, 36, 60, 0.07);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.035);
+    }
+
+    .suppliers-page #best-price-card .s-card-head,
+    .suppliers-page #best-price-card .s-compare-bar,
+    .suppliers-page #best-price-card .s-pagination-light {
+      background: #fbfcfe;
+    }
+
+    .suppliers-page #best-price-card .s-compare-bar {
+      gap: 6px;
+    }
+
     @media (max-width: 1240px) {
       .suppliers-page .sup-toolbar,
       .suppliers-page .sup-toolbar-filters,
@@ -1102,12 +1360,6 @@
         <h1>供应商管理 / 价格库工作台</h1>
         <p>维护供应商信息与价格库，支持比价与选库</p>
       </div>
-      <div class="s-page-head-actions sup-toolbar-actions">
-        <button class="s-btn" id="btn-manage-categories">⊞ 分类管理</button>
-        <button class="s-btn" id="btn-batch-import">↑ 批量导入物料价格</button>
-        <button class="s-btn" id="btn-new-supplier">＋ 新增供应商</button>
-        <button class="s-btn s-btn-primary" id="btn-new-item">＋ 新增物料价格</button>
-      </div>
     </div>
 
     <!-- ── 消息提示 ── -->
@@ -1115,18 +1367,26 @@
 
     <!-- ── 筛选栏 ── -->
     <div class="s-filter-bar sup-toolbar sup-toolbar-filters">
-      <input type="search" id="global-search" placeholder="🔍 搜索供应商 / 物料名称 / 规格..." />
-      <select id="filter-supplier-bar"><option value="">供应商：全部</option></select>
-      <select id="filter-category"><option value="">类别：全部</option></select>
-      <select id="filter-status">
-        <option value="active" selected>状态：启用中</option>
-        <option value="">状态：全部</option>
-        <option value="inactive">状态：停用</option>
-      </select>
-      <div class="s-filter-sep"></div>
-      <label class="s-toggle-label">
-        <input type="checkbox" id="toggle-best-price" /> 只看最低价
-      </label>
+      <div class="sup-toolbar-left sup-filter-group">
+        <input type="search" id="global-search" placeholder="🔍 搜索供应商 / 物料名称 / 规格..." />
+        <select id="filter-supplier-bar"><option value="">供应商：全部</option></select>
+        <select id="filter-category"><option value="">类别：全部</option></select>
+        <select id="filter-status">
+          <option value="active" selected>状态：启用中</option>
+          <option value="">状态：全部</option>
+          <option value="inactive">状态：停用</option>
+        </select>
+        <div class="s-filter-sep"></div>
+        <label class="s-toggle-label sup-filter-toggle">
+          <input type="checkbox" id="toggle-best-price" /> 只看最低价
+        </label>
+      </div>
+      <div class="sup-toolbar-right sup-toolbar-actions">
+        <button class="s-btn" id="btn-manage-categories">⊞ 分类管理</button>
+        <button class="s-btn" id="btn-batch-import">↑ 批量导入物料价格</button>
+        <button class="s-btn" id="btn-new-supplier">＋ 新增供应商</button>
+        <button class="s-btn s-btn-primary" id="btn-new-item">＋ 新增物料价格</button>
+      </div>
     </div>
 
     <!-- ── KPI 行 ── -->
