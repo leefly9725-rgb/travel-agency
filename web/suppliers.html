@@ -8,621 +8,724 @@
   <script src="/auth-guard.js"></script>
   <link rel="stylesheet" href="/app-shell.css" />
   <style>
-    *, *::before, *::after { box-sizing: border-box; }
-
+    /* ── 覆盖 page-shell 自带背景，融入 app-shell 米色体系 ── */
     .suppliers-page {
-      --c-bg:             #f0f2f5;
-      --c-white:          #ffffff;
-      --c-border:         #e4e8ef;
-      --c-border-strong:  #cdd4e0;
-      --c-text:           #1a2233;
-      --c-text-soft:      #5b6478;
-      --c-text-faint:     #8b95a8;
-      --c-navy:           #1B2A4A;
-      --c-gold:           #C9A84C;
-      --c-accent:         #2563eb;
-      --c-accent-soft:    #eff6ff;
-      --c-accent-dark:    #1d4ed8;
-      --c-success:        #15803d;
-      --c-success-bg:     #f0fdf4;
-      --c-success-border: #bbf7d0;
-      --c-danger:         #dc2626;
-      --c-danger-bg:      #fef2f2;
-      --c-danger-border:  #fecaca;
-      --c-shadow:         0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
-      --c-radius:         10px;
-      --c-radius-sm:      6px;
-      --c-radius-lg:      14px;
-
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      background: var(--c-bg);
-      color: var(--c-text);
-      font-family: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
-      font-size: 14px;
+      background: transparent !important;
+      padding: 0 !important;
+      gap: 0 !important;
+      min-height: 0 !important;
     }
 
-    .page-content {
-      padding: 20px 24px 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
+    /* ── CSS 变量 ── */
+    .suppliers-page {
+      --s-white:   #ffffff;
+      --s-bg:      #f5f0e8;
+      --s-border:  rgba(30,36,48,0.10);
+      --s-border-strong: rgba(30,36,48,0.16);
+      --s-text:    #1e2430;
+      --s-soft:    #5f6b7a;
+      --s-faint:   #8993a4;
+      --s-navy:    #102346;
+      --s-gold:    #c7a15a;
+      --s-accent:  #2563eb;
+      --s-accent-soft: #eff6ff;
+      --s-accent-dark: #1d4ed8;
+      --s-success: #15803d;
+      --s-success-bg: #f0fdf4;
+      --s-success-bd: #bbf7d0;
+      --s-danger:  #dc2626;
+      --s-danger-bg:  #fef2f2;
+      --s-danger-bd:  #fecaca;
+      --s-shadow:  0 1px 3px rgba(30,36,48,0.07), 0 1px 2px rgba(30,36,48,0.04);
+      --s-shadow-md: 0 4px 12px rgba(30,36,48,0.08);
+      --s-r:  8px;
+      --s-rs: 5px;
+      --s-rl: 12px;
     }
 
-    .page-header {
+    /* ── 内容包装器 ── */
+    .s-wrap {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    /* ── 页面标题区 ── */
+    .s-page-head {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
+      gap: 14px;
       flex-wrap: wrap;
     }
 
-    .page-header-left h1 {
-      margin: 0 0 4px;
-      font-size: 21px;
+    .s-page-head-left h1 {
+      margin: 0 0 3px;
+      font-size: 20px;
       font-weight: 700;
-      color: var(--c-text);
+      color: var(--s-navy);
       letter-spacing: -0.01em;
     }
 
-    .page-header-left p {
+    .s-page-head-left p {
       margin: 0;
-      font-size: 13px;
-      color: var(--c-text-soft);
+      font-size: 12px;
+      color: var(--s-soft);
     }
 
-    .page-header-actions {
+    .s-page-head-actions {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 7px;
       flex-wrap: wrap;
-      flex-shrink: 0;
     }
 
-    .btn {
+    /* ── 通用按钮 ── */
+    .s-btn {
       display: inline-flex;
       align-items: center;
-      gap: 5px;
-      height: 36px;
-      padding: 0 14px;
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius-sm);
-      background: var(--c-white);
-      color: var(--c-text);
-      font: 600 13px/1 inherit;
+      gap: 4px;
+      height: 34px;
+      padding: 0 13px;
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-rs);
+      background: var(--s-white);
+      color: var(--s-text);
+      font: 600 12px/1 inherit;
       cursor: pointer;
       white-space: nowrap;
-      transition: background 0.13s, border-color 0.13s;
+      transition: background .13s, border-color .13s;
       text-decoration: none;
     }
 
-    .btn:hover { background: #f5f7fa; border-color: var(--c-border-strong); }
+    .s-btn:hover { background: #f8f6f2; border-color: var(--s-border-strong); }
 
-    .btn-primary {
-      background: var(--c-navy);
-      border-color: var(--c-navy);
+    .s-btn-primary {
+      background: var(--s-navy);
+      border-color: var(--s-navy);
       color: #fff;
     }
-    .btn-primary:hover { background: #243d68; border-color: #243d68; }
+    .s-btn-primary:hover { background: #1a3a6e; }
 
-    .btn-ghost-blue {
-      background: var(--c-accent-soft);
+    .s-btn-blue {
+      background: var(--s-accent-soft);
       border-color: #bfdbfe;
-      color: var(--c-accent-dark);
+      color: var(--s-accent-dark);
     }
-    .btn-ghost-blue:hover { background: #dbeafe; border-color: #93c5fd; }
+    .s-btn-blue:hover { background: #dbeafe; }
 
-    .btn-sm { height: 30px; padding: 0 10px; font-size: 12px; }
-    .btn-icon { font-size: 14px; line-height: 1; }
+    .s-btn-sm {
+      height: 28px;
+      padding: 0 9px;
+      font-size: 11px;
+    }
 
-    .filter-bar {
+    /* ── 筛选栏 ── */
+    .s-filter-bar {
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 14px;
-      background: var(--c-white);
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius);
-      box-shadow: var(--c-shadow);
+      gap: 7px;
+      padding: 9px 13px;
+      background: var(--s-white);
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-r);
+      box-shadow: var(--s-shadow);
       flex-wrap: wrap;
     }
 
-    .filter-bar input[type="search"],
-    .filter-bar select {
-      height: 32px;
-      padding: 0 10px;
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius-sm);
-      background: #f8fafc;
-      color: var(--c-text);
-      font: 13px/1 inherit;
+    .s-filter-bar input[type="search"],
+    .s-filter-bar select {
+      height: 30px;
+      padding: 0 9px;
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-rs);
+      background: #faf8f4;
+      color: var(--s-text);
+      font: 12px/1 inherit;
       outline: none;
+      transition: border-color .12s;
     }
 
-    .filter-bar input[type="search"] { width: 260px; }
-    .filter-bar select { min-width: 120px; }
-    .filter-bar input[type="search"]:focus,
-    .filter-bar select:focus { border-color: #93c5fd; background: var(--c-white); }
+    .s-filter-bar input[type="search"] { width: 240px; }
+    .s-filter-bar select { min-width: 110px; }
+    .s-filter-bar input:focus,
+    .s-filter-bar select:focus { border-color: #93c5fd; background: #fff; }
 
-    .filter-sep { width: 1px; height: 18px; background: var(--c-border); flex-shrink: 0; }
+    .s-filter-sep { width: 1px; height: 16px; background: var(--s-border); flex-shrink: 0; }
 
-    .toggle-label {
+    .s-toggle-label {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      font-size: 13px;
-      color: var(--c-text-soft);
+      gap: 5px;
+      font-size: 12px;
+      color: var(--s-soft);
       cursor: pointer;
       white-space: nowrap;
       user-select: none;
     }
 
-    .kpi-row {
+    /* ── KPI 行 ── */
+    .s-kpi-row {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(4,1fr);
+      gap: 10px;
+    }
+
+    .s-kpi-card {
+      display: flex;
+      align-items: flex-start;
       gap: 12px;
+      padding: 14px 16px;
+      background: var(--s-white);
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-r);
+      box-shadow: var(--s-shadow);
     }
 
-    .kpi-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 16px 18px;
-      background: var(--c-white);
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius);
-      box-shadow: var(--c-shadow);
-    }
-
-    .kpi-card {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      padding: 16px 18px;
-      background: var(--c-white);
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius);
-      box-shadow: var(--c-shadow);
-    }
-
-    .kpi-icon {
-      width: 44px; height: 44px;
-      border-radius: 10px;
+    .s-kpi-icon {
+      width: 40px; height: 40px;
+      border-radius: 9px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
+      font-size: 18px; flex-shrink: 0;
     }
 
-    .kpi-icon-blue   { background: #eff6ff; }
-    .kpi-icon-orange { background: #fff7ed; }
-    .kpi-icon-green  { background: #f0fdf4; }
-    .kpi-icon-purple { background: #f5f3ff; }
+    .s-ki-blue   { background: #eff6ff; }
+    .s-ki-orange { background: #fff7ed; }
+    .s-ki-green  { background: #f0fdf4; }
+    .s-ki-purple { background: #f5f3ff; }
 
-    .kpi-body { flex: 1; min-width: 0; }
+    .s-kpi-body { flex: 1; min-width: 0; }
 
-    .kpi-label { margin: 0 0 5px; font-size: 12px; color: var(--c-text-soft); font-weight: 500; }
-    .kpi-value { margin: 0 0 5px; font-size: 26px; font-weight: 800; color: var(--c-text); letter-spacing: -0.03em; line-height: 1.1; }
-    .kpi-meta  { margin: 0; font-size: 12px; color: var(--c-text-faint); }
-    .kpi-meta .hi { color: var(--c-success); font-weight: 600; }
+    .s-kpi-label {
+      margin: 0 0 4px;
+      font-size: 11px;
+      color: var(--s-soft);
+      font-weight: 500;
+    }
 
-    .workspace {
+    .s-kpi-value {
+      margin: 0 0 4px;
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--s-text);
+      letter-spacing: -0.03em;
+      line-height: 1.1;
+    }
+
+    .s-kpi-meta { margin: 0; font-size: 11px; color: var(--s-faint); }
+    .s-kpi-meta .hi { color: var(--s-success); font-weight: 600; }
+
+    /* ── 主工作区 ── */
+    .s-workspace {
       display: grid;
-      grid-template-columns: 272px 1fr;
-      gap: 14px;
+      grid-template-columns: 256px 1fr;
+      gap: 12px;
       align-items: start;
     }
 
-    .supplier-panel {
-      background: var(--c-white);
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius);
-      box-shadow: var(--c-shadow);
+    /* ── 供应商面板 ── */
+    .s-sup-panel {
+      background: var(--s-white);
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-r);
+      box-shadow: var(--s-shadow);
       overflow: hidden;
+    }
+
+    .s-panel-head {
+      padding: 11px 13px 9px;
+      border-bottom: 1px solid var(--s-border);
+      background: #faf8f4;
+    }
+
+    .s-panel-head-top {
       display: flex;
-      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
     }
 
-    .panel-head { padding: 12px 14px 10px; border-bottom: 1px solid var(--c-border); background: #fafbfd; }
-    .panel-head-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 9px; }
-    .panel-title { margin: 0; font-size: 14px; font-weight: 700; color: var(--c-text); }
+    .s-panel-title { margin: 0; font-size: 13px; font-weight: 700; color: var(--s-text); }
 
-    .panel-count-badge {
-      font-size: 11px; color: var(--c-text-faint);
-      background: #f0f2f5; padding: 2px 8px; border-radius: 99px; font-weight: 600;
+    .s-panel-badge {
+      font-size: 10px; color: var(--s-faint);
+      background: #f0ece4; padding: 2px 7px;
+      border-radius: 99px; font-weight: 600;
     }
 
-    .panel-search {
-      display: block; width: 100%; height: 30px; padding: 0 10px;
-      border: 1px solid var(--c-border); border-radius: var(--c-radius-sm);
-      background: var(--c-white); font: 13px/1 inherit; color: var(--c-text); outline: none;
+    .s-panel-search {
+      display: block; width: 100%; height: 28px;
+      padding: 0 9px;
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-rs);
+      background: #fff;
+      font: 12px/1 inherit; color: var(--s-text); outline: none;
     }
-    .panel-search:focus { border-color: #93c5fd; }
+    .s-panel-search:focus { border-color: #93c5fd; }
 
-    .supplier-list {
-      padding: 8px; overflow-y: auto; max-height: 640px;
-      display: flex; flex-direction: column; gap: 3px;
+    .s-sup-list {
+      padding: 6px;
+      overflow-y: auto;
+      max-height: 620px;
+      display: flex; flex-direction: column; gap: 2px;
     }
 
-    .sup-card {
-      padding: 10px 11px 9px;
-      border: 1px solid transparent; border-radius: 7px;
-      cursor: pointer; transition: background 0.12s, border-color 0.12s;
+    /* 供应商卡片 */
+    .s-sup-card {
+      padding: 9px 10px 8px;
+      border: 1px solid transparent;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background .12s, border-color .12s;
     }
-    .sup-card:hover   { background: #f5f7fa; border-color: var(--c-border); }
-    .sup-card.active  { background: var(--c-accent-soft); border-color: #93c5fd; }
-    .sup-card.inactive { opacity: 0.58; }
 
-    .sup-card-head { display: flex; align-items: center; gap: 7px; margin-bottom: 6px; }
+    .s-sup-card:hover   { background: #f5f0e8; border-color: var(--s-border); }
+    .s-sup-card.active  { background: var(--s-accent-soft); border-color: #93c5fd; }
+    .s-sup-card.inactive { opacity: 0.55; }
 
-    .sup-card-name {
-      flex: 1; min-width: 0; font-size: 13px; font-weight: 700; color: var(--c-text);
+    .s-sup-card-head {
+      display: flex; align-items: center; gap: 6px; margin-bottom: 5px;
+    }
+
+    .s-sup-name {
+      flex: 1; min-width: 0;
+      font-size: 12px; font-weight: 700; color: var(--s-text);
       white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    .sup-type-badge {
+    /* 供应商类型 badge */
+    .s-type-badge {
       display: inline-flex; align-items: center;
-      height: 18px; padding: 0 6px; border-radius: 4px;
+      height: 16px; padding: 0 5px; border-radius: 3px;
       font-size: 10px; font-weight: 700; flex-shrink: 0;
     }
-    .badge-hotel { background: #dbeafe; color: #1d4ed8; }
-    .badge-dmc   { background: #dcfce7; color: #15803d; }
-    .badge-trans { background: #fef9c3; color: #a16207; }
-    .badge-food  { background: #ffe4e6; color: #be123c; }
-    .badge-venue { background: #f3e8ff; color: #7e22ce; }
-    .badge-other { background: #f1f5f9; color: #64748b; }
 
-    .sup-card-meta { font-size: 11px; color: var(--c-text-faint); display: flex; flex-direction: column; gap: 2px; }
-    .sup-card-meta-row { display: flex; align-items: center; justify-content: space-between; }
+    .sb-hotel { background: #dbeafe; color: #1d4ed8; }
+    .sb-dmc   { background: #dcfce7; color: #15803d; }
+    .sb-trans { background: #fef9c3; color: #a16207; }
+    .sb-food  { background: #ffe4e6; color: #be123c; }
+    .sb-venue { background: #f3e8ff; color: #7e22ce; }
+    .sb-other { background: #f1f5f9; color: #64748b; }
 
-    .sup-status-dot { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; }
-    .sup-status-dot::before { content: ''; display: block; width: 6px; height: 6px; border-radius: 50%; }
-    .sup-status-dot.active   { color: var(--c-success); }
-    .sup-status-dot.active::before   { background: var(--c-success); }
-    .sup-status-dot.inactive { color: var(--c-text-faint); }
-    .sup-status-dot.inactive::before { background: var(--c-text-faint); }
+    .s-sup-meta {
+      font-size: 11px; color: var(--s-faint);
+      display: flex; flex-direction: column; gap: 2px;
+    }
 
-    .main-col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+    .s-sup-meta-row {
+      display: flex; align-items: center; justify-content: space-between;
+    }
 
-    .card {
-      background: var(--c-white);
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius);
-      box-shadow: var(--c-shadow);
+    .s-status-dot {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 600;
+    }
+
+    .s-status-dot::before {
+      content: ''; display: block; width: 5px; height: 5px; border-radius: 50%;
+    }
+
+    .s-status-dot.on  { color: var(--s-success); }
+    .s-status-dot.on::before  { background: var(--s-success); }
+    .s-status-dot.off { color: var(--s-faint); }
+    .s-status-dot.off::before { background: var(--s-faint); }
+
+    /* ── 右侧主列 ── */
+    .s-main-col {
+      display: flex; flex-direction: column; gap: 12px; min-width: 0;
+    }
+
+    /* ── 通用卡片 ── */
+    .s-card {
+      background: var(--s-white);
+      border: 1px solid var(--s-border);
+      border-radius: var(--s-r);
+      box-shadow: var(--s-shadow);
       overflow: hidden;
     }
 
-    .card-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 12px 16px 11px; border-bottom: 1px solid var(--c-border); background: #fafbfd;
+    .s-card-head {
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 11px 15px 10px;
+      border-bottom: 1px solid var(--s-border);
+      background: #faf8f4;
     }
-    .card-head-left { min-width: 0; }
-    .card-title    { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: var(--c-text); }
-    .card-subtitle { margin: 0; font-size: 12px; color: var(--c-text-faint); }
-    .card-head-actions { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 
-    .data-table-wrap { overflow-x: auto; }
+    .s-card-title { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--s-text); }
+    .s-card-sub   { margin: 0; font-size: 11px; color: var(--s-faint); }
+    .s-card-head-actions { display: flex; align-items: center; gap: 7px; }
 
-    .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    /* ── 数据表格 ── */
+    .s-table-wrap { overflow-x: auto; }
 
-    .data-table th {
-      padding: 9px 13px; text-align: left;
-      font-size: 11px; font-weight: 700; color: var(--c-text-faint);
+    .s-table {
+      width: 100%; border-collapse: collapse; font-size: 12px;
+    }
+
+    .s-table th {
+      padding: 8px 12px; text-align: left;
+      font-size: 10px; font-weight: 700; color: var(--s-faint);
       text-transform: uppercase; letter-spacing: 0.05em;
-      background: #f8fafc; border-bottom: 1px solid var(--c-border); white-space: nowrap;
+      background: #faf8f4; border-bottom: 1px solid var(--s-border);
+      white-space: nowrap;
     }
 
-    .data-table td {
-      padding: 10px 13px; border-bottom: 1px solid #f0f3f7;
-      vertical-align: middle; color: var(--c-text);
+    .s-table td {
+      padding: 9px 12px;
+      border-bottom: 1px solid #f0ece4;
+      vertical-align: middle; color: var(--s-text);
     }
 
-    .data-table tbody tr:last-child td { border-bottom: none; }
-    .data-table tbody tr:hover td { background: #f8fafc; }
-    .data-table tbody tr.row-inactive { opacity: 0.55; }
+    .s-table tbody tr:last-child td { border-bottom: none; }
+    .s-table tbody tr:hover td { background: #faf8f4; }
+    .s-table tbody tr.row-inactive { opacity: 0.52; }
 
-    .status-badge {
+    /* 状态标签 */
+    .s-badge {
       display: inline-flex; align-items: center;
-      height: 20px; padding: 0 8px; border-radius: 4px;
-      font-size: 11px; font-weight: 700; border: 1px solid;
+      height: 18px; padding: 0 7px;
+      border-radius: 3px; font-size: 10px; font-weight: 700; border: 1px solid;
     }
-    .status-badge.active   { background: var(--c-success-bg); color: var(--c-success); border-color: var(--c-success-border); }
-    .status-badge.inactive { background: #f8fafc; color: var(--c-text-faint); border-color: var(--c-border); }
-    .status-badge.lowest   { background: #dcfce7; color: var(--c-success); border-color: var(--c-success-border); }
 
-    .row-actions { display: flex; align-items: center; gap: 2px; white-space: nowrap; }
+    .s-badge.on     { background: var(--s-success-bg); color: var(--s-success); border-color: var(--s-success-bd); }
+    .s-badge.off    { background: #f8f6f2; color: var(--s-faint); border-color: var(--s-border); }
+    .s-badge.lowest { background: #dcfce7; color: var(--s-success); border-color: var(--s-success-bd); }
 
-    .act-btn {
+    /* 类别标签 */
+    .s-cat-pill {
+      display: inline-flex; align-items: center;
+      height: 18px; padding: 0 7px; border-radius: 3px;
+      font-size: 10px; font-weight: 600;
+      background: #f0ece4; color: var(--s-soft);
+      border: 1px solid var(--s-border);
+    }
+
+    /* 行操作链接 */
+    .s-row-actions { display: flex; align-items: center; gap: 1px; white-space: nowrap; }
+
+    .s-act {
       background: none; border: none; padding: 2px 5px;
-      font: 13px/1 inherit; cursor: pointer; color: var(--c-accent);
-      border-radius: 3px; transition: background 0.1s;
+      font: 12px/1 inherit; cursor: pointer;
+      color: var(--s-accent); border-radius: 3px;
+      transition: background .1s;
     }
-    .act-btn:hover         { background: var(--c-accent-soft); }
-    .act-btn.danger        { color: var(--c-danger); }
-    .act-btn.danger:hover  { background: var(--c-danger-bg); }
-    .act-btn.success       { color: var(--c-success); }
-    .act-btn.success:hover { background: var(--c-success-bg); }
 
-    .act-sep { color: var(--c-border-strong); font-size: 11px; padding: 0 1px; }
-    .price-val { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .s-act:hover        { background: var(--s-accent-soft); }
+    .s-act.danger       { color: var(--s-danger); }
+    .s-act.danger:hover { background: var(--s-danger-bg); }
+    .s-act.ok           { color: var(--s-success); }
+    .s-act.ok:hover     { background: var(--s-success-bg); }
 
-    .pagination {
+    .s-act-sep { color: var(--s-border-strong); font-size: 10px; padding: 0 1px; }
+
+    .s-price { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+    /* ── 分页 ── */
+    .s-pagination {
       display: flex; align-items: center; justify-content: space-between;
-      padding: 9px 14px; border-top: 1px solid var(--c-border); background: #fafbfd;
-      font-size: 12px; color: var(--c-text-soft); flex-wrap: wrap; gap: 8px;
+      padding: 8px 13px; border-top: 1px solid var(--s-border);
+      background: #faf8f4; font-size: 11px; color: var(--s-soft);
+      flex-wrap: wrap; gap: 6px;
     }
 
-    .page-btns { display: flex; align-items: center; gap: 3px; }
+    .s-page-btns { display: flex; align-items: center; gap: 3px; }
 
-    .page-btn {
-      min-width: 28px; height: 26px; padding: 0 6px;
-      border: 1px solid var(--c-border); border-radius: 4px;
-      background: var(--c-white); font: 12px/1 inherit; cursor: pointer; color: var(--c-text-soft);
-      transition: all 0.1s;
-    }
-    .page-btn:hover:not(:disabled) { border-color: var(--c-border-strong); background: #f5f7fa; }
-    .page-btn.active   { background: var(--c-navy); border-color: var(--c-navy); color: #fff; }
-    .page-btn:disabled { opacity: 0.38; cursor: default; }
-
-    .page-size-sel {
-      height: 26px; padding: 0 6px;
-      border: 1px solid var(--c-border); border-radius: 4px;
-      font: 12px/1 inherit; color: var(--c-text-soft); background: var(--c-white);
+    .s-page-btn {
+      min-width: 26px; height: 24px; padding: 0 5px;
+      border: 1px solid var(--s-border); border-radius: 3px;
+      background: #fff; font: 11px/1 inherit; cursor: pointer;
+      color: var(--s-soft); transition: all .1s;
     }
 
-    .compare-bar {
-      display: flex; align-items: center; gap: 10px;
-      padding: 10px 16px; border-bottom: 1px solid var(--c-border);
-      background: #fafbfd; flex-wrap: wrap;
-    }
-    .compare-bar label { font-size: 12px; color: var(--c-text-soft); font-weight: 500; white-space: nowrap; }
-    .compare-bar select,
-    .compare-bar input[type="date"] {
-      height: 30px; padding: 0 8px;
-      border: 1px solid var(--c-border); border-radius: var(--c-radius-sm);
-      background: var(--c-white); font: 13px/1 inherit; color: var(--c-text); outline: none;
-    }
-    .compare-bar select { min-width: 200px; }
-    .compare-bar input[type="date"]:focus,
-    .compare-bar select:focus { border-color: #93c5fd; }
+    .s-page-btn:hover:not(:disabled) { border-color: var(--s-border-strong); background: #f8f6f2; }
+    .s-page-btn.active { background: var(--s-navy); border-color: var(--s-navy); color: #fff; }
+    .s-page-btn:disabled { opacity: 0.35; cursor: default; }
 
-    .compare-date-wrap { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--c-text-faint); }
-
-    .compare-hint {
-      padding: 8px 16px; font-size: 12px; color: var(--c-text-faint);
-      border-top: 1px solid var(--c-border); background: #fafbfd;
+    .s-page-size {
+      height: 24px; padding: 0 5px;
+      border: 1px solid var(--s-border); border-radius: 3px;
+      font: 11px/1 inherit; color: var(--s-soft); background: #fff;
     }
 
-    .message-box { padding: 9px 14px; border-radius: var(--c-radius-sm); font-size: 13px; border: 1px solid; }
-    .message-box.success { background: var(--c-success-bg); color: var(--c-success); border-color: var(--c-success-border); }
-    .message-box.error   { background: var(--c-danger-bg);  color: var(--c-danger);  border-color: var(--c-danger-border); }
+    /* ── 比价工具栏 ── */
+    .s-compare-bar {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 14px; border-bottom: 1px solid var(--s-border);
+      background: #faf8f4; flex-wrap: wrap;
+    }
+
+    .s-compare-bar label { font-size: 11px; color: var(--s-soft); font-weight: 500; white-space: nowrap; }
+
+    .s-compare-bar select,
+    .s-compare-bar input[type="date"] {
+      height: 28px; padding: 0 7px;
+      border: 1px solid var(--s-border); border-radius: var(--s-rs);
+      background: #fff; font: 12px/1 inherit; color: var(--s-text); outline: none;
+    }
+
+    .s-compare-bar select { min-width: 180px; }
+    .s-compare-bar input[type="date"]:focus,
+    .s-compare-bar select:focus { border-color: #93c5fd; }
+
+    .s-compare-date { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--s-faint); }
+
+    .s-compare-hint {
+      padding: 7px 14px; font-size: 11px; color: var(--s-faint);
+      border-top: 1px solid var(--s-border); background: #faf8f4;
+    }
+
+    /* ── 消息提示 ── */
+    .message-box {
+      padding: 8px 13px; border-radius: var(--s-rs);
+      font-size: 12px; border: 1px solid;
+    }
+
+    .message-box.success { background: var(--s-success-bg); color: var(--s-success); border-color: var(--s-success-bd); }
+    .message-box.error   { background: var(--s-danger-bg);  color: var(--s-danger);  border-color: var(--s-danger-bd); }
     .message-box.hidden  { display: none; }
 
-    .empty-state { padding: 28px 16px; text-align: center; font-size: 13px; color: var(--c-text-faint); }
+    /* ── 空状态 ── */
+    .s-empty { padding: 24px 14px; text-align: center; font-size: 12px; color: var(--s-faint); }
 
-    /* ── Dialog 对话框 ── */
+    /* ── Dialog ── */
     dialog {
-      width: min(680px, 94vw); max-width: none; max-height: 90vh;
-      padding: 0; border: none; border-radius: var(--c-radius-lg);
-      background: var(--c-white); box-shadow: 0 20px 60px rgba(0,0,0,0.16);
+      width: min(660px, 94vw); max-width: none; max-height: 90vh;
+      padding: 0; border: none; border-radius: var(--s-rl);
+      background: #fff;
+      box-shadow: 0 20px 60px rgba(16,35,70,0.18);
     }
-    #dlg-categories { width: min(860px, 92vw); }
-    dialog::backdrop { background: rgba(15,23,42,0.45); backdrop-filter: blur(4px); }
+
+    #dlg-categories { width: min(820px, 92vw); }
+
+    dialog::backdrop { background: rgba(16,35,70,0.4); backdrop-filter: blur(4px); }
 
     .dlg-inner { display: flex; flex-direction: column; max-height: 90vh; overflow: hidden; }
 
     .dlg-head {
-      display: flex; align-items: center; justify-content: space-between; gap: 12px;
-      padding: 14px 18px; border-bottom: 1px solid var(--c-border); background: #fafbfd;
-      border-radius: var(--c-radius-lg) var(--c-radius-lg) 0 0; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: space-between; gap: 10px;
+      padding: 13px 16px; border-bottom: 1px solid var(--s-border);
+      background: #faf8f4;
+      border-radius: var(--s-rl) var(--s-rl) 0 0; flex-shrink: 0;
     }
-    .dlg-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--c-text); }
-    .dlg-head-actions { display: flex; align-items: center; gap: 8px; }
+
+    .dlg-head h2 { margin: 0; font-size: 15px; font-weight: 700; color: var(--s-text); }
+    .dlg-head-actions { display: flex; align-items: center; gap: 7px; }
 
     .dlg-close {
-      width: 30px; height: 30px;
+      width: 28px; height: 28px;
       display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--c-border); border-radius: var(--c-radius-sm);
-      background: var(--c-white); color: var(--c-text-soft); font-size: 16px;
-      cursor: pointer; transition: background 0.12s;
-    }
-    .dlg-close:hover { background: #f0f2f5; }
-
-    .dlg-body { overflow-y: auto; padding: 18px; flex: 1; }
-
-    .dlg-head h2 { margin: 0; font-size: 16px; font-weight: 700; color: var(--c-text); }
-    .dlg-head-actions { display: flex; align-items: center; gap: 8px; }
-
-    .dlg-close {
-      width: 30px; height: 30px;
-      display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--c-border);
-      border-radius: var(--c-radius-sm);
-      background: var(--c-white);
-      color: var(--c-text-soft);
-      font-size: 16px;
-      cursor: pointer;
-      transition: background 0.12s;
+      border: 1px solid var(--s-border); border-radius: var(--s-rs);
+      background: #fff; color: var(--s-soft); font-size: 14px;
+      cursor: pointer; transition: background .12s;
     }
 
-    .dlg-close:hover { background: #f0f2f5; }
+    .dlg-close:hover { background: #f0ece4; }
 
-    .dlg-body { overflow-y: auto; padding: 18px; flex: 1; }
+    .dlg-body { overflow-y: auto; padding: 16px; flex: 1; }
 
     .dlg-footer {
-      display: flex; align-items: center; justify-content: flex-end; gap: 8px;
-      padding: 11px 18px; border-top: 1px solid var(--c-border); background: #fafbfd;
-      border-radius: 0 0 var(--c-radius-lg) var(--c-radius-lg); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: flex-end; gap: 7px;
+      padding: 10px 16px; border-top: 1px solid var(--s-border);
+      background: #faf8f4;
+      border-radius: 0 0 var(--s-rl) var(--s-rl); flex-shrink: 0;
     }
 
-    .form-stack { display: grid; gap: 13px; }
-    .form-stack label { display: grid; gap: 5px; font-size: 12px; color: var(--c-text-soft); font-weight: 600; }
+    /* ── 表单 ── */
+    .form-stack { display: grid; gap: 12px; }
+
+    .form-stack label { display: grid; gap: 4px; font-size: 11px; color: var(--s-soft); font-weight: 600; }
+
     .form-stack input,
     .form-stack select,
     .form-stack textarea {
-      width: 100%; height: 34px; padding: 0 10px;
-      border: 1px solid var(--c-border); border-radius: var(--c-radius-sm);
-      background: #f8fafc; color: var(--c-text); font: 13px/1 inherit; outline: none;
-      transition: border-color 0.12s, background 0.12s;
+      width: 100%; height: 32px; padding: 0 9px;
+      border: 1px solid var(--s-border); border-radius: var(--s-rs);
+      background: #faf8f4; color: var(--s-text); font: 12px/1 inherit; outline: none;
+      transition: border-color .12s, background .12s;
     }
+
     .form-stack input:focus,
     .form-stack select:focus,
-    .form-stack textarea:focus { border-color: #93c5fd; background: var(--c-white); }
-    .form-stack textarea { height: 76px; padding: 8px 10px; resize: vertical; }
+    .form-stack textarea:focus { border-color: #93c5fd; background: #fff; }
 
-    .checkbox-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--c-text-soft); }
-    .checkbox-row input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--c-navy); flex-shrink: 0; }
+    .form-stack textarea { height: 70px; padding: 7px 9px; resize: vertical; }
 
-    .cat-dialog-body { display: grid; gap: 14px; }
-    .cat-panel { border: 1px solid var(--c-border); border-radius: var(--c-radius); overflow: hidden; background: var(--c-white); }
-    .cat-panel-head { padding: 11px 14px; border-bottom: 1px solid var(--c-border); background: #fafbfd; }
-    .cat-panel-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: var(--c-text); }
-    .cat-panel-summary { margin: 0; font-size: 12px; color: var(--c-text-faint); }
-    .cat-list { padding: 8px; display: flex; flex-direction: column; gap: 5px; max-height: 260px; overflow-y: auto; }
-    .cat-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 11px; border: 1px solid var(--c-border); border-radius: 6px; background: var(--c-white); }
-    .cat-row-left { display: flex; align-items: center; gap: 10px; }
-    .cat-row-icon { width: 34px; height: 34px; border-radius: 7px; background: var(--c-accent-soft); display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; }
-    .cat-row-title { font-size: 13px; font-weight: 600; color: var(--c-text); margin: 0 0 2px; }
-    .cat-row-code  { font-size: 11px; color: var(--c-text-faint); font-family: 'Consolas','Menlo',monospace; }
+    .checkbox-row {
+      display: flex; align-items: center; gap: 7px;
+      font-size: 12px; color: var(--s-soft);
+    }
+
+    .checkbox-row input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--s-navy); }
+
+    /* ── 分类管理弹窗 ── */
+    .cat-dialog-body { display: grid; gap: 12px; }
+
+    .cat-panel { border: 1px solid var(--s-border); border-radius: var(--s-r); overflow: hidden; background: #fff; }
+    .cat-panel-head { padding: 10px 13px; border-bottom: 1px solid var(--s-border); background: #faf8f4; }
+    .cat-panel-head h3 { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--s-text); }
+    .cat-panel-summary { margin: 0; font-size: 11px; color: var(--s-faint); }
+
+    .cat-list { padding: 6px; display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
+
+    .cat-row {
+      display: flex; align-items: center; justify-content: space-between; gap: 9px;
+      padding: 8px 10px; border: 1px solid var(--s-border); border-radius: 5px; background: #fff;
+    }
+
+    .cat-row-left { display: flex; align-items: center; gap: 9px; }
+
+    .cat-row-icon {
+      width: 30px; height: 30px; border-radius: 6px;
+      background: var(--s-accent-soft);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; flex-shrink: 0;
+    }
+
+    .cat-row-title { font-size: 12px; font-weight: 600; color: var(--s-text); margin: 0 0 1px; }
+    .cat-row-code  { font-size: 10px; color: var(--s-faint); font-family: monospace; }
     .cat-row-actions { display: flex; gap: 5px; }
+
     .cat-form-section { display: none; }
     .cat-form-section.is-open { display: block; }
-    .cat-form-head { padding: 11px 14px 0; }
-    .cat-form-head h3 { margin: 0 0 2px; font-size: 14px; font-weight: 700; color: var(--c-text); }
-    .cat-form-head p  { margin: 0 0 12px; font-size: 12px; color: var(--c-text-faint); }
-    #cat-form.form-stack { padding: 0 14px 14px; }
-    #cat-form .cat-form-row { display: grid; grid-template-columns: 1fr 130px; gap: 10px; }
-    .cat-form-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 14px 13px; }
-    .cat-dialog-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 10px; }
-    .cat-dialog-summary { margin: 0; font-size: 12px; color: var(--c-text-faint); }
-    .sup-modal-message { margin-bottom: 12px; }
 
-    @media (max-width: 1100px) {
-      .kpi-row { grid-template-columns: repeat(2, 1fr); }
-      .workspace { grid-template-columns: 1fr; }
+    .cat-form-head { padding: 10px 13px 0; }
+    .cat-form-head h3 { margin: 0 0 2px; font-size: 13px; font-weight: 700; color: var(--s-text); }
+    .cat-form-head p  { margin: 0 0 10px; font-size: 11px; color: var(--s-faint); }
+
+    #cat-form.form-stack { padding: 0 13px 12px; }
+
+    #cat-form .cat-form-row { display: grid; grid-template-columns: 1fr 120px; gap: 9px; }
+
+    .cat-form-actions { display: flex; justify-content: flex-end; gap: 7px; padding: 0 13px 12px; }
+
+    .cat-dialog-footer {
+      display: flex; align-items: center; justify-content: space-between; padding-top: 10px;
     }
-    @media (max-width: 640px) {
-      .page-content { padding: 12px; }
-      .page-header { flex-direction: column; align-items: flex-start; }
-      .kpi-row { grid-template-columns: 1fr 1fr; }
-      .filter-bar input[type="search"] { width: 100%; }
+
+    .cat-dialog-summary { margin: 0; font-size: 11px; color: var(--s-faint); }
+    .sup-modal-message { margin-bottom: 10px; }
+
+    /* ── 响应式 ── */
+    @media (max-width: 1100px) {
+      .s-kpi-row { grid-template-columns: repeat(2,1fr); }
+      .s-workspace { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 680px) {
+      .s-page-head { flex-direction: column; align-items: flex-start; }
+      .s-kpi-row { grid-template-columns: 1fr 1fr; }
+      .s-filter-bar input[type="search"] { width: 100%; }
     }
   </style>
 </head>
-<body style="visibility: hidden">
+<body style="visibility:hidden">
 <div class="page-shell suppliers-page">
 
-  <div class="page-content">
+  <div class="s-wrap">
 
-    <div class="page-header">
-      <div class="page-header-left">
+    <!-- ── 页面标题 ── -->
+    <div class="s-page-head">
+      <div class="s-page-head-left">
         <h1>供应商管理 / 价格库工作台</h1>
         <p>维护供应商信息与价格库，支持比价与选库</p>
       </div>
-      <div class="page-header-actions">
-        <button class="btn" id="btn-manage-categories">
-          <span class="btn-icon">⊞</span> 分类管理
-        </button>
-        <button class="btn" id="btn-batch-import">
-          <span class="btn-icon">↑</span> 批量导入物料价格
-        </button>
-        <button class="btn" id="btn-new-supplier">
-          <span class="btn-icon">＋</span> 新增供应商
-        </button>
-        <button class="btn btn-primary" id="btn-new-item">
-          <span class="btn-icon">＋</span> 新增物料价格
-        </button>
+      <div class="s-page-head-actions">
+        <button class="s-btn" id="btn-manage-categories">⊞ 分类管理</button>
+        <button class="s-btn" id="btn-batch-import">↑ 批量导入物料价格</button>
+        <button class="s-btn" id="btn-new-supplier">＋ 新增供应商</button>
+        <button class="s-btn s-btn-primary" id="btn-new-item">＋ 新增物料价格</button>
       </div>
     </div>
 
     <!-- ── 消息提示 ── -->
     <div id="sup-message" class="message-box hidden"></div>
 
-    <div class="filter-bar">
-      <input type="search" id="global-search" placeholder="🔍  搜索供应商 / 物料名称 / 规格..." />
-      <select id="filter-supplier-bar">
-        <option value="">供应商：全部</option>
-      </select>
-      <select id="filter-category">
-        <option value="">类别：全部</option>
-      </select>
+    <!-- ── 筛选栏 ── -->
+    <div class="s-filter-bar">
+      <input type="search" id="global-search" placeholder="🔍 搜索供应商 / 物料名称 / 规格..." />
+      <select id="filter-supplier-bar"><option value="">供应商：全部</option></select>
+      <select id="filter-category"><option value="">类别：全部</option></select>
       <select id="filter-status">
         <option value="active" selected>状态：启用中</option>
         <option value="">状态：全部</option>
         <option value="inactive">状态：停用</option>
       </select>
-      <div class="filter-sep"></div>
-      <label class="toggle-label">
-        <input type="checkbox" id="toggle-best-price" />
-        只看最低价
+      <div class="s-filter-sep"></div>
+      <label class="s-toggle-label">
+        <input type="checkbox" id="toggle-best-price" /> 只看最低价
       </label>
     </div>
 
-    <div class="kpi-row">
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-blue">👤</div>
-        <div class="kpi-body">
-          <p class="kpi-label">供应商总数</p>
-          <p class="kpi-value" id="kpi-supplier-count">--</p>
-          <p class="kpi-meta">启用：<span class="hi" id="kpi-sup-active">--</span> &nbsp; 停用：<span id="kpi-sup-inactive">--</span></p>
+    <!-- ── KPI 行 ── -->
+    <div class="s-kpi-row">
+      <div class="s-kpi-card">
+        <div class="s-kpi-icon s-ki-blue">👤</div>
+        <div class="s-kpi-body">
+          <p class="s-kpi-label">供应商总数</p>
+          <p class="s-kpi-value" id="kpi-supplier-count">--</p>
+          <p class="s-kpi-meta">启用：<span class="hi" id="kpi-sup-active">--</span> &nbsp; 停用：<span id="kpi-sup-inactive">--</span></p>
         </div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-orange">📦</div>
-        <div class="kpi-body">
-          <p class="kpi-label">物料 / 服务总数</p>
-          <p class="kpi-value" id="kpi-item-count">--</p>
-          <p class="kpi-meta">启用：<span class="hi" id="kpi-item-active">--</span> &nbsp; 停用：<span id="kpi-item-inactive">--</span></p>
+      <div class="s-kpi-card">
+        <div class="s-kpi-icon s-ki-orange">📦</div>
+        <div class="s-kpi-body">
+          <p class="s-kpi-label">物料 / 服务总数</p>
+          <p class="s-kpi-value" id="kpi-item-count">--</p>
+          <p class="s-kpi-meta">启用：<span class="hi" id="kpi-item-active">--</span> &nbsp; 停用：<span id="kpi-item-inactive">--</span></p>
         </div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-green">⚡</div>
-        <div class="kpi-body">
-          <p class="kpi-label">最低价物料占比</p>
-          <p class="kpi-value" id="kpi-best-price-count">--</p>
-          <p class="kpi-meta" id="kpi-best-price-meta">对应最低价汇总视图</p>
+      <div class="s-kpi-card">
+        <div class="s-kpi-icon s-ki-green">⚡</div>
+        <div class="s-kpi-body">
+          <p class="s-kpi-label">最低价物料占比</p>
+          <p class="s-kpi-value" id="kpi-best-price-count">--</p>
+          <p class="s-kpi-meta" id="kpi-best-price-meta">对应最低价汇总视图</p>
         </div>
       </div>
-      <div class="kpi-card">
-        <div class="kpi-icon kpi-icon-purple">🕐</div>
-        <div class="kpi-body">
-          <p class="kpi-label">最近更新</p>
-          <p class="kpi-value" id="kpi-last-update" style="font-size:17px;letter-spacing:0;">--</p>
-          <p class="kpi-meta" id="kpi-last-update-source">根据物料更新时间自动显示</p>
+      <div class="s-kpi-card">
+        <div class="s-kpi-icon s-ki-purple">🕐</div>
+        <div class="s-kpi-body">
+          <p class="s-kpi-label">最近更新</p>
+          <p class="s-kpi-value" id="kpi-last-update" style="font-size:15px;letter-spacing:0;">--</p>
+          <p class="s-kpi-meta" id="kpi-last-update-source">根据物料更新时间自动显示</p>
         </div>
       </div>
     </div>
 
-    <div class="workspace">
+    <!-- ── 主工作区 ── -->
+    <div class="s-workspace">
 
-      <div class="supplier-panel">
-        <div class="panel-head">
-          <div class="panel-head-top">
-            <h3 class="panel-title">供应商列表</h3>
-            <span class="panel-count-badge" id="supplier-panel-count">共 -- 家</span>
+      <!-- 左侧供应商列表 -->
+      <div class="s-sup-panel">
+        <div class="s-panel-head">
+          <div class="s-panel-head-top">
+            <h3 class="s-panel-title">供应商列表</h3>
+            <span class="s-panel-badge" id="supplier-panel-count">共 -- 家</span>
           </div>
-          <input type="search" class="panel-search" id="supplier-search" placeholder="搜索供应商名称 / 联系人..." />
+          <input type="search" class="s-panel-search" id="supplier-search" placeholder="搜索供应商名称 / 联系人..." />
         </div>
-        <div id="supplier-list" class="supplier-list">
-          <div class="empty-state">加载中...</div>
+        <div id="supplier-list" class="s-sup-list">
+          <div class="s-empty">加载中...</div>
         </div>
       </div>
 
-      <div class="main-col">
+      <!-- 右侧主列 -->
+      <div class="s-main-col">
 
-        <div class="card">
-          <div class="card-head">
-            <div class="card-head-left">
-              <h2 class="card-title" id="items-table-title">价格库</h2>
-              <p class="card-subtitle" id="items-table-subtitle">共 -- 条</p>
+        <!-- 价格库卡片 -->
+        <div class="s-card">
+          <div class="s-card-head">
+            <div>
+              <h2 class="s-card-title" id="items-table-title">价格库</h2>
+              <p class="s-card-sub" id="items-table-subtitle">共 -- 条</p>
             </div>
-            <div class="card-head-actions">
-              <button class="btn btn-sm btn-ghost-blue" id="btn-view-all-items">⊞ 按物料看全部供应商</button>
+            <div class="s-card-head-actions">
+              <button class="s-btn s-btn-sm s-btn-blue" id="btn-view-all-items">⊞ 按物料看全部供应商</button>
             </div>
           </div>
 
-          <div class="data-table-wrap" id="item-table-container">
-            <table class="data-table">
+          <div class="s-table-wrap" id="item-table-container">
+            <table class="s-table">
               <thead>
                 <tr>
                   <th>类别</th>
@@ -637,53 +740,53 @@
               </thead>
               <tbody id="item-table-body"></tbody>
             </table>
-            <div class="empty-state" id="item-empty" style="display:none">暂无物料数据</div>
+            <div class="s-empty" id="item-empty" style="display:none">暂无物料数据</div>
           </div>
 
-          <div class="pagination" id="item-pagination">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="page-btns" id="page-btn-group">
-                <button class="page-btn" id="page-prev" disabled>‹</button>
-                <button class="page-btn active">1</button>
-                <button class="page-btn" id="page-next">›</button>
+          <!-- 分页 -->
+          <div class="s-pagination" id="item-pagination">
+            <div style="display:flex;align-items:center;gap:7px;">
+              <div class="s-page-btns" id="page-btn-group">
+                <button class="s-page-btn" id="page-prev" disabled>‹</button>
+                <button class="s-page-btn active">1</button>
+                <button class="s-page-btn" id="page-next">›</button>
               </div>
-              <span id="page-info" style="color:var(--c-text-faint)"></span>
+              <span id="page-info" style="color:var(--s-faint)"></span>
             </div>
-            <div style="display:flex;align-items:center;gap:6px;">
-              <select class="page-size-sel" id="page-size-sel">
-                <option value="10" selected>10 条/页</option>
-                <option value="20">20 条/页</option>
-                <option value="50">50 条/页</option>
-              </select>
-            </div>
+            <select class="s-page-size" id="page-size-sel">
+              <option value="10" selected>10 条/页</option>
+              <option value="20">20 条/页</option>
+              <option value="50">50 条/页</option>
+            </select>
           </div>
         </div>
 
-        <div class="card" id="best-price-card">
-          <div class="card-head">
-            <div class="card-head-left">
-              <h2 class="card-title">比价 / 选库视图</h2>
-              <p class="card-subtitle">选择物料查看多供应商报价</p>
+        <!-- 比价 / 选库视图 -->
+        <div class="s-card" id="best-price-card">
+          <div class="s-card-head">
+            <div>
+              <h2 class="s-card-title">比价 / 选库视图</h2>
+              <p class="s-card-sub">选择物料查看多供应商报价</p>
             </div>
-            <div class="card-head-actions">
-              <button class="btn btn-sm" id="btn-refresh-best-price">刷新</button>
+            <div class="s-card-head-actions">
+              <button class="s-btn s-btn-sm" id="btn-refresh-best-price">刷新</button>
             </div>
           </div>
 
-          <div class="compare-bar">
+          <div class="s-compare-bar">
             <label>物料名称：</label>
             <select id="compare-item-sel"><option value="">-- 请选择物料 --</option></select>
-            <div class="compare-date-wrap">
+            <div class="s-compare-date">
               <label>日期（可选）：</label>
               <input type="date" id="compare-date-from" />
               <span>～</span>
               <input type="date" id="compare-date-to" />
             </div>
-            <button class="btn btn-sm btn-ghost-blue" id="btn-compare">查看比价</button>
+            <button class="s-btn s-btn-sm s-btn-blue" id="btn-compare">查看比价</button>
           </div>
 
-          <div class="data-table-wrap" id="best-price-content">
-            <table class="data-table" id="best-price-table" style="display:none">
+          <div class="s-table-wrap" id="best-price-content">
+            <table class="s-table" id="best-price-table" style="display:none">
               <thead>
                 <tr>
                   <th>供应商</th>
@@ -698,18 +801,19 @@
               </thead>
               <tbody id="best-price-body"></tbody>
             </table>
-            <div class="empty-state" id="best-price-empty">点击"查看比价"可对比多个供应商的报价</div>
+            <div class="s-empty" id="best-price-empty">点击「查看比价」可对比多个供应商的报价</div>
           </div>
 
-          <div class="compare-hint">提示：点击"选用"可在新建报价单或项目型报价单中快速添加该物料。</div>
+          <div class="s-compare-hint">提示：点击「选用」可在新建报价单或项目型报价单中快速添加该物料。</div>
         </div>
 
-      </div>
-    </div>
+      </div><!-- /s-main-col -->
+    </div><!-- /s-workspace -->
 
-  </div>
-</div>
+  </div><!-- /s-wrap -->
+</div><!-- /page-shell -->
 
+<!-- ── 新增/编辑供应商 ── -->
 <dialog id="dlg-supplier">
   <div class="dlg-inner">
     <div class="dlg-head">
@@ -742,12 +846,13 @@
       </form>
     </div>
     <div class="dlg-footer">
-      <button class="btn" type="button" data-close-dlg="dlg-supplier">取消</button>
-      <button class="btn btn-primary" type="button" id="btn-save-supplier">保存供应商</button>
+      <button class="s-btn" type="button" data-close-dlg="dlg-supplier">取消</button>
+      <button class="s-btn s-btn-primary" type="button" id="btn-save-supplier">保存供应商</button>
     </div>
   </div>
 </dialog>
 
+<!-- ── 新增/编辑物料 ── -->
 <dialog id="dlg-item">
   <div class="dlg-inner">
     <div class="dlg-head">
@@ -766,8 +871,8 @@
         <label>成本价<input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" /></label>
         <label>币种
           <select name="currency">
+            <option value="EUR" selected>EUR 欧元</option>
             <option value="CNY">CNY 人民币</option>
-            <option value="EUR">EUR 欧元</option>
             <option value="USD">USD 美元</option>
             <option value="RSD">RSD 第纳尔</option>
           </select>
@@ -780,18 +885,19 @@
       </form>
     </div>
     <div class="dlg-footer">
-      <button class="btn" type="button" data-close-dlg="dlg-item">取消</button>
-      <button class="btn btn-primary" type="button" id="btn-save-item">保存物料</button>
+      <button class="s-btn" type="button" data-close-dlg="dlg-item">取消</button>
+      <button class="s-btn s-btn-primary" type="button" id="btn-save-item">保存物料</button>
     </div>
   </div>
 </dialog>
 
+<!-- ── 分类管理 ── -->
 <dialog id="dlg-categories">
   <div class="dlg-inner">
     <div class="dlg-head">
       <h2>物料分类管理</h2>
       <div class="dlg-head-actions">
-        <button class="btn btn-primary btn-sm" type="button" id="btn-new-category">＋ 新建分类</button>
+        <button class="s-btn s-btn-primary s-btn-sm" type="button" id="btn-new-category">＋ 新建分类</button>
         <button type="button" class="dlg-close" data-close-dlg="dlg-categories">✕</button>
       </div>
     </div>
@@ -804,7 +910,7 @@
             <p class="cat-panel-summary" id="cat-list-summary">已建分类可在下方继续新增或编辑。</p>
           </div>
           <div id="categories-list" class="cat-list">
-            <div class="empty-state">加载中...</div>
+            <div class="s-empty">加载中...</div>
           </div>
         </div>
         <div id="cat-form-section" class="cat-panel cat-form-section">
@@ -816,20 +922,20 @@
             <input type="hidden" name="id" />
             <label>中文名称 *<input name="nameZh" required placeholder="例如：酒店住宿" /></label>
             <div class="cat-form-row">
-              <label>分类代码 *<input name="code" id="cat-code-input" required placeholder="例如：hotel" style="font-family:'Consolas','Menlo',monospace;" /></label>
+              <label>分类代码 *<input name="code" id="cat-code-input" required placeholder="例如：hotel" style="font-family:monospace;" /></label>
               <label>排序号<input name="sortOrder" type="number" min="0" placeholder="0" /></label>
             </div>
-            <p id="cat-code-hint" style="font-size:12px;color:var(--c-text-faint);margin:0;">编辑时分类代码不可修改。</p>
+            <p id="cat-code-hint" style="font-size:11px;color:var(--s-faint);margin:0;">编辑时分类代码不可修改。</p>
           </form>
           <div class="cat-form-actions">
-            <button class="btn" type="button" id="btn-cancel-cat-form">取消</button>
-            <button class="btn btn-primary" type="button" id="btn-save-category">保存分类</button>
+            <button class="s-btn" type="button" id="btn-cancel-cat-form">取消</button>
+            <button class="s-btn s-btn-primary" type="button" id="btn-save-category">保存分类</button>
           </div>
         </div>
       </div>
       <div class="cat-dialog-footer">
         <p id="cat-dialog-summary" class="cat-dialog-summary">共 0 个分类</p>
-        <button class="btn" type="button" data-close-dlg="dlg-categories">关闭面板</button>
+        <button class="s-btn" type="button" data-close-dlg="dlg-categories">关闭面板</button>
       </div>
     </div>
   </div>

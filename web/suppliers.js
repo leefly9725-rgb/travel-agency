@@ -201,7 +201,7 @@ function renderSupplierList() {
   });
 
   if (list.length === 0) {
-    container.innerHTML = `<div class="empty-state">暂无匹配供应商</div>`;
+    container.innerHTML = `<div class="s-empty">暂无匹配供应商</div>`;
     return;
   }
 
@@ -212,31 +212,31 @@ function renderSupplierList() {
     const typeKey    = sup.supplierType || sup.supplier_type || "";
     const badge      = SUP_TYPE_BADGE[typeKey];
     const badgeHtml  = badge
-      ? `<span class="sup-type-badge ${badge.cls}">${badge.label}</span>`
-      : (typeKey ? `<span class="sup-type-badge badge-other">${typeKey}</span>` : "");
+      ? `<span class="s-type-badge sb-${typeKey}">${badge.label}</span>`
+      : (typeKey ? `<span class="s-type-badge sb-other">${typeKey}</span>` : "");
 
     return `
-      <div class="sup-card${isSelected ? " active" : ""}${!isActive ? " inactive" : ""}"
+      <div class="s-sup-card${isSelected ? " active" : ""}${!isActive ? " inactive" : ""}"
            data-select-supplier="${sup.id}">
-        <div class="sup-card-head">
-          <span class="sup-card-name">${sup.name}</span>
+        <div class="s-sup-card-head">
+          <span class="s-sup-name">${sup.name}</span>
           ${badgeHtml}
         </div>
-        <div class="sup-card-meta">
-          <div class="sup-card-meta-row">
+        <div class="s-sup-meta">
+          <div class="s-sup-meta-row">
             <span>${sup.contact ? "联系人：" + sup.contact : ""}</span>
-            <span class="sup-status-dot ${isActive ? "active" : "inactive"}">${isActive ? "启用" : "停用"}</span>
+            <span class="s-status-dot ${isActive ? "on" : "off"}">${isActive ? "启用" : "停用"}</span>
           </div>
           ${sup.phone ? `<span>${sup.phone}</span>` : ""}
-          <div class="sup-card-meta-row">
+          <div class="s-sup-meta-row">
             <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">${sup.email || ""}</span>
             <span>物料 ${itemCount} 项</span>
           </div>
         </div>
         ${window.can("supplier.edit") || window.can("supplier.delete") ? `
         <div style="display:flex;gap:5px;margin-top:7px;">
-          ${window.can("supplier.edit")   ? `<button class="act-btn"        style="font-size:11px;" data-edit-supplier="${sup.id}">编辑</button>` : ""}
-          ${window.can("supplier.delete") ? `<button class="act-btn danger" style="font-size:11px;" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}
+          ${window.can("supplier.edit")   ? `<button class="s-act"        style="font-size:11px;" data-edit-supplier="${sup.id}">编辑</button>` : ""}
+          ${window.can("supplier.delete") ? `<button class="s-act danger" style="font-size:11px;" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}
         </div>` : ""}
       </div>`;
   }).join("");
@@ -294,7 +294,7 @@ function renderItemTable() {
   tbody.innerHTML = items.map((item) => {
     const active   = itemIsActive(item);
     const price    = itemCostPrice(item);
-    const currency = item.currency || "CNY";
+    const currency = item.currency || "EUR";
     const supName  = item.supplierName || item.supplier_name || "";
     const priceStr = price > 0
       ? price.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -302,7 +302,7 @@ function renderItemTable() {
 
     return `
       <tr class="${!active ? "row-inactive" : ""}" data-item-id="${item.id}">
-        <td><span class="sup-category-pill">${categoryLabel(item.category)}</span></td>
+        <td><span class="s-cat-pill">${categoryLabel(item.category)}</span></td>
         <td>
           <div style="display:grid;gap:2px;">
             <div style="font-weight:600;font-size:13px;">${itemNameZh(item)}</div>
@@ -310,17 +310,17 @@ function renderItemTable() {
             ${supName && !state.selectedSupplierId ? `<div style="font-size:12px;color:var(--c-text-faint);">${supName}</div>` : ""}
           </div>
         </td>
-        <td style="font-size:13px;color:var(--c-text-soft);">${item.spec || EMPTY_TEXT}</td>
+        <td style="font-size:13px;color:var(--s-soft);">${item.spec || EMPTY_TEXT}</td>
         <td style="white-space:nowrap;font-size:13px;">${item.unit || EMPTY_TEXT}</td>
-        <td class="price-val">${priceStr}</td>
-        <td style="font-size:12px;color:var(--c-text-soft);">${currency}</td>
-        <td><span class="status-badge ${active ? "active" : "inactive"}">${active ? "启用" : "停用"}</span></td>
+        <td class="s-price">${priceStr}</td>
+        <td style="font-size:12px;color:var(--s-soft);">${currency}</td>
+        <td><span class="s-badge ${active ? "on" : "off"}">${active ? "启用" : "停用"}</span></td>
         <td>
-          <div class="row-actions">
-            ${window.can("supplier.edit") ? `<button class="act-btn" data-edit-item="${item.id}">编辑</button>` : ""}
-            ${window.can("supplier.edit") && active  ? `<span class="act-sep">|</span><button class="act-btn danger"  data-toggle-item="${item.id}" data-current-active="true">停用</button>`  : ""}
-            ${window.can("supplier.edit") && !active ? `<span class="act-sep">|</span><button class="act-btn success" data-toggle-item="${item.id}" data-current-active="false">启用</button>` : ""}
-            ${window.can("supplier.delete") ? `<span class="act-sep">|</span><button class="act-btn danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">删除</button>` : ""}
+          <div class="s-row-actions">
+            ${window.can("supplier.edit") ? `<button class="s-act" data-edit-item="${item.id}">编辑</button>` : ""}
+            ${window.can("supplier.edit") && active  ? `<span class="s-act-sep">|</span><button class="s-act danger"  data-toggle-item="${item.id}" data-current-active="true">停用</button>`  : ""}
+            ${window.can("supplier.edit") && !active ? `<span class="s-act-sep">|</span><button class="s-act ok" data-toggle-item="${item.id}" data-current-active="false">启用</button>` : ""}
+            ${window.can("supplier.delete") ? `<span class="s-act-sep">|</span><button class="s-act danger" data-delete-item="${item.id}" data-name="${itemNameZh(item)}">删除</button>` : ""}
           </div>
         </td>
       </tr>`;
@@ -348,7 +348,7 @@ function renderBestPriceTable() {
 
   tbody.innerHTML = items.map((item) => {
     const price    = itemCostPrice(item);
-    const currency = item.currency || "CNY";
+    const currency = item.currency || "EUR";
     const supName  = item.supplierName || item.supplier_name || EMPTY_TEXT;
     const priceStr = price > 0
       ? price.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -358,13 +358,13 @@ function renderBestPriceTable() {
     return `
       <tr>
         <td style="font-weight:600;">${supName}</td>
-        <td style="font-size:13px;color:var(--c-text-soft);">${item.spec || EMPTY_TEXT}</td>
+        <td style="font-size:13px;color:var(--s-soft);">${item.spec || EMPTY_TEXT}</td>
         <td style="white-space:nowrap;">${item.unit || EMPTY_TEXT}</td>
-        <td class="price-val">¥${priceStr}</td>
-        <td style="font-size:12px;color:var(--c-text-soft);">${currency}</td>
-        <td class="price-val">${EMPTY_TEXT}</td>
-        <td>${isLowest ? `<span class="status-badge lowest">最低价</span>` : ""}</td>
-        <td><button class="act-btn success" data-select-compare-item="${item.id}">选用</button></td>
+        <td class="s-price">¥${priceStr}</td>
+        <td style="font-size:12px;color:var(--s-soft);">${currency}</td>
+        <td class="s-price">${EMPTY_TEXT}</td>
+        <td>${isLowest ? `<span class="s-badge lowest">最低价</span>` : ""}</td>
+        <td><button class="s-act ok" data-select-compare-item="${item.id}">选用</button></td>
       </tr>`;
   }).join("");
 }
@@ -393,7 +393,7 @@ function renderCategoryManagementList() {
     : "还没有分类，可以从右上角新建分类开始。";
 
   if (total === 0) {
-    listEl.innerHTML = `<div class="empty-state">暂无可管理的物料分类</div>`;
+    listEl.innerHTML = `<div class="s-empty">暂无可管理的物料分类</div>`;
     return;
   }
 
@@ -414,8 +414,8 @@ function renderCategoryManagementList() {
           </div>
         </div>
         <div class="cat-row-actions">
-          <button class="btn btn-sm" data-edit-cat="${catId}">编辑</button>
-          <button class="btn btn-sm" style="color:var(--c-danger);border-color:var(--c-danger-border);" data-delete-cat="${catId}" data-cat-name="${label}">删除</button>
+          <button class="s-btn s-btn-sm" data-edit-cat="${catId}">编辑</button>
+          <button class="s-btn s-btn-sm" style="color:var(--s-danger);border-color:var(--s-danger-bd);" data-delete-cat="${catId}" data-cat-name="${label}">删除</button>
         </div>
       </div>`;
   }).join("");
@@ -505,7 +505,7 @@ function openItemForm(item) {
   form.costPrice.value = item && itemCostPrice(item) > 0 ? itemCostPrice(item) : "";
   form.notes.value     = item ? (item.notes || "") : "";
   form.isActive.checked = item ? itemIsActive(item) : true;
-  if (form.currency) form.currency.value = item ? (item.currency || "CNY") : "CNY";
+  if (form.currency) form.currency.value = item ? (item.currency || "EUR") : "EUR";
   getRequiredElement("dlg-item-title").textContent =
     item ? `编辑物料 · ${itemNameZh(item)}` : "新增物料价格";
   openDialog("dlg-item");
@@ -754,7 +754,7 @@ async function bootstrap() {
       spec:      form.spec.value.trim(),
       unit:      form.unit.value.trim(),
       costPrice: Number(form.costPrice.value || 0),
-      currency:  form.currency ? form.currency.value : "CNY",
+      currency:  form.currency ? form.currency.value : "EUR",
       notes:     form.notes.value.trim(),
       isActive:  form.isActive.checked,
     };
