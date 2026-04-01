@@ -25,7 +25,17 @@ window.ProjectEditor = (function () {
   };
   let columnWidths = {};
   let activeResizeState = null;
-
+  let supplierCatalogCache = null;
+  let supplierCatalogPromise = null;
+  let serviceSuggestionRequestSeq = 0;
+  let serviceSuggestionState = {
+    rowEl: null,
+    inputEl: null,
+    boxEl: null,
+    items: [],
+    activeIndex: -1,
+  };
+  let serviceSuggestionHandlersBound = false;
 
   const DEFAULT_GROUP_TYPES = [
     { code: "event", nameZh: "活动服务", isActive: true, sortOrder: 1 },
@@ -476,6 +486,216 @@ window.ProjectEditor = (function () {
     rowEl.dataset.supplierDisplay = supplierDisplay;
   }
 
+  function ensureSupplierCatalogLoaded() {
+    if (supplierCatalogCache) return Promise.resolve(supplierCatalogCache);
+    if (!supplierCatalogPromise) {
+      supplierCatalogPromise = window.AppUtils.fetchJson('/api/supplier-items', null, '\u52a0\u8f7d\u4f9b\u5e94\u5546\u76ee\u5f55\u5931\u8d25')
+        .then((data) => {
+          supplierCatalogCache = (Array.isArray(data) ? data : (data.items || []))
+            .map(normalizeCatalogItem)
+            .filter((item) => item.nameZh);
+          return supplierCatalogCache;
+        })
+        .catch((error) => {
+          supplierCatalogPromise = null;
+          throw error;
+        });
+    }
+    return supplierCatalogPromise;
+  }
+
+  function getRowItemTypeMeta(rowEl) {
+    const typeCode = String(rowEl?.querySelector('[name="itemType"]')?.value || "misc").trim().toLowerCase();
+    return (itemTypeCache || []).find((item) => item.code === typeCode) || null;
+  }
+
+  function getRowSupplierCategoryCodes(rowEl) {
+    return normalizeCodeList(getRowItemTypeMeta(rowEl)?.supplierCategoryCodes || []);
+  }
+
+  function buildCatalogSearchText(item) {
+    return [item.nameZh, item.spec, item.supplierName, item.category].filter(Boolean).join(" ").toLowerCase();
+  }
+
+  function scoreCatalogSuggestion(item, keyword, preferredCategories) {
+    const normalizedKeyword = String(keyword || "").trim().toLowerCase();
+    if (!normalizedKeyword) return null;
+    const name = String(item.nameZh || "").toLowerCase();
+    const spec = String(item.spec || "").toLowerCase();
+    const supplierName = String(item.supplierName || "").toLowerCase();
+    const category = String(item.category || "").toLowerCase();
+    const searchText = buildCatalogSearchText(item);
+    if (!searchText.includes(normalizedKeyword)) return null;
+    let score = 0;
+    if (name.startsWith(normalizedKeyword)) score += 120;
+    else if (name.includes(normalizedKeyword)) score += 80;
+    if (spec.includes(normalizedKeyword)) score += 30;
+    if (supplierName.includes(normalizedKeyword)) score += 16;
+    if (category.includes(normalizedKeyword)) score += 12;
+    if (preferredCategories.includes(category)) score += 36;
+    return score;
+  }
+
+  async function findCatalogSuggestions(rowEl, keyword) {
+    const allItems = await ensureSupplierCatalogLoaded();
+    const preferredCategories = getRowSupplierCategoryCodes(rowEl);
+    return allItems
+      .map((item) => ({ item, score: scoreCatalogSuggestion(item, keyword, preferredCategories) }))
+      .filter((entry) => entry.score !== null)
+      .sort((a, b) => b.score - a.score || String(a.item.nameZh || "").localeCompare(String(b.item.nameZh || ""), "zh-Hans-CN"))
+      .slice(0, 8)
+      .map((entry) => entry.item);
+  }
+
+  function getServiceSuggestionBox(rowEl) {
+    return rowEl?.querySelector('.service-suggestion-box') || null;
+  }
+
+  function closeServiceSuggestions() {
+    if (serviceSuggestionState.rowEl) {
+      serviceSuggestionState.rowEl.classList.remove("service-suggestion-open");
+    }
+    const boxEl = serviceSuggestionState.boxEl || getServiceSuggestionBox(serviceSuggestionState.rowEl);
+    if (boxEl) {
+      boxEl.hidden = true;
+      boxEl.innerHTML = "";
+    }
+    serviceSuggestionState = { rowEl: null, inputEl: null, boxEl: null, items: [], activeIndex: -1 };
+  }
+
+  function setActiveServiceSuggestion(index) {
+    const boxEl = serviceSuggestionState.boxEl;
+    const items = boxEl ? Array.from(boxEl.querySelectorAll('.service-suggestion-item')) : [];
+    if (!items.length) {
+      serviceSuggestionState.activeIndex = -1;
+      return;
+    }
+    const nextIndex = Math.max(0, Math.min(index, items.length - 1));
+    serviceSuggestionState.activeIndex = nextIndex;
+    items.forEach((itemEl, itemIndex) => {
+      const isActive = itemIndex === nextIndex;
+      itemEl.classList.toggle('active', isActive);
+      itemEl.setAttribute('aria-selected', isActive ? "true" : "false");
+      if (isActive) itemEl.scrollIntoView({ block: "nearest" });
+    });
+  }
+
+  function applySuggestionToRow(rowEl, item, inputEl) {
+    if (!rowEl || !item) return;
+    applyCatalogItemToRow(rowEl, item);
+    rowEl.querySelectorAll('.proj-cell-textarea').forEach(autoSizeTextCell);
+    closeServiceSuggestions();
+    refreshGroupTotals(rowEl.closest('.project-group'));
+    refreshSummary();
+    if (inputEl) {
+      inputEl.focus();
+      if (typeof inputEl.setSelectionRange === "function") {
+        const end = inputEl.value.length;
+        inputEl.setSelectionRange(end, end);
+      }
+    }
+  }
+
+  function renderServiceSuggestions(rowEl, inputEl, items) {
+    const boxEl = getServiceSuggestionBox(rowEl);
+    if (!boxEl) return;
+    if (!items.length) {
+      closeServiceSuggestions();
+      return;
+    }
+    if (serviceSuggestionState.rowEl && serviceSuggestionState.rowEl !== rowEl) {
+      serviceSuggestionState.rowEl.classList.remove("service-suggestion-open");
+    }
+    serviceSuggestionState = { rowEl, inputEl, boxEl, items, activeIndex: -1 };
+    rowEl.classList.add("service-suggestion-open");
+    boxEl.hidden = false;
+    boxEl.style.minWidth = Math.ceil(inputEl?.getBoundingClientRect?.().width || inputEl?.offsetWidth || 0) + "px";
+    boxEl.innerHTML = items.map((item, index) => {
+      const nameLabel = escapeHtml(item.nameZh || "\u672a\u547d\u540d\u670d\u52a1");
+      const supplierLabel = escapeHtml(item.supplierName || item.supplierId || "-");
+      const specLabel = escapeHtml(item.spec || "\u65e0\u89c4\u683c\u8bf4\u660e");
+      const categoryLabel = escapeHtml(getCatalogCategoryLabel(item.category || ""));
+      const unitLabel = escapeHtml(item.unit || "-");
+      const priceLabel = item.costPrice != null && item.costPrice !== "" ? formatMoney(item.costPrice) : "-";
+      const metaParts = [categoryLabel, supplierLabel].filter((part) => part && part !== "-");
+      const metaLabel = metaParts.length ? metaParts.join(" \u00b7 ") : "\u672a\u914d\u7f6e\u4f9b\u5e94\u5546";
+      return [
+        "<button type=\"button\" class=\"service-suggestion-item\" data-index=\"" + index + "\" aria-selected=\"false\">",
+        "<span class=\"service-suggestion-main\">",
+        "<strong title=\"" + nameLabel + "\">" + nameLabel + "</strong>",
+        "<span class=\"service-suggestion-sub\" title=\"" + specLabel + "\">" + specLabel + "</span>",
+        "<span class=\"service-suggestion-meta\" title=\"" + metaLabel + "\">" + metaLabel + "</span>",
+        "</span>",
+        "<span class=\"service-suggestion-unit\" title=\"" + unitLabel + "\">" + unitLabel + "</span>",
+        "<span class=\"service-suggestion-price\" title=\"" + priceLabel + "\">" + priceLabel + "</span>",
+        "</button>"
+      ].join("");
+    }).join("");
+    boxEl.querySelectorAll('.service-suggestion-item').forEach((itemEl) => {
+      itemEl.addEventListener("mousedown", (event) => event.preventDefault());
+      itemEl.addEventListener("click", () => {
+        const index = Number(itemEl.dataset.index || -1);
+        applySuggestionToRow(rowEl, items[index], inputEl);
+      });
+    });
+  }
+
+  async function updateServiceSuggestions(rowEl, inputEl) {
+    const keyword = String(inputEl?.value || "").trim();
+    if (!keyword) {
+      if (serviceSuggestionState.rowEl === rowEl) closeServiceSuggestions();
+      return;
+    }
+    const requestSeq = ++serviceSuggestionRequestSeq;
+    try {
+      const items = await findCatalogSuggestions(rowEl, keyword);
+      if (requestSeq !== serviceSuggestionRequestSeq) return;
+      if (!document.body.contains(inputEl) || String(inputEl.value || "").trim() !== keyword) return;
+      renderServiceSuggestions(rowEl, inputEl, items);
+    } catch (_) {
+      if (serviceSuggestionState.rowEl === rowEl) closeServiceSuggestions();
+    }
+  }
+
+  function handleServiceNameKeydown(event, rowEl, inputEl) {
+    const isActiveRow = serviceSuggestionState.rowEl === rowEl;
+    const hasSuggestions = isActiveRow && serviceSuggestionState.items.length > 0;
+    if (event.key === "Escape") {
+      if (isActiveRow) {
+        event.preventDefault();
+        closeServiceSuggestions();
+      }
+      return;
+    }
+    if (!hasSuggestions) return;
+    if (event.key === "ArrowDown") {
+      event.preventDefault();
+      const nextIndex = serviceSuggestionState.activeIndex + 1 >= serviceSuggestionState.items.length ? 0 : serviceSuggestionState.activeIndex + 1;
+      setActiveServiceSuggestion(nextIndex);
+      return;
+    }
+    if (event.key === "ArrowUp") {
+      event.preventDefault();
+      const nextIndex = serviceSuggestionState.activeIndex <= 0 ? serviceSuggestionState.items.length - 1 : serviceSuggestionState.activeIndex - 1;
+      setActiveServiceSuggestion(nextIndex);
+      return;
+    }
+    if (event.key === "Enter" && serviceSuggestionState.activeIndex >= 0) {
+      event.preventDefault();
+      applySuggestionToRow(rowEl, serviceSuggestionState.items[serviceSuggestionState.activeIndex], inputEl);
+    }
+  }
+
+  function bindServiceSuggestionGlobalEvents() {
+    if (serviceSuggestionHandlersBound) return;
+    serviceSuggestionHandlersBound = true;
+    document.addEventListener("mousedown", (event) => {
+      const target = event.target;
+      if (!serviceSuggestionState.rowEl) return;
+      if (serviceSuggestionState.rowEl.contains(target)) return;
+      closeServiceSuggestions();
+    }, true);
+  }
 
   function openCatalogPicker(rowEl) {
     const overlay = document.createElement('div');
@@ -623,11 +843,9 @@ window.ProjectEditor = (function () {
     });
     searchEl.addEventListener('input', applyFilter);
 
-    window.AppUtils.fetchJson('/api/supplier-items', null, '\u52a0\u8f7d\u4f9b\u5e94\u5546\u76ee\u5f55\u5931\u8d25')
-      .then((data) => {
-        allItems = (Array.isArray(data) ? data : (data.items || []))
-          .map(normalizeCatalogItem)
-          .filter((item) => item.nameZh);
+    ensureSupplierCatalogLoaded()
+      .then((items) => {
+        allItems = items;
         renderCategories();
         applyFilter();
       })
@@ -638,22 +856,38 @@ window.ProjectEditor = (function () {
       });
   }
   function bindRowEvents(rowEl, groupEl) {
+    const nameInput = rowEl.querySelector('[name="itemName"]');
+
     rowEl.querySelectorAll("input, select, textarea").forEach((field) => {
       field.addEventListener("input", () => {
         if (["itemName", "specification", "remarks"].includes(field.name)) autoSizeTextCell(field);
         if (field.name === "itemType") syncRowUnit(rowEl);
+        if (field.name === "itemName") updateServiceSuggestions(rowEl, field);
         refreshGroupTotals(groupEl);
         refreshSummary();
       });
       field.addEventListener("change", () => {
-        if (field.name === "itemType") syncRowUnit(rowEl);
+        if (field.name === "itemType") {
+          syncRowUnit(rowEl);
+          if (serviceSuggestionState.rowEl === rowEl && nameInput) updateServiceSuggestions(rowEl, nameInput);
+        }
         refreshGroupTotals(groupEl);
         refreshSummary();
       });
     });
+
+    if (nameInput) {
+      nameInput.addEventListener("focus", () => updateServiceSuggestions(rowEl, nameInput));
+      nameInput.addEventListener("keydown", (event) => handleServiceNameKeydown(event, rowEl, nameInput));
+    }
+
     rowEl.querySelectorAll(".proj-cell-textarea").forEach(autoSizeTextCell);
-    rowEl.querySelector(".pick-catalog-btn")?.addEventListener("click", () => openCatalogPicker(rowEl));
+    rowEl.querySelector(".pick-catalog-btn")?.addEventListener("click", () => {
+      closeServiceSuggestions();
+      openCatalogPicker(rowEl);
+    });
     rowEl.querySelector(".delete-item-btn").addEventListener("click", () => {
+      if (serviceSuggestionState.rowEl === rowEl) closeServiceSuggestions();
       rowEl.remove();
       const tbody = groupEl.querySelector(".items-tbody");
       if (!tbody.querySelector("tr[data-item-id]")) {
@@ -692,7 +926,7 @@ window.ProjectEditor = (function () {
           ${options.map((entry) => `<option value="${entry.code}"${entry.code === currentType ? " selected" : ""}>${entry.nameZh}</option>`).join("")}
         </select>
       </td>
-      <td class="proj-col-name"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="服务名称">${escapeHtml(item.itemName || "")}</textarea></td>
+      <td class="proj-col-name"><div class="service-name-wrap"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="\u670d\u52a1\u540d\u79f0">${escapeHtml(item.itemName || "")}</textarea><div class="service-suggestion-box" hidden></div></div></td>
       <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="规格 / 说明">${escapeHtml(item.specification || "")}</textarea></td>
       <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="单位" /></td>
       <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
@@ -853,6 +1087,7 @@ window.ProjectEditor = (function () {
     groupEl.querySelector(".delete-group-btn").addEventListener("click", () => {
       const allGroups = containerEl?.querySelectorAll(".project-group") || [];
       if (allGroups.length <= 1 && !window.confirm("确定删除最后一个项目组吗？")) return;
+      if (serviceSuggestionState.rowEl && groupEl.contains(serviceSuggestionState.rowEl)) closeServiceSuggestions();
       groupEl.remove();
       refreshSummary();
     });
@@ -924,6 +1159,7 @@ window.ProjectEditor = (function () {
       </div>
     `;
 
+    closeServiceSuggestions();
     const groupsList = containerEl.querySelector("#proj-groups-list");
     const initialGroups = Array.isArray(groups) && groups.length > 0 ? groups : [{ projectType: "travel", projectTitle: "", items: [] }];
     initialGroups.forEach((group) => {
@@ -966,6 +1202,7 @@ window.ProjectEditor = (function () {
       containerEl = container;
       currencyCode = currency || "EUR";
       viewMode = "internal";
+      bindServiceSuggestionGlobalEvents();
       columnWidths = loadColumnWidths();
       ensureMasterDataLoaded()
         .catch(() => {})

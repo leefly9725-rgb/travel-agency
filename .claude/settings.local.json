@@ -28,7 +28,8 @@
       "Bash(wc -l /d/LDS-OPS-v1/scripts/*.sql)",
       "Bash(node -e \"require\\(''./server/app''\\)\")",
       "Bash(node -e \"require\\(''./server/services/projectQuoteStore''\\)\")",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(git pull:*)"
     ]
   }
 }

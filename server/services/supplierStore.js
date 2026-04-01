@@ -6,7 +6,12 @@ function mapRemoteSupplier(row) {
     id: row.id,
     name: row.name,
     contact: row.contact || "",
+    // phone / email / is_active 当前 Supabase suppliers 表无此列（见 supabase-schema.sql）
+    // 本地 seed.json 路径可正常读写；Supabase 路径安全降级为空值，不影响读取
+    phone: row.phone || "",
+    email: row.email || "",
     notes: row.notes || "",
+    isActive: row.is_active !== undefined ? Boolean(row.is_active) : true,
   };
 }
 
@@ -39,7 +44,14 @@ async function listRemoteSuppliers(config) {
 }
 
 async function listRemoteItems(config, filters) {
-  let qs = "supplier_items?select=*,suppliers(name)&is_active=eq.true&order=category.asc,name_zh.asc";
+  let qs = "supplier_items?select=*,suppliers(name)&order=category.asc,name_zh.asc";
+  // 状态过滤：默认（未传或 active）只返回启用项，保持原有行为；all=全部；inactive=仅停用
+  if (!filters.status || filters.status === "active") {
+    qs += "&is_active=eq.true";
+  } else if (filters.status === "inactive") {
+    qs += "&is_active=eq.false";
+  }
+  // filters.status === "all" → 不加 is_active 过滤，返回全部
   if (filters.category) qs += `&category=eq.${encodeURIComponent(filters.category)}`;
   if (filters.supplierId) qs += `&supplier_id=eq.${encodeURIComponent(filters.supplierId)}`;
   const rows = await supabaseRequest(config, qs);
@@ -209,6 +221,12 @@ function createSupplierStore({ data, saveData }) {
         let items = [...data.supplierItems];
         if (filters.category) items = items.filter((i) => i.category === filters.category);
         if (filters.supplierId) items = items.filter((i) => i.supplierId === filters.supplierId);
+        // 状态过滤：默认（未传或 active）只返回启用项；all=全部；inactive=仅停用
+        if (!filters.status || filters.status === "active") {
+          items = items.filter((i) => i.isActive !== false);
+        } else if (filters.status === "inactive") {
+          items = items.filter((i) => i.isActive === false);
+        }
         return { items, source: "local_json" };
       }
       try {
@@ -219,12 +237,18 @@ function createSupplierStore({ data, saveData }) {
         let items = [...data.supplierItems];
         if (filters.category) items = items.filter((i) => i.category === filters.category);
         if (filters.supplierId) items = items.filter((i) => i.supplierId === filters.supplierId);
+        if (!filters.status || filters.status === "active") {
+          items = items.filter((i) => i.isActive !== false);
+        } else if (filters.status === "inactive") {
+          items = items.filter((i) => i.isActive === false);
+        }
         return { items, source: "local_json", fallbackReason: error.message };
       }
     },
 
     async getBestPriceItems() {
-      const { items } = await this.listSupplierItems();
+      // 最低价只基于启用项计算；显式传 status:active 以兼容新的状态过滤逻辑
+      const { items } = await this.listSupplierItems({ status: "active" });
       return { items: computeBestPriceItems(items), source: "supabase" };
     },
 

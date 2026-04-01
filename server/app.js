@@ -1756,7 +1756,8 @@ async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/supplier-items") {
     const category = url.searchParams.get("category") || "";
     const supplierId = url.searchParams.get("supplier_id") || "";
-    const { items: rawItems } = await supplierStore.listSupplierItems({ category, supplierId });
+    const status = url.searchParams.get("status") || ""; // ""|"active"|"inactive"|"all"
+    const { items: rawItems } = await supplierStore.listSupplierItems({ category, supplierId, status });
     const items = filterSupplierCatalogFields(authCtx, rawItems);
     sendJson(response, 200, items);
     return true;

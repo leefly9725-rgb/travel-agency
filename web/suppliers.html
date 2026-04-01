@@ -2128,6 +2128,646 @@
         max-width: none;
       }
     }
+
+    /* ─── V2 视觉回拉 ─────────────────────────────────────── */
+
+    /* A. 页面标题 — 主标 vs 副标 */
+    .suppliers-page .s-page-head-left h1 {
+      font-size: 22px;
+      font-weight: 900;
+      color: #0b1b2d;
+      letter-spacing: -0.03em;
+      line-height: 1.15;
+    }
+
+    .suppliers-page .s-page-head-left h1 .h1-sub {
+      font-size: 14px;
+      font-weight: 400;
+      color: #8a98aa;
+      letter-spacing: 0;
+      margin-left: 2px;
+    }
+
+    .suppliers-page .s-page-head-left > p {
+      font-size: 12px;
+      color: #8e9cac;
+      margin-top: 0;
+    }
+
+    /* B. KPI — 数字更突出，meta 更弱 */
+    .suppliers-page .s-kpi-value {
+      font-size: 34px;
+      font-weight: 900;
+      color: #0b1b2d;
+      letter-spacing: -0.04em;
+      line-height: 0.95;
+    }
+
+    .suppliers-page #kpi-last-update {
+      font-size: 19px !important;
+      letter-spacing: -0.015em !important;
+      line-height: 1.2;
+    }
+
+    .suppliers-page .s-kpi-label {
+      font-size: 10px;
+      font-weight: 700;
+      color: #7e8c9d;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+    }
+
+    .suppliers-page .s-kpi-meta {
+      font-size: 11px;
+      color: #9fabb8;
+      margin-top: 2px;
+      line-height: 1.5;
+    }
+
+    .suppliers-page .s-kpi-meta .hi {
+      color: #15803d;
+      font-weight: 700;
+    }
+
+    /* C. 供应商侧边栏 — 头部锚定，卡片主次分明 */
+    .suppliers-page .s-panel-head {
+      background: linear-gradient(180deg, #f0f4f9 0%, #eaeff6 100%);
+      border-bottom: 2px solid rgba(15, 23, 42, 0.10);
+    }
+
+    .suppliers-page .s-panel-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0d1f35;
+      letter-spacing: -0.01em;
+    }
+
+    .suppliers-page .s-sup-name {
+      font-size: 13px;
+      font-weight: 800;
+      color: #0d1f35;
+      line-height: 1.3;
+    }
+
+    .suppliers-page .s-sup-meta {
+      font-size: 10px;
+      color: #96a4b4;
+      gap: 3px;
+    }
+
+    .suppliers-page .sup-sup-phone,
+    .suppliers-page .sup-sup-email {
+      font-size: 10px;
+      color: #a2afbe;
+    }
+
+    .suppliers-page .s-sup-card:hover {
+      background: #f5f8fd;
+      border-color: rgba(37, 99, 235, 0.14);
+      box-shadow: 0 4px 14px rgba(15, 23, 42, 0.045);
+    }
+
+    .suppliers-page .s-sup-card.active {
+      background: linear-gradient(155deg, #eef6ff 0%, #e3efff 100%);
+      border-color: rgba(37, 99, 235, 0.38);
+      box-shadow: 0 6px 18px rgba(37, 99, 235, 0.11);
+    }
+
+    .suppliers-page .s-sup-card.active::before {
+      background: linear-gradient(180deg, #1e56d9 0%, #60a5fa 100%);
+    }
+
+    .suppliers-page .s-sup-card.active .s-sup-name {
+      color: #0e296a;
+    }
+
+    /* D. 主价格库 — 最高优先级强化 */
+    .suppliers-page .sup-primary-card {
+      border-color: rgba(37, 99, 235, 0.26);
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.04),
+                  0 20px 48px rgba(37, 99, 235, 0.09);
+    }
+
+    .suppliers-page .sup-primary-card .s-card-head {
+      padding: 16px 20px 14px;
+      background: linear-gradient(180deg, #ffffff 0%, #f0f6ff 100%);
+      border-bottom: 2px solid rgba(37, 99, 235, 0.14);
+    }
+
+    .suppliers-page .sup-primary-card .sup-card-kicker {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #5472a6;
+      margin-bottom: 3px;
+    }
+
+    .suppliers-page .sup-primary-card .s-card-title {
+      font-size: 20px;
+      font-weight: 900;
+      letter-spacing: -0.03em;
+      color: #0c1d34;
+      line-height: 1.15;
+    }
+
+    .suppliers-page .sup-primary-card .s-card-sub {
+      font-size: 12px;
+      color: #6c82a2;
+      margin-top: 1px;
+    }
+
+    /* 主表表头：有分量感的蓝灰色 */
+    .suppliers-page .sup-primary-card .sup-table th {
+      padding: 11px 14px;
+      background: linear-gradient(180deg, #e6f0fb 0%, #dce9f5 100%);
+      border-bottom: 2px solid rgba(15, 23, 42, 0.13);
+      color: #3a5070;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.09em;
+      text-transform: uppercase;
+      box-shadow: inset 0 -1px 0 rgba(255, 255, 255, 0.65);
+    }
+
+    /* 物料名列：最重 */
+    .suppliers-page .sup-item-name {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0c1d34;
+      letter-spacing: -0.015em;
+    }
+
+    /* 规格副文本：明显更弱 */
+    .suppliers-page .sup-item-sub {
+      font-size: 11px;
+      color: #8a98a9;
+    }
+
+    /* 价格列：数字清晰 */
+    .suppliers-page .sup-primary-card .s-price {
+      font-size: 14px;
+      font-weight: 800;
+      color: #0c1d34;
+      letter-spacing: -0.02em;
+    }
+
+    /* 状态标签：清楚但克制 */
+    .suppliers-page .sup-primary-card .s-badge.on {
+      background: #edfdf5;
+      color: #16803d;
+      border-color: #bbf7d0;
+    }
+
+    .suppliers-page .sup-primary-card .s-badge.off {
+      background: #f3f5f8;
+      color: #94a3b8;
+      border-color: rgba(15, 23, 42, 0.10);
+    }
+
+    /* 操作列：轻按钮，清晰节奏 */
+    .suppliers-page .sup-primary-card .s-act {
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #5b6c7e;
+      background: #f0f4f9;
+    }
+
+    .suppliers-page .sup-primary-card .s-act:hover {
+      background: #e2ecff;
+      color: #1a3fc4;
+    }
+
+    .suppliers-page .sup-primary-card .s-act.danger { color: #c03030; }
+    .suppliers-page .sup-primary-card .s-act.danger:hover {
+      background: #fff0ef;
+      color: #b91c1c;
+    }
+
+    .suppliers-page .sup-primary-card .s-act-sep {
+      color: rgba(100, 116, 139, 0.26);
+    }
+
+    /* 行 hover */
+    .suppliers-page .sup-primary-card .sup-table tbody tr:hover td {
+      background: #f1f7ff;
+    }
+
+    /* 分页区 */
+    .suppliers-page .sup-primary-card .s-pagination {
+      padding: 10px 16px;
+      background: linear-gradient(180deg, #f4f9ff 0%, #edf4fb 100%);
+      border-top: 1px solid rgba(37, 99, 235, 0.10);
+    }
+
+    /* E. 比价区降权 — 辅助判断，视觉退场 */
+    .suppliers-page .sup-secondary-card {
+      border-color: rgba(15, 23, 42, 0.05);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.02);
+      background: #f8fafc;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-head {
+      padding: 11px 16px 10px;
+      background: #f5f8fb;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .suppliers-page .sup-secondary-card .sup-card-kicker {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      color: #a0aebb;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #556d8a;
+      letter-spacing: -0.01em;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-sub {
+      font-size: 11px;
+      color: #9caab8;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table th {
+      padding: 9px 12px;
+      background: #f3f6f9;
+      color: #7d8ea0;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.07);
+      box-shadow: none;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table td {
+      padding: 9px 12px;
+      font-size: 12px;
+      color: #7e8fa2;
+      border-bottom-color: rgba(15, 23, 42, 0.04);
+      background: transparent;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-col-supplier {
+      font-weight: 600;
+      color: #496080;
+    }
+
+    .suppliers-page .sup-secondary-card .s-price {
+      font-size: 13px;
+      font-weight: 700;
+      color: #2e4860;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act {
+      font-size: 11px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: #ecf1f7;
+      color: #506278;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act:hover {
+      background: #ddeaf8;
+      color: #1a3fc4;
+    }
+
+    .suppliers-page .sup-secondary-card .s-pagination-light {
+      background: #f5f7fa;
+      padding: 8px 14px;
+    }
+
+    .suppliers-page .sup-secondary-card .s-compare-hint {
+      background: #f5f8fb;
+      color: #96a4b5;
+      font-size: 11px;
+      padding: 7px 14px;
+      border-top: 1px solid rgba(15, 23, 42, 0.05);
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table tbody tr:hover td {
+      background: #f5f8fc;
+    }
+
+    /* ─── V4 收口：标题区收紧 + 表格外壳补完 ──────────────── */
+
+    /* 1. 标题区：单行 h1，消除多余间距 */
+    .suppliers-page .s-page-head {
+      padding-bottom: 0;
+      margin-bottom: 0;
+      align-items: center;
+    }
+
+    .suppliers-page .s-page-head-left {
+      gap: 0;
+    }
+
+    .suppliers-page .s-page-head-left h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: #0b1b2d;
+      letter-spacing: -0.025em;
+      line-height: 1;
+      margin: 0;
+    }
+
+    /* 2a. 主价格库 — 完整外壳 */
+    .suppliers-page .sup-primary-card {
+      border-radius: 8px;
+      border: 2px solid rgba(37, 99, 235, 0.32);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      background: #ffffff;
+      /* 左右略微内缩，不顶满容器边缘 */
+      margin-inline: 1px;
+    }
+
+    /* 2b. 比价区 — 完整外壳 */
+    .suppliers-page .sup-secondary-card {
+      border-radius: 8px;
+      border: 1.5px solid rgba(15, 23, 42, 0.18);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      overflow: hidden;
+      background: #ffffff;
+      margin-inline: 1px;
+    }
+
+    /* ─── V3 表格面板化 ─────────────────────────────────────
+       目标：价格库区 + 比价区 均回归清晰、完整、标准的
+             table panel 表达。主次通过权重区分，而非
+             "一个像表格、一个不像表格"来区分。
+    ──────────────────────────────────────────────────────── */
+
+    /* ══ 1. 主价格库 — 面板外壳 ══════════════════════════════ */
+    .suppliers-page .sup-primary-card {
+      border-radius: 8px;
+      border: 2px solid rgba(37, 99, 235, 0.32);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+      overflow: hidden;
+      background: #ffffff;
+      margin-inline: 1px;
+    }
+
+    /* 标题栏：table panel header 质感 */
+    .suppliers-page .sup-primary-card .s-card-head {
+      padding: 11px 16px 10px;
+      background: #e8f1ff;
+      border-bottom: 2px solid rgba(37, 99, 235, 0.22);
+      border-radius: 0;
+    }
+
+    .suppliers-page .sup-primary-card .sup-card-kicker {
+      font-size: 9px;
+      font-weight: 800;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: #4d6ea6;
+      margin-bottom: 2px;
+    }
+
+    .suppliers-page .sup-primary-card .s-card-title {
+      font-size: 15px;
+      font-weight: 800;
+      color: #0d1e32;
+      letter-spacing: -0.02em;
+      line-height: 1.2;
+    }
+
+    .suppliers-page .sup-primary-card .s-card-sub {
+      font-size: 11px;
+      color: #6880a2;
+      margin-top: 0;
+    }
+
+    /* 表格壳：让 table 边缘紧贴面板 */
+    .suppliers-page .sup-primary-card .s-table-wrap {
+      border-top: none;
+    }
+
+    /* ── 主表头：有骨架感 */
+    .suppliers-page .sup-primary-card .sup-table th {
+      padding: 9px 12px;
+      background: #d8e8f8;
+      border-bottom: 2px solid rgba(37, 99, 235, 0.20);
+      border-right: 1px solid rgba(37, 99, 235, 0.13);
+      color: #3a5272;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: none;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table th:last-child {
+      border-right: none;
+    }
+
+    /* ── 主表体：行列分隔清楚 */
+    .suppliers-page .sup-primary-card .sup-table td {
+      padding: 9px 12px;
+      background: #ffffff;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.08);
+      border-right: 1px solid rgba(15, 23, 42, 0.05);
+    }
+
+    .suppliers-page .sup-primary-card .sup-table td:last-child {
+      border-right: none;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table tbody tr:hover td {
+      background: #f0f7ff;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table tbody tr.row-inactive td {
+      background: #fafbfc;
+    }
+
+    /* ── 分页：收进面板底部 */
+    .suppliers-page .sup-primary-card .s-pagination {
+      padding: 8px 14px;
+      background: #f0f5fb;
+      border-top: 1px solid rgba(37, 99, 235, 0.15);
+      border-radius: 0;
+    }
+
+    /* ══ 2. 比价区 — 面板外壳 ════════════════════════════════ */
+    .suppliers-page .sup-secondary-card {
+      border-radius: 8px;
+      border: 1.5px solid rgba(15, 23, 42, 0.18);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05);
+      background: #ffffff;
+      margin-inline: 1px;
+    }
+
+    /* 标题栏：同语言，低权重 */
+    .suppliers-page .sup-secondary-card .s-card-head {
+      padding: 9px 14px 8px;
+      background: #f0f3f7;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.12);
+      border-radius: 0;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-card-kicker {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+      text-transform: uppercase;
+      color: #98a8b8;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #485e72;
+      letter-spacing: -0.01em;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-sub {
+      font-size: 11px;
+      color: #8898a8;
+    }
+
+    /* 筛选栏：与标题连贯 */
+    .suppliers-page .sup-secondary-card .s-compare-bar {
+      background: #f5f7fa;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.09);
+      padding: 8px 14px;
+    }
+
+    /* ── 辅表头：有骨架但更轻 */
+    .suppliers-page .sup-secondary-card .sup-table th {
+      padding: 8px 12px;
+      background: #e8edf2;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.14);
+      border-right: 1px solid rgba(15, 23, 42, 0.07);
+      color: #607080;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      white-space: nowrap;
+      box-shadow: none;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table th:last-child {
+      border-right: none;
+    }
+
+    /* ── 辅表体：行列分隔，比主表轻 */
+    .suppliers-page .sup-secondary-card .sup-table td {
+      padding: 8px 12px;
+      background: #ffffff;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.06);
+      border-right: 1px solid rgba(15, 23, 42, 0.04);
+      color: #7080a0;
+      font-size: 12px;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table td:last-child {
+      border-right: none;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table tbody tr:hover td {
+      background: #f5f8fc;
+    }
+
+    /* 供应商列：稍重，可识别 */
+    .suppliers-page .sup-secondary-card .sup-col-supplier {
+      font-weight: 600;
+      color: #3d5570;
+      font-size: 12px;
+    }
+
+    /* 价格列：清晰数字 */
+    .suppliers-page .sup-secondary-card .s-price {
+      font-size: 13px;
+      font-weight: 700;
+      color: #1e3850;
+    }
+
+    /* ── 分页：收进面板底部 */
+    .suppliers-page .sup-secondary-card .s-pagination-light {
+      background: #eff3f7;
+      border-top: 1px solid rgba(15, 23, 42, 0.11);
+      padding: 8px 14px;
+    }
+
+    /* ── 提示行：轻收尾 */
+    .suppliers-page .sup-secondary-card .s-compare-hint {
+      background: #eff3f7;
+      border-top: 1px solid rgba(15, 23, 42, 0.09);
+      color: #8898a8;
+      font-size: 11px;
+      padding: 7px 14px;
+    }
+
+    /* ══ 3. 操作列节奏对齐（两表统一） ══════════════════════ */
+    .suppliers-page .sup-primary-card .s-row-actions,
+    .suppliers-page .sup-secondary-card .s-row-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      justify-content: flex-end;
+    }
+
+    .suppliers-page .sup-primary-card .s-act {
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #5a6c80;
+      background: #edf2f8;
+    }
+
+    .suppliers-page .sup-primary-card .s-act:hover {
+      background: #ddeaff;
+      color: #1a40c8;
+    }
+
+    .suppliers-page .sup-primary-card .s-act.danger { color: #b83030; }
+    .suppliers-page .sup-primary-card .s-act.danger:hover {
+      background: #ffeeed;
+      color: #b91c1c;
+    }
+
+    .suppliers-page .sup-primary-card .s-act-sep {
+      color: rgba(100, 116, 139, 0.25);
+      padding: 0 2px;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act {
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      color: #607080;
+      background: #e8edf4;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act:hover {
+      background: #d8e6f8;
+      color: #1a40c8;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act-sep {
+      color: rgba(100, 116, 139, 0.20);
+      padding: 0 2px;
+    }
   </style>
 </head>
 <body style="visibility:hidden">
@@ -2138,8 +2778,7 @@
     <!-- ── 页面标题 ── -->
     <div class="s-page-head">
       <div class="s-page-head-left">
-        <h1>供应商管理 / 价格库工作台</h1>
-        <p>维护供应商信息与价格库，支持比价与选库</p>
+        <h1>供应商管理</h1>
       </div>
     </div>
 
