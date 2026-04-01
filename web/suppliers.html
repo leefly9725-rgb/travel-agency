@@ -16,8 +16,8 @@
       min-height: 0 !important;
     }
 
-    /* ── CSS 变量 ── */
-    .suppliers-page {
+    /* ── CSS 变量 — 提升到 :root，确保 dialog 等脱离文档流的节点也能继承 ── */
+    :root {
       --s-white:   #ffffff;
       --s-bg:      #f5f0e8;
       --s-border:  rgba(30,36,48,0.10);
@@ -2768,6 +2768,196 @@
       color: rgba(100, 116, 139, 0.20);
       padding: 0 2px;
     }
+
+    /* ─── 弹窗系统 V1 ─────────────────────────────────────────
+       统一 dlg-supplier / dlg-item / dlg-categories 的
+       Header / Body / Footer 三段式结构与交互语言。
+    ──────────────────────────────────────────────────────── */
+
+    /* ── 弹窗尺寸 */
+    #dlg-supplier { width: min(520px, 92vw); }
+    #dlg-item     { width: min(580px, 92vw); }
+    #dlg-categories { width: min(760px, 94vw); }
+
+    /* ── Header：锚定感更强 */
+    .dlg-head {
+      padding: 14px 18px 13px;
+      background: #f4f7fb;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.11);
+    }
+
+    .dlg-head h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #0d1e32;
+      letter-spacing: -0.01em;
+    }
+
+    /* ── Body：舒适内边距 */
+    .dlg-body {
+      padding: 18px 20px;
+    }
+
+    /* ── Footer：固定底部，左次右主 */
+    .dlg-footer {
+      justify-content: space-between;
+      padding: 11px 18px;
+      background: #f4f7fb;
+      border-top: 1px solid rgba(15, 23, 42, 0.11);
+    }
+
+    /* 分类弹窗的 footer summary 文字 */
+    .dlg-footer .cat-dialog-summary {
+      font-size: 12px;
+      color: #6b7a8c;
+      font-weight: 500;
+      margin: 0;
+      align-self: center;
+    }
+
+    /* ── 表单分组标题 */
+    .form-section-head {
+      font-size: 10px;
+      font-weight: 700;
+      color: #5c7299;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding-bottom: 6px;
+      border-bottom: 1px solid rgba(15, 23, 42, 0.09);
+    }
+
+    /* ── 两列字段行 */
+    .form-stack .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    /* ── 字段间距 */
+    .form-stack {
+      gap: 13px;
+    }
+
+    /* ── 标签文字 */
+    .form-stack label {
+      font-size: 11px;
+      font-weight: 600;
+      color: #3f5168;
+      letter-spacing: 0.01em;
+      gap: 5px;
+    }
+
+    /* ── 控件外观统一 */
+    .form-stack input,
+    .form-stack select,
+    .form-stack textarea {
+      height: 33px;
+      border: 1px solid rgba(15, 23, 42, 0.17);
+      border-radius: 5px;
+      background: #fcfdff;
+      font-size: 12.5px;
+      color: #1a2738;
+      transition: border-color .12s, outline .12s, background .12s;
+    }
+
+    .form-stack input::placeholder,
+    .form-stack textarea::placeholder {
+      color: #9aaab8;
+      font-size: 12px;
+    }
+
+    .form-stack input:focus,
+    .form-stack select:focus,
+    .form-stack textarea:focus {
+      border-color: rgba(37, 99, 235, 0.50);
+      outline: 2px solid rgba(37, 99, 235, 0.13);
+      outline-offset: 0;
+      background: #ffffff;
+    }
+
+    .form-stack textarea {
+      height: 76px;
+      line-height: 1.5;
+    }
+
+    /* ── checkbox 行 */
+    .checkbox-row {
+      font-size: 12px;
+      color: #3c4f62;
+      gap: 8px;
+    }
+
+    /* ── 主按钮 — 始终清晰可见 */
+    .s-btn-primary {
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    /* ── 禁用态 — 可见，不消失 */
+    .s-btn:disabled {
+      opacity: 0.50;
+      cursor: not-allowed;
+    }
+
+    .s-btn-primary:disabled {
+      background: #7ea8d8;
+      border-color: #7ea8d8;
+      color: #ffffff;
+      opacity: 1;
+    }
+
+    /* ── 分类列表区域 */
+    .cat-list {
+      max-height: 280px;
+    }
+
+    /* ── 分类对话框弹窗内容行间距 */
+    .cat-dialog-body {
+      gap: 14px;
+    }
+
+    .cat-panel-head h3 {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0d1e32;
+    }
+
+    .cat-row {
+      border: 1px solid rgba(15, 23, 42, 0.09);
+      border-radius: 6px;
+      padding: 9px 12px;
+      background: #fdfdff;
+    }
+
+    .cat-row-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a2738;
+    }
+
+    .cat-row-code {
+      font-size: 11px;
+      color: #7a8898;
+    }
+
+    /* ── disabled 态：可见，不消失 ─────────────────────────── */
+    .s-btn:disabled,
+    .s-btn[disabled] {
+      opacity: 1;
+      cursor: not-allowed;
+      background: #e8ecf0;
+      border-color: rgba(15, 23, 42, 0.14);
+      color: #94a3b5;
+    }
+
+    .s-btn-primary:disabled,
+    .s-btn-primary[disabled] {
+      background: #8aacda;
+      border-color: #8aacda;
+      color: #ffffff;
+      opacity: 1;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body style="visibility:hidden">
@@ -2998,13 +3188,18 @@
     <div class="dlg-body">
       <form class="form-stack" id="supplier-form">
         <input type="hidden" name="id" />
-        <label>供应商名称 *<input name="name" required placeholder="例如：海景酒店集团" /></label>
-        <label>联系人<input name="contact" placeholder="联系人姓名" /></label>
-        <label>电话<input name="phone" placeholder="+381 11 1234567" /></label>
-        <label>邮箱<input name="email" type="email" placeholder="info@example.com" /></label>
+        <div class="form-section-head">基本信息</div>
+        <label>供应商名称 *<input name="name" required placeholder="例：Belgrade Grand Hotel 集团" /></label>
+        <div class="form-section-head">联系信息</div>
+        <div class="form-row">
+          <label>联系人<input name="contact" placeholder="联系人姓名" /></label>
+          <label>电话<input name="phone" placeholder="+381 11 1234 567" /></label>
+        </div>
+        <label>邮箱<input name="email" type="email" placeholder="contact@company.com" /></label>
+        <div class="form-section-head">分类与状态</div>
         <label>供应商类别
           <select name="supplierType">
-            <option value="">-- 请选择 --</option>
+            <option value="">-- 请选择类别 --</option>
             <option value="hotel">酒店</option>
             <option value="dmc">地接</option>
             <option value="trans">交通</option>
@@ -3013,11 +3208,12 @@
             <option value="other">其他</option>
           </select>
         </label>
-        <label>备注<textarea name="notes" placeholder="供应商备注信息"></textarea></label>
         <div class="checkbox-row">
           <input type="checkbox" name="isActiveSupplier" id="chk-sup-active" checked />
-          <label for="chk-sup-active">启用（活跃供应商）</label>
+          <label for="chk-sup-active">启用（纳入活跃供应商列表）</label>
         </div>
+        <div class="form-section-head">备注</div>
+        <label>备注<textarea name="notes" placeholder="供应商内部备注、合作注意事项等..."></textarea></label>
       </form>
     </div>
     <div class="dlg-footer">
@@ -3037,22 +3233,34 @@
     <div class="dlg-body">
       <form class="form-stack" id="item-form">
         <input type="hidden" name="id" />
-        <label>所属供应商 *<select name="supplierIdSel" id="item-supplier-select"></select></label>
-        <label>类别 *<select name="category" id="item-category-select" required></select></label>
-        <label>中文名称 *<input name="nameZh" required placeholder="例如：豪华海景房" /></label>
-        <label>英文名称<input name="nameEn" placeholder="例如：Deluxe Sea View Room" /></label>
-        <label>规格说明<input name="spec" placeholder="例如：含早餐 / 2人" /></label>
-        <label>单位 *<input name="unit" required placeholder="例如：间/晚、套、位" /></label>
-        <label>成本价<input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" /></label>
-        <label>币种
-          <select name="currency">
-            <option value="EUR" selected>EUR 欧元</option>
-            <option value="CNY">CNY 人民币</option>
-            <option value="USD">USD 美元</option>
-            <option value="RSD">RSD 第纳尔</option>
-          </select>
-        </label>
-        <label>备注<textarea name="notes" placeholder="其他说明"></textarea></label>
+        <div class="form-section-head">归属信息</div>
+        <div class="form-row">
+          <label>所属供应商 *<select name="supplierIdSel" id="item-supplier-select"></select></label>
+          <label>类别 *<select name="category" id="item-category-select" required></select></label>
+        </div>
+        <div class="form-section-head">名称信息</div>
+        <div class="form-row">
+          <label>中文名称 *<input name="nameZh" required placeholder="例：豪华海景双人房" /></label>
+          <label>英文名称<input name="nameEn" placeholder="例：Deluxe Sea View Room" /></label>
+        </div>
+        <div class="form-section-head">规格与价格</div>
+        <div class="form-row">
+          <label>规格说明<input name="spec" placeholder="例：含早餐 / 双人" /></label>
+          <label>单位 *<input name="unit" required placeholder="例：间/晚、套、人次" /></label>
+        </div>
+        <div class="form-row">
+          <label>成本价<input type="number" name="costPrice" min="0" step="0.01" placeholder="0.00" /></label>
+          <label>币种
+            <select name="currency">
+              <option value="EUR" selected>EUR 欧元</option>
+              <option value="CNY">CNY 人民币</option>
+              <option value="USD">USD 美元</option>
+              <option value="RSD">RSD 第纳尔</option>
+            </select>
+          </label>
+        </div>
+        <div class="form-section-head">备注与状态</div>
+        <label>备注<textarea name="notes" placeholder="物料说明、使用场景、有效期等..."></textarea></label>
         <div class="checkbox-row">
           <input type="checkbox" name="isActive" id="chk-item-active" checked />
           <label for="chk-item-active">启用（纳入价格库）</label>
@@ -3108,10 +3316,10 @@
           </div>
         </div>
       </div>
-      <div class="cat-dialog-footer">
-        <p id="cat-dialog-summary" class="cat-dialog-summary">共 0 个分类</p>
-        <button class="s-btn" type="button" data-close-dlg="dlg-categories">关闭面板</button>
-      </div>
+    </div>
+    <div class="dlg-footer">
+      <p id="cat-dialog-summary" class="cat-dialog-summary">共 0 个分类</p>
+      <button class="s-btn" type="button" data-close-dlg="dlg-categories">关闭</button>
     </div>
   </div>
 </dialog>
