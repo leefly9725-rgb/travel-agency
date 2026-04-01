@@ -975,6 +975,56 @@
       margin-top: 12px;
     }
 
+    /* VAT three-row Final Quotation layout */
+    .qp-total-amount-vat {
+      min-width: 260px;
+      display: grid;
+      gap: 6px;
+      text-align: right;
+    }
+
+    .qp-vat-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 20px;
+    }
+
+    .qp-vat-label {
+      font-size: 10.5px;
+      color: rgba(255,255,255,0.72);
+      font-family: var(--qp-font-en);
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .qp-vat-value {
+      font-size: 15px;
+      color: rgba(255,255,255,0.88);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .qp-vat-grand {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255,255,255,0.24);
+    }
+
+    .qp-vat-grand .qp-vat-label {
+      font-size: 12px;
+      color: #fff;
+      font-weight: 700;
+      letter-spacing: 0.10em;
+    }
+
+    .qp-vat-grand .qp-vat-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.05;
+    }
+
     .qp-terms-card p,
     .qp-terms-card li {
       font-size: 12px;
@@ -1136,6 +1186,13 @@
         <select id="preview-grouping">
           <option value="grouped">按组展示</option>
           <option value="flat">不按组展示</option>
+        </select>
+      </div>
+      <div class="qp-control">
+        <label for="preview-tax-mode">税务显示</label>
+        <select id="preview-tax-mode">
+          <option value="excluded">不含税</option>
+          <option value="included">含税（VAT 20%）</option>
         </select>
       </div>
       <div class="qp-control qp-toggle-group">

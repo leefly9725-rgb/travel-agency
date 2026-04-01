@@ -62,7 +62,7 @@
   }
 
   function renderCoverContent(vm, runtime) {
-    const { company, utils } = getRuntime(runtime);
+    const { company, utils, state } = getRuntime(runtime);
     const { esc, money } = utils;
 
     const destParts = [
@@ -146,10 +146,13 @@
 
         <!-- 金色总价栏 -->
         <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
-          <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+          <div>
+            <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+            ${state.taxMode === 'included' ? '<div style="font-size:8px;color:#1B2A4A;opacity:0.65;letter-spacing:1px;margin-top:3px;">Including VAT 20%</div>' : ''}
+          </div>
           <div style="display:flex;align-items:baseline;gap:8px;">
             <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
-            <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${money(vm.totalSales, vm.currency)}</span>
+            <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${state.taxMode === 'included' ? money(vm.grandTotal, vm.currency) : money(vm.totalSales, vm.currency)}</span>
           </div>
         </div>
 
@@ -458,8 +461,36 @@
   }
 
   function renderTotalBlock(vm, runtime, note) {
-    const { utils } = getRuntime(runtime);
+    const { utils, state } = getRuntime(runtime);
     const { esc, biTitle, money } = utils;
+    const taxMode = (state && state.taxMode) || 'excluded';
+
+    if (taxMode === 'included' && vm.grandTotal != null) {
+      return `
+        <div class="qp-total-card">
+          <div class="qp-total-note">
+            <span>Final Quotation</span>
+            <strong>${biTitle('客户版总报价', 'Client Grand Total', 'Ukupna cena za klijenta')}</strong>
+            <p>${esc(note)}</p>
+          </div>
+          <div class="qp-total-amount-vat">
+            <div class="qp-vat-row">
+              <span class="qp-vat-label">Subtotal</span>
+              <span class="qp-vat-value">${money(vm.subtotal, vm.currency)}</span>
+            </div>
+            <div class="qp-vat-row">
+              <span class="qp-vat-label">VAT 20%</span>
+              <span class="qp-vat-value">${money(vm.vatAmount, vm.currency)}</span>
+            </div>
+            <div class="qp-vat-row qp-vat-grand">
+              <span class="qp-vat-label">Grand Total</span>
+              <span class="qp-vat-value">${money(vm.grandTotal, vm.currency)}</span>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="qp-total-card">
         <div class="qp-total-note">

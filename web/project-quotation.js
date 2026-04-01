@@ -81,6 +81,7 @@ const state = {
   grouping: params.get('grouping') || 'grouped',
   showOverview: params.get('overview') !== '0',
   showSign: params.get('sign') !== '0',
+  taxMode: 'excluded',
 };
 
 const FEATURE_FLAGS = {
@@ -96,6 +97,7 @@ const modeSelect = document.getElementById('preview-mode');
 const groupingSelect = document.getElementById('preview-grouping');
 const overviewCheck = document.getElementById('preview-overview');
 const signCheck = document.getElementById('preview-sign');
+const taxSelect = document.getElementById('preview-tax-mode');
 window.__QP_READY__ = false;
 window.__QP_TOTAL_PAGES__ = 0;
 window.__QP_PAGES_STABLE__ = false;
@@ -238,6 +240,11 @@ function buildClientViewModel(quote) {
 
   const totalSales = groups.reduce((sum, group) => sum + group.groupSalesTotal, 0);
 
+  const subtotal = totalSales;
+  const vatRate = 0.2;
+  const vatAmount = subtotal * vatRate;
+  const grandTotal = subtotal + vatAmount;
+
   const serviceSummary = groups.map((group) => group.projectTitle).filter(Boolean);
 
   return {
@@ -256,6 +263,10 @@ function buildClientViewModel(quote) {
     notes: quote.notes || '',
     groups,
     totalSales,
+    subtotal,
+    vatRate,
+    vatAmount,
+    grandTotal,
     serviceSummary,
   };
 }
@@ -838,6 +849,7 @@ function bindControls(vm) {
   if (groupingSelect) groupingSelect.value = state.grouping;
   if (overviewCheck) overviewCheck.checked = state.showOverview;
   if (signCheck) signCheck.checked = state.showSign;
+  if (taxSelect) taxSelect.value = state.taxMode;
 
   if (langSelect) {
     langSelect.addEventListener('change', () => {
@@ -870,6 +882,13 @@ function bindControls(vm) {
   if (signCheck) {
     signCheck.addEventListener('change', () => {
       state.showSign = signCheck.checked;
+      render(vm);
+    });
+  }
+
+  if (taxSelect) {
+    taxSelect.addEventListener('change', () => {
+      state.taxMode = taxSelect.value;
       render(vm);
     });
   }
