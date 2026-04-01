@@ -145,16 +145,33 @@
         </div>
 
         <!-- 金色总价栏 -->
-        <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
-          <div>
-            <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
-            ${state.taxMode === 'included' ? '<div style="font-size:8px;color:#1B2A4A;opacity:0.65;letter-spacing:1px;margin-top:3px;">Including VAT 20%</div>' : ''}
-          </div>
-          <div style="display:flex;align-items:baseline;gap:8px;">
-            <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
-            <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${state.taxMode === 'included' ? money(vm.grandTotal, vm.currency) : money(vm.totalSales, vm.currency)}</span>
+        ${state.taxMode === 'included' ? `
+        <div style="flex-shrink:0;background:#C9A84C;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
+          <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+          <div style="display:grid;gap:4px;min-width:230px;">
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;">
+              <span style="font-size:8px;letter-spacing:1px;color:rgba(27,42,74,0.65);text-transform:uppercase;">Subtotal</span>
+              <span style="font-size:13px;color:#1B2A4A;font-weight:500;font-variant-numeric:tabular-nums;">${money(vm.subtotal, vm.currency)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;">
+              <span style="font-size:8px;letter-spacing:1px;color:rgba(27,42,74,0.65);text-transform:uppercase;">VAT 20%</span>
+              <span style="font-size:13px;color:#1B2A4A;font-weight:500;font-variant-numeric:tabular-nums;">${money(vm.vatAmount, vm.currency)}</span>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;margin-top:4px;padding-top:6px;border-top:1px solid rgba(27,42,74,0.22);">
+              <span style="font-size:9px;letter-spacing:1px;color:#1B2A4A;font-weight:700;text-transform:uppercase;">Grand Total</span>
+              <span style="font-size:22px;font-weight:700;color:#1B2A4A;font-variant-numeric:tabular-nums;">${money(vm.grandTotal, vm.currency)}</span>
+            </div>
           </div>
         </div>
+        ` : `
+        <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
+          <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
+            <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${money(vm.totalSales, vm.currency)}</span>
+          </div>
+        </div>
+        `}
 
         <!-- 页脚 -->
         <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE;position:relative;z-index:2;">
