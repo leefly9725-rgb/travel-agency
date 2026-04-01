@@ -294,14 +294,14 @@ function renderSupplierList() {
             <span>${sup.contact ? "联系人：" + sup.contact : ""}</span>
             <span class="s-status-dot ${isActive ? "on" : "off"}">${isActive ? "启用" : "停用"}</span>
           </div>
-          ${sup.phone ? `<span>${sup.phone}</span>` : ""}
+          ${sup.phone ? `<span class="sup-sup-phone">${sup.phone}</span>` : ""}
           <div class="s-sup-meta-row">
-            <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:140px;">${sup.email || ""}</span>
+            <span class="sup-sup-email">${sup.email || ""}</span>
             <span>物料 ${itemCount} 项</span>
           </div>
         </div>
         ${window.can("supplier.edit") || window.can("supplier.delete") ? `
-        <div style="display:flex;gap:5px;margin-top:7px;">
+        <div class="sup-list-actions">
           ${window.can("supplier.edit")   ? `<button class="s-act"        style="font-size:11px;" data-edit-supplier="${sup.id}">编辑</button>` : ""}
           ${window.can("supplier.delete") ? `<button class="s-act danger" style="font-size:11px;" data-delete-supplier="${sup.id}" data-name="${sup.name}">删除</button>` : ""}
         </div>` : ""}
@@ -376,20 +376,20 @@ function renderItemTable() {
 
     return `
       <tr class="${!active ? "row-inactive" : ""}" data-item-id="${item.id}">
-        <td><span class="s-cat-pill">${categoryLabel(item.category)}</span></td>
-        <td>
-          <div style="display:grid;gap:2px;">
-            <div style="font-weight:600;font-size:13px;">${itemNameZh(item)}</div>
-            ${itemNameEn(item) ? `<div style="font-size:12px;color:var(--c-text-faint);">${itemNameEn(item)}</div>` : ""}
-            ${supName && !state.selectedSupplierId ? `<div style="font-size:12px;color:var(--c-text-faint);">${supName}</div>` : ""}
+        <td class="sup-col-category"><span class="s-cat-pill">${categoryLabel(item.category)}</span></td>
+        <td class="sup-col-item">
+          <div class="sup-item-main">
+            <div class="sup-item-name">${itemNameZh(item)}</div>
+            ${itemNameEn(item) ? `<div class="sup-item-sub">${itemNameEn(item)}</div>` : ""}
+            ${supName && !state.selectedSupplierId ? `<div class="sup-item-sub">${supName}</div>` : ""}
           </div>
         </td>
-        <td style="font-size:13px;color:var(--s-soft);">${item.spec || EMPTY_TEXT}</td>
-        <td style="white-space:nowrap;font-size:13px;">${item.unit || EMPTY_TEXT}</td>
-        <td class="s-price">${priceStr}</td>
-        <td style="font-size:12px;color:var(--s-soft);">${currency}</td>
-        <td><span class="s-badge ${active ? "on" : "off"}">${active ? "\u542f\u7528" : "\u505c\u7528"}</span></td>
-        <td>
+        <td class="sup-col-spec">${item.spec || EMPTY_TEXT}</td>
+        <td class="sup-col-unit">${item.unit || EMPTY_TEXT}</td>
+        <td class="sup-col-price s-price">${priceStr}</td>
+        <td class="sup-col-currency">${currency}</td>
+        <td class="sup-col-status"><span class="s-badge ${active ? "on" : "off"}">${active ? "\u542f\u7528" : "\u505c\u7528"}</span></td>
+        <td class="sup-col-actions">
           <div class="s-row-actions">
             ${window.can("supplier.edit") ? `<button class="s-act" data-edit-item="${item.id}">\u7f16\u8f91</button>` : ""}
             ${window.can("supplier.edit") && active  ? `<span class="s-act-sep">|</span><button class="s-act danger"  data-toggle-item="${item.id}" data-current-active="true">\u505c\u7528</button>`  : ""}
@@ -439,14 +439,14 @@ function renderBestPriceTable() {
 
     return `
       <tr>
-        <td style="font-weight:600;">${supName}</td>
-        <td style="font-size:13px;color:var(--s-soft);">${item.spec || EMPTY_TEXT}</td>
-        <td style="white-space:nowrap;">${item.unit || EMPTY_TEXT}</td>
-        <td class="s-price">\u00A5${priceStr}</td>
-        <td style="font-size:12px;color:var(--s-soft);">${currency}</td>
-        <td class="s-price">${EMPTY_TEXT}</td>
-        <td>${isLowest ? `<span class="s-badge lowest">\u6700\u4f4e\u4ef7</span>` : ""}</td>
-        <td><button class="s-act ok" data-select-compare-item="${item.id}">\u9009\u7528</button></td>
+        <td class="sup-col-supplier">${supName}</td>
+        <td class="sup-col-spec">${item.spec || EMPTY_TEXT}</td>
+        <td class="sup-col-unit">${item.unit || EMPTY_TEXT}</td>
+        <td class="sup-col-price s-price">\u00A5${priceStr}</td>
+        <td class="sup-col-currency">${currency}</td>
+        <td class="sup-col-total s-price">${EMPTY_TEXT}</td>
+        <td class="sup-col-status">${isLowest ? `<span class="s-badge lowest">\u6700\u4f4e\u4ef7</span>` : ""}</td>
+        <td class="sup-col-actions"><button class="s-act ok" data-select-compare-item="${item.id}">\u9009\u7528</button></td>
       </tr>`;
   }).join("");
 }

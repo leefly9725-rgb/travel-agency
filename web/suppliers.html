@@ -1650,6 +1650,459 @@
       box-shadow: inset 0 0 0 1px rgba(147, 197, 253, 0.22);
     }
 
+
+    .suppliers-page .sup-card-copy {
+      display: grid;
+      gap: 4px;
+      min-width: 0;
+    }
+
+    .suppliers-page .sup-card-kicker {
+      margin: 0;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: #8a98aa;
+    }
+
+    .suppliers-page .sup-kpi-card {
+      position: relative;
+      min-height: 112px;
+      padding: 16px 18px;
+      border-color: rgba(15, 23, 42, 0.08);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,250,252,0.96) 100%);
+    }
+
+    .suppliers-page .sup-kpi-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 4px;
+      border-radius: 8px 0 0 8px;
+      background: linear-gradient(180deg, rgba(37, 99, 235, 0.7) 0%, rgba(148, 163, 184, 0.18) 100%);
+    }
+
+    .suppliers-page .sup-kpi-card .s-kpi-body {
+      display: grid;
+      gap: 6px;
+    }
+
+    .suppliers-page .s-kpi-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #6c7a8b;
+    }
+
+    .suppliers-page .s-kpi-value {
+      font-size: 30px;
+      font-weight: 800;
+      line-height: 0.95;
+      color: #10233d;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .suppliers-page #kpi-last-update {
+      font-size: 17px !important;
+      line-height: 1.15;
+      letter-spacing: -0.01em !important;
+    }
+
+    .suppliers-page .s-kpi-meta {
+      font-size: 11px;
+      line-height: 1.55;
+      color: #8390a0;
+    }
+
+    .suppliers-page .sup-sidebar {
+      border-color: rgba(15, 23, 42, 0.09);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.045);
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(250,251,253,0.98) 100%);
+    }
+
+    .suppliers-page .s-panel-head {
+      padding: 14px 15px 12px;
+      background: linear-gradient(180deg, #fbfcfe 0%, #f5f8fb 100%);
+      border-bottom-color: rgba(15, 23, 42, 0.07);
+    }
+
+    .suppliers-page .s-panel-title {
+      font-size: 14px;
+      font-weight: 800;
+      letter-spacing: -0.01em;
+      color: #13263f;
+    }
+
+    .suppliers-page .s-panel-badge {
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #738091;
+      background: #eef2f7;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+    }
+
+    .suppliers-page .s-sup-list {
+      padding: 8px;
+      gap: 6px;
+    }
+
+    .suppliers-page .s-sup-card {
+      position: relative;
+      display: grid;
+      gap: 8px;
+      padding: 12px 12px 11px;
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.82);
+      box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
+      transition: background .14s, border-color .14s, box-shadow .14s, transform .14s;
+    }
+
+    .suppliers-page .s-sup-card::before {
+      content: "";
+      position: absolute;
+      left: 0;
+      top: 10px;
+      bottom: 10px;
+      width: 3px;
+      border-radius: 999px;
+      background: transparent;
+      transition: background .14s;
+    }
+
+    .suppliers-page .s-sup-card:hover {
+      background: #f9fbfd;
+      border-color: rgba(37, 99, 235, 0.12);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.05);
+      transform: translateY(-1px);
+    }
+
+    .suppliers-page .s-sup-card.active {
+      background: linear-gradient(180deg, #f5f9ff 0%, #edf4ff 100%);
+      border-color: rgba(59, 130, 246, 0.28);
+      box-shadow: 0 10px 22px rgba(37, 99, 235, 0.08);
+    }
+
+    .suppliers-page .s-sup-card.active::before {
+      background: linear-gradient(180deg, #2563eb 0%, #7aa2f7 100%);
+    }
+
+    .suppliers-page .s-sup-card.inactive {
+      opacity: 0.68;
+    }
+
+    .suppliers-page .s-sup-card-head {
+      align-items: start;
+      gap: 8px;
+      margin-bottom: 0;
+    }
+
+    .suppliers-page .s-sup-name {
+      font-size: 13px;
+      font-weight: 800;
+      line-height: 1.35;
+      color: #10233d;
+    }
+
+    .suppliers-page .s-sup-meta {
+      display: grid;
+      gap: 4px;
+      font-size: 11px;
+      line-height: 1.45;
+      color: #8894a3;
+    }
+
+    .suppliers-page .s-sup-meta-row {
+      gap: 10px;
+      align-items: center;
+    }
+
+    .suppliers-page .sup-sup-contact,
+    .suppliers-page .sup-sup-phone,
+    .suppliers-page .sup-sup-email {
+      color: #8995a4;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .suppliers-page .sup-sup-count {
+      font-weight: 700;
+      color: #627084;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    .suppliers-page .sup-list-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 2px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(15, 23, 42, 0.05);
+    }
+
+    .suppliers-page .sup-primary-card {
+      border-color: rgba(37, 99, 235, 0.18);
+      box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
+      background: linear-gradient(180deg, rgba(255,255,255,0.99) 0%, rgba(249,251,255,0.98) 100%);
+    }
+
+    .suppliers-page .sup-primary-card .s-card-head {
+      padding: 16px 18px 14px;
+      background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(242,247,255,0.98) 100%);
+      border-bottom-color: rgba(37, 99, 235, 0.12);
+    }
+
+    .suppliers-page .sup-primary-card .sup-card-kicker {
+      color: #5f7aa3;
+    }
+
+    .suppliers-page .sup-primary-card .s-card-title {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #0f233c;
+    }
+
+    .suppliers-page .sup-primary-card .s-card-sub {
+      font-size: 12px;
+      color: #6c7f96;
+    }
+
+    .suppliers-page .sup-primary-card .s-table-wrap {
+      border-top: 1px solid rgba(255,255,255,0.75);
+    }
+
+    .suppliers-page .sup-primary-card .sup-table {
+      table-layout: fixed;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table th {
+      padding: 12px 14px;
+      background: linear-gradient(180deg, #f4f8fd 0%, #eef3f8 100%);
+      border-bottom-color: rgba(15, 23, 42, 0.1);
+      color: #516072;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table td {
+      padding: 13px 14px;
+      border-bottom-color: rgba(15, 23, 42, 0.055);
+      background: rgba(255,255,255,0.9);
+    }
+
+    .suppliers-page .sup-primary-card .sup-table tbody tr:hover td {
+      background: #f8fbff;
+    }
+
+    .suppliers-page .sup-primary-card .sup-table tbody tr.row-inactive td {
+      background: #fbfcfd;
+    }
+
+    .suppliers-page .sup-col-category,
+    .suppliers-page .sup-col-unit,
+    .suppliers-page .sup-col-currency,
+    .suppliers-page .sup-col-status,
+    .suppliers-page .sup-col-actions,
+    .suppliers-page .sup-secondary-card .sup-col-status,
+    .suppliers-page .sup-secondary-card .sup-col-actions {
+      white-space: nowrap;
+    }
+
+    .suppliers-page .sup-col-price,
+    .suppliers-page .sup-secondary-card .sup-col-price,
+    .suppliers-page .sup-secondary-card .sup-col-total {
+      text-align: right;
+    }
+
+    .suppliers-page .sup-item-main {
+      display: grid;
+      gap: 3px;
+      min-width: 0;
+    }
+
+    .suppliers-page .sup-item-name {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      color: #0f233c;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .suppliers-page .sup-item-sub {
+      font-size: 12px;
+      line-height: 1.35;
+      color: #8592a3;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .suppliers-page .sup-col-spec,
+    .suppliers-page .sup-col-unit,
+    .suppliers-page .sup-col-currency {
+      font-size: 12px;
+      color: #748295;
+    }
+
+    .suppliers-page .sup-col-unit,
+    .suppliers-page .sup-col-price,
+    .suppliers-page .sup-col-currency,
+    .suppliers-page .sup-secondary-card .sup-col-unit,
+    .suppliers-page .sup-secondary-card .sup-col-price,
+    .suppliers-page .sup-secondary-card .sup-col-total,
+    .suppliers-page .sup-secondary-card .sup-col-currency {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .suppliers-page .sup-primary-card .s-price {
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      color: #10233d;
+    }
+
+    .suppliers-page .sup-primary-card .s-badge {
+      min-width: 58px;
+      justify-content: center;
+      border-radius: 999px;
+      font-size: 10px;
+      letter-spacing: 0.02em;
+    }
+
+    .suppliers-page .sup-primary-card .s-row-actions {
+      justify-content: flex-end;
+      gap: 0;
+    }
+
+    .suppliers-page .sup-primary-card .s-act {
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: transparent;
+      color: #5b6a7b;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .suppliers-page .sup-primary-card .s-act:hover {
+      background: #eef4ff;
+      color: #1d4ed8;
+    }
+
+    .suppliers-page .sup-primary-card .s-act-sep {
+      color: rgba(100, 116, 139, 0.38);
+    }
+
+    .suppliers-page .sup-primary-card .s-pagination {
+      padding: 10px 14px;
+      background: linear-gradient(180deg, #fcfdff 0%, #f6f8fb 100%);
+      border-top-color: rgba(15, 23, 42, 0.06);
+    }
+
+    .suppliers-page .sup-secondary-card {
+      border-color: rgba(15, 23, 42, 0.06);
+      box-shadow: 0 6px 18px rgba(15, 23, 42, 0.03);
+      background: linear-gradient(180deg, rgba(252,253,255,0.98) 0%, rgba(248,250,252,0.96) 100%);
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-head {
+      padding: 13px 16px 11px;
+      background: linear-gradient(180deg, #fcfdff 0%, #f7f9fc 100%);
+      border-bottom-color: rgba(15, 23, 42, 0.06);
+    }
+
+    .suppliers-page .sup-secondary-card .sup-card-kicker {
+      color: #9aa6b4;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-title {
+      font-size: 15px;
+      font-weight: 750;
+      color: #4d5d70;
+    }
+
+    .suppliers-page .sup-secondary-card .s-card-sub {
+      font-size: 11px;
+      color: #8c99a8;
+    }
+
+    .suppliers-page .sup-secondary-card .s-compare-bar {
+      gap: 8px;
+      padding: 8px 14px;
+      background: #fbfcfe;
+      border-bottom-color: rgba(15, 23, 42, 0.05);
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table th {
+      padding: 10px 12px;
+      background: #f7f9fc;
+      border-bottom-color: rgba(15, 23, 42, 0.07);
+      color: #6c7a8b;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.07em;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table td {
+      padding: 11px 12px;
+      color: #708092;
+      border-bottom-color: rgba(15, 23, 42, 0.045);
+      background: rgba(255,255,255,0.76);
+    }
+
+    .suppliers-page .sup-secondary-card .sup-table tbody tr:hover td {
+      background: #f8fbfd;
+    }
+
+    .suppliers-page .sup-secondary-card .sup-col-supplier {
+      font-weight: 700;
+      color: #314155;
+    }
+
+    .suppliers-page .sup-secondary-card .s-price {
+      font-size: 14px;
+      font-weight: 750;
+      color: #26384d;
+    }
+
+    .suppliers-page .sup-secondary-card .s-badge.lowest {
+      min-width: 62px;
+      justify-content: center;
+      border-radius: 999px;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act {
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: #eef4f8;
+      color: #4f6175;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .suppliers-page .sup-secondary-card .s-act:hover {
+      background: #e3edf8;
+      color: #1d4ed8;
+    }
+
+    .suppliers-page .sup-secondary-card .s-pagination-light,
+    .suppliers-page .sup-secondary-card .s-compare-hint {
+      background: #fbfcfe;
+      color: #8794a4;
+    }
+
+    .suppliers-page .sup-secondary-card .s-compare-hint {
+      border-top-color: rgba(15, 23, 42, 0.05);
+    }
     @media (max-width: 1240px) {
       .suppliers-page .sup-toolbar,
       .suppliers-page .sup-toolbar-filters,
@@ -1719,7 +2172,7 @@
 
     <!-- ── KPI 行 ── -->
     <div class="s-kpi-row sup-kpi-row">
-      <div class="s-kpi-card">
+      <div class="s-kpi-card sup-kpi-card">
         <div class="s-kpi-icon s-ki-blue">👤</div>
         <div class="s-kpi-body">
           <p class="s-kpi-label">供应商总数</p>
@@ -1727,7 +2180,7 @@
           <p class="s-kpi-meta">启用：<span class="hi" id="kpi-sup-active">--</span> &nbsp; 停用：<span id="kpi-sup-inactive">--</span></p>
         </div>
       </div>
-      <div class="s-kpi-card">
+      <div class="s-kpi-card sup-kpi-card">
         <div class="s-kpi-icon s-ki-orange">📦</div>
         <div class="s-kpi-body">
           <p class="s-kpi-label">物料 / 服务总数</p>
@@ -1735,7 +2188,7 @@
           <p class="s-kpi-meta">启用：<span class="hi" id="kpi-item-active">--</span> &nbsp; 停用：<span id="kpi-item-inactive">--</span></p>
         </div>
       </div>
-      <div class="s-kpi-card">
+      <div class="s-kpi-card sup-kpi-card">
         <div class="s-kpi-icon s-ki-green">⚡</div>
         <div class="s-kpi-body">
           <p class="s-kpi-label">最低价物料占比</p>
@@ -1743,7 +2196,7 @@
           <p class="s-kpi-meta" id="kpi-best-price-meta">对应最低价汇总视图</p>
         </div>
       </div>
-      <div class="s-kpi-card">
+      <div class="s-kpi-card sup-kpi-card">
         <div class="s-kpi-icon s-ki-purple">🕐</div>
         <div class="s-kpi-body">
           <p class="s-kpi-label">最近更新</p>
@@ -1774,9 +2227,10 @@
       <div class="s-main-col sup-main">
 
         <!-- 价格库卡片 -->
-        <div class="s-card">
+        <div class="s-card sup-primary-card">
           <div class="s-card-head">
-            <div>
+            <div class="sup-card-copy">
+              <p class="sup-card-kicker">主工作区</p>
               <h2 class="s-card-title" id="items-table-title">价格库</h2>
               <p class="s-card-sub" id="items-table-subtitle">共 -- 条</p>
             </div>
@@ -1825,9 +2279,10 @@
         </div>
 
         <!-- 比价 / 选库视图 -->
-        <div class="s-card" id="best-price-card">
+        <div class="s-card sup-secondary-card" id="best-price-card">
           <div class="s-card-head">
-            <div>
+            <div class="sup-card-copy">
+              <p class="sup-card-kicker">辅助判断区</p>
               <h2 class="s-card-title">比价 / 选库视图</h2>
               <p class="s-card-sub">选择物料查看多供应商报价</p>
             </div>
