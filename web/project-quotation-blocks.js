@@ -74,7 +74,7 @@
     const destLine = destParts.length > 0
       ? destParts.map((p, i) => i === 0
           ? `<span>${p}</span>`
-          : `<span style="color:#C9A84C;margin:0 4px;">|</span><span>${p}</span>`
+          : '<span style="color:#C9A84C;margin:0 4px;">|</span><span>' + p + '</span>'
         ).join('')
       : '';
 
@@ -91,7 +91,7 @@
           <polygon points="260,0 260,70 190,0" fill="#1B2A4A" opacity="0.09"/>
         </svg>
         <!-- 左下角几何装饰 -->
-        <svg style="position:absolute;bottom:56px;left:0;width:180px;height:180px;pointer-events:none;z-index:1;" viewBox="0 0 180 180">
+        <svg style="position:absolute;bottom:82px;left:0;width:180px;height:180px;pointer-events:none;z-index:1;" viewBox="0 0 180 180">
           <polygon points="0,180 180,180 0,0" fill="#1B2A4A" opacity="0.05"/>
           <polygon points="0,180 110,180 0,70" fill="#C9A84C" opacity="0.08"/>
         </svg>
@@ -110,65 +110,76 @@
         </div>
 
         <!-- 米白主体区 -->
-        <div style="flex:1;min-height:0;padding:28px 32px 32px;position:relative;z-index:2;display:flex;flex-direction:column;">
+        <div style="flex:1;min-height:0;padding:24px 32px 20px;position:relative;z-index:2;display:flex;flex-direction:column;">
           <!-- 报价编号徽章 -->
-          <div style="position:absolute;top:8px;right:8px;border:1px solid rgba(201,168,76,0.55);border-radius:4px;padding:5px 11px;text-align:right;">
+          <div style="position:absolute;top:6px;right:8px;border:1px solid rgba(201,168,76,0.58);border-radius:4px;padding:6px 12px 5px;text-align:right;background:rgba(245,242,236,0.78);backdrop-filter:blur(2px);">
             <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
             <div style="font-size:10px;color:#1B2A4A;font-weight:700;letter-spacing:1px;margin-top:2px;">${esc(vm.quoteNumber || '—')}</div>
           </div>
           <!-- 内容 -->
-          <div style="font-size:9px;letter-spacing:4px;color:#C9A84C;text-transform:uppercase;margin-bottom:16px;">CLIENT QUOTATION · 客户报价书</div>
-          <div style="font-size:38px;font-weight:700;color:#1B2A4A;line-height:1.1;margin-bottom:4px;">${esc(vm.projectName || '—')}</div>
-          <div style="font-size:11px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;margin-bottom:26px;">${destLine}</div>
-          <div style="width:44px;height:3px;background:#C9A84C;border-radius:2px;margin-bottom:20px;"></div>
-          <div style="font-size:8px;letter-spacing:3px;color:#7B8FAD;text-transform:uppercase;margin-bottom:6px;">CLIENT · 客户</div>
-          <div style="font-size:20px;font-weight:700;color:#1B2A4A;line-height:1.25;margin-bottom:18px;">${esc(vm.clientName || '—')}</div>
-          <div style="display:flex;gap:36px;">
-            <div>
-              <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;margin-bottom:3px;">CONTACT · 联系人</div>
-              <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${contactDetail}</div>
-            </div>
-            <div>
-              <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;margin-bottom:3px;">PAX · 人数</div>
-              <div style="font-size:12px;color:#1B2A4A;font-weight:500;">${paxText}</div>
+          <div style="font-size:10px;letter-spacing:4.6px;color:#B78A42;text-transform:uppercase;margin-bottom:18px;font-weight:700;">CLIENT QUOTATION · 客户报价书</div>
+          <div style="max-width:76%;">
+            <div style="font-size:44px;font-weight:760;color:#1B2A4A;line-height:1.04;letter-spacing:0.2px;margin-bottom:10px;">${esc(vm.projectName || '—')}</div>
+            <div style="font-size:12px;color:#6B7280;display:flex;align-items:center;flex-wrap:wrap;gap:0;line-height:1.55;min-height:20px;">${destLine}</div>
+          </div>
+          <div style="width:56px;height:3px;background:#C9A84C;border-radius:2px;margin:22px 0 18px;"></div>
+          <div style="display:grid;gap:10px;max-width:72%;">
+            <div style="font-size:8px;letter-spacing:3px;color:#7B8FAD;text-transform:uppercase;">CLIENT · 客户</div>
+            <div style="font-size:24px;font-weight:720;color:#1B2A4A;line-height:1.2;">${esc(vm.clientName || '—')}</div>
+            <div style="display:flex;align-items:flex-start;gap:28px;padding-top:4px;">
+              <div style="display:grid;gap:4px;min-width:0;">
+                <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;">CONTACT · 联系人</div>
+                <div style="font-size:13px;color:#1B2A4A;font-weight:600;line-height:1.45;">${contactDetail}</div>
+              </div>
+              <div style="width:1px;align-self:stretch;background:rgba(123,143,173,0.22);"></div>
+              <div style="display:grid;gap:4px;min-width:72px;">
+                <div style="font-size:8px;letter-spacing:2px;color:#7B8FAD;text-transform:uppercase;">PAX · 人数</div>
+                <div style="font-size:13px;color:#1B2A4A;font-weight:600;line-height:1.45;">${paxText}</div>
+              </div>
             </div>
           </div>
           <div style="flex:1;min-height:0;"></div>
         </div>
 
         <!-- 深蓝 meta 腰带 -->
-        <div style="flex-shrink:0;background:#1B2A4A;padding:18px 32px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;position:relative;z-index:2;">
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">报价日期</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${esc(vm.quoteDate || '—')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">有效期至</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${esc(vm.validUntil || '—')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">币种</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${esc(vm.currency || 'EUR')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;margin-bottom:4px;">服务模块</div><div style="font-size:13px;color:#F5F2EC;font-weight:600;">${vm.groups.length} 个</div></div>
+        <div style="flex-shrink:0;background:#1B2A4A;padding:20px 32px 22px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;position:relative;z-index:2;border-top:1px solid rgba(255,255,255,0.04);">
+          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">报价日期</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${esc(vm.quoteDate || '—')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">有效期至</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${esc(vm.validUntil || '—')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">币种</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${esc(vm.currency || 'EUR')}</div></div>
+          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">服务模块</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${vm.groups.length} 个</div></div>
         </div>
 
         <!-- 金色总价栏 -->
         ${state.taxMode === 'included' ? `
-        <div style="flex-shrink:0;background:#C9A84C;padding:16px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
-          <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
-          <div style="display:grid;gap:4px;min-width:230px;">
+        <div style="flex-shrink:0;background:linear-gradient(180deg, #D2B160 0%, #C9A84C 100%);padding:22px 32px 24px;display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:2;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);">
+          <div style="display:grid;gap:5px;align-content:start;padding-top:2px;">
+            <div style="font-size:9px;letter-spacing:2.2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+            <div style="font-size:11px;color:rgba(27,42,74,0.72);line-height:1.45;">Final Quotation for client confirmation</div>
+          </div>
+          <div style="display:grid;gap:6px;min-width:262px;">
             <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;">
-              <span style="font-size:8px;letter-spacing:1px;color:rgba(27,42,74,0.65);text-transform:uppercase;">Subtotal</span>
-              <span style="font-size:13px;color:#1B2A4A;font-weight:500;font-variant-numeric:tabular-nums;">${money(vm.subtotal, vm.currency)}</span>
+              <span style="font-size:8px;letter-spacing:1.2px;color:rgba(27,42,74,0.68);text-transform:uppercase;">Subtotal</span>
+              <span style="font-size:14px;color:#1B2A4A;font-weight:600;font-variant-numeric:tabular-nums;">${money(vm.subtotal, vm.currency)}</span>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;">
-              <span style="font-size:8px;letter-spacing:1px;color:rgba(27,42,74,0.65);text-transform:uppercase;">VAT 20%</span>
-              <span style="font-size:13px;color:#1B2A4A;font-weight:500;font-variant-numeric:tabular-nums;">${money(vm.vatAmount, vm.currency)}</span>
+              <span style="font-size:8px;letter-spacing:1.2px;color:rgba(27,42,74,0.68);text-transform:uppercase;">VAT 20%</span>
+              <span style="font-size:14px;color:#1B2A4A;font-weight:600;font-variant-numeric:tabular-nums;">${money(vm.vatAmount, vm.currency)}</span>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;margin-top:4px;padding-top:6px;border-top:1px solid rgba(27,42,74,0.22);">
-              <span style="font-size:9px;letter-spacing:1px;color:#1B2A4A;font-weight:700;text-transform:uppercase;">Grand Total</span>
-              <span style="font-size:22px;font-weight:700;color:#1B2A4A;font-variant-numeric:tabular-nums;">${money(vm.grandTotal, vm.currency)}</span>
+            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:6px;padding-top:8px;border-top:1px solid rgba(27,42,74,0.24);">
+              <span style="font-size:9px;letter-spacing:1.2px;color:#1B2A4A;font-weight:700;text-transform:uppercase;">Grand Total</span>
+              <span style="font-size:26px;font-weight:800;color:#1B2A4A;font-variant-numeric:tabular-nums;line-height:1;">${money(vm.grandTotal, vm.currency)}</span>
             </div>
           </div>
         </div>
         ` : `
-        <div style="flex-shrink:0;background:#C9A84C;padding:20px 32px;display:flex;align-items:center;justify-content:space-between;position:relative;z-index:2;">
-          <div style="font-size:9px;letter-spacing:2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
-          <div style="display:flex;align-items:baseline;gap:8px;">
-            <span style="font-size:12px;color:#1B2A4A;opacity:0.65;">${esc(vm.currency || 'EUR')}</span>
-            <span style="font-size:30px;font-weight:700;color:#1B2A4A;">${money(vm.totalSales, vm.currency)}</span>
+        <div style="flex-shrink:0;background:linear-gradient(180deg, #D2B160 0%, #C9A84C 100%);padding:22px 32px 24px;display:flex;align-items:flex-end;justify-content:space-between;position:relative;z-index:2;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);">
+          <div style="display:grid;gap:5px;align-content:end;">
+            <div style="font-size:9px;letter-spacing:2.2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
+            <div style="font-size:11px;color:rgba(27,42,74,0.72);line-height:1.45;">Final Quotation for client confirmation</div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:8px;">
+            <span style="font-size:13px;color:#1B2A4A;opacity:0.68;line-height:1.1;">${esc(vm.currency || 'EUR')}</span>
+            <span style="font-size:34px;font-weight:800;color:#1B2A4A;line-height:1;font-variant-numeric:tabular-nums;">${money(vm.totalSales, vm.currency)}</span>
           </div>
         </div>
         `}
