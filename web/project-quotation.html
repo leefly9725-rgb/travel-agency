@@ -754,13 +754,60 @@
 
     .qp-table td strong {
       display: block;
-      font-size: 13.5px;
-      color: var(--qp-ink);
-      margin-bottom: 3px;
-      line-height: 1.45;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: #314056;
+      margin-bottom: 2px;
+      line-height: 1.42;
     }
 
     .qp-table tr:last-child td { border-bottom: 0; }
+    .qp-category-header-row td {
+      padding: 12px 14px 9px;
+      color: #1e2f49;
+      background: linear-gradient(180deg, rgba(201,168,76,0.18) 0%, rgba(201,168,76,0.08) 100%);
+      border-top: 1px solid rgba(201,168,76,0.42);
+      border-bottom: 1px solid rgba(201,168,76,0.34);
+    }
+
+    .qp-category-header-label {
+      display: inline-block;
+      font-size: 15px;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      line-height: 1.25;
+      color: #1e2f49;
+    }
+
+    /* ── Event group overrides ────────────────────────────────────────────── */
+    /* Category header row: more prominent for activity-services (event) groups */
+    .qp-event-group .qp-category-header-row td {
+      padding: 11px 14px 8px;
+      background: linear-gradient(180deg, rgba(27,42,74,0.09) 0%, rgba(27,42,74,0.04) 100%);
+      border-top: 2px solid rgba(27,42,74,0.22);
+      border-bottom: 1px solid rgba(27,42,74,0.14);
+    }
+    .qp-event-group .qp-category-header-label {
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      color: #1B2A4A;
+    }
+    /* Service name column: indent data rows to create visual hierarchy */
+    .qp-event-item-row td:first-child {
+      padding-left: 26px;
+    }
+    /* Muted meta columns: spec / qty / unit / unit-price */
+    .qp-muted {
+      color: var(--qp-ink-muted) !important;
+      font-size: 11.5px;
+    }
+    .qp-event-group .qp-table td strong {
+      font-weight: 600;
+      color: #314056;
+    }
+
     .qp-money {
       text-align: right;
       font-variant-numeric: tabular-nums;

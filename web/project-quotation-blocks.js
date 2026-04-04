@@ -341,6 +341,14 @@
     `;
   }
 
+  // Category header <tr> — inserted between item rows when category changes.
+  function renderCategoryHeaderRowHtml(categoryLabel) {
+    return `<tr class="qp-category-header-row"><td colspan="6"><span class="qp-category-header-label">${
+      String(categoryLabel == null ? '' : categoryLabel)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    }</span></td></tr>`;
+  }
+
   // Single <tr> HTML for one item row — used by renderGroupSegmentHtml.
   function renderItemRowHtml(item, runtime, currency) {
     const { utils } = getRuntime(runtime);
@@ -354,6 +362,72 @@
         <td class="qp-money">${money(item.salesUnitPrice, currency)}</td>
         <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
       </tr>
+    `;
+  }
+
+  // Single <tr> HTML for one item row inside an event group.
+  // First column indented; meta columns (spec/qty/unit/unit price) muted; amount clear.
+  function renderEventItemRowHtml(item, runtime, currency) {
+    const { utils } = getRuntime(runtime);
+    const { esc, getText, money } = utils;
+    return `
+      <tr class="qp-event-item-row">
+        <td style="padding-left:26px"><strong>${getText(item.itemName)}</strong></td>
+        <td class="qp-muted">${item.specification ? esc(item.specification) : ''}</td>
+        <td class="qp-muted">${esc(item.qtyDisplay)}</td>
+        <td class="qp-muted">${esc(item.unit)}</td>
+        <td class="qp-money qp-muted">${money(item.salesUnitPrice, currency)}</td>
+        <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
+      </tr>
+    `;
+  }
+
+  // Renders a complete <article> for an event-group segment.
+  // Structurally identical to renderGroupSegmentHtml but uses event-specific
+  // column labels and the qp-event-group class.
+  function renderEventGroupSegmentHtml(vm, group, rowsHtml, isFirst, isLast, runtime) {
+    const { utils } = getRuntime(runtime);
+    const { getText, biTitle, money, tableHead } = utils;
+
+    const titleHtml = getText({ zh: group.projectTitle, en: (group.typeLabel || {}).en, sr: (group.typeLabel || {}).sr });
+    const contBadge = isFirst ? '' : '<em class="qp-cont-badge">（续）</em>';
+
+    const headHtml = `<div class="qp-group-head">
+        <div>
+          <h3>${titleHtml}${contBadge}</h3>
+        </div>
+      </div>`;
+
+    const footHtml = isLast
+      ? `<div class="qp-group-foot">
+          <span>${biTitle('服务小计', 'Service Total', 'Ukupno usluga')}</span>
+          <strong>${money(group.groupSalesTotal, vm.currency)}</strong>
+        </div>`
+      : '';
+
+    const bodyRows = rowsHtml.length === 0
+      ? '<tr><td colspan="6" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无服务明细</td></tr>'
+      : rowsHtml.join('');
+
+    return `
+      <article class="qp-detail-card qp-event-group">
+        ${headHtml}
+        <table class="qp-table">
+          <colgroup><col style="width:32%"><col style="width:26%"><col style="width:7%"><col style="width:7%"><col style="width:14%"><col style="width:14%"></colgroup>
+          <thead>
+            <tr>
+              ${tableHead('服务名称', 'Service Name', 'Naziv usluge')}
+              ${tableHead('规格说明', 'Specification', 'Specifikacija')}
+              ${tableHead('数量', 'Qty', 'Kol.')}
+              ${tableHead('单位', 'Unit', 'Jedinica')}
+              ${tableHead('单价', 'Unit Price', 'Cena', 'qp-money')}
+              ${tableHead('金额', 'Amount', 'Iznos', 'qp-money')}
+            </tr>
+          </thead>
+          <tbody>${bodyRows}</tbody>
+        </table>
+        ${footHtml}
+      </article>
     `;
   }
 
@@ -631,9 +705,43 @@
         const capturedGroup = group;
         const capturedVm = vm;
         const capturedRuntime = runtime;
-        const rowsHtml = group.items.map(function (item) {
-          return renderItemRowHtml(item, capturedRuntime, capturedVm.currency);
+        const isEvent = group.projectType === 'event';
+
+        // Build rowsHtml for this group.
+        // event groups: bundle each category-header <tr> with the first item of that
+        // category into a single rowsHtml entry.  This makes the pair atomic — the
+        // composer will never place a category header at the page bottom without at
+        // least one data row following it (orphan protection).
+        // non-event groups: keep original behaviour (header as its own row entry).
+        const rowsHtml = [];
+        let lastCategoryKey = null;
+        let pendingCategoryHeaderHtml = null; // event groups only
+
+        group.items.forEach(function (item) {
+          if (group.showCategoryHeaders && item.categoryKey !== lastCategoryKey) {
+            const headerHtml = renderCategoryHeaderRowHtml(item.categoryLabel);
+            lastCategoryKey = item.categoryKey;
+            if (isEvent) {
+              pendingCategoryHeaderHtml = headerHtml; // will be fused with this item below
+            } else {
+              rowsHtml.push(headerHtml);
+            }
+          }
+
+          if (isEvent) {
+            const itemHtml = renderEventItemRowHtml(item, capturedRuntime, capturedVm.currency);
+            if (pendingCategoryHeaderHtml) {
+              // Atomic bundle: header + first item of the category.
+              rowsHtml.push(pendingCategoryHeaderHtml + itemHtml);
+              pendingCategoryHeaderHtml = null;
+            } else {
+              rowsHtml.push(itemHtml);
+            }
+          } else {
+            rowsHtml.push(renderItemRowHtml(item, capturedRuntime, capturedVm.currency));
+          }
         });
+
         blocks.push({
           id: 'quote-group-' + (groupIdx + 1),
           type: 'quote-group-rowset',
@@ -644,9 +752,13 @@
           minHeight: 0,
           meta: {},
           rowsHtml: rowsHtml,
-          renderSegment: function (rows, isFirst, isLast) {
-            return renderGroupSegmentHtml(capturedVm, capturedGroup, rows, isFirst, isLast, capturedRuntime);
-          },
+          renderSegment: isEvent
+            ? function (rows, isFirst, isLast) {
+                return renderEventGroupSegmentHtml(capturedVm, capturedGroup, rows, isFirst, isLast, capturedRuntime);
+              }
+            : function (rows, isFirst, isLast) {
+                return renderGroupSegmentHtml(capturedVm, capturedGroup, rows, isFirst, isLast, capturedRuntime);
+              },
         });
       });
     } else if (state.mode === 'professional' && state.grouping === 'flat') {

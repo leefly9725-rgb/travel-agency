@@ -14,6 +14,83 @@ const GROUP_TYPE_LABELS = {
   mixed:  { zh: '综合项目', en: 'Mixed Program',      sr: 'Kombinovani program' },
 };
 
+// 供应商价格库分类 → 客户报价单显示标签
+const CATALOG_CATEGORY_LABELS = {
+  av_equipment:    'AV设备',
+  stage_structure: '舞台搭建',
+  print_display:   '印刷展示',
+  decoration:      '装饰物料',
+  furniture:       '家具桌椅',
+  personnel:       '人员服务',
+  logistics:       '物流运输',
+  management:      '管理费用',
+  hotel:           '酒店住宿',
+  transport:       '交通用车',
+  ticket:          '门票景点',
+  misc:            '其他',
+};
+
+// itemType code → 供应商价格库分类 code（itemCategory 未设时的自动推断）
+const ITEM_TYPE_TO_CATEGORY = {
+  av_lighting:           'av_equipment',
+  build_production:      'stage_structure',
+  design_print:          'print_display',
+  staffing_execution:    'personnel',
+  logistics_transport:   'logistics',
+  venue_service:         'management',
+  material_purchase:     'decoration',
+  hotel:                 'hotel',
+  transport:             'transport',
+  guide_translation:     'personnel',
+  driver_guide:          'personnel',
+  ticket:                'ticket',
+  fuel:                  'logistics',
+  toll_parking:          'logistics',
+  catering_refreshments: 'management',
+};
+
+
+function normalizeSupplierCatalogItem(rawItem) {
+  return {
+    id: String(rawItem?.id || '').trim(),
+    category: String(rawItem?.category || rawItem?.supplierCategory || rawItem?.supplier_category || '').trim(),
+  };
+}
+
+async function loadSupplierCategoryMap(fetchFn) {
+  try {
+    const data = await fetchFn('/api/supplier-items');
+    const items = Array.isArray(data) ? data : (data?.items || []);
+    return items.reduce((map, rawItem) => {
+      const item = normalizeSupplierCatalogItem(rawItem);
+      if (item.id && item.category) {
+        map.set(item.id, item.category);
+      }
+      return map;
+    }, new Map());
+  } catch (_) {
+    return new Map();
+  }
+}
+
+function resolveProjectItemCategory(item, supplierCategoryMap) {
+  const supplierCategory = supplierCategoryMap?.get(String(item?.supplierCatalogItemId || '').trim()) || '';
+  const explicitCategory = String(item?.itemCategory || '').trim();
+  const mappedCategory = ITEM_TYPE_TO_CATEGORY[item?.itemType] || '';
+  const categoryKey = supplierCategory || explicitCategory || mappedCategory || 'misc';
+  return {
+    categoryKey,
+    categoryLabel: CATALOG_CATEGORY_LABELS[categoryKey] || '其他',
+  };
+}
+
+// 分类在客户报价单中的显示排序
+const CATEGORY_SORT_ORDER = [
+  'hotel', 'transport', 'ticket',
+  'av_equipment', 'stage_structure', 'furniture', 'decoration', 'print_display',
+  'personnel', 'logistics', 'management',
+];
+
 // 项目类型的标准显示名称。
 // 用途：当 itemName 用户未填写时，提供类型语义的专业 fallback，
 // 确保三种语言版本下都有合理显示，而不是空白或程序占位符。
@@ -179,13 +256,15 @@ function hasMeaningfulText(value) {
   return typeof value === 'string' && value.trim() !== '';
 }
 
-function buildClientItem(item) {
+function buildClientItem(item, supplierCategoryMap) {
   const extraJson = item.extraJson || {};
   const isHotel = item.itemType === 'hotel';
   const nights = isHotel ? Math.max(Number(extraJson.nights || 1), 1) : null;
   const quantity = Math.max(Number(item.quantity || 1), 1);
   const qtyDisplay = isHotel && nights ? `${quantity} × ${nights} 晚` : `${quantity}`;
   const typeFallback = ITEM_TYPE_DISPLAY[item.itemType] || ITEM_TYPE_DISPLAY.misc;
+
+  const { categoryKey, categoryLabel } = resolveProjectItemCategory(item, supplierCategoryMap);
 
   return {
     itemName: {
@@ -200,6 +279,8 @@ function buildClientItem(item) {
     salesUnitPrice: Number(item.salesUnitPrice || 0),
     salesSubtotal: Number(item.salesSubtotal || 0),
     remarks: item.remarks || '',
+    categoryKey,
+    categoryLabel,
   };
 }
 
@@ -214,19 +295,32 @@ function isEffectiveClientItem(item) {
   return hasCommercialValue && (hasDescriptor || quantity > 0);
 }
 
-function buildClientViewModel(quote) {
+function buildClientViewModel(quote, supplierCategoryMap) {
   const quoteDate = quote.startDate || (quote.createdAt || '').slice(0, 10) || '';
 
   const groups = (quote.projectGroups || []).map((group) => {
     const typeLabels = GROUP_TYPE_LABELS[group.projectType] || GROUP_TYPE_LABELS.travel;
     const items = (group.items || [])
-      .map(buildClientItem)
+      .map((item) => buildClientItem(item, supplierCategoryMap))
       .filter(isEffectiveClientItem);
+
+    // 按分类排序，使同类明细聚集
+    items.sort((a, b) => {
+      const ai = CATEGORY_SORT_ORDER.indexOf(a.categoryKey);
+      const bi = CATEGORY_SORT_ORDER.indexOf(b.categoryKey);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
 
     const groupSalesTotal = items.reduce((sum, item) => sum + Number(item.salesSubtotal || 0), 0);
     if (items.length === 0 || groupSalesTotal <= 0) {
       return null;
     }
+
+    // event 组始终显示分类标题；其他组仅当存在多个不同分类时显示
+    const distinctCategories = new Set(items.map((i) => i.categoryKey));
+    const showCategoryHeaders = group.projectType === 'event'
+      ? items.length > 0
+      : distinctCategories.size > 1;
 
     return {
       projectType: group.projectType || 'travel',
@@ -235,6 +329,7 @@ function buildClientViewModel(quote) {
       description: group.description || '',
       items,
       groupSalesTotal,
+      showCategoryHeaders,
     };
   }).filter(Boolean);
 
@@ -288,22 +383,30 @@ function renderTotalBlock(vm, note) {
   `;
 }
 
-function renderItemRows(items, currency) {
+function renderItemRows(items, currency, showCategoryHeaders) {
   if (!items || items.length === 0) {
     return '<tr><td colspan="7" style="text-align:center;color:var(--qp-ink-muted);padding:20px">本组暂无明细</td></tr>';
   }
 
-  return items.map((item) => `
-    <tr>
-      <td><strong>${getText(item.itemName)}</strong></td>
-      <td>${item.specification ? esc(item.specification) : ''}</td>
-      <td>${esc(item.qtyDisplay)}</td>
-      <td>${esc(item.unit)}</td>
-      <td class="qp-money">${money(item.salesUnitPrice, currency)}</td>
-      <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
-      <td>${item.remarks ? esc(item.remarks) : ''}</td>
-    </tr>
-  `).join('');
+  const rows = [];
+  let lastCategory = null;
+  items.forEach((item) => {
+    if (showCategoryHeaders && item.categoryKey !== lastCategory) {
+      rows.push(`<tr class="qp-category-header-row"><td colspan="7"><span class="qp-category-header-label">${esc(item.categoryLabel)}</span></td></tr>`);
+      lastCategory = item.categoryKey;
+    }
+    rows.push(`
+      <tr>
+        <td><strong>${getText(item.itemName)}</strong></td>
+        <td>${item.specification ? esc(item.specification) : ''}</td>
+        <td>${esc(item.qtyDisplay)}</td>
+        <td>${esc(item.unit)}</td>
+        <td class="qp-money">${money(item.salesUnitPrice, currency)}</td>
+        <td class="qp-money">${money(item.salesSubtotal, currency)}</td>
+        <td>${item.remarks ? esc(item.remarks) : ''}</td>
+      </tr>`);
+  });
+  return rows.join('');
 }
 
 function formatPageNo(value) {
@@ -539,7 +642,7 @@ function renderProfessionalGroupCard(vm, group) {
             ${tableHead('备注', 'Remarks', 'Napomena')}
           </tr>
         </thead>
-        <tbody>${renderItemRows(group.items, vm.currency)}</tbody>
+        <tbody>${renderItemRows(group.items, vm.currency, group.showCategoryHeaders)}</tbody>
       </table>
       <div class="qp-group-foot">
         <span>${biTitle('分组小计', 'Group Subtotal', 'Medjuzbir grupe')}</span>
@@ -937,13 +1040,14 @@ async function bootstrap() {
         };
 
     const _snapToken = localStorage.getItem('app_token');
-    const [quote, snapshotRaw] = await Promise.all([
+    const [quote, snapshotRaw, supplierCategoryMap] = await Promise.all([
       fetchFn(`/api/quotes/${encodeURIComponent(quoteId)}`),
       fetch(`/api/terms/snapshot?quote_id=${encodeURIComponent(quoteId)}`, {
         headers: _snapToken ? { Authorization: `Bearer ${_snapToken}` } : {},
       })
         .then(r => r.ok ? r.json() : null)
         .catch(() => null),
+      loadSupplierCategoryMap(fetchFn),
     ]);
     termsSnapshot = snapshotRaw || null;
 
@@ -952,7 +1056,7 @@ async function bootstrap() {
       return;
     }
 
-    const vm = buildClientViewModel(quote);
+    const vm = buildClientViewModel(quote, supplierCategoryMap);
     if (toolbarSubEl) {
       toolbarSubEl.textContent = `${vm.projectName}${vm.clientName ? ' · ' + vm.clientName : ''}`;
     }
