@@ -473,7 +473,7 @@ function normalizeQuotePayload(payload, existingId, existingCreatedAt, validQuot
       ? []
       : normalizeQuoteItems(payload.items, currency, validQuoteItemTypes),
     projectGroups: payload.pricingMode === "project_based"
-      ? normalizeProjectGroups(payload.projectGroups || [], validGroupTypes)
+      ? normalizeProjectGroups(payload.projectGroups || [], validGroupTypes, validQuoteItemTypes)
       : [],
     totalCost: payload.pricingMode === "project_based"
       ? Math.round((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0) * 100) / 100
@@ -873,12 +873,20 @@ function normalizeServiceCatalogCandidatePayload(payload, validCategories, valid
   };
 }
 
-function normalizeProjectGroups(groups, validGroupTypes) {
+function normalizeProjectGroups(groups, validGroupTypes, extraValidItemTypes) {
   if (!Array.isArray(groups)) return [];
   const allowedGroupTypes = validGroupTypes || FALLBACK_PROJECT_GROUP_TYPES;
+  // Union of hardcoded project types + dynamic types from Supabase/seed
+  // This ensures any code valid in the DB is preserved, while the hardcoded list
+  // covers the local (non-Supabase) fallback where extraValidItemTypes = old standard codes
+  const allowedItemTypes = Array.from(new Set([
+    ...supportedProjectItemTypes,
+    ...(Array.isArray(extraValidItemTypes) ? extraValidItemTypes : []),
+  ]));
   return groups.map((group, gi) => {
     const items = Array.isArray(group.items) ? group.items.map((item, ii) => {
-      const itemType = supportedProjectItemTypes.includes(item.itemType) ? item.itemType : "misc";
+      const requestedItemType = String(item.itemType || "").trim().toLowerCase();
+      const itemType = allowedItemTypes.includes(requestedItemType) ? requestedItemType : "misc";
       const qty = Math.max(Number(item.quantity || 1), 0);
       const costUnit = Math.max(Number(item.costUnitPrice || 0), 0);
       const salesUnit = Math.max(Number(item.salesUnitPrice || 0), 0);
