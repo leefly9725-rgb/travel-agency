@@ -256,9 +256,12 @@ function hasMeaningfulText(value) {
   return typeof value === 'string' && value.trim() !== '';
 }
 
-function buildClientItem(item, supplierCategoryMap) {
+function buildClientItem(item, supplierCategoryMap, groupType) {
   const extraJson = item.extraJson || {};
-  const isHotel = item.itemType === 'hotel';
+  // Hotel-specific display (nights × rooms, 间夜 unit) only applies to genuine
+  // travel-group hotel items.  Event groups may carry stale itemType='hotel'
+  // from copy/paste or type-switching; suppress hotel formatting there.
+  const isHotel = item.itemType === 'hotel' && groupType !== 'event';
   const nights = isHotel ? Math.max(Number(extraJson.nights || 1), 1) : null;
   const quantity = Math.max(Number(item.quantity || 1), 1);
   const qtyDisplay = isHotel && nights ? `${quantity} × ${nights} 晚` : `${quantity}`;
@@ -301,7 +304,7 @@ function buildClientViewModel(quote, supplierCategoryMap) {
   const groups = (quote.projectGroups || []).map((group) => {
     const typeLabels = GROUP_TYPE_LABELS[group.projectType] || GROUP_TYPE_LABELS.travel;
     const items = (group.items || [])
-      .map((item) => buildClientItem(item, supplierCategoryMap))
+      .map((item) => buildClientItem(item, supplierCategoryMap, group.projectType))
       .filter(isEffectiveClientItem);
 
     // 按分类排序，使同类明细聚集

@@ -1097,6 +1097,15 @@ window.ProjectEditor = (function () {
       const currentValue = String(itemTypeInput.value || "").trim().toLowerCase();
       if (getVisibleServiceTypeMode(groupType) !== "supplier-category" && !allowed.some((entry) => entry.code === currentValue)) {
         itemTypeInput.value = allowed[0]?.code || "";
+      } else if (getVisibleServiceTypeMode(groupType) === "supplier-category") {
+        // Event/supplier-category mode: itemType is not shown to the user but is
+        // still serialised on save.  Clear stale travel-only values (hotel, etc.)
+        // that may have been inherited from row copy or group-type switching — they
+        // would cause the quotation output to render hotel-specific formatting.
+        const TRAVEL_ONLY_TYPES = ["hotel", "transport", "guide_translation", "driver_guide", "ticket", "fuel", "toll_parking"];
+        if (TRAVEL_ONLY_TYPES.includes(currentValue)) {
+          itemTypeInput.value = "misc";
+        }
       }
       syncVisibleServiceTypeField(rowEl);
     });
