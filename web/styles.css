@@ -2691,7 +2691,9 @@ body.proj-column-resizing * {
 }
 
 .proj-item-table td.proj-col-name,
-.proj-item-table td.proj-col-spec,
+.proj-item-table td.proj-col-spec {
+  vertical-align: middle;
+}
 .proj-item-table td.proj-col-remarks {
   vertical-align: top;
 }
