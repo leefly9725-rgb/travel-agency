@@ -27,6 +27,8 @@ window.ProjectEditor = (function () {
   let activeResizeState = null;
   let supplierCatalogCache = null;
   let supplierCatalogPromise = null;
+  let supplierCategoryCache = null;
+  let supplierCategoryPromise = null;
   let serviceSuggestionRequestSeq = 0;
   let serviceSuggestionState = {
     rowEl: null,
@@ -190,7 +192,12 @@ window.ProjectEditor = (function () {
 
   function ensureMasterDataLoaded() {
     if (!masterDataPromise) {
-      masterDataPromise = Promise.all([loadProjectGroupTypes(), loadItemTypes()]);
+      masterDataPromise = Promise.all([
+        loadProjectGroupTypes(),
+        loadItemTypes(),
+        ensureSupplierCategoriesLoaded().catch(() => []),
+        ensureSupplierCatalogLoaded().catch(() => []),
+      ]);
     }
     return masterDataPromise;
   }
@@ -429,20 +436,146 @@ window.ProjectEditor = (function () {
   }
 
   const CATALOG_CATEGORY_LABELS = {
-    av_equipment:    'AV设备',
-    stage_structure: '舞台搭建',
-    print_display:   '印刷展示',
-    decoration:      '装饰物料',
-    furniture:       '家具桌椅',
-    personnel:       '人员服务',
-    logistics:       '物流运输',
-    management:      '管理费用',
+    av_equipment:    '\u0041\u0056\u8bbe\u5907',
+    stage_structure: '\u821e\u53f0\u642d\u5efa',
+    print_display:   '\u5370\u5237\u5c55\u793a',
+    decoration:      '\u88c5\u9970\u7269\u6599',
+    furniture:       '\u5bb6\u5177\u684c\u6905',
+    personnel:       '\u4eba\u5458\u670d\u52a1',
+    logistics:       '\u7269\u6d41\u8fd0\u8f93',
+    management:      '\u7ba1\u7406\u8d39\u7528',
+    misc:            '\u5176\u4ed6',
   };
-
 
   function getCatalogCategoryLabel(category) {
     if (!category) return "\u672a\u5206\u7c7b";
     return CATALOG_CATEGORY_LABELS[category] || category;
+  }
+
+  function normalizeSupplierCategory(rawCategory) {
+    const code = String(rawCategory?.code || rawCategory?.id || "").trim().toLowerCase();
+    if (!code) return null;
+    return {
+      code,
+      nameZh: String(rawCategory?.nameZh || rawCategory?.name_zh || getCatalogCategoryLabel(code)).trim() || getCatalogCategoryLabel(code),
+      sortOrder: Number(rawCategory?.sortOrder ?? rawCategory?.sort_order ?? 0),
+      isActive: rawCategory?.isActive !== undefined
+        ? Boolean(rawCategory.isActive)
+        : (rawCategory?.is_active !== undefined ? Boolean(rawCategory.is_active) : true),
+    };
+  }
+
+  function getVisibleServiceTypeMode(groupType) {
+    return String(groupType || "").trim().toLowerCase() === "event" ? "supplier-category" : "travel-item-type";
+  }
+
+  function ensureSupplierCategoriesLoaded() {
+    if (supplierCategoryCache) return Promise.resolve(supplierCategoryCache);
+    if (!supplierCategoryPromise) {
+      supplierCategoryPromise = window.AppUtils.fetchJson("/api/supplier-categories", null, "\u52a0\u8f7d\u4f9b\u5e94\u5546\u5206\u7c7b\u5931\u8d25")
+        .then((data) => {
+          const categories = (Array.isArray(data) ? data : [])
+            .map(normalizeSupplierCategory)
+            .filter((item) => item && item.isActive !== false)
+            .sort((a, b) => Number(a.sortOrder || 0) - Number(b.sortOrder || 0));
+          supplierCategoryCache = categories;
+          if (!supplierCategoryCache.some((item) => item.code === "misc")) {
+            supplierCategoryCache = supplierCategoryCache.concat([{ code: "misc", nameZh: "\u5176\u4ed6", sortOrder: 9999, isActive: true }]);
+          }
+          return supplierCategoryCache;
+        })
+        .catch(async (error) => {
+          supplierCategoryPromise = null;
+          try {
+            const items = await ensureSupplierCatalogLoaded();
+            const dedup = new Map();
+            items.forEach((item) => {
+              const code = String(item.category || "").trim().toLowerCase();
+              if (!code || dedup.has(code)) return;
+              dedup.set(code, { code, nameZh: getCatalogCategoryLabel(code), sortOrder: 0, isActive: true });
+            });
+            if (!dedup.has("misc")) dedup.set("misc", { code: "misc", nameZh: "\u5176\u4ed6", sortOrder: 9999, isActive: true });
+            supplierCategoryCache = Array.from(dedup.values()).sort((a, b) => String(a.nameZh || "").localeCompare(String(b.nameZh || ""), "zh-Hans-CN"));
+            return supplierCategoryCache;
+          } catch (_) {
+            throw error;
+          }
+        });
+    }
+    return supplierCategoryPromise;
+  }
+
+  function getVisibleServiceTypeOptions(groupType, currentValue) {
+    if (getVisibleServiceTypeMode(groupType) === "supplier-category") {
+      const options = Array.isArray(supplierCategoryCache) ? supplierCategoryCache.map((item) => ({ value: item.code, label: item.nameZh })) : [];
+      const normalizedCurrent = String(currentValue || "").trim().toLowerCase();
+      if (normalizedCurrent && !options.some((item) => item.value === normalizedCurrent)) {
+        options.push({ value: normalizedCurrent, label: getCatalogCategoryLabel(normalizedCurrent) });
+      }
+      return options;
+    }
+    const options = getAllowedItemTypes(groupType).map((item) => ({ value: item.code, label: item.nameZh }));
+    const normalizedCurrent = String(currentValue || "").trim().toLowerCase();
+    const currentMeta = (itemTypeCache || []).find((item) => item.code === normalizedCurrent);
+    if (normalizedCurrent && currentMeta && !options.some((item) => item.value === normalizedCurrent)) {
+      options.push({ value: currentMeta.code, label: currentMeta.nameZh });
+    }
+    return options;
+  }
+
+  // For event (supplier-category) rows: if supplierCatalogItemId is set, always overwrite
+  // itemCategory with the catalog item's true category — no validity gate.
+  // groupType must be passed explicitly because the row may be detached from the DOM.
+  function hydrateEventRowCategoryFromCatalog(rowEl, groupType) {
+    const resolvedGroupType = groupType ||
+      rowEl.closest?.(".project-group")?.querySelector("[name='projectType']")?.value ||
+      "";
+    if (getVisibleServiceTypeMode(resolvedGroupType) !== "supplier-category") return;
+    const catalogItemId = String(rowEl.dataset.supplierCatalogItemId || "").trim();
+    if (!catalogItemId) return;
+    if (!Array.isArray(supplierCatalogCache)) return;
+    const catalogEntry = supplierCatalogCache.find((c) => String(c.id) === catalogItemId);
+    if (catalogEntry && catalogEntry.category) {
+      rowEl.dataset.itemCategory = String(catalogEntry.category).trim().toLowerCase();
+    }
+  }
+
+  function syncVisibleServiceTypeField(rowEl, explicitGroupType) {
+    if (!rowEl) return;
+    // When called on a detached element (e.g. during renderItemRow before DOM insertion),
+    // closest(".project-group") returns null and falls back to "travel", which is wrong for
+    // event groups. Accept an explicit groupType to avoid the incorrect fallback.
+    const groupType = explicitGroupType ||
+      rowEl.closest?.(".project-group")?.querySelector("[name='projectType']")?.value ||
+      "travel";
+    hydrateEventRowCategoryFromCatalog(rowEl, groupType);
+    const mode = getVisibleServiceTypeMode(groupType);
+    const itemTypeInput = rowEl.querySelector("[name='itemType']");
+    const selectEl = rowEl.querySelector("[name='serviceType']");
+    if (!itemTypeInput || !selectEl) return;
+
+    let currentValue = mode === "supplier-category"
+      ? String(rowEl.dataset.itemCategory || "").trim().toLowerCase()
+      : String(itemTypeInput.value || "").trim().toLowerCase();
+
+    const options = getVisibleServiceTypeOptions(groupType, currentValue);
+    if (mode !== "supplier-category") {
+      if (!options.some((item) => item.value === currentValue)) {
+        currentValue = options[0]?.value || "";
+        itemTypeInput.value = currentValue;
+      }
+      syncRowUnit(rowEl);
+    }
+
+    const optionHtml = options.map((item) => `<option value="${escapeHtml(item.value)}"${item.value === currentValue ? " selected" : ""}>${escapeHtml(item.label)}</option>`).join("");
+    if (mode === "supplier-category") {
+      selectEl.innerHTML = `<option value=""${currentValue ? "" : " selected"}>\u2014 \u8bf7\u9009\u62e9\u670d\u52a1\u7c7b\u578b \u2014</option>${optionHtml}`;
+      selectEl.value = currentValue || "";
+    } else {
+      selectEl.innerHTML = options.length
+        ? optionHtml
+        : '<option value="" disabled selected>\u2014 \u8bf7\u5148\u7ef4\u62a4\u670d\u52a1\u7c7b\u578b \u2014</option>';
+    }
   }
 
   function normalizeCatalogItem(rawItem) {
@@ -484,6 +617,8 @@ window.ProjectEditor = (function () {
     rowEl.dataset.supplierId = item.supplierId || "";
     rowEl.dataset.supplierCatalogItemId = item.id || "";
     rowEl.dataset.supplierDisplay = supplierDisplay;
+    rowEl.dataset.itemCategory = String(item.category || rowEl.dataset.itemCategory || "").trim().toLowerCase();
+    syncVisibleServiceTypeField(rowEl);
   }
 
   function ensureSupplierCatalogLoaded() {
@@ -861,15 +996,22 @@ window.ProjectEditor = (function () {
     rowEl.querySelectorAll("input, select, textarea").forEach((field) => {
       field.addEventListener("input", () => {
         if (["itemName", "specification", "remarks"].includes(field.name)) autoSizeTextCell(field);
-        if (field.name === "itemType") syncRowUnit(rowEl);
         if (field.name === "itemName") updateServiceSuggestions(rowEl, field);
         refreshGroupTotals(groupEl);
         refreshSummary();
       });
       field.addEventListener("change", () => {
-        if (field.name === "itemType") {
-          syncRowUnit(rowEl);
-          if (serviceSuggestionState.rowEl === rowEl && nameInput) updateServiceSuggestions(rowEl, nameInput);
+        if (field.name === "serviceType") {
+          const groupType = groupEl.querySelector("[name='projectType']")?.value || "travel";
+          if (getVisibleServiceTypeMode(groupType) === "supplier-category") {
+            rowEl.dataset.itemCategory = String(field.value || "").trim().toLowerCase();
+          } else {
+            const itemTypeInput = rowEl.querySelector("[name='itemType']");
+            if (itemTypeInput) itemTypeInput.value = String(field.value || "").trim().toLowerCase();
+            syncRowUnit(rowEl);
+            if (serviceSuggestionState.rowEl === rowEl && nameInput) updateServiceSuggestions(rowEl, nameInput);
+          }
+          syncVisibleServiceTypeField(rowEl);
         }
         refreshGroupTotals(groupEl);
         refreshSummary();
@@ -913,31 +1055,36 @@ window.ProjectEditor = (function () {
     tr.dataset.supplierId = item.supplierId || "";
     tr.dataset.supplierCatalogItemId = item.supplierCatalogItemId || "";
     tr.dataset.supplierDisplay = item.supplierDisplay || item.supplierName || "";
+    tr.dataset.itemCategory = String(item.itemCategory || "").trim().toLowerCase();
+    // Overwrite with catalog's true category — catalog is the authority for event rows
+    hydrateEventRowCategoryFromCatalog(tr, groupType);
+
     const currentType = String(item.itemType || allowed[0]?.code || "misc").trim().toLowerCase();
     const currentTypeMeta = (itemTypeCache || []).find((entry) => entry.code === currentType);
-    const options = [...allowed];
-    if (currentType && !options.some((entry) => entry.code === currentType)) {
-      if (currentTypeMeta) options.push(currentTypeMeta);
-    }
-    const unit = item.unit || currentTypeMeta?.defaultUnit || "项";
+    const currentServiceType = getVisibleServiceTypeMode(groupType) === "supplier-category"
+      ? String(tr.dataset.itemCategory || "").trim().toLowerCase()
+      : currentType;
+    const unit = item.unit || currentTypeMeta?.defaultUnit || "\u9879";
     tr.innerHTML = `
       <td class="proj-col-type">
-        <select class="cell-input item-type-sel proj-cell-input-type" name="itemType">
-          ${options.map((entry) => `<option value="${entry.code}"${entry.code === currentType ? " selected" : ""}>${entry.nameZh}</option>`).join("")}
+        <input type="hidden" name="itemType" value="${escapeHtml(currentType)}" />
+        <select class="cell-input item-type-sel proj-cell-input-type" name="serviceType">
+          ${getVisibleServiceTypeOptions(groupType, currentServiceType).map((entry) => `<option value="${entry.value}"${entry.value === currentServiceType ? " selected" : ""}>${entry.label}</option>`).join("")}
         </select>
       </td>
       <td class="proj-col-name"><div class="service-name-wrap"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="\u670d\u52a1\u540d\u79f0">${escapeHtml(item.itemName || "")}</textarea><div class="service-suggestion-box" hidden></div></div></td>
-      <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="规格 / 说明">${escapeHtml(item.specification || "")}</textarea></td>
-      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="单位" /></td>
+      <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="\u89c4\u683c / \u8bf4\u660e">${escapeHtml(item.specification || "")}</textarea></td>
+      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="\u5355\u4f4d" /></td>
       <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
       <td class="proj-col-cost-unit view-internal"><input class="cell-input proj-cell-input-number" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" /></td>
       <td class="proj-col-sales-unit"><input class="cell-input proj-cell-input-number" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" /></td>
-      <td class="proj-col-remarks remarks-cell"><textarea class="cell-input proj-cell-textarea remarks-textarea" name="remarks" rows="1" data-autosize-field="remarks" placeholder="备注">${escapeHtml(item.remarks || "")}</textarea></td>
-      <td class="proj-col-cost-subtotal view-internal computed-cell r" data-field="costSubtotal">—</td>
-      <td class="proj-col-sales-subtotal computed-cell r" data-field="salesSubtotal">—</td>
-      <td class="proj-col-margin view-internal computed-cell r" data-field="margin">—</td>
-      <td class="proj-col-actions proj-row-actions"><div class="proj-row-action-stack"><button type="button" class="ghost mini-button proj-row-action-btn pick-catalog-btn">从库选</button><button type="button" class="ghost mini-button proj-row-action-btn delete-item-btn">删除</button></div></td>
+      <td class="proj-col-remarks remarks-cell"><textarea class="cell-input proj-cell-textarea remarks-textarea" name="remarks" rows="1" data-autosize-field="remarks" placeholder="\u5907\u6ce8">${escapeHtml(item.remarks || "")}</textarea></td>
+      <td class="proj-col-cost-subtotal view-internal computed-cell r" data-field="costSubtotal">\u2014</td>
+      <td class="proj-col-sales-subtotal computed-cell r" data-field="salesSubtotal">\u2014</td>
+      <td class="proj-col-margin view-internal computed-cell r" data-field="margin">\u2014</td>
+      <td class="proj-col-actions proj-row-actions"><div class="proj-row-action-stack"><button type="button" class="ghost mini-button proj-row-action-btn pick-catalog-btn">\u4ece\u5e93\u9009</button><button type="button" class="ghost mini-button proj-row-action-btn delete-item-btn">\u5220\u9664</button></div></td>
     `;
+    syncVisibleServiceTypeField(tr, groupType);
     return tr;
   }
 
@@ -945,20 +1092,13 @@ window.ProjectEditor = (function () {
     const groupType = groupEl.querySelector("[name='projectType']")?.value || "travel";
     const allowed = getAllowedItemTypes(groupType);
     groupEl.querySelectorAll("tbody tr[data-item-id]").forEach((rowEl) => {
-      const select = rowEl.querySelector("[name='itemType']");
-      if (!select) return;
-      const currentValue = String(select.value || "").trim().toLowerCase();
-      if (allowed.length === 0) {
-        select.innerHTML = '<option value="" disabled selected>— 请在基础数据维护中添加 —</option>';
-      } else {
-        select.innerHTML = allowed.map((entry) =>
-          `<option value="${entry.code}"${entry.code === currentValue ? " selected" : ""}>${entry.nameZh}</option>`
-        ).join("");
-        if (!allowed.some((entry) => entry.code === currentValue)) {
-          select.value = allowed[0].code;
-        }
-        syncRowUnit(rowEl);
+      const itemTypeInput = rowEl.querySelector("[name='itemType']");
+      if (!itemTypeInput) return;
+      const currentValue = String(itemTypeInput.value || "").trim().toLowerCase();
+      if (getVisibleServiceTypeMode(groupType) !== "supplier-category" && !allowed.some((entry) => entry.code === currentValue)) {
+        itemTypeInput.value = allowed[0]?.code || "";
       }
+      syncVisibleServiceTypeField(rowEl);
     });
   }
 
@@ -966,6 +1106,7 @@ window.ProjectEditor = (function () {
     return {
       _id: rowEl.dataset.itemId || nextItemId(),
       itemType: rowEl.querySelector("[name='itemType']")?.value || "misc",
+      itemCategory: String(rowEl.dataset.itemCategory || "").trim().toLowerCase(),
       itemName: rowEl.querySelector("[name='itemName']")?.value?.trim() || "",
       specification: rowEl.querySelector("[name='specification']")?.value?.trim() || "",
       unit: rowEl.querySelector("[name='unit']")?.value?.trim() || "",

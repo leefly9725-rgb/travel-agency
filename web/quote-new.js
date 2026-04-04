@@ -1122,11 +1122,23 @@ async function bootstrap() {
       window.AppUtils.showMessage("quote-message", "\u8bf7\u5148\u4fdd\u5b58\u62a5\u4ef7\uff0c\u518d\u751f\u6210\u62a5\u4ef7\u5355", "error");
       return;
     }
-    const target = `/project-quotation.html?id=${encodeURIComponent(quoteId)}`;
-    const nextUrl = window.AppReturn
-      ? window.AppReturn.withReturn(target, window.AppReturn.getCurrentPath())
-      : target;
-    window.open(nextUrl, "_blank", "noopener");
+    // 生成客户报价单前：统一补分类检查
+    if (window.ProjectEditor && typeof window.ProjectEditor.checkAndClassifyItems === "function") {
+      window.ProjectEditor.checkAndClassifyItems().then((confirmed) => {
+        if (!confirmed) return;
+        const target = `/project-quotation.html?id=${encodeURIComponent(quoteId)}`;
+        const nextUrl = window.AppReturn
+          ? window.AppReturn.withReturn(target, window.AppReturn.getCurrentPath())
+          : target;
+        window.open(nextUrl, "_blank", "noopener");
+      });
+    } else {
+      const target = `/project-quotation.html?id=${encodeURIComponent(quoteId)}`;
+      const nextUrl = window.AppReturn
+        ? window.AppReturn.withReturn(target, window.AppReturn.getCurrentPath())
+        : target;
+      window.open(nextUrl, "_blank", "noopener");
+    }
   }
 
   if (window.ProjectEditor && typeof window.ProjectEditor.setQuotationAction === "function") {
@@ -1151,8 +1163,11 @@ async function bootstrap() {
       if (projectModeWrapper) projectModeWrapper.style.display = "";
       // 初始化项目编辑器
       if (projectGroupsEditor && window.ProjectEditor) {
+        // ProjectEditor manages its own service-type selects (event→supplier-category,
+        // travel→item-type). Do NOT call attachProjectBasedTypeSync here: its
+        // rebuildAllServiceTypeSelects scans .item-type-sel and overwrites the
+        // supplier-category options that ProjectEditor already rendered correctly.
         window.ProjectEditor.init(projectGroupsEditor, initialGroups || [], currency || form.currency.value || "EUR");
-        attachProjectBasedTypeSync(projectGroupsEditor);
       }
       // 更新页面标题标签
       const titleEl = document.getElementById("quote-form-title");
@@ -1745,6 +1760,11 @@ async function bootstrap() {
       if (!form.clientName.value.trim() || !form.projectName.value.trim() || !form.contactName.value.trim()) {
         window.AppUtils.showMessage("quote-message", "请填写客户名称、项目名称和联系人。", "error");
         return;
+      }
+      // 保存前统一补分类检查
+      if (window.ProjectEditor && typeof window.ProjectEditor.checkAndClassifyItems === "function") {
+        const classified = await window.ProjectEditor.checkAndClassifyItems();
+        if (!classified) return;
       }
     } else {
       if (!validateQuoteForm(form)) {
