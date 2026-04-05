@@ -451,6 +451,16 @@ function normalizeQuotePayload(payload, existingId, existingCreatedAt, validQuot
     throw new Error("行程结束日期不能早于行程开始日期。");
   }
 
+  const isProject = supportedPricingModes.includes(payload.pricingMode) && payload.pricingMode === "project_based";
+  // Normalize project groups first so totals are derived from normalized item subtotals,
+  // not from raw payload values (which may be missing or stale).
+  const normalizedGroups = isProject
+    ? normalizeProjectGroups(payload.projectGroups || [], validGroupTypes, validQuoteItemTypes)
+    : [];
+  const projTotalCost   = isProject ? Math.round(normalizedGroups.reduce((s, g) => s + Number(g.projectCostTotal  || 0), 0) * 100) / 100 : 0;
+  const projTotalSales  = isProject ? Math.round(normalizedGroups.reduce((s, g) => s + Number(g.projectSalesTotal || 0), 0) * 100) / 100 : 0;
+  const projTotalProfit = isProject ? Math.round((projTotalSales - projTotalCost) * 100) / 100 : 0;
+
   return {
     id: existingId || payload.id || createId("Q"),
     quoteNumber: payload.quoteNumber ? String(payload.quoteNumber).trim() : generateQuoteNumber(),
@@ -468,23 +478,12 @@ function normalizeQuotePayload(payload, existingId, existingCreatedAt, validQuot
     destination: notEmpty(payload.destination || "Belgrade", "主要目的地"),
     paxCount: Number(payload.paxCount || 0),
     notes: String(payload.notes || "").trim(),
-    pricingMode: supportedPricingModes.includes(payload.pricingMode) ? payload.pricingMode : "standard",
-    items: supportedPricingModes.includes(payload.pricingMode) && payload.pricingMode === "project_based"
-      ? []
-      : normalizeQuoteItems(payload.items, currency, validQuoteItemTypes),
-    projectGroups: payload.pricingMode === "project_based"
-      ? normalizeProjectGroups(payload.projectGroups || [], validGroupTypes, validQuoteItemTypes)
-      : [],
-    totalCost: payload.pricingMode === "project_based"
-      ? Math.round((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0) * 100) / 100
-      : 0,
-    totalSales: payload.pricingMode === "project_based"
-      ? Math.round((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectSalesTotal || 0), 0) * 100) / 100
-      : 0,
-    totalProfit: payload.pricingMode === "project_based"
-      ? Math.round(((payload.projectGroups || []).reduce((s, g) => s + Number(g.projectSalesTotal || 0), 0) -
-                    (payload.projectGroups || []).reduce((s, g) => s + Number(g.projectCostTotal || 0), 0)) * 100) / 100
-      : 0,
+    pricingMode: isProject ? "project_based" : "standard",
+    items: isProject ? [] : normalizeQuoteItems(payload.items, currency, validQuoteItemTypes),
+    projectGroups: normalizedGroups,
+    totalCost: projTotalCost,
+    totalSales: projTotalSales,
+    totalProfit: projTotalProfit,
     createdAt: existingCreatedAt || now,
     updatedAt: now,
   };

@@ -1809,14 +1809,22 @@ async function bootstrap() {
         body: JSON.stringify(payload),
       }, isEditing ? "报价更新失败，请稍后重试。" : "报价保存失败，请稍后重试。");
 
-      window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
       const fallback = getListFallbackForMode(state.pricingMode);
       const explicitReturn = window.AppReturn ? window.AppReturn.getReturnParam() : "";
       if (explicitReturn) {
+        // Explicit return= param: flash + redirect for all modes
+        window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
         window.location.href = explicitReturn;
       } else if (isProjectMode) {
-        window.location.href = fallback;
+        // Project mode: stay on page, update form state + URL so next save uses PUT
+        form.quoteId.value = savedQuote.id;
+        const newSearch = new URLSearchParams(window.location.search);
+        newSearch.set("id", savedQuote.id);
+        newSearch.set("mode", "project_based");
+        history.replaceState(null, "", window.location.pathname + "?" + newSearch.toString());
+        window.AppUtils.showMessage("quote-message", isEditing ? "报价单已更新。" : "报价单已保存。", "success");
       } else {
+        window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
         const detailUrl = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
         window.location.href = window.AppReturn ? window.AppReturn.withReturn(detailUrl, fallback) : detailUrl;
       }

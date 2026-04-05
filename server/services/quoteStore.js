@@ -463,11 +463,19 @@ async function saveRemoteQuote(config, quote) {
 }
 
 async function deleteRemoteQuote(config, id) {
-  await supabaseRequest(config, `quotes?id=eq.${encodeURIComponent(id)}`, {
+  // Use return=representation so PostgREST returns the deleted rows.
+  // An empty array means nothing was deleted (row not found or RLS blocked silently).
+  const deleted = await supabaseRequest(config, `quotes?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: { Prefer: "return=minimal" },
+    headers: { Prefer: "return=representation" },
   });
-  return true;
+  // null = 204 No Content (valid delete confirmation from some PostgREST configs)
+  // [] = 0 rows deleted
+  // [{...}] = rows deleted
+  if (Array.isArray(deleted)) {
+    return deleted.length > 0;
+  }
+  return true; // null/204 treated as success
 }
 
 function createQuoteStore({ data, saveData }) {
@@ -552,14 +560,24 @@ function createQuoteStore({ data, saveData }) {
       if (!config.enabled) {
         return { deleted: deleteLocalQuote(id), source: "local_json" };
       }
-      // When Supabase is configured, errors must propagate — silent fallback to
-      // local-only delete would make the quote reappear from Supabase on next load.
-      await deleteRemoteQuote(config, id);
+      // When Supabase is configured, errors from deleteRemoteQuote must propagate —
+      // a silent fallback to local-only delete would make the quote reappear on next load.
+      const remoteDeleted = await deleteRemoteQuote(config, id);
       const localDeleted = deleteLocalQuote(id);
-      return {
-        deleted: true,
-        source: localDeleted ? "supabase+local_fallback_cleanup" : "supabase",
-      };
+
+      if (!remoteDeleted && !localDeleted) {
+        // Nothing deleted anywhere — quote not found
+        return { deleted: false, source: "not_found" };
+      }
+      if (!remoteDeleted && localDeleted) {
+        // Quote was local-only (e.g. saved during a Supabase outage); local cleanup succeeded
+        return { deleted: true, source: "local_only_cleanup" };
+      }
+      if (remoteDeleted && !localDeleted) {
+        // Quote existed only in Supabase (normal case when Supabase save succeeded)
+        return { deleted: true, source: "supabase" };
+      }
+      return { deleted: true, source: "supabase+local_fallback_cleanup" };
     },
   };
 }
