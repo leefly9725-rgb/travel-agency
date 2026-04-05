@@ -463,11 +463,18 @@ async function saveRemoteQuote(config, quote) {
 }
 
 async function deleteRemoteQuote(config, id) {
-  await supabaseRequest(config, `quotes?id=eq.${encodeURIComponent(id)}`, {
+  // return=representation causes PostgREST to return the deleted rows as a JSON array.
+  // An empty array means nothing was deleted (row not found or silently blocked by RLS),
+  // which is the root cause of the "deleted quote reappears after refresh" bug.
+  // null (204 No Content) is treated as success for forward-compatibility.
+  const result = await supabaseRequest(config, `quotes?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
-    headers: { Prefer: "return=minimal" },
+    headers: { Prefer: "return=representation" },
   });
-  return true;
+  if (Array.isArray(result)) {
+    return result.length > 0; // [] = nothing deleted; [{...}] = deleted
+  }
+  return true; // null / 204 = success
 }
 
 function createQuoteStore({ data, saveData }) {
@@ -552,13 +559,18 @@ function createQuoteStore({ data, saveData }) {
       if (!config.enabled) {
         return { deleted: deleteLocalQuote(id), source: "local_json" };
       }
-      // When Supabase is configured, errors must propagate — silent fallback to
-      // local-only delete would make the quote reappear from Supabase on next load.
-      await deleteRemoteQuote(config, id);
+      // When Supabase is configured, errors from deleteRemoteQuote must propagate.
+      // remoteDeleted=false means Supabase returned [] (row not found or RLS blocked).
+      const remoteDeleted = await deleteRemoteQuote(config, id);
       const localDeleted = deleteLocalQuote(id);
+      if (!remoteDeleted && !localDeleted) {
+        return { deleted: false, source: "not_found" };
+      }
       return {
         deleted: true,
-        source: localDeleted ? "supabase+local_fallback_cleanup" : "supabase",
+        source: remoteDeleted && localDeleted ? "supabase+local_fallback_cleanup"
+              : remoteDeleted ? "supabase"
+              : "local_only_cleanup",
       };
     },
   };
