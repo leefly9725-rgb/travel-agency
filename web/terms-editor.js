@@ -57,14 +57,19 @@ async function init() {
     return;
   }
 
+  // Set back-link before any async call so it is always correct
+  const fallbackReturn = `/project-quotation.html?id=${encodeURIComponent(quoteId)}`;
+  if (window.AppReturn) {
+    AppReturn.applyReturnLink('#back-link', fallbackReturn);
+  } else {
+    document.getElementById('back-link').href = fallbackReturn;
+  }
+
   // Load quote name (non-critical)
   try {
-    const proj = await apiFetch(`/api/project-quotes/${encodeURIComponent(quoteId)}`);
-    if (proj && proj.name) {
-      document.getElementById('te-quote-name').textContent = `— ${proj.name}`;
-    }
-    if (!window.AppReturn || !window.AppReturn.getReturnParam()) {
-      document.getElementById('back-link').href = `/quote-project.html?id=${encodeURIComponent(quoteId)}`;
+    const proj = await apiFetch(`/api/quotes/${encodeURIComponent(quoteId)}`);
+    if (proj && (proj.projectName || proj.name)) {
+      document.getElementById('te-quote-name').textContent = `— ${proj.projectName || proj.name}`;
     }
   } catch (_) { /* display only, ignore */ }
 

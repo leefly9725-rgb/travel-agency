@@ -150,7 +150,10 @@ const params = new URLSearchParams(location.search);
 const quoteId = params.get('id') || '';
 let termsSnapshot = null;  // loaded in bootstrap(), injected into Composer runtime
 const editTermsBtn = document.getElementById('btn-edit-terms');
-if (editTermsBtn && quoteId) editTermsBtn.href = `/terms-editor.html?quote_id=${encodeURIComponent(quoteId)}`;
+if (editTermsBtn && quoteId) {
+  const returnPath = `${window.location.pathname}${window.location.search}`;
+  editTermsBtn.href = `/terms-editor.html?quote_id=${encodeURIComponent(quoteId)}&return=${encodeURIComponent(returnPath)}`;
+}
 
 const state = {
   lang: params.get('lang') || 'zh',
