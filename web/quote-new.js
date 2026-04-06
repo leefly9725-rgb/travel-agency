@@ -989,6 +989,7 @@ function buildForm(meta) {
   const defaultTemplate = getBlankTemplate();
   const selectedTemplateId = defaultTemplate ? defaultTemplate.id : "";
   const form = document.getElementById("quote-form");
+  form.setAttribute("novalidate", "");
   form.innerHTML = `
     <input type="hidden" name="quoteId" />
     <section class="form-section"><div class="form-section-head"><div><h2>\u57fa\u7840\u4fe1\u606f</h2><p class="meta">\u5148\u786e\u8ba4\u62a5\u4ef7\u5355\u7f16\u53f7\u3001\u9879\u76ee\u540d\u79f0\u3001\u5ba2\u6237\u4e0e\u8f93\u51fa\u8bbe\u7f6e\u3002</p></div></div><div class="form-grid form-grid-wide section-grid section-grid-wide"><label><span>\u62a5\u4ef7\u5355\u53f7</span><input name="quoteNumber" readonly /></label><label><span>\u9879\u76ee\u540d\u79f0</span><input name="projectName" placeholder="\u4f8b\u5982\uff1a\u585e\u5c14\u7ef4\u4e9a\u5546\u52a1\u63a5\u5f85 3 \u65e5\u884c\u7a0b" required /></label><label><span>\u5ba2\u6237\u540d\u79f0</span><input name="clientName" placeholder="\u4f8b\u5982\uff1a\u67d0\u67d0\u4f01\u4e1a\u4ee3\u8868\u56e2" required /></label><label><span>\u6587\u6863\u8f93\u51fa\u8bed\u8a00</span><select name="language">${createOptionList(meta.supportedLanguages, "zh-CN", "languageLabels")}</select></label><label><span>\u62a5\u4ef7\u5e01\u79cd</span><select name="currency">${createOptionList(meta.supportedCurrencies, meta.defaultQuoteCurrency || "EUR", "currencyLabels")}</select></label></div></section>
@@ -1201,8 +1202,10 @@ async function bootstrap() {
   }
 
   // 若 URL 带有 mode=project_based，自动激活并同步返回链接
+  // 注意：有 editingId 时跳过此处——loadQuoteForEdit 会以真实 groups 做二次初始化，
+  // 避免先用空 groups 初始化 ProjectEditor 导致竞态（getGroups() 在渲染完成前返回 []）。
   const urlSearchParams = new URLSearchParams(window.location.search);
-  if (urlSearchParams.get("mode") === "project_based") {
+  if (urlSearchParams.get("mode") === "project_based" && !editingId) {
     activatePricingMode("project_based", [], form.currency.value || "EUR");
     syncReturnLinks(form); // 模式确定后重新同步，确保返回链接指向 project-quotes.html
   }
@@ -1809,16 +1812,25 @@ async function bootstrap() {
         body: JSON.stringify(payload),
       }, isEditing ? "报价更新失败，请稍后重试。" : "报价保存失败，请稍后重试。");
 
-      window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
-      const fallback = getListFallbackForMode(state.pricingMode);
       const explicitReturn = window.AppReturn ? window.AppReturn.getReturnParam() : "";
-      if (explicitReturn) {
-        window.location.href = explicitReturn;
-      } else if (isProjectMode) {
-        window.location.href = fallback;
+      if (isProjectMode && !isEditing) {
+        // 项目型首次保存：跳转到带 id 的正式编辑地址（保留 return 参数）
+        window.AppUtils.setFlash("报价单已保存。", "success");
+        const returnPart = explicitReturn ? `&return=${encodeURIComponent(explicitReturn)}` : "";
+        window.location.replace(`/quote-new.html?id=${encodeURIComponent(savedQuote.id)}&mode=project_based${returnPart}`);
+      } else if (isProjectMode && isEditing) {
+        // 项目型再次保存：原地提示，不跳转
+        window.AppUtils.showMessage("quote-message", "报价单已更新。", "success");
       } else {
-        const detailUrl = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
-        window.location.href = window.AppReturn ? window.AppReturn.withReturn(detailUrl, fallback) : detailUrl;
+        // 标准模式：保持原有逻辑
+        window.AppUtils.setFlash(isEditing ? "报价已更新。" : "报价已保存。", "success");
+        const fallback = getListFallbackForMode(state.pricingMode);
+        if (explicitReturn) {
+          window.location.href = explicitReturn;
+        } else {
+          const detailUrl = `/quote-detail.html?id=${encodeURIComponent(savedQuote.id)}`;
+          window.location.href = window.AppReturn ? window.AppReturn.withReturn(detailUrl, fallback) : detailUrl;
+        }
       }
     } catch (error) {
       window.AppUtils.showMessage("quote-message", error.message, "error");
