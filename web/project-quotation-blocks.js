@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Step 3 active block builders.
  *
  * This module owns quotation block generation for the composer path.
@@ -82,7 +82,7 @@
     const contactDetail = [esc(vm.contactName || ''), esc(vm.contactPhone || '')].filter(Boolean).join(' · ') || '—';
 
     return `
-      <div style="display:flex;flex-direction:column;width:100%;height:100%;background:#F5F2EC;font-family:Arial,sans-serif;overflow:hidden;">
+      <div class="qp-cover-shell">
 
         <!-- 右上角几何装饰 -->
         <svg style="position:absolute;top:0;right:0;width:260px;height:260px;pointer-events:none;z-index:1;" viewBox="0 0 260 260">
@@ -110,7 +110,7 @@
         </div>
 
         <!-- 米白主体区 -->
-        <div style="flex:1;min-height:0;padding:24px 32px 20px;position:relative;z-index:2;display:flex;flex-direction:column;">
+        <div class="qp-cover-main">
           <!-- 报价编号徽章 -->
           <div style="position:absolute;top:6px;right:8px;border:1px solid rgba(201,168,76,0.58);border-radius:4px;padding:6px 12px 5px;text-align:right;background:rgba(245,242,236,0.78);backdrop-filter:blur(2px);">
             <div style="font-size:7px;letter-spacing:2px;color:#C9A84C;text-transform:uppercase;">Quote No.</div>
@@ -137,52 +137,53 @@
                 <div style="font-size:13px;color:#1B2A4A;font-weight:600;line-height:1.45;">${paxText}</div>
               </div>
             </div>
-          </div>
-          <div style="flex:1;min-height:0;"></div>
+          </div>
         </div>
 
-        <!-- 深蓝 meta 腰带 -->
-        <div style="flex-shrink:0;background:#1B2A4A;padding:20px 32px 22px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:14px;position:relative;z-index:2;border-top:1px solid rgba(255,255,255,0.04);">
-          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">报价日期</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${esc(vm.quoteDate || '—')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">有效期至</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${esc(vm.validUntil || '—')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">币种</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${esc(vm.currency || 'EUR')}</div></div>
-          <div><div style="font-size:7px;letter-spacing:2.2px;color:#C9A84C;text-transform:uppercase;margin-bottom:6px;">服务模块</div><div style="font-size:14px;color:#F5F2EC;font-weight:600;line-height:1.3;">${vm.groups.length} 个</div></div>
-        </div>
+        <div class="qp-cover-bottom">
+          <!-- 深蓝 meta 腰带 -->
+          <div class="qp-cover-meta-strip">
+            <div class="qp-cover-meta-cell"><div class="qp-cover-meta-label">报价日期</div><div class="qp-cover-meta-value">${esc(vm.quoteDate || '—')}</div></div>
+            <div class="qp-cover-meta-cell"><div class="qp-cover-meta-label">有效期至</div><div class="qp-cover-meta-value">${esc(vm.validUntil || '—')}</div></div>
+            <div class="qp-cover-meta-cell"><div class="qp-cover-meta-label">币种</div><div class="qp-cover-meta-value">${esc(vm.currency || 'EUR')}</div></div>
+            <div class="qp-cover-meta-cell"><div class="qp-cover-meta-label">服务模块</div><div class="qp-cover-meta-value">${vm.groups.length} 个</div></div>
+          </div>
 
-        <!-- 金色总价栏 -->
-        ${state.taxMode === 'included' ? `
-        <div style="flex-shrink:0;background:linear-gradient(180deg, #D2B160 0%, #C9A84C 100%);padding:22px 32px 24px;display:flex;align-items:flex-start;justify-content:space-between;position:relative;z-index:2;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);">
-          <div style="display:grid;gap:5px;align-content:start;padding-top:2px;">
-            <div style="font-size:9px;letter-spacing:2.2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
-            <div style="font-size:11px;color:rgba(27,42,74,0.72);line-height:1.45;">Final Quotation for client confirmation</div>
+          <!-- 金色总价栏 -->
+          ${state.taxMode === 'included' ? `
+          <div class="qp-cover-total-strip qp-cover-total-strip-vat">
+            <div class="qp-cover-total-copy">
+              <span>GRAND TOTAL · 客户报价总额</span>
+              <small>Final Quotation for client confirmation</small>
+            </div>
+            <div class="qp-cover-total-breakdown">
+              <div class="qp-cover-total-row">
+                <span>Subtotal</span>
+                <strong>${money(vm.subtotal, vm.currency)}</strong>
+              </div>
+              <div class="qp-cover-total-row">
+                <span>VAT 20%</span>
+                <strong>${money(vm.vatAmount, vm.currency)}</strong>
+              </div>
+              <div class="qp-cover-total-row qp-cover-total-row-grand">
+                <span>Grand Total</span>
+                <strong>${money(vm.grandTotal, vm.currency)}</strong>
+              </div>
+            </div>
           </div>
-          <div style="display:grid;gap:6px;min-width:262px;">
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;">
-              <span style="font-size:8px;letter-spacing:1.2px;color:rgba(27,42,74,0.68);text-transform:uppercase;">Subtotal</span>
-              <span style="font-size:14px;color:#1B2A4A;font-weight:600;font-variant-numeric:tabular-nums;">${money(vm.subtotal, vm.currency)}</span>
+          ` : `
+          <div class="qp-cover-total-strip">
+            <div class="qp-cover-total-copy">
+              <span>GRAND TOTAL · 客户报价总额</span>
+              <small>Final Quotation for client confirmation</small>
             </div>
-            <div style="display:flex;justify-content:space-between;align-items:baseline;gap:20px;">
-              <span style="font-size:8px;letter-spacing:1.2px;color:rgba(27,42,74,0.68);text-transform:uppercase;">VAT 20%</span>
-              <span style="font-size:14px;color:#1B2A4A;font-weight:600;font-variant-numeric:tabular-nums;">${money(vm.vatAmount, vm.currency)}</span>
-            </div>
-            <div style="display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-top:6px;padding-top:8px;border-top:1px solid rgba(27,42,74,0.24);">
-              <span style="font-size:9px;letter-spacing:1.2px;color:#1B2A4A;font-weight:700;text-transform:uppercase;">Grand Total</span>
-              <span style="font-size:26px;font-weight:800;color:#1B2A4A;font-variant-numeric:tabular-nums;line-height:1;">${money(vm.grandTotal, vm.currency)}</span>
+            <div class="qp-cover-total-amount">
+              <em>${esc(vm.currency || 'EUR')}</em>
+              <strong>${money(vm.totalSales, vm.currency)}</strong>
             </div>
           </div>
+          `}
         </div>
-        ` : `
-        <div style="flex-shrink:0;background:linear-gradient(180deg, #D2B160 0%, #C9A84C 100%);padding:22px 32px 24px;display:flex;align-items:flex-end;justify-content:space-between;position:relative;z-index:2;box-shadow:inset 0 1px 0 rgba(255,255,255,0.2);">
-          <div style="display:grid;gap:5px;align-content:end;">
-            <div style="font-size:9px;letter-spacing:2.2px;color:#1B2A4A;text-transform:uppercase;font-weight:700;">GRAND TOTAL · 客户报价总额</div>
-            <div style="font-size:11px;color:rgba(27,42,74,0.72);line-height:1.45;">Final Quotation for client confirmation</div>
-          </div>
-          <div style="display:flex;align-items:flex-end;gap:8px;">
-            <span style="font-size:13px;color:#1B2A4A;opacity:0.68;line-height:1.1;">${esc(vm.currency || 'EUR')}</span>
-            <span style="font-size:34px;font-weight:800;color:#1B2A4A;line-height:1;font-variant-numeric:tabular-nums;">${money(vm.totalSales, vm.currency)}</span>
-          </div>
-        </div>
-        `}
 
         <!-- 页脚 -->
         <div style="flex-shrink:0;background:#F5F2EC;padding:12px 32px;display:flex;justify-content:space-between;border-top:1px solid #D4CCBE;position:relative;z-index:2;">
@@ -247,26 +248,24 @@
       </div>
 
       <div class="qp-overview-layout">
-        <div class="qp-section-stack">
-          ${notesCard}
-          <article class="qp-scope-card">
-            <div class="qp-card-title">
-              <h3>${biTitle('服务模块与报价摘要', 'Service Modules & Pricing', 'Moduli i cene')}</h3>
-            </div>
-            <table class="qp-table">
-              <thead>
-                <tr>
-                  ${tableHead('服务模块', 'Service Module', 'Modul usluge')}
-                  <th style="text-align:center">${tableHead('项目数', 'Items', 'Stavke').replace(/^<th[^>]*>/, '').replace(/<\/th>$/, '')}</th>
-                  ${tableHead('金额', 'Amount', 'Iznos', 'qp-money')}
-                </tr>
-              </thead>
-              <tbody>${moduleRows}${totalRow}</tbody>
-            </table>
-          </article>
-        </div>
+        ${notesCard}
+        <article class="qp-scope-card">
+          <div class="qp-card-title">
+            <h3>${biTitle('服务模块与报价摘要', 'Service Modules & Pricing', 'Moduli i cene')}</h3>
+          </div>
+          <table class="qp-table">
+            <thead>
+              <tr>
+                ${tableHead('服务模块', 'Service Module', 'Modul usluge')}
+                <th style="text-align:center">${tableHead('项目数', 'Items', 'Stavke').replace(/^<th[^>]*>/, '').replace(/<\/th>$/, '')}</th>
+                ${tableHead('金额', 'Amount', 'Iznos', 'qp-money')}
+              </tr>
+            </thead>
+            <tbody>${moduleRows}${totalRow}</tbody>
+          </table>
+        </article>
 
-        <div class="qp-chapter-note">
+        <div class="qp-chapter-note qp-overview-note">
           <p>${esc(chapterNote)}</p>
         </div>
       </div>
@@ -972,6 +971,7 @@
         lastGroup.keepWithNext = true;
       }
     }
+
     return {
       cover: buildCoverBlock(vm, runtime),
       overview: buildOverviewBlock(vm, runtime),
@@ -994,4 +994,5 @@
     buildAllBlocks,
   };
 })();
+
 

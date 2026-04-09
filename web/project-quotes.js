@@ -21,7 +21,7 @@ function attachCardClicks(container) {
   container.querySelectorAll("[data-card-href]").forEach((card) => {
     card.addEventListener("click", (event) => {
       if (event.target.closest("button, a")) return;
-      window.location.href = card.getAttribute("data-card-href");
+      window.open(card.getAttribute("data-card-href"), "_blank", "noopener");
     });
   });
 }
@@ -104,7 +104,7 @@ function renderProjectQuotes(quotes) {
           </div>
           <div class="action-row quote-card-actions">
             ${renderApprovalActions(quote)}
-            ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-primary" href="${cardHref}">编辑</a>` : ''}
+            ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-primary" href="${cardHref}" target="_blank" rel="noopener">编辑</a>` : ''}
             ${window.can('project_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>` : ''}
           </div>
         </div>

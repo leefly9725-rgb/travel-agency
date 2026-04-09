@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
@@ -211,6 +211,36 @@
       display: flex;
       flex-direction: column;
       position: relative;
+    }
+
+    .qp-cover-shell {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      background: #F5F2EC;
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .qp-cover-main {
+      flex: 1 1 auto;
+      min-height: 0;
+      padding: 24px 32px 20px;
+      position: relative;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .qp-cover-bottom {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      z-index: 2;
     }
 
     .qp-cover-top,
@@ -508,64 +538,147 @@
       background: linear-gradient(180deg, #fffefb 0%, #fbf6ed 100%);
     }
 
+    .qp-cover-meta-strip {
+      flex-shrink: 0;
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      padding: 20px 32px 22px;
+      background: #1B2A4A;
+      color: #F5F2EC;
+      position: relative;
+      z-index: 2;
+      border-top: 1px solid rgba(255,255,255,0.04);
+    }
+
+    .qp-cover-meta-cell {
+      min-width: 0;
+    }
+
+    .qp-cover-meta-label {
+      margin-bottom: 6px;
+      font-size: 7px;
+      letter-spacing: 0.22em;
+      color: #C9A84C;
+      text-transform: uppercase;
+    }
+
+    .qp-cover-meta-value {
+      font-size: 14px;
+      color: #F5F2EC;
+      font-weight: 600;
+      line-height: 1.3;
+    }
+
     .qp-cover-total-strip {
+      flex-shrink: 0;
       display: flex;
-      align-items: end;
+      align-items: flex-end;
       justify-content: space-between;
       gap: 20px;
-      padding: 16px 18px 15px;
-      background: linear-gradient(145deg, #10233a 0%, #173251 56%, #1e3d61 100%);
-      color: #fff;
-      border: 1px solid rgba(14, 33, 56, 0.9);
-      box-shadow: 0 20px 42px rgba(18, 38, 63, 0.18);
+      padding: 22px 32px 24px;
+      background: linear-gradient(180deg, #D2B160 0%, #C9A84C 100%);
+      color: #1B2A4A;
       position: relative;
-      overflow: hidden;
+      z-index: 2;
+      border: 0;
+      border-radius: 0;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
+    }
+
+    .qp-cover-total-strip-vat {
+      align-items: flex-start;
     }
 
     .qp-cover-total-copy {
       display: grid;
-      gap: 6px;
+      gap: 5px;
       align-content: end;
     }
 
     .qp-cover-total-copy span {
-      font-size: 15px;
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      color: #1B2A4A;
+      text-transform: uppercase;
       font-weight: 700;
-      letter-spacing: 0.04em;
     }
 
     .qp-cover-total-copy small {
-      color: rgba(255,255,255,0.72);
-      font-size: 10px;
-      font-family: var(--qp-font-en);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
+      font-size: 11px;
+      color: rgba(27,42,74,0.72);
+      line-height: 1.45;
     }
 
     .qp-cover-total-amount {
-      display: grid;
-      justify-items: end;
-      gap: 6px;
-      min-width: 220px;
+      display: flex;
+      align-items: flex-end;
+      gap: 8px;
     }
 
     .qp-cover-total-amount em {
-      color: rgba(255,255,255,0.78);
+      font-size: 13px;
+      color: rgba(27,42,74,0.68);
+      line-height: 1.1;
       font-style: normal;
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      font-family: var(--qp-font-en);
     }
 
     .qp-cover-total-amount strong {
-      color: #fff;
-      font-size: 40px;
-      line-height: 1.02;
-      letter-spacing: 0.01em;
-      text-shadow: 0 3px 12px rgba(0,0,0,0.12);
+      font-size: 34px;
+      font-weight: 800;
+      color: #1B2A4A;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
     }
-.qp-page-head {
+
+    .qp-cover-total-breakdown {
+      display: grid;
+      gap: 6px;
+      min-width: 262px;
+    }
+
+    .qp-cover-total-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 20px;
+    }
+
+    .qp-cover-total-row span {
+      font-size: 8px;
+      letter-spacing: 0.12em;
+      color: rgba(27,42,74,0.68);
+      text-transform: uppercase;
+    }
+
+    .qp-cover-total-row strong {
+      font-size: 14px;
+      color: #1B2A4A;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .qp-cover-total-row-grand {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(27,42,74,0.24);
+      align-items: flex-end;
+    }
+
+    .qp-cover-total-row-grand span {
+      font-size: 9px;
+      color: #1B2A4A;
+      font-weight: 700;
+    }
+
+    .qp-cover-total-row-grand strong {
+      font-size: 26px;
+      font-weight: 800;
+      color: #1B2A4A;
+      line-height: 1;
+    }
+
+    .qp-page-head {
       align-items: end;
       margin-bottom: 16px;
       padding-top: 2mm;
@@ -621,6 +734,14 @@
       display: grid;
       grid-template-columns: 1.16fr 0.84fr;
       gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .qp-overview-layout {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-top: 20px;
       margin-bottom: 16px;
     }
 
@@ -779,7 +900,7 @@
       color: #1e2f49;
     }
 
-    /* ── Event group overrides ────────────────────────────────────────────── */
+    /* 鈹€鈹€ Event group overrides 鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€ */
     /* Category header row: more prominent for activity-services (event) groups */
     .qp-event-group .qp-category-header-row td {
       padding: 11px 14px 8px;
@@ -959,7 +1080,7 @@
       width: 100%;
     }
 
-    /* Continuation header for split quote groups — must be clearly visible as a group title */
+    /* Continuation header for split quote groups 鈥?must be clearly visible as a group title */
     .qp-group-cont-head {
       padding: 13px 20px 11px;
       border-bottom: 1px solid rgba(199,179,148,0.55);
@@ -1142,6 +1263,38 @@
         border-left: 0;
         border-top: 1px solid rgba(199, 179, 148, 0.26);
       }
+      .qp-page-body.qp-cover-body {
+        overflow: visible !important;
+      }
+      .qp-page-body.qp-cover-body > .qp-compose-block {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+      }
+      .qp-cover-shell {
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+      }
+      .qp-cover-main {
+        flex: 0 0 auto !important;
+        min-height: 0 !important;
+        padding-bottom: 12px !important;
+      }
+      .qp-cover-bottom {
+        display: flex !important;
+        flex-direction: column !important;
+        flex-shrink: 0 !important;
+        margin-top: auto !important;
+      }
+
+      .qp-cover-meta-strip {
+        grid-template-columns: 1fr 1fr;
+      }
+      .qp-overview-layout {
+        gap: 14px;
+      }
       .qp-cover-total-amount {
         justify-items: start;
         text-align: left;
@@ -1163,6 +1316,9 @@
       }
 
       #qp-loading, #qp-error { display: none !important; }
+      /* Measurement scaffold must not appear in print 鈥?it contains .qp-page which
+         triggers break-after:page in print mode, potentially causing blank first page */
+      #qp-measure-root { display: none !important; }
 
       /* Hide screen-only UI (toolbar, controls) from printed/exported output */
       .qp-toolbar,
@@ -1197,8 +1353,102 @@
         break-after: auto !important;
         page-break-after: auto !important;
       }
-    }
 
+      .qp-page-body.qp-cover-body {
+        display: flex !important;
+        flex-direction: column !important;
+        min-height: 0 !important;
+        height: 100% !important;
+        overflow: visible !important;
+      }
+
+      .qp-page-body.qp-cover-body > .qp-compose-block {
+        display: flex !important;
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+      }
+
+      .qp-cover-shell {
+        display: flex !important;
+        flex-direction: column !important;
+        height: 100% !important;
+        min-height: 0 !important;
+        overflow: visible !important;
+      }
+
+      .qp-cover-main {
+        flex: 0 1 auto !important;
+        min-height: 0 !important;
+        padding: 24px 32px 12px !important;
+      }
+
+      .qp-cover-bottom {
+        display: flex !important;
+        flex-direction: column !important;
+        flex-shrink: 0 !important;
+        min-height: 0 !important;
+        margin-top: auto !important;
+      }
+
+      .qp-cover-meta-strip {
+        background: #1B2A4A !important;
+        background-image: none !important;
+        color: #F5F2EC !important;
+        display: grid !important;
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+        gap: 14px !important;
+        padding: 20px 32px 22px !important;
+        border: 0 !important;
+        border-top: 1px solid rgba(255,255,255,0.04) !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+      .qp-cover-meta-label { color: #C9A84C !important; }
+      .qp-cover-meta-value { color: #F5F2EC !important; }
+
+      .qp-cover-total-strip {
+        background: #C9A84C !important;
+        background-image: none !important;
+        color: #1B2A4A !important;
+        display: flex !important;
+        justify-content: space-between !important;
+        gap: 20px !important;
+        padding: 22px 32px 24px !important;
+        border: 0 !important;
+        border-radius: 0 !important;
+        box-shadow: none !important;
+      }
+      .qp-cover-total-strip-vat { align-items: flex-start !important; }
+      .qp-cover-total-copy span,
+      .qp-cover-total-copy small,
+      .qp-cover-total-amount em,
+      .qp-cover-total-amount strong,
+      .qp-cover-total-row span,
+      .qp-cover-total-row strong {
+        color: #1B2A4A !important;
+      }
+      .qp-cover-total-breakdown {
+        display: grid !important;
+        gap: 6px !important;
+        min-width: 262px !important;
+      }
+      .qp-cover-total-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: baseline !important;
+        gap: 20px !important;
+      }
+      .qp-cover-total-row-grand {
+        margin-top: 6px !important;
+        padding-top: 8px !important;
+        border-top: 1px solid rgba(27,42,74,0.24) !important;
+      }
+
+      .qp-overview-page .qp-overview-layout {
+        margin-top: 20px !important;
+      }
+    }
     @page {
         size: A4 portrait;
         margin: 0;
@@ -1275,6 +1525,7 @@
   <script src="/project-quotation.js"></script>
 </body>
 </html>
+
 
 
 

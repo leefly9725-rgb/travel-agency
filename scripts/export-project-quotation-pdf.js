@@ -25,6 +25,16 @@ function parseArgs(argv) {
   return args;
 }
 
+function createClientJwt() {
+  const header = Buffer.from(JSON.stringify({ alg: 'none', typ: 'JWT' })).toString('base64url');
+  const payload = Buffer.from(JSON.stringify({
+    exp: 4102444800,
+    sub: 'pdf-export',
+    email: 'pdf-export@localhost',
+  })).toString('base64url');
+  return `${header}.${payload}.`;
+}
+
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -68,6 +78,15 @@ async function main() {
   const sign = args.sign === '0' ? '0' : '1';
   const serverUrl = args['server-url'] || `http://127.0.0.1:${port}`;
   const composer = args.composer === '0' ? '0' : '1';
+  const authToken = args['auth-token'] || process.env.PDF_EXPORT_AUTH_TOKEN || 'dev-bypass-token';
+  const clientJwt = args['client-jwt'] || createClientJwt();
+  const pdfScale = Number(args.scale || '1');
+  const pdfMargins = {
+    top: args['margin-top'] || '0',
+    right: args['margin-right'] || '0',
+    bottom: args['margin-bottom'] || '0',
+    left: args['margin-left'] || '0',
+  };
 
   if (!fs.existsSync(edgePath)) {
     throw new Error(`Edge not found: ${edgePath}`);
@@ -98,6 +117,17 @@ async function main() {
       viewport: { width: 1600, height: 2200 },
       deviceScaleFactor: 1,
     });
+    await page.route('**/api/**', async (route) => {
+      const request = route.request();
+      const headers = { ...request.headers() };
+      if (authToken) {
+        headers.authorization = `Bearer ${authToken}`;
+      }
+      await route.continue({ headers });
+    });
+    await page.addInitScript((token) => {
+      window.localStorage.setItem('app_token', token);
+    }, clientJwt);
     const url = `${serverUrl}/project-quotation.html?id=${encodeURIComponent(quoteId)}&lang=${encodeURIComponent(lang)}&mode=${encodeURIComponent(mode)}&grouping=${encodeURIComponent(grouping)}&overview=${overview}&sign=${sign}&composer=${composer}`;
     await page.goto(url, { waitUntil: 'domcontentloaded' });
     // Wait for both __QP_READY__ and __QP_PAGES_STABLE__ to confirm composer has
@@ -115,13 +145,24 @@ async function main() {
       // Two rAF cycles: let print-mode CSS changes settle before measuring.
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     });
+    await page.waitForFunction(() => {
+      const coverBottom = document.querySelector('.qp-cover-bottom');
+      const meta = document.querySelector('.qp-cover-meta-strip');
+      const total = document.querySelector('.qp-cover-total-strip');
+      if (!coverBottom || !meta || !total) return false;
+      const coverRect = coverBottom.getBoundingClientRect();
+      const metaRect = meta.getBoundingClientRect();
+      const totalRect = total.getBoundingClientRect();
+      return coverRect.height > 0 && metaRect.height > 0 && totalRect.height > 0;
+    }, { timeout: 10000 });
     await page.waitForTimeout(300);
     await page.pdf({
       path: outPath,
       format: 'A4',
+      scale: pdfScale,
       printBackground: true,
-      preferCSSPageSize: true,
-      margin: { top: '0', right: '0', bottom: '0', left: '0' },
+      preferCSSPageSize: false,
+      margin: pdfMargins,
     });
     await browser.close();
     console.log(`PDF_OK ${outPath}`);
