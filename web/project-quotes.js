@@ -30,6 +30,67 @@ function sanitizeProjectName(name) {
   return trimmed;
 }
 
+function toNumber(value, fallback = 0) {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
+
+function getProjectQuoteTotals(quote) {
+  const groups = Array.isArray(quote?.projectGroups)
+    ? quote.projectGroups
+    : Array.isArray(quote?.project_groups)
+      ? quote.project_groups
+      : [];
+
+  let groupCost = 0;
+  let groupSales = 0;
+
+  groups.forEach((group) => {
+    const items = Array.isArray(group?.items) ? group.items : [];
+    let itemCost = 0;
+    let itemSales = 0;
+
+    items.forEach((item) => {
+      const qty = toNumber(item?.quantity, 0);
+      const costSubtotalRaw = item?.costSubtotal ?? item?.cost_subtotal;
+      const salesSubtotalRaw = item?.salesSubtotal ?? item?.sales_subtotal;
+      const costUnit = toNumber(
+        item?.costUnitPrice ?? item?.cost_unit_price ?? item?.costPrice ?? item?.cost_price,
+        0
+      );
+      const salesUnit = toNumber(
+        item?.salesUnitPrice ?? item?.sales_unit_price ?? item?.salesPrice ?? item?.sales_price ?? item?.sell_price,
+        0
+      );
+
+      itemCost += costSubtotalRaw != null ? toNumber(costSubtotalRaw, 0) : qty * costUnit;
+      itemSales += salesSubtotalRaw != null ? toNumber(salesSubtotalRaw, 0) : qty * salesUnit;
+    });
+
+    const groupCostRaw = group?.projectCostTotal ?? group?.project_cost_total;
+    const groupSalesRaw = group?.projectSalesTotal ?? group?.project_sales_total;
+    const resolvedGroupCost = toNumber(groupCostRaw, 0) > 0 ? toNumber(groupCostRaw, 0) : itemCost;
+    const resolvedGroupSales = toNumber(groupSalesRaw, 0) > 0 ? toNumber(groupSalesRaw, 0) : itemSales;
+
+    groupCost += resolvedGroupCost;
+    groupSales += resolvedGroupSales;
+  });
+
+  const quoteCost = toNumber(quote?.totalCost ?? quote?.total_cost, 0);
+  const quoteSales = toNumber(quote?.totalSales ?? quote?.total_sales, 0);
+  const totalCost = groupCost > 0 ? groupCost : quoteCost;
+  const totalSales = groupSales > 0 ? groupSales : quoteSales;
+  const totalProfit = totalSales - totalCost;
+  const margin = totalSales > 0 ? (totalProfit / totalSales) * 100 : 0;
+
+  return {
+    totalCost,
+    totalSales,
+    totalProfit,
+    margin,
+  };
+}
+
 function attachCardClicks(container) {
   container.querySelectorAll("[data-card-href]").forEach((card) => {
     card.addEventListener("click", (event) => {
@@ -77,14 +138,9 @@ function renderProjectQuotes(quotes) {
   const EXEC_CLS = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
 
   container.innerHTML = quotes.map((quote) => {
-    const totalSales = quote.totalSales != null
-      ? quote.totalSales
-      : (quote.projectGroups || []).reduce((sum, group) => sum + (group.projectSalesTotal || 0), 0);
-    const totalCost = quote.totalCost != null
-      ? quote.totalCost
-      : (quote.projectGroups || []).reduce((sum, group) => sum + (group.projectCostTotal || 0), 0);
-    const grossProfit = totalSales - totalCost;
-    const margin = totalSales > 0 ? ((grossProfit / totalSales) * 100).toFixed(1) : "0.0";
+    const totals = getProjectQuoteTotals(quote);
+    const totalSales = totals.totalSales;
+    const margin = totals.margin.toFixed(1);
     const groupCount = (quote.projectGroups || []).length;
     const itemCount = (quote.projectGroups || []).reduce((sum, group) => sum + (group.items || []).length, 0);
     const cardHref = `/quote-new.html?id=${encodeURIComponent(quote.id)}&mode=project_based`;
