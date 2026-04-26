@@ -55,6 +55,8 @@ const baseData = {
 async function withServer(run) {
   fs.writeFileSync(tempDataFile, JSON.stringify(baseData, null, 2));
   process.env.DATA_FILE = "./tests/temp-seed.json";
+  const _prevBypass = process.env.ALLOW_DEV_BYPASS;
+  process.env.ALLOW_DEV_BYPASS = 'true';
 
   let server;
   let port;
@@ -71,6 +73,7 @@ async function withServer(run) {
 
   if (!server) {
     delete process.env.DATA_FILE;
+    if (_prevBypass === undefined) { delete process.env.ALLOW_DEV_BYPASS; } else { process.env.ALLOW_DEV_BYPASS = _prevBypass; }
     if (fs.existsSync(tempDataFile)) {
       fs.unlinkSync(tempDataFile);
     }
@@ -82,15 +85,24 @@ async function withServer(run) {
   } finally {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     delete process.env.DATA_FILE;
+    if (_prevBypass === undefined) { delete process.env.ALLOW_DEV_BYPASS; } else { process.env.ALLOW_DEV_BYPASS = _prevBypass; }
     if (fs.existsSync(tempDataFile)) {
       fs.unlinkSync(tempDataFile);
     }
   }
 }
 
+function apiFetch(port, path, options = {}) {
+  const { headers, ...rest } = options;
+  return fetch(`http://127.0.0.1:${port}${path}`, {
+    ...rest,
+    headers: { Authorization: 'Bearer dev-bypass-token', ...headers },
+  });
+}
+
 test("GET /api/templates returns default templates when local data has none", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/templates`);
+    const response = await apiFetch(port, '/api/templates');
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.ok(payload.length >= 5);
@@ -100,32 +112,32 @@ test("GET /api/templates returns default templates when local data has none", as
 
 test("POST /api/templates creates a custom template", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/templates`, {
+    const response = await apiFetch(port, '/api/templates', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        name: "²âÊÔÄ£°å",
-        description: "ÓÃÓÚ²âÊÔ",
+        name: "ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½",
+        description: "ï¿½ï¿½ï¿½Ú²ï¿½ï¿½ï¿½",
         items: [
-          { type: "vehicle", name: "»ú³¡½Ó»ú", unit: "ÌË", currency: "EUR", quantity: 1, notes: "²âÊÔ±¸×¢" }
+          { type: "vehicle", name: "ï¿½ï¿½ï¿½ï¿½ï¿½Ó»ï¿½", unit: "ï¿½ï¿½", currency: "EUR", quantity: 1, notes: "ï¿½ï¿½ï¿½Ô±ï¿½×¢" }
         ],
       }),
     });
 
     assert.equal(response.status, 201);
     const payload = await response.json();
-    assert.equal(payload.name, "²âÊÔÄ£°å");
+    assert.equal(payload.name, "ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½");
     assert.equal(payload.items[0].type, "vehicle");
 
     const saved = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
     assert.equal(Array.isArray(saved.templates), true);
-    assert.equal(saved.templates.some((item) => item.name === "²âÊÔÄ£°å"), true);
+    assert.equal(saved.templates.some((item) => item.name === "ï¿½ï¿½ï¿½ï¿½Ä£ï¿½ï¿½"), true);
   });
 });
 
 test("GET /api/quotes/:id returns enriched quote detail", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/quotes/Q-1`);
+    const response = await apiFetch(port, '/api/quotes/Q-1');
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.projectName, "Project");
@@ -139,7 +151,7 @@ test("GET /api/quotes/:id returns enriched quote detail", async () => {
 
 test("PUT /api/quotes/:id updates quote dates and recalculates mixed-currency items", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/quotes/Q-1`, {
+    const response = await apiFetch(port, '/api/quotes/Q-1', {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -175,7 +187,7 @@ test("PUT /api/quotes/:id updates quote dates and recalculates mixed-currency it
 
 test("DELETE /api/quotes/:id removes a quote", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/quotes/Q-1`, { method: "DELETE" });
+    const response = await apiFetch(port, '/api/quotes/Q-1', { method: "DELETE" });
     assert.equal(response.status, 200);
     const saved = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
     assert.equal(saved.quotes.length, 0);
@@ -184,7 +196,7 @@ test("DELETE /api/quotes/:id removes a quote", async () => {
 
 test("POST /api/receptions saves extended reception fields", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/receptions`, {
+    const response = await apiFetch(port, '/api/receptions', {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -207,7 +219,7 @@ test("POST /api/receptions saves extended reception fields", async () => {
 
 test("DELETE /api/receptions/:id removes a reception task", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/receptions/R-1`, { method: "DELETE" });
+    const response = await apiFetch(port, '/api/receptions/R-1', { method: "DELETE" });
     assert.equal(response.status, 200);
     const saved = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
     assert.equal(saved.receptions.length, 0);
@@ -216,7 +228,7 @@ test("DELETE /api/receptions/:id removes a reception task", async () => {
 
 test("GET /api/document-previews returns five preview blocks", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/document-previews?quoteId=Q-1&receptionId=R-1`);
+    const response = await apiFetch(port, '/api/document-previews?quoteId=Q-1&receptionId=R-1');
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.length, 5);
@@ -226,7 +238,7 @@ test("GET /api/document-previews returns five preview blocks", async () => {
 
 test("GET /api/projects/:id returns project archive detail with linked flagged quote", async () => {
   await withServer(async (port) => {
-    const response = await fetch(`http://127.0.0.1:${port}/api/projects/P-1`);
+    const response = await apiFetch(port, '/api/projects/P-1');
     assert.equal(response.status, 200);
     const payload = await response.json();
     assert.equal(payload.projectName, "Project");
