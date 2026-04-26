@@ -1,3 +1,10 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// [兼容线 — 已冻结，不再作为主线扩展]
+// projectQuoteStore 对应旧 /api/project-quotes 链路，现已退场。
+// 项目型报价主线已迁移至 /api/quotes（pricingMode=project_based）。
+// 本模块保留仅为兼容旧数据，新需求禁止在此扩展。
+// ═══════════════════════════════════════════════════════════════════════════════
+
 const { getSupabaseConfig } = require("../supabaseConfig");
 const { supabaseRequest } = require("../supabaseClient");
 

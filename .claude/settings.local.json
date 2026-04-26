@@ -29,7 +29,19 @@
       "Bash(node -e \"require\\(''./server/app''\\)\")",
       "Bash(node -e \"require\\(''./server/services/projectQuoteStore''\\)\")",
       "Bash(ls:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(git revert:*)",
+      "Bash(python:*)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(echo \"EXIT_CODE:$?\")",
+      "Bash(cp \"C:/tmp/travel-agency-ref/web/project-quotation.html\" \"D:/LDS-OPS-v1/web/project-quotation.html\")",
+      "Bash(cp \"C:/tmp/travel-agency-ref/web/project-quotation.js\" \"D:/LDS-OPS-v1/web/project-quotation.js\")",
+      "Bash(cp \"C:/tmp/travel-agency-ref/web/project-quotation-composer.js\" \"D:/LDS-OPS-v1/web/project-quotation-composer.js\")",
+      "Bash(node server/index.js)",
+      "Bash(curl -s http://localhost:3000/api/health)",
+      "Bash(curl -s http://localhost:3000/suppliers.html)",
+      "Bash(kill %1)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000/suppliers.html)"
     ]
   }
 }

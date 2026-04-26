@@ -65,6 +65,7 @@ const ROUTE_PERMISSION_MAP = [
   // project_quote
   ['GET',    /^\/api\/project-quotes$/,                'project_quote.view'],
   ['GET',    /^\/api\/project-quotes\/[^/]+$/,         'project_quote.view'],
+  ['GET',    /^\/api\/project-quotation\/export-pdf$/,  'project_quote.view'],
   ['POST',   /^\/api\/project-quotes$/,                'project_quote.create'],
   ['PUT',    /^\/api\/project-quotes\/[^/]+$/,         'project_quote.edit'],
   ['DELETE', /^\/api\/project-quotes\/[^/]+$/,         'project_quote.delete'],

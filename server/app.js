@@ -30,6 +30,7 @@ const { getTermsSnapshot, saveTermsSnapshot } = require("./services/termsStore")
 const { validateSnapshot, applyTranslationResult, renderValidityBlock, renderPaymentBlock } = require("./services/termsService");
 const { translateContent } = require("./services/claudeTranslateService");
 const { resolveAuthContext, requirePermission, requireRoutePermission, filterSupplierCatalogFields } = require("./services/authMiddleware");
+const { exportProjectQuotationPdf } = require("../scripts/export-project-quotation-pdf");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
@@ -1805,6 +1806,56 @@ async function handleApi(request, response, url) {
 
   // ── Project Quotes ─────────────────────────────────────────────────────────
 
+  if (request.method === "GET" && url.pathname === "/api/project-quotation/export-pdf") {
+    requirePermission(authCtx, "project_quote.view");
+    const quoteId = String(url.searchParams.get("id") || "").trim();
+    if (!quoteId) {
+      sendJson(response, 400, { error: "Missing quote ID." });
+      return true;
+    }
+
+    const protocol = request.headers["x-forwarded-proto"] || "http";
+    const host = request.headers.host || ("127.0.0.1:" + (process.env.PORT || 3000));
+    const baseUrl = protocol + "://" + host;
+    const authHeader = request.headers.authorization || "";
+    const authToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
+
+    try {
+      const result = await exportProjectQuotationPdf({
+        quoteId,
+        serverUrl: baseUrl,
+        lang: url.searchParams.get("lang") || "zh",
+        mode: url.searchParams.get("mode") || "professional",
+        grouping: url.searchParams.get("grouping") || "grouped",
+        overview: url.searchParams.get("overview") === "0" ? "0" : "1",
+        sign: url.searchParams.get("sign") === "0" ? "0" : "1",
+        composer: url.searchParams.get("composer") === "0" ? "0" : "1",
+        scale: url.searchParams.get("scale") || "1",
+        marginTop: url.searchParams.get("margin_top") || "0",
+        marginRight: url.searchParams.get("margin_right") || "0",
+        marginBottom: url.searchParams.get("margin_bottom") || "0",
+        marginLeft: url.searchParams.get("margin_left") || "0",
+        authToken,
+      });
+      const buffer = result && result.pdfBuffer;
+      if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+        throw new Error("Empty PDF buffer");
+      }
+      const fileName = "project-quotation-" + quoteId + ".pdf";
+      response.writeHead(200, {
+        "Content-Type": "application/pdf",
+        "Content-Length": buffer.length,
+        "Content-Disposition": "attachment; filename=\"" + fileName + "\"",
+        "Cache-Control": "no-store",
+      });
+      response.end(buffer);
+      return true;
+    } catch (error) {
+      console.error("[api/project-quotation/export-pdf] error:", error && (error.stack || error.message || error));
+      sendJson(response, 500, { error: "PDF export failed.", detail: ((error && error.message) || "").slice(0, 500) });
+      return true;
+    }
+  }
   if (request.method === "POST" && url.pathname === "/api/service-catalog-candidates") {
     requirePermission(authCtx, "project_quote.edit");
     const supabaseCfg = getSupabaseConfig();
@@ -1844,6 +1895,11 @@ async function handleApi(request, response, url) {
     return true;
   }
 
+  // ── [兼容线 — 已冻结] /api/project-quotes ────────────────────────────────────
+  // 对应旧 quote-project.html 链路，保留仅为兼容旧数据。
+  // 项目型报价主线：POST/GET /api/quotes（pricingMode=project_based）。
+  // 新需求禁止扩展此路由块。
+  // ────────────────────────────────────────────────────────────────────────────
   if (request.method === "GET" && url.pathname === "/api/project-quotes") {
     const { projects } = await projectQuoteStore.listProjectQuotes();
     sendJson(response, 200, projects);

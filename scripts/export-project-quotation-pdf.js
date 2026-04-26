@@ -1,12 +1,17 @@
-﻿const { chromium } = require('playwright-core');
+const { chromium } = require('playwright-core');
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
-const os = require('os');
 const http = require('http');
 
 const root = path.resolve(__dirname, '..');
-const edgePath = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
+const WINDOWS_BROWSER_CANDIDATES = [
+  process.env.PDF_EXPORT_BROWSER_PATH,
+  'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
+  'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+  'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+].filter(Boolean);
 
 function parseArgs(argv) {
   const args = {};
@@ -32,11 +37,33 @@ function createClientJwt() {
     sub: 'pdf-export',
     email: 'pdf-export@localhost',
   })).toString('base64url');
-  return `${header}.${payload}.`;
+  return header + '.' + payload + '.';
 }
 
 function wait(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function detectRuntime() {
+  return {
+    platform: process.platform,
+    isWindows: process.platform === 'win32',
+    isVercel: Boolean(process.env.VERCEL || process.env.VERCEL_ENV || process.env.NOW_REGION),
+    isServerless: Boolean(
+      process.env.VERCEL ||
+      process.env.VERCEL_ENV ||
+      process.env.AWS_LAMBDA_FUNCTION_NAME ||
+      process.env.AWS_EXECUTION_ENV ||
+      process.env.FUNCTION_TARGET
+    ),
+  };
+}
+
+function resolveBrowserExecutable() {
+  if (process.platform !== 'win32') {
+    return process.env.PDF_EXPORT_BROWSER_PATH || '';
+  }
+  return WINDOWS_BROWSER_CANDIDATES.find((candidate) => candidate && fs.existsSync(candidate)) || '';
 }
 
 function request(url) {
@@ -56,46 +83,50 @@ async function waitForHealth(baseUrl, timeoutMs = 30000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const res = await request(`${baseUrl}/api/health`);
+      const res = await request(baseUrl + '/api/health');
       if (res.status === 200) return;
-    } catch (error) {
-      // keep waiting
-    }
+    } catch (_) {}
     await wait(500);
   }
-  throw new Error(`Server did not respond on ${baseUrl} within ${timeoutMs}ms`);
+  throw new Error('Server did not respond on ' + baseUrl + ' within ' + timeoutMs + 'ms');
 }
 
-async function main() {
-  const args = parseArgs(process.argv);
-  const quoteId = args.id || 'Q-1773570112434';
-  const port = Number(args.port || 3310);
-  const outPath = path.resolve(root, args.out || 'artifacts-project-quotation-controlled.pdf');
-  const lang = args.lang || 'zh';
-  const mode = args.mode || 'professional';
-  const grouping = args.grouping || 'grouped';
-  const overview = args.overview === '0' ? '0' : '1';
-  const sign = args.sign === '0' ? '0' : '1';
-  const serverUrl = args['server-url'] || `http://127.0.0.1:${port}`;
-  const composer = args.composer === '0' ? '0' : '1';
-  const authToken = args['auth-token'] || process.env.PDF_EXPORT_AUTH_TOKEN || 'dev-bypass-token';
-  const clientJwt = args['client-jwt'] || createClientJwt();
-  const pdfScale = Number(args.scale || '1');
+async function exportProjectQuotationPdf(options = {}) {
+  const runtime = detectRuntime();
+  const quoteId = options.quoteId || 'Q-1773570112434';
+  const port = Number(options.port || 3310);
+  const outPath = options.outPath ? path.resolve(root, options.outPath) : null;
+  const lang = options.lang || 'zh';
+  const mode = options.mode || 'professional';
+  const grouping = options.grouping || 'grouped';
+  const overview = options.overview === '0' ? '0' : (options.overview === 0 ? '0' : '1');
+  const sign = options.sign === '0' ? '0' : (options.sign === 0 ? '0' : '1');
+  const serverUrl = options.serverUrl || ('http://127.0.0.1:' + port);
+  const composer = options.composer === '0' ? '0' : (options.composer === 0 ? '0' : '1');
+  const authToken = options.authToken || process.env.PDF_EXPORT_AUTH_TOKEN || 'dev-bypass-token';
+  const clientJwt = options.clientJwt || createClientJwt();
+  const pdfScale = Number(options.scale || '1');
   const pdfMargins = {
-    top: args['margin-top'] || '0',
-    right: args['margin-right'] || '0',
-    bottom: args['margin-bottom'] || '0',
-    left: args['margin-left'] || '0',
+    top: options.marginTop || '0',
+    right: options.marginRight || '0',
+    bottom: options.marginBottom || '0',
+    left: options.marginLeft || '0',
   };
 
-  if (!fs.existsSync(edgePath)) {
-    throw new Error(`Edge not found: ${edgePath}`);
+  const browserExecutable = resolveBrowserExecutable();
+
+  if (runtime.isServerless) {
+    throw new Error('PDF export runtime unsupported in current serverless environment. Use a local Node worker or dedicated export service.');
+  }
+
+  if (!browserExecutable) {
+    throw new Error('No supported local browser executable found. Set PDF_EXPORT_BROWSER_PATH or install Edge/Chrome on the export host.');
   }
 
   let server = null;
   let serverLog = '';
 
-  if (!args['server-url']) {
+  if (!options.serverUrl) {
     server = spawn('node', ['server/index.js'], {
       cwd: root,
       env: { ...process.env, PORT: String(port) },
@@ -109,7 +140,7 @@ async function main() {
     await waitForHealth(serverUrl);
 
     const browser = await chromium.launch({
-      executablePath: edgePath,
+      executablePath: browserExecutable,
       headless: true,
       args: ['--disable-gpu', '--no-sandbox'],
     });
@@ -121,17 +152,23 @@ async function main() {
       const request = route.request();
       const headers = { ...request.headers() };
       if (authToken) {
-        headers.authorization = `Bearer ${authToken}`;
+        headers.authorization = 'Bearer ' + authToken;
       }
       await route.continue({ headers });
     });
     await page.addInitScript((token) => {
       window.localStorage.setItem('app_token', token);
     }, clientJwt);
-    const url = `${serverUrl}/project-quotation.html?id=${encodeURIComponent(quoteId)}&lang=${encodeURIComponent(lang)}&mode=${encodeURIComponent(mode)}&grouping=${encodeURIComponent(grouping)}&overview=${overview}&sign=${sign}&composer=${composer}`;
+
+    const url = serverUrl + '/project-quotation.html?id=' + encodeURIComponent(quoteId)
+      + '&lang=' + encodeURIComponent(lang)
+      + '&mode=' + encodeURIComponent(mode)
+      + '&grouping=' + encodeURIComponent(grouping)
+      + '&overview=' + overview
+      + '&sign=' + sign
+      + '&composer=' + composer;
+
     await page.goto(url, { waitUntil: 'domcontentloaded' });
-    // Wait for both __QP_READY__ and __QP_PAGES_STABLE__ to confirm composer has
-    // settled and the second layout pass is complete before switching to print mode.
     await page.waitForFunction((enabled) => {
       if (!window.__QP_READY__ || !window.__QP_PAGES_STABLE__) return false;
       if (enabled !== '0' && Number(window.__QP_TOTAL_PAGES__ || 0) === 0) return false;
@@ -142,7 +179,6 @@ async function main() {
       if (document.fonts && document.fonts.ready) {
         await document.fonts.ready;
       }
-      // Two rAF cycles: let print-mode CSS changes settle before measuring.
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     });
     await page.waitForFunction(() => {
@@ -156,8 +192,8 @@ async function main() {
       return coverRect.height > 0 && metaRect.height > 0 && totalRect.height > 0;
     }, { timeout: 10000 });
     await page.waitForTimeout(300);
-    await page.pdf({
-      path: outPath,
+    const pdfBuffer = await page.pdf({
+      path: outPath || undefined,
       format: 'A4',
       scale: pdfScale,
       printBackground: true,
@@ -165,12 +201,13 @@ async function main() {
       margin: pdfMargins,
     });
     await browser.close();
-    console.log(`PDF_OK ${outPath}`);
+    return { outPath, pdfBuffer, serverLog };
   } catch (error) {
-    console.error('EXPORT_FAILED');
-    console.error(error.stack || error.message || String(error));
-    console.error(serverLog);
-    process.exitCode = 1;
+    if (error && typeof error.message === 'string' && error.message.includes('spawn EPERM')) {
+      error.message = 'Browser launch blocked by host runtime (spawn EPERM). The current server process cannot execute the configured browser binary.';
+    }
+    error.serverLog = serverLog;
+    throw error;
   } finally {
     if (server) {
       server.kill();
@@ -178,7 +215,44 @@ async function main() {
   }
 }
 
-main();
+async function main() {
+  const args = parseArgs(process.argv);
+  try {
+    const result = await exportProjectQuotationPdf({
+      quoteId: args.id,
+      port: args.port,
+      outPath: args.out || 'artifacts-project-quotation-controlled.pdf',
+      lang: args.lang,
+      mode: args.mode,
+      grouping: args.grouping,
+      overview: args.overview,
+      sign: args.sign,
+      serverUrl: args['server-url'],
+      composer: args.composer,
+      authToken: args['auth-token'],
+      clientJwt: args['client-jwt'],
+      scale: args.scale,
+      marginTop: args['margin-top'],
+      marginRight: args['margin-right'],
+      marginBottom: args['margin-bottom'],
+      marginLeft: args['margin-left'],
+    });
+    console.log('PDF_OK ' + result.outPath);
+  } catch (error) {
+    console.error('EXPORT_FAILED');
+    console.error(error.stack || error.message || String(error));
+    if (error.serverLog) {
+      console.error(error.serverLog);
+    }
+    process.exitCode = 1;
+  }
+}
 
+if (require.main === module) {
+  main();
+}
 
-
+module.exports = {
+  exportProjectQuotationPdf,
+  parseArgs,
+};

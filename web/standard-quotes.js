@@ -26,9 +26,9 @@ function sortQuotes(arr, sortKey) {
   const copy = [...arr];
   switch (sortKey) {
     case "updated_at":
-      return copy.sort((a, b) => (b.updatedAt || "0").localeCompare(a.updatedAt || "0"));
+      return copy.sort((a, b) => (b.updatedAt || b.updated_at || "0").localeCompare(a.updatedAt || a.updated_at || "0"));
     case "created_at":
-      return copy.sort((a, b) => (b.createdAt || b.quoteNumber || "0").localeCompare(a.createdAt || a.quoteNumber || "0"));
+      return copy.sort((a, b) => (b.createdAt || b.created_at || b.quoteNumber || "0").localeCompare(a.createdAt || a.created_at || a.quoteNumber || "0"));
     case "quoteNumber":
       return copy.sort((a, b) => (a.quoteNumber || "").localeCompare(b.quoteNumber || ""));
     case "clientName":
@@ -82,7 +82,7 @@ function renderQuotes(quotes) {
     const locationInfo = quote.destination || "未填写";
     const cardHref = `/quote-detail.html?id=${encodeURIComponent(quote.id)}`;
     const status = quote.status || "draft";
-    const execStatus = quote.executionStatus || "preparing";
+    const execStatus = quote.executionStatus || quote.execution_status || "preparing";
     const statusLabel = window.AppUi.getLabel("quoteStatusLabels", status) || status;
     const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
     return `

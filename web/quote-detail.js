@@ -304,7 +304,7 @@ async function bootstrap() {
     cachedQuote = quote;
     const projectArchiveId = quote.projectId || quote.id;
     const status = quote.status || "draft";
-    const execStatus = quote.executionStatus || "preparing";
+    const execStatus = quote.executionStatus || quote.execution_status || "preparing";
     const container = document.getElementById("quote-detail");
 
     container.innerHTML = `
