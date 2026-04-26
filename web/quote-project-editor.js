@@ -602,6 +602,7 @@ window.ProjectEditor = (function () {
       supplierName: rawItem?.supplierName || rawItem?.supplier_name || rawItem?.supplierDisplay || "",
       category: String(rawItem?.category || rawItem?.supplierCategory || rawItem?.supplier_category || "").trim(),
       nameZh: String(rawItem?.nameZh || rawItem?.name_zh || rawItem?.itemName || "").trim(),
+      nameEn: String(rawItem?.nameEn || rawItem?.name_en || "").trim(),
       spec: String(rawItem?.spec || rawItem?.specification || "").trim(),
       unit: String(rawItem?.unit || "").trim(),
       costPrice: rawItem?.costPrice ?? rawItem?.cost_price ?? rawItem?.costUnitPrice ?? null,
@@ -672,7 +673,7 @@ window.ProjectEditor = (function () {
   }
 
   function buildCatalogSearchText(item) {
-    return [item.nameZh, item.spec, item.supplierName, item.category].filter(Boolean).join(" ").toLowerCase();
+    return [item.nameZh, item.nameEn, item.spec, item.supplierName, item.category].filter(Boolean).join(" ").toLowerCase();
   }
 
   function scoreCatalogSuggestion(item, keyword, preferredCategories) {
@@ -873,7 +874,7 @@ window.ProjectEditor = (function () {
         </aside>
         <section class="catalog-main">
           <div class="catalog-main-toolbar">
-            <input id="catalog-search" class="catalog-modal-search" type="text" placeholder="\u641c\u7d22\u7269\u6599\u540d\u79f0..." />
+            <input id="catalog-search" class="catalog-modal-search" type="text" placeholder="\u641c\u7d22\u540d\u79f0 / \u89c4\u683c / \u4f9b\u5e94\u5546..." />
             <div id="catalog-toolbar-summary" class="catalog-toolbar-summary"></div>
           </div>
           <div class="catalog-list-header">
@@ -914,7 +915,7 @@ window.ProjectEditor = (function () {
       const keyword = searchEl.value.trim().toLowerCase();
       return allItems.filter((item) => {
         const inCategory = !activeCategory || item.category === activeCategory;
-        const searchText = [item.nameZh, item.spec, item.supplierName, item.supplierId]
+        const searchText = [item.nameZh, item.nameEn, item.spec, item.supplierName, item.supplierId]
           .filter(Boolean)
           .join(' ')
           .toLowerCase();
@@ -960,12 +961,15 @@ window.ProjectEditor = (function () {
         return;
       }
 
-      listEl.innerHTML = items.map((item) => `
+      listEl.innerHTML = items.map((item) => {
+        const supplierLabel = escapeHtml(item.supplierName || item.supplierId || '-');
+        const nameSubLabel = escapeHtml(item.nameEn || getCatalogCategoryLabel(item.category || ''));
+        return `
         <div class="catalog-item-row" data-item-id="${escapeHtml(String(item.id || ''))}">
-          <div class="catalog-item-supplier" title="${escapeHtml(item.supplierName || item.supplierId || '-')}">${escapeHtml(item.supplierName || item.supplierId || '-')}</div>
+          <div class="catalog-item-supplier" title="${supplierLabel}">${supplierLabel}</div>
           <div class="catalog-col-name">
             <div class="catalog-item-name-main">${escapeHtml(item.nameZh || '')}</div>
-            <div class="catalog-item-meta">${escapeHtml(getCatalogCategoryLabel(item.category || ''))}</div>
+            <div class="catalog-item-meta" title="${nameSubLabel}">${nameSubLabel}</div>
           </div>
           <div class="catalog-item-meta" title="${escapeHtml(item.spec || '-')}">${escapeHtml(item.spec || '-')}</div>
           <div class="catalog-item-unit">${escapeHtml(item.unit || '-')}</div>
@@ -974,7 +978,8 @@ window.ProjectEditor = (function () {
             <button type="button" class="catalog-select-btn catalog-pick-row">\u9009\u7528</button>
           </div>
         </div>
-      `).join('');
+        `;
+      }).join('');
 
       listEl.querySelectorAll('.catalog-pick-row').forEach((btn) => {
         btn.addEventListener('click', () => {

@@ -227,6 +227,8 @@ function createSupplierStore({ data, saveData }) {
         } else if (filters.status === "inactive") {
           items = items.filter((i) => i.isActive === false);
         }
+        const snMap = Object.fromEntries(data.suppliers.map((s) => [s.id, s.name || ""]));
+        items = items.map((i) => ({ ...i, supplierName: i.supplierName || snMap[i.supplierId] || "" }));
         return { items, source: "local_json" };
       }
       try {
@@ -242,6 +244,8 @@ function createSupplierStore({ data, saveData }) {
         } else if (filters.status === "inactive") {
           items = items.filter((i) => i.isActive === false);
         }
+        const snMap = Object.fromEntries(data.suppliers.map((s) => [s.id, s.name || ""]));
+        items = items.map((i) => ({ ...i, supplierName: i.supplierName || snMap[i.supplierId] || "" }));
         return { items, source: "local_json", fallbackReason: error.message };
       }
     },
