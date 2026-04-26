@@ -3364,6 +3364,149 @@
       .suppliers-page .sup-kpi-row { grid-template-columns: 1fr 1fr; }
       .suppliers-page .s-table-wrap { overflow-x: auto; }
     }
+
+    /* ════════════════════════════════════════════════════════════
+       弹窗录入体验 V2.1 — 供应商 / 物料价格 / 分类 弹窗微调
+       目标：桌面端更舒适；label/控件字号提升；分区层级更清楚；
+             供应商名称突出；checkbox 融入表单；响应式不溢出。
+       约束：不改 DOM id / data-* / 事件绑定 / 保存逻辑。
+    ════════════════════════════════════════════════════════════ */
+
+    /* ── 弹窗宽度：桌面更宽松 */
+    #dlg-supplier   { width: min(640px, 92vw); }
+    #dlg-item       { width: min(700px, 92vw); }
+    #dlg-categories { width: min(800px, 94vw); }
+
+    /* ── 弹窗标题：更大更锚定 */
+    .dlg-head {
+      padding: 15px 20px 14px;
+    }
+    .dlg-head h2 {
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+
+    /* ── Body：更宽内边距 */
+    .dlg-body {
+      padding: 22px 24px;
+    }
+
+    /* ── 表单字段间距 */
+    .form-stack {
+      gap: 16px;
+    }
+
+    /* ── 分区标题：层级更强 */
+    .form-section-head {
+      font-size: 10.5px;
+      font-weight: 800;
+      letter-spacing: 0.10em;
+      color: #4a6080;
+      padding-bottom: 8px;
+      border-bottom: 1px solid rgba(15,23,42,0.10);
+      margin-top: 2px;
+    }
+
+    /* ── label：更易读 */
+    .form-stack label {
+      font-size: 12px;
+      color: #36495e;
+      gap: 6px;
+    }
+
+    /* ── 控件：舒适高度 + 更清晰字体 */
+    .form-stack input,
+    .form-stack select,
+    .form-stack textarea {
+      height: 37px;
+      font-size: 13px;
+      padding: 0 11px;
+      border-radius: 6px;
+      border: 1px solid rgba(15,23,42,0.16);
+      background: #fafbfd;
+      color: #18293c;
+    }
+
+    /* ── placeholder 颜色 */
+    .form-stack input::placeholder,
+    .form-stack textarea::placeholder {
+      color: #8fa3b4;
+      font-size: 12.5px;
+    }
+
+    /* ── 聚焦状态 */
+    .form-stack input:focus,
+    .form-stack select:focus,
+    .form-stack textarea:focus {
+      border-color: rgba(37,99,235,0.55);
+      outline: 3px solid rgba(37,99,235,0.11);
+      background: #ffffff;
+    }
+
+    /* ── 供应商名称：更突出 */
+    #supplier-form input[name="name"] {
+      height: 42px;
+      font-size: 14.5px;
+      font-weight: 500;
+      background: #ffffff;
+      border-color: rgba(15,23,42,0.22);
+      letter-spacing: -0.01em;
+    }
+
+    /* ── textarea：高度适中 */
+    .form-stack textarea {
+      height: 84px;
+      padding: 9px 11px;
+      line-height: 1.55;
+    }
+
+    /* ── checkbox 行：轻底色卡片式 */
+    .checkbox-row {
+      padding: 9px 12px;
+      background: #f3f6fb;
+      border: 1px solid rgba(15,23,42,0.09);
+      border-radius: 7px;
+      font-size: 12.5px;
+      color: #2c4058;
+      gap: 9px;
+    }
+    .checkbox-row input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      flex-shrink: 0;
+      accent-color: #2563eb;
+    }
+
+    /* ── 关闭按钮 hover */
+    .dlg-close:hover {
+      background: #e4e9f0;
+      border-color: rgba(15,23,42,0.22);
+      color: #0d1e32;
+    }
+
+    /* ── Footer */
+    .dlg-footer {
+      min-height: 56px;
+      padding: 13px 20px;
+    }
+
+    /* ── 主按钮更突出 */
+    .dlg-footer .s-btn-primary {
+      min-width: 112px;
+      font-size: 13px;
+      padding: 0 18px;
+    }
+
+    /* ── 窄屏：form-row 折叠单列 */
+    @media (max-width: 540px) {
+      .form-stack .form-row {
+        grid-template-columns: 1fr;
+        gap: 16px;
+      }
+      .dlg-body {
+        padding: 16px 16px;
+      }
+    }
   </style>
 </head>
 <body style="visibility:hidden">
