@@ -1080,7 +1080,7 @@ window.ProjectEditor = (function () {
       </td>
       <td class="proj-col-name"><div class="service-name-wrap"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="\u670d\u52a1\u540d\u79f0">${escapeHtml(item.itemName || "")}</textarea><div class="service-suggestion-box" hidden></div></div></td>
       <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="\u89c4\u683c / \u8bf4\u660e">${escapeHtml(item.specification || "")}</textarea></td>
-      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(unit)}" placeholder="\u5355\u4f4d" /></td>
+      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(currentTypeMeta?.defaultUnit || '\u9879')}" placeholder="\u5355\u4f4d" /></td>
       <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
       <td class="proj-col-cost-unit view-internal"><input class="cell-input proj-cell-input-number" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" /></td>
       <td class="proj-col-sales-unit"><input class="cell-input proj-cell-input-number" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" /></td>
