@@ -22,39 +22,47 @@
     admin: '<svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l7 3v5c0 5-3.5 8-7 10-3.5-2-7-5-7-10V6l7-3z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.5 12.5l1.5 1.5 3.5-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
+  // \u672a\u6765\u529f\u80fd\u5f52\u5c5e\uff08\u529f\u80fd\u5f00\u53d1\u5b8c\u6210\u540e\u518d\u5f00\u542f\u5bf9\u5e94\u5206\u7ec4\u548c\u5165\u53e3\uff09\uff1a
+  // \u6d3e\u5355\u7ba1\u7406 \u2192 \u9879\u76ee\u6267\u884c
+  // \u5916\u52e4\u56de\u6267 \u2192 \u9879\u76ee\u6267\u884c
+  // \u8d39\u7528\u4e0a\u4f20 \u2192 \u8d39\u7528\u4e0e\u6210\u672c
+  // \u53d1\u7968\u8bc6\u522b \u2192 \u8d39\u7528\u4e0e\u6210\u672c
+  // \u9879\u76ee\u6210\u672c\u6838\u7b97 \u2192 \u8d39\u7528\u4e0e\u6210\u672c
+  // \u5229\u6da6\u590d\u76d8 \u2192 \u8d39\u7528\u4e0e\u6210\u672c
+  // \u5f53\u524d\u4e0d\u663e\u793a"\u8d39\u7528\u4e0e\u6210\u672c"\u5206\u7ec4\uff0c\u7b49\u529f\u80fd\u5c31\u7eea\u540e\u518d\u5f00\u542f\u3002
+
   const NAV_GROUPS = [
     {
       key: 'dashboard',
       label: '\u5de5\u4f5c\u53f0',
       items: [
-        { key: 'dashboard', icon: ICONS.dashboard, label: '\u9996\u9875 / Dashboard', note: '\u5f53\u65e5\u4efb\u52a1\u4e0e\u8fd0\u8425\u6982\u89c8', href: '/index.html', match: ['/index.html', '/'] }
+        { key: 'dashboard', icon: ICONS.dashboard, label: '\u8fd0\u8425\u5de5\u4f5c\u53f0', note: '\u5f53\u65e5\u4efb\u52a1\u4e0e\u8fd0\u8425\u6982\u89c8', href: '/index.html', match: ['/index.html', '/'] }
       ]
     },
     {
       key: 'quotes',
-      label: '\u62a5\u4ef7\u7ba1\u7406',
+      label: '\u62a5\u4ef7\u4e2d\u5fc3',
       items: [
         { key: 'standard-quotes', icon: ICONS.standardQuotes, label: '\u6807\u51c6\u62a5\u4ef7', note: '\u65e5\u5e38\u5546\u52a1\u62a5\u4ef7', href: '/standard-quotes.html', permission: 'standard_quote.view' },
-        { key: 'project-quotes', icon: ICONS.projectQuotes, label: '\u9879\u76ee\u578b\u62a5\u4ef7', note: '\u4f1a\u8bae\u4e0e\u6d3b\u52a8\u9879\u76ee', href: '/project-quotes.html', permission: 'project_quote.view' }
+        { key: 'project-quotes', icon: ICONS.projectQuotes, label: '\u9879\u76ee\u578b\u62a5\u4ef7', note: '\u4f1a\u8bae\u4e0e\u6d3b\u52a8\u9879\u76ee', href: '/project-quotes.html', permission: 'project_quote.view' },
+        { key: 'templates', icon: ICONS.templates, label: '\u62a5\u4ef7\u6a21\u677f', note: '\u62a5\u4ef7\u6a21\u677f\u4e0e\u590d\u7528', href: '/templates.html', permission: 'standard_quote.view' }
       ]
     },
     {
-      key: 'projects',
-      label: '\u9879\u76ee\u4e0e\u6267\u884c',
+      key: 'execution',
+      label: '\u9879\u76ee\u6267\u884c',
       items: [
-        { key: 'projects', icon: ICONS.projects, label: '\u9879\u76ee\u5361\u6863 / \u9879\u76ee\u7ba1\u7406', note: '\u9879\u76ee\u6863\u6848\u4e0e\u627f\u63a5\u8ddf\u8fdb', href: '/projects.html', permission: 'standard_quote.view' },
-        { key: 'receptions', icon: ICONS.receptions, label: '\u63a5\u5f85\u7ba1\u7406', note: '\u6267\u884c\u4efb\u52a1\u548c\u6392\u671f', href: '/receptions.html', permission: 'standard_quote.view' }
+        { key: 'projects', icon: ICONS.projects, label: '\u9879\u76ee\u7ba1\u7406', note: '\u9879\u76ee\u6863\u6848\u4e0e\u8ddf\u8fdb', href: '/projects.html', permission: 'standard_quote.view' },
+        { key: 'receptions', icon: ICONS.receptions, label: '\u63a5\u5f85\u7ba1\u7406', note: '\u63a5\u5f85\u4efb\u52a1\u4e0e\u6392\u671f', href: '/receptions.html', permission: 'standard_quote.view' },
+        { key: 'documents', icon: ICONS.documents, label: '\u6587\u6863\u4e2d\u5fc3', note: '\u6587\u6863\u9884\u89c8\u4e0e\u51c6\u5907', href: '/documents.html', permission: 'standard_quote.view' }
       ]
     },
     {
       key: 'resources',
-      label: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e',
+      label: '\u8d44\u6e90\u4e2d\u5fc3',
       items: [
-        { key: 'suppliers', icon: ICONS.suppliers, label: '\u4f9b\u5e94\u5546\u7ba1\u7406', note: '\u4ef7\u683c\u5e93\u4e0e\u4f9b\u5e94\u5546\u4fe1\u606f', href: '/suppliers.html', permission: 'supplier.view' },
-        { key: 'templates', icon: ICONS.templates, label: '\u6a21\u677f\u7ba1\u7406', note: '\u62a5\u4ef7\u6a21\u677f\u4e0e\u590d\u7528\u8d44\u4ea7', href: '/templates.html', permission: 'standard_quote.view' },
-        { key: 'documents', icon: ICONS.documents, label: '\u6587\u6863\u7ba1\u7406', note: '\u6587\u6863\u6e90\u6570\u636e\u9884\u89c8', href: '/documents.html', permission: 'standard_quote.view' },
-        { key: 'item-types', icon: ICONS.itemTypes, label: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ba1\u7406', note: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ef4\u62a4', href: '/item-types.html', permission: 'project_type.view' },
-        { key: 'basic-info', icon: ICONS.basicInfo, label: '\u57fa\u7840\u6570\u636e\u7ba1\u7406', note: '\u7c7b\u578b\u3001\u5206\u7c7b\u4e0e\u6a21\u677f\u4e3b\u6570\u636e', href: '/basic-info.html', permission: 'project_type.view' }
+        { key: 'suppliers', icon: ICONS.suppliers, label: '\u4f9b\u5e94\u5546\u4e0e\u4ef7\u683c\u5e93', note: '\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u7ba1\u7406', href: '/suppliers.html', permission: 'supplier.view' },
+        { key: 'basic-info', icon: ICONS.basicInfo, label: '\u57fa\u7840\u6570\u636e', note: '\u7c7b\u578b\u4e0e\u5206\u7c7b\u4e3b\u6570\u636e', href: '/basic-info.html', permission: 'project_type.view' }
       ]
     },
     {
@@ -67,16 +75,16 @@
   ];
 
   const PAGE_META = {
-    '/index.html': { eyebrow: '\u5de5\u4f5c\u53f0', title: '\u8fd0\u8425\u5de5\u4f5c\u53f0', subtitle: '\u9996\u9875\u4fdd\u6301\u201c\u5de5\u4f5c\u53f0\u201d\u5b9a\u4f4d\uff0c\u5168\u5c40\u5bfc\u822a\u5219\u627f\u62c5\u957f\u671f\u6a21\u5757\u5165\u53e3\u3002' },
-    '/standard-quotes.html': { eyebrow: '\u62a5\u4ef7\u7ba1\u7406', title: '\u6807\u51c6\u62a5\u4ef7', subtitle: '\u9762\u5411\u65e5\u5e38\u5546\u52a1\u63a5\u5f85\u4e0e\u5e38\u89c4\u62a5\u4ef7\u6d41\u7a0b\u3002' },
-    '/project-quotes.html': { eyebrow: '\u62a5\u4ef7\u7ba1\u7406', title: '\u9879\u76ee\u578b\u62a5\u4ef7', subtitle: '\u9762\u5411\u4f1a\u8bae\u3001\u5c55\u4f1a\u4e0e\u6d3b\u52a8\u7c7b\u590d\u6742\u62a5\u4ef7\u3002' },
-    '/projects.html': { eyebrow: '\u9879\u76ee\u4e0e\u6267\u884c', title: '\u9879\u76ee\u5361\u6863 / \u9879\u76ee\u7ba1\u7406', subtitle: '\u4ece\u62a5\u4ef7\u5411\u9879\u76ee\u6863\u6848\u4e0e\u6267\u884c\u7ebf\u7d22\u8fc7\u6e21\u3002' },
-    '/receptions.html': { eyebrow: '\u9879\u76ee\u4e0e\u6267\u884c', title: '\u63a5\u5f85\u7ba1\u7406', subtitle: '\u805a\u7126\u6267\u884c\u4efb\u52a1\u3001\u4eba\u5458\u5b89\u6392\u4e0e\u63a5\u5f85\u95ed\u73af\u3002' },
-    '/suppliers.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u4f9b\u5e94\u5546\u7ba1\u7406', subtitle: '\u96c6\u4e2d\u7ef4\u62a4\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u548c\u4e3b\u6570\u636e\u3002' },
-    '/templates.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u6a21\u677f\u7ba1\u7406', subtitle: '\u6c89\u6dc0\u9ad8\u9891\u62a5\u4ef7\u6a21\u677f\uff0c\u63d0\u9ad8\u590d\u7528\u6548\u7387\u3002' },
-    '/documents.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u6587\u6863\u7ba1\u7406', subtitle: '\u4ee5\u6e90\u6570\u636e\u89c6\u89d2\u67e5\u770b\u6587\u6863\u51c6\u5907\u5ea6\u3002' },
-    '/item-types.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ba1\u7406', subtitle: '\u7ef4\u62a4\u62a5\u4ef7\u660e\u7ec6\u7684\u7c7b\u578b\u4e0e\u5206\u7c7b\u3002' },
-    '/basic-info.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u57fa\u7840\u6570\u636e\u7ba1\u7406', subtitle: '\u7edf\u4e00\u7ba1\u7406\u62a5\u4ef7\u884c\u7c7b\u578b\u3001\u9879\u76ee\u7ec4\u5206\u7c7b\u3001\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u4e0e\u62a5\u4ef7\u6a21\u677f\u3002' },
+    '/index.html': { eyebrow: '\u5de5\u4f5c\u53f0', title: '\u8fd0\u8425\u5de5\u4f5c\u53f0', subtitle: '\u5f53\u65e5\u4efb\u52a1\u4e0e\u8fd0\u8425\u6982\u89c8\uff0c\u5feb\u901f\u8fdb\u5165\u5404\u4e1a\u52a1\u6a21\u5757\u3002' },
+    '/standard-quotes.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u6807\u51c6\u62a5\u4ef7', subtitle: '\u9762\u5411\u65e5\u5e38\u5546\u52a1\u63a5\u5f85\u4e0e\u5e38\u89c4\u62a5\u4ef7\u6d41\u7a0b\u3002' },
+    '/project-quotes.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u9879\u76ee\u578b\u62a5\u4ef7', subtitle: '\u9762\u5411\u4f1a\u8bae\u3001\u5c55\u4f1a\u4e0e\u6d3b\u52a8\u7c7b\u590d\u6742\u62a5\u4ef7\u3002' },
+    '/templates.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u62a5\u4ef7\u6a21\u677f', subtitle: '\u6c89\u6dc0\u9ad8\u9891\u62a5\u4ef7\u6a21\u677f\uff0c\u63d0\u9ad8\u590d\u7528\u6548\u7387\u3002' },
+    '/projects.html': { eyebrow: '\u9879\u76ee\u6267\u884c', title: '\u9879\u76ee\u7ba1\u7406', subtitle: '\u4ece\u62a5\u4ef7\u5411\u9879\u76ee\u6863\u6848\u4e0e\u6267\u884c\u7ebf\u7d22\u8fc7\u6e21\u3002' },
+    '/receptions.html': { eyebrow: '\u9879\u76ee\u6267\u884c', title: '\u63a5\u5f85\u7ba1\u7406', subtitle: '\u805a\u7126\u6267\u884c\u4efb\u52a1\u3001\u4eba\u5458\u5b89\u6392\u4e0e\u63a5\u5f85\u95ed\u73af\u3002' },
+    '/documents.html': { eyebrow: '\u9879\u76ee\u6267\u884c', title: '\u6587\u6863\u4e2d\u5fc3', subtitle: '\u4ee5\u6e90\u6570\u636e\u89c6\u89d2\u67e5\u770b\u6587\u6863\u51c6\u5907\u5ea6\u3002' },
+    '/suppliers.html': { eyebrow: '\u8d44\u6e90\u4e2d\u5fc3', title: '\u4f9b\u5e94\u5546\u4e0e\u4ef7\u683c\u5e93', subtitle: '\u96c6\u4e2d\u7ef4\u62a4\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u548c\u4e3b\u6570\u636e\u3002' },
+    '/item-types.html': { eyebrow: '\u8d44\u6e90\u4e2d\u5fc3', title: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ba1\u7406', subtitle: '\u7ef4\u62a4\u62a5\u4ef7\u660e\u7ec6\u7684\u7c7b\u578b\u4e0e\u5206\u7c7b\u3002' },
+    '/basic-info.html': { eyebrow: '\u8d44\u6e90\u4e2d\u5fc3', title: '\u57fa\u7840\u6570\u636e', subtitle: '\u7edf\u4e00\u7ba1\u7406\u62a5\u4ef7\u884c\u7c7b\u578b\u3001\u9879\u76ee\u7ec4\u5206\u7c7b\u4e0e\u62a5\u4ef7\u6a21\u677f\u3002' },
     '/admin-permissions.html': { eyebrow: '\u7cfb\u7edf\u7ba1\u7406', title: '\u6743\u9650\u7ba1\u7406', subtitle: '\u7edf\u4e00\u7ba1\u7406\u7528\u6237\u3001\u89d2\u8272\u4e0e\u6743\u9650\u6388\u6743\u3002' }
   };
 
@@ -175,8 +183,8 @@
       '  <aside class="fy-app-sidebar">',
       '    <div class="fy-app-sidebar-head">',
       '      <span class="fy-app-brand-subtitle">\u5168\u5c40\u5bfc\u822a</span>',
-      '      <strong class="fy-app-sidebar-title">\u8fd0\u8425\u7cfb\u7edf\u6a21\u5757\u5165\u53e3</strong>',
-      '      <p class="fy-app-sidebar-copy">\u5de5\u4f5c\u53f0\u8d1f\u8d23\u4efb\u52a1\u7126\u70b9\uff0c\u5de6\u4fa7\u5bfc\u822a\u627f\u62c5\u7a33\u5b9a\u957f\u671f\u5165\u53e3\u3002</p>',
+      '      <strong class="fy-app-sidebar-title">\u4e1a\u52a1\u5bfc\u822a</strong>',
+      '      <p class="fy-app-sidebar-copy">\u6309\u4e1a\u52a1\u6d41\u7a0b\u8fdb\u5165\u62a5\u4ef7\u3001\u6267\u884c\u3001\u8d44\u6e90\u4e0e\u7cfb\u7edf\u7ba1\u7406\u3002</p>',
       '    </div>',
       '    <nav class="fy-app-nav" id="fy-app-nav"></nav>',
       '  </aside>',
