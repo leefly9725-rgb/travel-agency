@@ -27,6 +27,18 @@
           </div>
           <span class="list-section-subtitle">用于活动、会议、展会等按项目组拆分的复杂报价。</span>
         </div>
+        <div class="list-toolbar">
+          <label class="sort-toolbar" for="project-quote-sort-select">
+            <span>排序方式</span>
+            <select id="project-quote-sort-select">
+              <option value="updated_at">最近更新</option>
+              <option value="created_at">最新创建</option>
+              <option value="quoteNumber">报价编号</option>
+              <option value="clientName">客户名称</option>
+              <option value="projectName">项目名称</option>
+            </select>
+          </label>
+        </div>
       </div>
       <div id="project-quote-message" class="message-box hidden"></div>
       <div id="project-quote-list" class="stack quote-list-stack"></div>

@@ -1,3 +1,16 @@
+// ═══════════════════════════════════════════════════════════════════════════════
+// 项目型报价主线声明（2026-04）
+// ─────────────────────────────────────────────────────────────────────────────
+// 列表主线：project-quotes.html / project-quotes.js（本文件）
+// 编辑主线：quote-new.html?mode=project_based（驱动：quote-project-editor.js）
+// 客户版输出：project-quotation.html
+// 后端 API：/api/quotes（pricingMode=project_based）
+//
+// 以下对象已退场（兼容保留，不再承接新需求）：
+//   quote-project.html / quote-project.js
+//   /api/project-quotes / projectQuoteStore
+// ═══════════════════════════════════════════════════════════════════════════════
+
 function isFlaggedReview(record) {
   return record?.dataQuality?.reviewStatus === "flagged_review";
 }
@@ -27,30 +40,28 @@ function attachCardClicks(container) {
 }
 
 let cachedQuotes = [];
+let currentSortKey = "updated_at";
 
-function renderApprovalActions(quote) {
-  const status = quote.status || "draft";
-  const canApprove = window.can && window.can("project_quote.approve");
-  const canEdit    = window.can && window.can("project_quote.edit");
-
-  if (canApprove) {
-    if (status === "pending") return `
-      <button class="ghost mini-button action-link-primary" data-approve-id="${esc(quote.id)}">批准</button>
-      <button class="ghost mini-button action-link-danger"  data-reject-id="${esc(quote.id)}">拒绝</button>`;
-    if (status === "approved") return `<span class="approval-status-text approved-text">已批准</span>`;
-    if (status === "rejected") return `<span class="approval-status-text rejected-text">已拒绝</span>`;
-    return "";
+function sortProjectQuotes(arr, key) {
+  const copy = [...arr];
+  switch (key) {
+    case "updated_at":
+      return copy.sort((a, b) =>
+        (b.updatedAt || b.updated_at || "0").localeCompare(a.updatedAt || a.updated_at || "0")
+      );
+    case "created_at":
+      return copy.sort((a, b) =>
+        (b.createdAt || b.created_at || "0").localeCompare(a.createdAt || a.created_at || "0")
+      );
+    case "quoteNumber":
+      return copy.sort((a, b) => (a.quoteNumber || "").localeCompare(b.quoteNumber || ""));
+    case "clientName":
+      return copy.sort((a, b) => (a.clientName || "").localeCompare(b.clientName || "", "zh-CN"));
+    case "projectName":
+      return copy.sort((a, b) => (a.projectName || "").localeCompare(b.projectName || "", "zh-CN"));
+    default:
+      return copy;
   }
-
-  if (canEdit) {
-    if (status === "draft")    return `<button class="ghost mini-button" data-submit-id="${esc(quote.id)}">提交审批</button>`;
-    if (status === "pending")  return `<span class="approval-status-text muted-text">审批中</span>`;
-    if (status === "approved") return `<span class="approval-status-text approved-text">已批准</span>`;
-    if (status === "rejected") return `
-      <span class="approval-status-text rejected-text">已拒绝</span>
-      <button class="ghost mini-button" data-view-reason="${esc(quote.reviewNote || "暂无说明")}">查看原因</button>`;
-  }
-  return "";
 }
 
 function renderProjectQuotes(quotes) {
@@ -63,8 +74,7 @@ function renderProjectQuotes(quotes) {
     return;
   }
 
-  const STATUS_CLS = { draft: 's-draft', pending: 's-pending', approved: 's-approved', rejected: 's-rejected' };
-  const EXEC_CLS   = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
+  const EXEC_CLS = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
 
   container.innerHTML = quotes.map((quote) => {
     const totalSales = quote.totalSales != null
@@ -83,9 +93,7 @@ function renderProjectQuotes(quotes) {
     const dimPax = quote.paxCount == null;
     const dimGroups = groupCount === 0 && itemCount === 0;
     const dimAttr = ' style="opacity:0.45"';
-    const status = quote.status || "draft";
     const execStatus = quote.executionStatus || "preparing";
-    const statusLabel = window.AppUi.getLabel("quoteStatusLabels", status) || status;
     const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
 
     return `
@@ -95,7 +103,6 @@ function renderProjectQuotes(quotes) {
             <div class="title-row quote-title-row">
               <h3>${title}</h3>
               <span class="status-badge status-badge-strong">项目型报价</span>
-              <span class="status-badge ${STATUS_CLS[status] || 's-draft'}">${esc(statusLabel)}</span>
               <span class="status-badge ${EXEC_CLS[execStatus] || 'e-preparing'}">${esc(execLabel)}</span>
               ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
             </div>
@@ -103,7 +110,6 @@ function renderProjectQuotes(quotes) {
             <p class="quote-card-hint">按项目组汇总的活动 / 会展 / 综合服务报价，可直接进入编辑页继续维护。</p>
           </div>
           <div class="action-row quote-card-actions">
-            ${renderApprovalActions(quote)}
             ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-primary" href="${cardHref}" target="_blank" rel="noopener">编辑</a>` : ''}
             ${window.can('project_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>` : ''}
           </div>
@@ -142,95 +148,27 @@ async function bootstrap() {
         window.AppUtils.showMessage("project-quote-message", "报价已删除。", "success");
         const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
         cachedQuotes = allQuotes.filter((q) => q.pricingMode === "project_based");
-        renderProjectQuotes(cachedQuotes);
+        renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
       } catch (error) {
         window.AppUtils.showMessage("project-quote-message", error.message, "error");
       }
       return;
     }
 
-    // ── 提交审批 ──────────────────────────────────────────────────────────────
-    const submitBtn = event.target.closest("[data-submit-id]");
-    if (submitBtn) {
-      const id = submitBtn.getAttribute("data-submit-id");
-      submitBtn.disabled = true;
-      try {
-        await window.AppUtils.fetchJson(
-          `/api/project-quotes/${encodeURIComponent(id)}/submit`,
-          { method: "POST" },
-          "提交审批失败，请稍后重试。"
-        );
-        const q = cachedQuotes.find(x => x.id === id);
-        if (q) q.status = "pending";
-        renderProjectQuotes(cachedQuotes);
-        window.AppUtils.showMessage("project-quote-message", "已提交审批，等待经理审核。", "success");
-      } catch (err) {
-        window.AppUtils.showMessage("project-quote-message", err.message, "error");
-        submitBtn.disabled = false;
-      }
-      return;
-    }
-
-    // ── 批准 ──────────────────────────────────────────────────────────────────
-    const approveBtn = event.target.closest("[data-approve-id]");
-    if (approveBtn) {
-      const id = approveBtn.getAttribute("data-approve-id");
-      if (!window.confirm("确认批准该报价？")) return;
-      approveBtn.disabled = true;
-      try {
-        await window.AppUtils.fetchJson(
-          `/api/project-quotes/${encodeURIComponent(id)}/approve`,
-          { method: "POST" },
-          "批准操作失败，请稍后重试。"
-        );
-        const q = cachedQuotes.find(x => x.id === id);
-        if (q) q.status = "approved";
-        renderProjectQuotes(cachedQuotes);
-        window.AppUtils.showMessage("project-quote-message", "报价已批准。", "success");
-      } catch (err) {
-        window.AppUtils.showMessage("project-quote-message", err.message, "error");
-        approveBtn.disabled = false;
-      }
-      return;
-    }
-
-    // ── 拒绝 ──────────────────────────────────────────────────────────────────
-    const rejectBtn = event.target.closest("[data-reject-id]");
-    if (rejectBtn) {
-      const id = rejectBtn.getAttribute("data-reject-id");
-      const reason = window.prompt("请填写拒绝原因（必填）：");
-      if (reason === null) return;
-      if (!reason.trim()) { window.alert("拒绝原因不能为空。"); return; }
-      rejectBtn.disabled = true;
-      try {
-        await window.AppUtils.fetchJson(
-          `/api/project-quotes/${encodeURIComponent(id)}/reject`,
-          { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reason }) },
-          "拒绝操作失败，请稍后重试。"
-        );
-        const q = cachedQuotes.find(x => x.id === id);
-        if (q) { q.status = "rejected"; q.reviewNote = reason; }
-        renderProjectQuotes(cachedQuotes);
-        window.AppUtils.showMessage("project-quote-message", "报价已拒绝。", "success");
-      } catch (err) {
-        window.AppUtils.showMessage("project-quote-message", err.message, "error");
-        rejectBtn.disabled = false;
-      }
-      return;
-    }
-
-    // ── 查看拒绝原因 ──────────────────────────────────────────────────────────
-    const reasonBtn = event.target.closest("[data-view-reason]");
-    if (reasonBtn) {
-      const note = reasonBtn.getAttribute("data-view-reason") || "暂无说明";
-      window.alert(`拒绝原因：\n${note}`);
-    }
   });
+
+  const sortSelect = document.getElementById("project-quote-sort-select");
+  if (sortSelect) {
+    sortSelect.addEventListener("change", () => {
+      currentSortKey = sortSelect.value;
+      renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
+    });
+  }
 
   try {
     const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
     cachedQuotes = allQuotes.filter((q) => q.pricingMode === "project_based");
-    renderProjectQuotes(cachedQuotes);
+    renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
   } catch (error) {
     window.AppUtils.showMessage("project-quote-message", error.message, "error");
   }
@@ -242,5 +180,5 @@ document.addEventListener('authReady', function () {
   var newProj = document.querySelector('a[href="/quote-new.html?mode=project_based"]');
   if (newProj && !window.can('project_quote.create')) newProj.style.display = 'none';
 
-  if (cachedQuotes.length > 0) renderProjectQuotes(cachedQuotes);
+  if (cachedQuotes.length > 0) renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
 });
