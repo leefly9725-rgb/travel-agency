@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>基础数据管理</title>
+  <title>基础数据</title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
   <link rel="stylesheet" href="/app-shell.css" />
@@ -335,11 +335,18 @@
 
     <div style="padding-bottom:40px">
 
+      <!-- ── 页面说明 ── -->
+      <p style="margin:0 0 16px;font-size:13px;color:#888;line-height:1.6">
+        基础数据用于维护项目组类型、服务类型等低频主数据；
+        供应商价格库请前往<a href="/suppliers.html" style="color:var(--accent)">「供应商与价格库」</a>，
+        报价模板请前往<a href="/templates.html" style="color:var(--accent)">「报价模板」</a>。
+      </p>
+
       <!-- ── Tab 导航 ── -->
       <div class="bi-tabbar">
         <a class="bi-tab" href="#group-types">项目组类型</a>
-        <a class="bi-tab" href="#supplier-catalog">供应商价格库</a>
-        <a class="bi-tab" href="#templates">报价模板</a>
+        <a class="bi-tab" href="#supplier-catalog" style="display:none">供应商价格库</a>
+        <a class="bi-tab" href="#templates" style="display:none">报价模板</a>
       </div>
 
       <!-- ═══ Tab 1：项目组类型（左右分栏）═══ -->
@@ -551,6 +558,13 @@
   (function () {
     'use strict';
 
+    // 已迁移 Tab 的早期重定向：
+    //   #supplier-catalog → /suppliers.html（主入口：资源中心 > 供应商与价格库）
+    //   #templates        → /templates.html（主入口：报价中心 > 报价模板）
+    const _initHash = location.hash.slice(1);
+    if (_initHash === 'supplier-catalog') { location.replace('/suppliers.html'); return; }
+    if (_initHash === 'templates')        { location.replace('/templates.html'); return; }
+
     // HTML 转义工具
     function esc(s) {
       return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
@@ -598,7 +612,7 @@
     }
 
     // ── Tab 路由 ──
-    const TAB_KEYS = ['group-types', 'supplier-catalog', 'templates'];
+    const TAB_KEYS = ['group-types']; // supplier-catalog 和 templates 已迁移至各自专属页面
     const loadedTabs = new Set();
 
     function getActiveTab() {
@@ -622,7 +636,12 @@
       }
     }
 
-    window.addEventListener('hashchange', () => activateTab(getActiveTab()));
+    window.addEventListener('hashchange', () => {
+      const _key = location.hash.slice(1);
+      if (_key === 'supplier-catalog') { location.replace('/suppliers.html'); return; }
+      if (_key === 'templates')        { location.replace('/templates.html'); return; }
+      activateTab(getActiveTab());
+    });
 
 
     // ════════ Tab 1：项目组类型（左右分栏）════════
