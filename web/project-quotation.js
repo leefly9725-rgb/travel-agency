@@ -156,12 +156,12 @@ if (editTermsBtn && quoteId) {
 }
 
 const state = {
-  lang: params.get('lang') || 'zh',
+  lang: params.get('lang') || 'zh-en',
   mode: params.get('mode') || 'professional',
   grouping: params.get('grouping') || 'grouped',
   showOverview: params.get('overview') !== '0',
   showSign: params.get('sign') !== '0',
-  taxMode: 'excluded',
+  taxMode: params.get('taxMode') || params.get('tax') || params.get('vat') || 'included',
 };
 
 const FEATURE_FLAGS = {
