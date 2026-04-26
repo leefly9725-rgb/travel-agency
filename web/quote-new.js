@@ -24,8 +24,6 @@ async function preloadProjectTypeMeta() {
     window._allItemTypes = Array.isArray(window._allItemTypes) ? window._allItemTypes : [];
     window._groupTypes = Array.isArray(window._groupTypes) ? window._groupTypes : [];
   }
-  console.log("[init] _allItemTypes:", window._allItemTypes);
-  console.log("[init] _groupTypes:", window._groupTypes);
 }
 let projectBasedTypeObserver = null;
 let projectBasedTypeSyncScheduled = false;

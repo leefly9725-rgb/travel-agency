@@ -619,6 +619,12 @@ window.ProjectEditor = (function () {
     rowEl.dataset.supplierDisplay = supplierDisplay;
     rowEl.dataset.itemCategory = String(item.category || rowEl.dataset.itemCategory || "").trim().toLowerCase();
     syncVisibleServiceTypeField(rowEl);
+    // syncVisibleServiceTypeField → syncRowUnit may overwrite catalog unit with type defaultUnit;
+    // catalog unit is authoritative when present.
+    if (unitInput && item.unit) {
+      unitInput.value = item.unit;
+      unitInput.dataset.systemUnit = item.unit;
+    }
   }
 
   function ensureSupplierCatalogLoaded() {
