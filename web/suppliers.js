@@ -197,6 +197,15 @@ function itemIsActive(item) {
 }
 function itemSupplierId(item) { return item.supplierId || item.supplier_id || ""; }
 
+function resolveSupplierNameForItem(item) {
+  const directName = item.supplierName || item.supplier_name || item.supplierDisplay || "";
+  if (directName && directName !== "--" && directName !== "—") return directName;
+  const supplierId = itemSupplierId(item);
+  if (!supplierId) return EMPTY_TEXT;
+  const supplier = state.suppliers.find((s) => String(s.id) === String(supplierId));
+  return supplier ? supplier.name : EMPTY_TEXT;
+}
+
 function categoryLabel(code) {
   const cat = state.categories.find((c) => (c.code || c.id) === code);
   if (cat) return cat.nameZh || cat.name_zh || code;
@@ -369,7 +378,7 @@ function renderItemTable() {
     const active = itemIsActive(item);
     const price = itemCostPrice(item);
     const currency = item.currency || "EUR";
-    const supName = item.supplierName || item.supplier_name || "";
+    const supName = resolveSupplierNameForItem(item);
     const priceStr = price > 0
       ? price.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : EMPTY_TEXT;
@@ -381,7 +390,7 @@ function renderItemTable() {
           <div class="sup-item-main">
             <div class="sup-item-name">${itemNameZh(item)}</div>
             ${itemNameEn(item) ? `<div class="sup-item-sub">${itemNameEn(item)}</div>` : ""}
-            ${supName && !state.selectedSupplierId ? `<div class="sup-item-sub">${supName}</div>` : ""}
+            ${supName !== EMPTY_TEXT && !state.selectedSupplierId ? `<div class="sup-item-sub">${supName}</div>` : ""}
           </div>
         </td>
         <td class="sup-col-spec">${item.spec || EMPTY_TEXT}</td>
@@ -431,7 +440,7 @@ function renderBestPriceTable() {
   tbody.innerHTML = pageDetail.rows.map((item) => {
     const price = itemCostPrice(item);
     const currency = item.currency || "EUR";
-    const supName = item.supplierName || item.supplier_name || EMPTY_TEXT;
+    const supName = resolveSupplierNameForItem(item);
     const priceStr = price > 0
       ? price.toLocaleString("zh-CN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
       : EMPTY_TEXT;
