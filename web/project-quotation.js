@@ -1045,7 +1045,7 @@ async function bootstrap() {
           return res.json();
         };
 
-    const _snapToken = localStorage.getItem('app_token');
+    const _snapToken = window.AuthStore?.getToken() || localStorage.getItem('app_token');
     const [quote, snapshotRaw, supplierCategoryMap] = await Promise.all([
       fetchFn(`/api/quotes/${encodeURIComponent(quoteId)}`),
       fetch(`/api/terms/snapshot?quote_id=${encodeURIComponent(quoteId)}`, {

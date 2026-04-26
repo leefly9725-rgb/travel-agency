@@ -276,6 +276,25 @@
       cursor: not-allowed;
       transform: none;
     }
+    .fy-remember {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .fy-remember input[type="checkbox"] {
+      width: 15px;
+      height: 15px;
+      accent-color: var(--fy-navy);
+      cursor: pointer;
+      flex-shrink: 0;
+      margin: 0;
+    }
+    .fy-remember label {
+      font-size: 13px;
+      color: var(--fy-muted);
+      cursor: pointer;
+      user-select: none;
+    }
     .fy-login-note {
       margin-top: 14px;
       color: #7a8490;
@@ -380,6 +399,11 @@
           </div>
         </div>
 
+        <div class="fy-remember">
+          <input type="checkbox" id="remember-me" />
+          <label for="remember-me">保持登录（7 天内免登录）</label>
+        </div>
+
         <div class="fy-error" id="error-box" role="alert"></div>
 
         <button type="submit" class="fy-login-btn" id="btn-login">&#30331;&#24405;</button>
@@ -390,9 +414,60 @@
   </div>
 
   <script>
-    const SUPABASE_URL = window.__ENV__?.SUPABASE_URL || '';
-    const SUPABASE_ANON_KEY = window.__ENV__?.SUPABASE_ANON_KEY || '';
+    // ── AuthStore（登录页内联副本，保持与 auth-guard.js 中 window.AuthStore 逻辑一致）
+    const AuthStore = (function () {
+      const T  = 'app_token';
+      const R  = 'app_refresh_token';
+      const EX = 'app_token_expires';
+      const UN = 'app_saved_username';
+      const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+      return {
+        getToken() {
+          const s = sessionStorage.getItem(T);
+          if (s) return s;
+          const l = localStorage.getItem(T);
+          if (!l) return null;
+          const exp = localStorage.getItem(EX);
+          if (exp && Date.now() > parseInt(exp, 10)) { this.clearSession(); return null; }
+          return l;
+        },
+        setSession(token, refreshToken, rememberMe) {
+          this.clearSession();
+          if (rememberMe) {
+            localStorage.setItem(T, token);
+            if (refreshToken) localStorage.setItem(R, refreshToken);
+            localStorage.setItem(EX, String(Date.now() + SEVEN_DAYS));
+          } else {
+            sessionStorage.setItem(T, token);
+            if (refreshToken) sessionStorage.setItem(R, refreshToken);
+          }
+        },
+        clearSession() {
+          localStorage.removeItem(T); localStorage.removeItem(R); localStorage.removeItem(EX);
+          sessionStorage.removeItem(T); sessionStorage.removeItem(R);
+        },
+        getSavedUsername() { return localStorage.getItem(UN) || ''; },
+        setSavedUsername(u) {
+          u ? localStorage.setItem(UN, u) : localStorage.removeItem(UN);
+        },
+      };
+    })();
 
+    // ── 已登录则直接跳转首页
+    if (AuthStore.getToken()) {
+      window.location.replace('/index.html');
+    }
+
+    // ── 预填已保存的用户名
+    (function prefillUsername() {
+      const saved = AuthStore.getSavedUsername();
+      if (saved) {
+        document.getElementById('account').value = saved;
+        document.getElementById('remember-me').checked = true;
+      }
+    })();
+
+    // ── 密码显示切换
     document.getElementById('toggle-pw').addEventListener('click', () => {
       const input = document.getElementById('password');
       const iconOn = document.getElementById('icon-eye');
@@ -403,6 +478,7 @@
       iconOff.style.display = isHidden ? '' : 'none';
     });
 
+    // ── 表单提交
     document.getElementById('login-form').addEventListener('submit', async (event) => {
       event.preventDefault();
 
@@ -410,6 +486,7 @@
       const errorBox = document.getElementById('error-box');
       const username = document.getElementById('account').value.trim();
       const password = document.getElementById('password').value;
+      const rememberMe = document.getElementById('remember-me').checked;
 
       errorBox.textContent = '';
       errorBox.classList.remove('visible');
@@ -445,7 +522,11 @@
           throw new Error('登录响应异常，请稍后重试。');
         }
 
-        localStorage.setItem('app_token', data.access_token);
+        // 根据"保持登录"选项，决定存入 localStorage 还是 sessionStorage
+        AuthStore.setSession(data.access_token, data.refresh_token || null, rememberMe);
+
+        // 记住/清除用户名（不保存密码）
+        AuthStore.setSavedUsername(rememberMe ? username : '');
 
         let initialized = true;
         try {

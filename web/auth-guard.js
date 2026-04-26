@@ -2,7 +2,68 @@
  * auth-guard.js — 前端认证守卫
  * 引入方式：在受保护页面的 </head> 之前 <script src="/auth-guard.js"></script>
  * 配合 <body style="visibility: hidden"> 使用，检测通过后自动恢复可见性
+ *
+ * 同时暴露 window.AuthStore，供其他脚本统一读写 token，
+ * 支持 rememberMe（localStorage + 7 天到期）和 session-only（sessionStorage）两种模式。
  */
+window.AuthStore = (function () {
+  const T  = 'app_token';
+  const R  = 'app_refresh_token';
+  const EX = 'app_token_expires';
+  const UN = 'app_saved_username';
+  const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
+
+  return {
+    getToken() {
+      const s = sessionStorage.getItem(T);
+      if (s) return s;
+      const l = localStorage.getItem(T);
+      if (!l) return null;
+      const exp = localStorage.getItem(EX);
+      if (exp && Date.now() > parseInt(exp, 10)) { this.clearSession(); return null; }
+      return l;
+    },
+    getRefreshToken() {
+      return sessionStorage.getItem(R) || localStorage.getItem(R);
+    },
+    isRememberMe() {
+      return !!localStorage.getItem(T);
+    },
+    setSession(token, refreshToken, rememberMe) {
+      this.clearSession();
+      if (rememberMe) {
+        localStorage.setItem(T, token);
+        if (refreshToken) localStorage.setItem(R, refreshToken);
+        localStorage.setItem(EX, String(Date.now() + SEVEN_DAYS));
+      } else {
+        sessionStorage.setItem(T, token);
+        if (refreshToken) sessionStorage.setItem(R, refreshToken);
+      }
+    },
+    updateToken(token, refreshToken) {
+      if (localStorage.getItem(T)) {
+        localStorage.setItem(T, token);
+        if (refreshToken) localStorage.setItem(R, refreshToken);
+        localStorage.setItem(EX, String(Date.now() + SEVEN_DAYS));
+      } else {
+        sessionStorage.setItem(T, token);
+        if (refreshToken) sessionStorage.setItem(R, refreshToken);
+      }
+    },
+    clearSession() {
+      localStorage.removeItem(T);
+      localStorage.removeItem(R);
+      localStorage.removeItem(EX);
+      sessionStorage.removeItem(T);
+      sessionStorage.removeItem(R);
+    },
+    getSavedUsername() { return localStorage.getItem(UN) || ''; },
+    setSavedUsername(u) {
+      u ? localStorage.setItem(UN, u) : localStorage.removeItem(UN);
+    },
+  };
+})();
+
 (async () => {
   'use strict';
 
@@ -35,7 +96,7 @@
 
   // ── Token 刷新 ─────────────────────────────────────────────────────────────
   async function refreshAccessToken() {
-    const refreshToken = localStorage.getItem('app_refresh_token');
+    const refreshToken = window.AuthStore.getRefreshToken();
     if (!refreshToken || !SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
     try {
       const res = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=refresh_token`, {
@@ -49,10 +110,7 @@
       if (!res.ok) return false;
       const data = await res.json();
       if (!data.access_token) return false;
-      localStorage.setItem('app_token', data.access_token);
-      if (data.refresh_token) {
-        localStorage.setItem('app_refresh_token', data.refresh_token);
-      }
+      window.AuthStore.updateToken(data.access_token, data.refresh_token || null);
       return true;
     } catch {
       return false;
@@ -60,7 +118,7 @@
   }
 
   // ── Step 1：检查 token 存在 ────────────────────────────────────────────────
-  let token = localStorage.getItem('app_token');
+  let token = window.AuthStore.getToken();
   if (!token) {
     redirectTo('/login.html');
     return;
@@ -74,11 +132,11 @@
     // 已过期：尝试静默续期
     const refreshed = await refreshAccessToken();
     if (!refreshed) {
-      localStorage.removeItem('app_token');
+      window.AuthStore.clearSession();
       redirectTo('/error.html?reason=session_expired');
       return;
     }
-    token = localStorage.getItem('app_token');
+    token = window.AuthStore.getToken();
   } else if (payload.exp - now < 300) {
     // 距过期不足 5 分钟：后台续期，不阻塞页面
     refreshAccessToken();
@@ -108,7 +166,7 @@
     });
 
     if (res.status === 401) {
-      localStorage.removeItem('app_token');
+      window.AuthStore.clearSession();
       redirectTo('/login.html');
       return;
     }

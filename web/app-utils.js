@@ -20,8 +20,8 @@
   async fetchJson(url, options, fallbackMessage) {
     const isDev = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const token = isDev
-      ? (localStorage.getItem('app_token') || 'dev-bypass-token')
-      : localStorage.getItem('app_token');
+      ? (window.AuthStore?.getToken() || 'dev-bypass-token')
+      : window.AuthStore?.getToken();
     const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
     const mergedOptions = {
       ...options,
@@ -39,7 +39,7 @@
     }
     if (!response.ok) {
       if (response.status === 401) {
-        localStorage.removeItem('app_token');
+        window.AuthStore ? window.AuthStore.clearSession() : localStorage.removeItem('app_token');
         window.location.href = '/login.html';
         return;
       }

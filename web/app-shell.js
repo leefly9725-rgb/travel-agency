@@ -53,7 +53,7 @@
         { key: 'suppliers', icon: ICONS.suppliers, label: '\u4f9b\u5e94\u5546\u7ba1\u7406', note: '\u4ef7\u683c\u5e93\u4e0e\u4f9b\u5e94\u5546\u4fe1\u606f', href: '/suppliers.html', permission: 'supplier.view' },
         { key: 'templates', icon: ICONS.templates, label: '\u6a21\u677f\u7ba1\u7406', note: '\u62a5\u4ef7\u6a21\u677f\u4e0e\u590d\u7528\u8d44\u4ea7', href: '/templates.html', permission: 'standard_quote.view' },
         { key: 'documents', icon: ICONS.documents, label: '\u6587\u6863\u7ba1\u7406', note: '\u6587\u6863\u6e90\u6570\u636e\u9884\u89c8', href: '/documents.html', permission: 'standard_quote.view' },
-        { key: 'item-types', icon: ICONS.itemTypes, label: '\u9879\u76ee\u7c7b\u578b\u7ba1\u7406', note: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ef4\u62a4', href: '/item-types.html', permission: 'project_type.view' },
+        { key: 'item-types', icon: ICONS.itemTypes, label: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ba1\u7406', note: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ef4\u62a4', href: '/item-types.html', permission: 'project_type.view' },
         { key: 'basic-info', icon: ICONS.basicInfo, label: '\u57fa\u7840\u6570\u636e\u7ba1\u7406', note: '\u7c7b\u578b\u3001\u5206\u7c7b\u4e0e\u6a21\u677f\u4e3b\u6570\u636e', href: '/basic-info.html', permission: 'project_type.view' }
       ]
     },
@@ -75,7 +75,7 @@
     '/suppliers.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u4f9b\u5e94\u5546\u7ba1\u7406', subtitle: '\u96c6\u4e2d\u7ef4\u62a4\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u548c\u4e3b\u6570\u636e\u3002' },
     '/templates.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u6a21\u677f\u7ba1\u7406', subtitle: '\u6c89\u6dc0\u9ad8\u9891\u62a5\u4ef7\u6a21\u677f\uff0c\u63d0\u9ad8\u590d\u7528\u6548\u7387\u3002' },
     '/documents.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u6587\u6863\u7ba1\u7406', subtitle: '\u4ee5\u6e90\u6570\u636e\u89c6\u89d2\u67e5\u770b\u6587\u6863\u51c6\u5907\u5ea6\u3002' },
-    '/item-types.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u9879\u76ee\u7c7b\u578b\u7ba1\u7406', subtitle: '\u7ef4\u62a4\u62a5\u4ef7\u660e\u7ec6\u7684\u7c7b\u578b\u4e0e\u5206\u7c7b\u3002' },
+    '/item-types.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u62a5\u4ef7\u660e\u7ec6\u7c7b\u578b\u7ba1\u7406', subtitle: '\u7ef4\u62a4\u62a5\u4ef7\u660e\u7ec6\u7684\u7c7b\u578b\u4e0e\u5206\u7c7b\u3002' },
     '/basic-info.html': { eyebrow: '\u8d44\u6e90\u4e0e\u4e3b\u6570\u636e', title: '\u57fa\u7840\u6570\u636e\u7ba1\u7406', subtitle: '\u7edf\u4e00\u7ba1\u7406\u62a5\u4ef7\u884c\u7c7b\u578b\u3001\u9879\u76ee\u7ec4\u5206\u7c7b\u3001\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u4e0e\u62a5\u4ef7\u6a21\u677f\u3002' },
     '/admin-permissions.html': { eyebrow: '\u7cfb\u7edf\u7ba1\u7406', title: '\u6743\u9650\u7ba1\u7406', subtitle: '\u7edf\u4e00\u7ba1\u7406\u7528\u6237\u3001\u89d2\u8272\u4e0e\u6743\u9650\u6388\u6743\u3002' }
   };
@@ -219,8 +219,12 @@
     document.body.appendChild(shell);
 
     shell.querySelector('#fy-app-logout').addEventListener('click', function () {
-      localStorage.removeItem('app_token');
-      localStorage.removeItem('app_refresh_token');
+      if (window.AuthStore) {
+        window.AuthStore.clearSession();
+      } else {
+        localStorage.removeItem('app_token');
+        localStorage.removeItem('app_refresh_token');
+      }
       window.location.href = '/login.html';
     });
 

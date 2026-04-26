@@ -88,7 +88,7 @@ async function init() {
 // ── API helpers ────────────────────────────────────────────────────────────────
 
 async function apiFetch(url, opts = {}) {
-  const token = localStorage.getItem('app_token');
+  const token = window.AuthStore?.getToken() || localStorage.getItem('app_token');
   const authHeaders = token ? { Authorization: `Bearer ${token}` } : {};
   const res = await fetch(url, {
     ...opts,
@@ -100,7 +100,7 @@ async function apiFetch(url, opts = {}) {
   });
   if (!res.ok) {
     if (res.status === 401) {
-      localStorage.removeItem('app_token');
+      window.AuthStore ? window.AuthStore.clearSession() : localStorage.removeItem('app_token');
       window.location.href = '/login.html';
       return;
     }

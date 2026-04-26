@@ -560,7 +560,11 @@
     }
 
     document.getElementById('fy-home-logout').addEventListener('click', function () {
-      localStorage.removeItem('app_token');
+      if (window.AuthStore) {
+        window.AuthStore.clearSession();
+      } else {
+        localStorage.removeItem('app_token');
+      }
       window.location.href = '/login.html';
     });
 
