@@ -1755,20 +1755,43 @@ async function bootstrap() {
     event.preventDefault();
 
     const isProjectMode = state.pricingMode === "project_based";
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalSubmitText = submitButton ? submitButton.textContent : "";
+    const setSavingState = () => {
+      if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = "保存中...";
+      }
+      window.AppUtils.showMessage("quote-message", isProjectMode ? "项目型报价正在保存..." : "报价正在保存...", "success");
+    };
+    const restoreSavingState = () => {
+      if (submitButton) {
+        submitButton.disabled = false;
+        submitButton.textContent = originalSubmitText || "保存报价";
+      }
+    };
+
+    setSavingState();
 
     if (isProjectMode) {
       // 项目型模式：只校验基础信息
       if (!form.clientName.value.trim() || !form.projectName.value.trim() || !form.contactName.value.trim()) {
         window.AppUtils.showMessage("quote-message", "请填写客户名称、项目名称和联系人。", "error");
+        restoreSavingState();
         return;
       }
       // 保存前统一补分类检查
       if (window.ProjectEditor && typeof window.ProjectEditor.checkAndClassifyItems === "function") {
         const classified = await window.ProjectEditor.checkAndClassifyItems();
-        if (!classified) return;
+        if (!classified) {
+          restoreSavingState();
+          window.AppUtils.hideMessage("quote-message");
+          return;
+        }
       }
     } else {
       if (!validateQuoteForm(form)) {
+        restoreSavingState();
         return;
       }
     }
@@ -1832,6 +1855,8 @@ async function bootstrap() {
       }
     } catch (error) {
       window.AppUtils.showMessage("quote-message", error.message, "error");
+    } finally {
+      restoreSavingState();
     }
   });
 }

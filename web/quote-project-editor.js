@@ -121,21 +121,38 @@ window.ProjectEditor = (function () {
     };
   }
 
+  function findDefaultItemTypeByCode(code) {
+    const normalizedCode = String(code || "").trim().toLowerCase();
+    const aliasMap = {
+      vehicle: "transport",
+      guide: "guide_translation",
+      interpreter: "guide_translation",
+      tickets: "ticket",
+      dining: "catering_refreshments",
+      meal: "catering_refreshments",
+      parking: "toll_parking",
+    };
+    const fallbackCode = aliasMap[normalizedCode] || normalizedCode;
+    return DEFAULT_ITEM_TYPES.find((item) => item.code === fallbackCode) || null;
+  }
+
   function normalizeItemType(record, fallback) {
     const base = fallback || {};
     const code = String(record?.code || base.code || "").trim().toLowerCase();
     if (!code) return null;
-    const groups = normalizeCodeList(record?.projectGroupCodes || record?.project_group_codes || base.projectGroupCodes || ["mixed"]);
+    const preset = findDefaultItemTypeByCode(code);
+    const resolvedBase = { ...(preset || {}), ...base };
+    const groups = normalizeCodeList(record?.projectGroupCodes || record?.project_group_codes || resolvedBase.projectGroupCodes || ["mixed"]);
     return {
       code,
-      nameZh: String(record?.nameZh || record?.name_zh || base.nameZh || LEGACY_ITEM_LABELS[code] || code).trim(),
+      nameZh: String(record?.nameZh || record?.name_zh || resolvedBase.nameZh || LEGACY_ITEM_LABELS[code] || code).trim(),
       isActive: record?.isActive !== undefined
         ? Boolean(record.isActive)
-        : (record?.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
-      sortOrder: Number(record?.sortOrder ?? record?.sort_order ?? base.sortOrder ?? 0),
+        : (record?.is_active !== undefined ? Boolean(record.is_active) : (resolvedBase.isActive !== undefined ? Boolean(resolvedBase.isActive) : true)),
+      sortOrder: Number(record?.sortOrder ?? record?.sort_order ?? resolvedBase.sortOrder ?? 0),
       projectGroupCodes: groups.length > 0 ? groups : ["mixed"],
-      defaultUnit: String(record?.defaultUnit || record?.default_unit || base.defaultUnit || "项").trim() || "项",
-      supplierCategoryCodes: normalizeCodeList(record?.supplierCategoryCodes || record?.supplier_category_codes || base.supplierCategoryCodes || []),
+      defaultUnit: String(record?.defaultUnit || record?.default_unit || resolvedBase.defaultUnit || "项").trim() || "项",
+      supplierCategoryCodes: normalizeCodeList(record?.supplierCategoryCodes || record?.supplier_category_codes || resolvedBase.supplierCategoryCodes || []),
     };
   }
 
@@ -177,7 +194,7 @@ window.ProjectEditor = (function () {
           const pgId = item.project_group_id || item.projectGroupId;
           const pgCode = pgId ? resolveProjectGroupId(pgId) : null;
           const enriched = pgCode ? { ...item, projectGroupCodes: [pgCode] } : item;
-          return normalizeItemType(enriched);
+          return normalizeItemType(enriched, findDefaultItemTypeByCode(enriched.code));
         }).filter(Boolean);
         itemTypeCache = sortByOrder(converted.filter((item) => item.isActive !== false));
       } else {
