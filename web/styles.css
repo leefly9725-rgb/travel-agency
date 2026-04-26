@@ -2714,3 +2714,312 @@ body.proj-column-resizing * {
 .proj-item-table .proj-col-remarks .proj-cell-textarea {
   max-height: 104px;
 }
+
+/* Project quote editor V3: dense table layout and clearer input hierarchy */
+.project-mode-panel .project-group {
+  margin-bottom: 16px;
+  border-radius: 12px;
+  border-color: rgba(30, 36, 48, 0.10);
+  background: #fffdfa;
+  box-shadow: 0 8px 22px rgba(30, 36, 48, 0.06);
+}
+
+.project-mode-panel .project-group + .project-group {
+  margin-top: 18px;
+}
+
+.project-mode-panel .project-group-header {
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, rgba(247, 243, 237, 0.96), rgba(241, 235, 226, 0.72));
+  border-bottom-color: rgba(30, 36, 48, 0.10);
+}
+
+.project-mode-panel .project-group-classifier {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  margin: 0;
+}
+
+.project-mode-panel .project-group-classifier span {
+  font-size: 11px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.project-mode-panel .proj-type-select {
+  height: 30px;
+  padding: 3px 26px 3px 9px;
+  border-radius: 8px;
+  font-size: 12px;
+  background-color: rgba(255, 255, 255, 0.92);
+}
+
+.project-mode-panel .proj-title-input {
+  height: 32px;
+  min-width: 220px;
+  padding: 4px 10px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.50);
+}
+
+.project-mode-panel .proj-group-badge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(30, 36, 48, 0.05);
+  color: #5f6b7a;
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-mode-panel .proj-header-actions {
+  margin-left: auto;
+  gap: 6px;
+}
+
+.project-mode-panel .proj-header-actions .mini-button {
+  min-height: 30px;
+  padding: 5px 10px;
+  border-radius: 8px;
+}
+
+.project-mode-panel .project-group-body {
+  padding: 10px 12px 12px;
+}
+
+.project-mode-panel .proj-table-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 10px;
+  background: #fff;
+}
+
+.project-mode-panel .proj-table-scroll::-webkit-scrollbar {
+  height: 10px;
+}
+
+.project-mode-panel .proj-table-scroll::-webkit-scrollbar-track {
+  background: rgba(30, 36, 48, 0.04);
+  border-radius: 999px;
+}
+
+.project-mode-panel .proj-table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(95, 107, 122, 0.26);
+  border-radius: 999px;
+}
+
+.project-mode-panel .proj-table-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(95, 107, 122, 0.40);
+}
+
+.project-mode-panel .proj-item-table {
+  min-width: 1508px;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: #fff;
+}
+
+.project-mode-panel .proj-item-table th {
+  height: 36px;
+  padding: 8px 8px;
+  border-bottom: 1px solid rgba(30, 36, 48, 0.14);
+  background: #f3efe8;
+  color: #596474;
+  font-size: 11px;
+  line-height: 1.25;
+  letter-spacing: 0.03em;
+}
+
+.project-mode-panel .proj-item-table td {
+  padding: 6px 7px;
+  border-bottom: 1px solid rgba(30, 36, 48, 0.06);
+  background: #fff;
+}
+
+.project-mode-panel .proj-item-table tbody tr:nth-child(even) td {
+  background: rgba(250, 247, 241, 0.48);
+}
+
+.project-mode-panel .proj-item-table tr:hover td {
+  background: rgba(244, 239, 231, 0.46);
+}
+
+.project-mode-panel .proj-item-table .cell-input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid rgba(30, 36, 48, 0.12);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.86);
+  color: var(--ink);
+  font-size: 12.5px;
+  line-height: 1.35;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.project-mode-panel .proj-item-table .cell-input:hover {
+  border-color: rgba(95, 107, 122, 0.30);
+  background: #fff;
+}
+
+.project-mode-panel .proj-item-table .cell-input:focus,
+.project-mode-panel .proj-item-table .cell-input:focus-visible {
+  outline: none;
+  border-color: rgba(194, 106, 46, 0.62);
+  background: #fff;
+  box-shadow: 0 0 0 3px rgba(194, 106, 46, 0.12);
+}
+
+.project-mode-panel .proj-item-table input.cell-input,
+.project-mode-panel .proj-item-table select.cell-input {
+  height: 30px;
+  padding: 3px 7px;
+}
+
+.project-mode-panel .proj-item-table select.cell-input {
+  padding-right: 22px;
+}
+
+.project-mode-panel .proj-item-table .proj-cell-textarea {
+  min-height: 30px;
+  max-height: 88px;
+  padding: 5px 7px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.project-mode-panel .proj-item-table .proj-col-remarks .proj-cell-textarea {
+  max-height: 104px;
+}
+
+.project-mode-panel .proj-item-table .proj-cell-input-number {
+  text-align: right;
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.project-mode-panel .proj-item-table .proj-cell-input-unit {
+  text-align: center;
+}
+
+.project-mode-panel .proj-item-table .computed-cell {
+  padding-right: 10px;
+  color: #5d6878;
+  background: rgba(30, 36, 48, 0.025);
+  font-family: ui-monospace, "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  font-weight: 650;
+  line-height: 1.35;
+  white-space: nowrap;
+}
+
+.project-mode-panel .proj-item-table td.proj-col-sales-subtotal {
+  color: #284d85;
+  background: rgba(59, 130, 246, 0.045);
+}
+
+.project-mode-panel .proj-item-table td.proj-col-margin {
+  color: #8f4a18;
+  background: rgba(194, 106, 46, 0.075);
+}
+
+.project-mode-panel .proj-col-head {
+  min-height: 18px;
+  padding-right: 12px;
+}
+
+.project-mode-panel .proj-col-resizer::before {
+  background: rgba(95, 107, 122, 0.25);
+}
+
+.project-mode-panel .proj-row-actions {
+  text-align: center;
+}
+
+.project-mode-panel .proj-row-action-stack {
+  min-width: 0;
+  gap: 5px;
+  justify-content: center;
+}
+
+.project-mode-panel .proj-row-action-btn {
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: 7px;
+  font-size: 11.5px;
+  line-height: 1.2;
+}
+
+.project-mode-panel .pick-catalog-btn {
+  color: #7a4a1e;
+  border-color: rgba(194, 106, 46, 0.20);
+  background: rgba(194, 106, 46, 0.07);
+}
+
+.project-mode-panel .delete-item-btn,
+.project-mode-panel .delete-group-btn {
+  color: #a44444;
+  border-color: rgba(164, 68, 68, 0.16);
+  background: rgba(164, 68, 68, 0.045);
+}
+
+.project-mode-panel .delete-item-btn:hover,
+.project-mode-panel .delete-group-btn:hover {
+  color: #8d2f2f;
+  border-color: rgba(164, 68, 68, 0.28);
+  background: rgba(164, 68, 68, 0.08);
+}
+
+.project-mode-panel .proj-group-totals {
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+  padding-top: 10px;
+  font-size: 12.5px;
+}
+
+.project-mode-panel .proj-group-totals span {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 4px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: rgba(30, 36, 48, 0.045);
+  color: #5f6b7a;
+  white-space: nowrap;
+}
+
+.project-mode-panel .proj-group-totals strong {
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 900px) {
+  .project-mode-panel .project-group-header {
+    align-items: stretch;
+  }
+
+  .project-mode-panel .project-group-classifier,
+  .project-mode-panel .proj-title-input,
+  .project-mode-panel .proj-group-badge,
+  .project-mode-panel .proj-header-actions {
+    width: 100%;
+  }
+
+  .project-mode-panel .proj-header-actions {
+    margin-left: 0;
+    justify-content: flex-start;
+  }
+
+  .project-mode-panel .project-group-body {
+    padding: 8px;
+  }
+
+  .project-mode-panel .proj-item-table {
+    min-width: 1420px;
+  }
+}

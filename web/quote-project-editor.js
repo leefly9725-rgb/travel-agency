@@ -10,18 +10,18 @@ window.ProjectEditor = (function () {
   let quotationActionHandler = null;
   const COLUMN_WIDTH_STORAGE_KEY = "project_quote_editor_column_widths";
   const COLUMN_CONFIG = {
-    type: { className: "proj-col-type", defaultWidth: 132, minWidth: 120 },
-    name: { className: "proj-col-name", defaultWidth: 180, minWidth: 160, resizable: true, multiline: true, maxHeight: 88 },
-    spec: { className: "proj-col-spec", defaultWidth: 172, minWidth: 148, resizable: true, multiline: true, maxHeight: 88 },
-    unit: { className: "proj-col-unit", defaultWidth: 72, minWidth: 68 },
-    qty: { className: "proj-col-qty", defaultWidth: 96, minWidth: 90 },
+    type: { className: "proj-col-type", defaultWidth: 120, minWidth: 112 },
+    name: { className: "proj-col-name", defaultWidth: 220, minWidth: 170, resizable: true, multiline: true, maxHeight: 88 },
+    spec: { className: "proj-col-spec", defaultWidth: 220, minWidth: 160, resizable: true, multiline: true, maxHeight: 88 },
+    unit: { className: "proj-col-unit", defaultWidth: 70, minWidth: 62 },
+    qty: { className: "proj-col-qty", defaultWidth: 78, minWidth: 70 },
     costUnit: { className: "proj-col-cost-unit", defaultWidth: 112, minWidth: 108 },
     salesUnit: { className: "proj-col-sales-unit", defaultWidth: 112, minWidth: 108 },
-    remarks: { className: "proj-col-remarks", defaultWidth: 248, minWidth: 188, resizable: true, multiline: true, maxHeight: 104 },
-    costSubtotal: { className: "proj-col-cost-subtotal", defaultWidth: 128, minWidth: 118, resizable: true },
-    salesSubtotal: { className: "proj-col-sales-subtotal", defaultWidth: 128, minWidth: 118, resizable: true },
-    margin: { className: "proj-col-margin", defaultWidth: 92, minWidth: 84 },
-    actions: { className: "proj-col-actions", defaultWidth: 144, minWidth: 144, fixed: true },
+    remarks: { className: "proj-col-remarks", defaultWidth: 220, minWidth: 180, resizable: true, multiline: true, maxHeight: 104 },
+    costSubtotal: { className: "proj-col-cost-subtotal", defaultWidth: 118, minWidth: 108, resizable: true },
+    salesSubtotal: { className: "proj-col-sales-subtotal", defaultWidth: 118, minWidth: 108, resizable: true },
+    margin: { className: "proj-col-margin", defaultWidth: 88, minWidth: 78 },
+    actions: { className: "proj-col-actions", defaultWidth: 112, minWidth: 104, fixed: true },
   };
   let columnWidths = {};
   let activeResizeState = null;
