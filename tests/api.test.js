@@ -249,4 +249,35 @@ test("GET /api/projects/:id returns project archive detail with linked flagged q
   });
 });
 
+test("POST /api/quotes/:id/submit requires Supabase (returns 503 when not configured)", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quotes/Q-1/submit', { method: "POST" });
+    assert.equal(response.status, 503);
+    const payload = await response.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("POST /api/quotes/:id/review requires Supabase (returns 503 when not configured)", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quotes/Q-1/review', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve" }),
+    });
+    assert.equal(response.status, 503);
+    const payload = await response.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("POST /api/quotes/:id/reopen requires Supabase (returns 503 when not configured)", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quotes/Q-1/reopen', { method: "POST" });
+    assert.equal(response.status, 503);
+    const payload = await response.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
 

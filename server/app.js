@@ -1462,6 +1462,16 @@ async function handleApi(request, response, url) {
       await supabaseRequest(supabaseCfg, "rpc/review_quote", {
         method: "POST", body: JSON.stringify({ p_quote_id: quoteId, p_action: action, p_note: note }),
       });
+      // 批准时顺带将 execution_status 同步为 executing（非致命，失败不中断审批）
+      if (action === "approve") {
+        try {
+          await supabaseRequest(supabaseCfg, `quotes?id=eq.${encodeURIComponent(quoteId)}`, {
+            method: "PATCH",
+            headers: { Prefer: "return=minimal" },
+            body: JSON.stringify({ execution_status: "executing" }),
+          });
+        } catch (_) { /* non-fatal */ }
+      }
       sendJson(response, 200, { ok: true });
       return true;
     }
@@ -1483,7 +1493,7 @@ async function handleApi(request, response, url) {
     }
   }
 
-  // PATCH /api/quotes/:id — 局部字段更新（供前端 approve 回调更新 execution_status）
+  // PATCH /api/quotes/:id — 局部字段更新（execution_status / owner_id，仅 manager/admin 可写）
   if (request.method === "PATCH") {
     const quoteId = matchIdRoute(url.pathname, "quotes");
     if (quoteId) {

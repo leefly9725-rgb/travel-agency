@@ -10,6 +10,8 @@
     .initializing-project #preview-aside,
     .initializing-project .quote-items-section { display: none !important; }
     .initializing-project #standard-editor-grid { grid-template-columns: 1fr !important; }
+    /* 隐藏 form-main-panel 内容（含标题），避免 project_based 初始化期间显示错误标题 */
+    .initializing-project .form-main-panel { visibility: hidden; }
   </style>
   <script>
     (function () {

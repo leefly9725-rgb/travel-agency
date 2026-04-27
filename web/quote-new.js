@@ -1635,6 +1635,10 @@ async function bootstrap() {
     const formTitleEl = document.getElementById("quote-form-title");
     if (formTitleEl) formTitleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑报价单";
     document.getElementById("quote-form-mode").textContent = "编辑模式";
+    const editSubmitBtn = form.querySelector('button[type="submit"]');
+    if (editSubmitBtn && quote.pricingMode !== "project_based") {
+      editSubmitBtn.textContent = "更新报价";
+    }
   }
 
   const today = window.AppUtils.getToday();

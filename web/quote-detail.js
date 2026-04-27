@@ -160,8 +160,8 @@ function renderActionButtons(quote) {
     } else if (status === "rejected") {
       const btn = document.createElement("button");
       btn.className = "button-link small-link workflow-btn";
-      btn.style.cursor = "pointer";
-      btn.textContent = "打回重改";
+      btn.style.cssText = "background:var(--accent);color:#fff;border:none;cursor:pointer";
+      btn.textContent = "重开草稿";
       btn.addEventListener("click", () => reopenQuote(quote.id, btn));
       container.insertBefore(btn, container.firstChild);
     }
@@ -169,7 +169,7 @@ function renderActionButtons(quote) {
     if (status === "pending") {
       const rejectBtn = document.createElement("button");
       rejectBtn.className = "button-link small-link workflow-btn";
-      rejectBtn.style.cssText = "background:var(--error-text);color:#fff;border:none;cursor:pointer";
+      rejectBtn.style.cssText = "background:var(--error-text);color:#fff;border:none;cursor:pointer;margin-left:8px";
       rejectBtn.textContent = "拒绝";
       rejectBtn.addEventListener("click", () => showRejectDialog(quote.id));
 
@@ -181,8 +181,23 @@ function renderActionButtons(quote) {
 
       container.insertBefore(rejectBtn, container.firstChild);
       container.insertBefore(approveBtn, container.firstChild);
+    } else if (status === "approved" || status === "rejected") {
+      const reopenBtn = document.createElement("button");
+      reopenBtn.className = "button-link small-link workflow-btn";
+      reopenBtn.style.cssText = "background:var(--accent);color:#fff;border:none;cursor:pointer";
+      reopenBtn.textContent = "重开草稿";
+      reopenBtn.addEventListener("click", () => reopenQuote(quote.id, reopenBtn));
+      container.insertBefore(reopenBtn, container.firstChild);
     }
   }
+
+  // 删除按钮（追加到行尾，与主操作保持视觉距离）
+  const deleteBtn = document.createElement("button");
+  deleteBtn.className = "button-link small-link workflow-btn";
+  deleteBtn.style.cssText = "background:transparent;color:var(--error-text);border:1.5px solid var(--error-text);cursor:pointer;margin-left:16px";
+  deleteBtn.textContent = "删除报价";
+  deleteBtn.addEventListener("click", () => deleteQuote(quote.id, quote.projectName || quote.quoteNumber));
+  container.appendChild(deleteBtn);
 }
 
 // ── Workflow action functions ──────────────────────────────────────────────────
@@ -211,13 +226,7 @@ async function approveQuote(quoteId, btn) {
       { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "approve", note: "" }) },
       "批准失败，请稍后重试"
     );
-    // 批准成功后前端同步更新 execution_status → executing
-    await window.AppUtils.fetchJson(
-      `/api/quotes/${encodeURIComponent(quoteId)}`,
-      { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ execution_status: "executing" }) },
-      "更新执行状态失败"
-    ).catch(() => {}); // 非致命
-    window.AppUtils.setFlash("报价单已批准，执行状态已更新为「执行中」。", "success");
+    window.AppUtils.setFlash("报价单已批准，请刷新后确认执行状态是否已更新为「执行中」。", "success");
     window.location.reload();
   } catch (e) {
     window.AppUtils.showMessage("quote-message", e.message, "error");
@@ -287,6 +296,22 @@ async function reopenQuote(quoteId, btn) {
   }
 }
 
+async function deleteQuote(quoteId, quoteName) {
+  if (!window.confirm(`确认删除报价单「${quoteName}」？\n\n此操作不可撤销，删除后数据将无法恢复。`)) return;
+  try {
+    await window.AppUtils.fetchJson(
+      `/api/quotes/${encodeURIComponent(quoteId)}`,
+      { method: "DELETE" },
+      "删除失败，请稍后重试"
+    );
+    window.AppUtils.setFlash("报价单已删除。", "success");
+    const fallback = "/standard-quotes.html";
+    window.location.href = window.AppReturn ? window.AppReturn.getReturnUrl(fallback) : fallback;
+  } catch (e) {
+    window.AppUtils.showMessage("quote-message", e.message, "error");
+  }
+}
+
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
 let cachedQuote = null;
 
@@ -305,6 +330,7 @@ async function bootstrap() {
     const projectArchiveId = quote.projectId || quote.id;
     const status = quote.status || "draft";
     const execStatus = quote.executionStatus || quote.execution_status || "preparing";
+    const items = Array.isArray(quote.items) ? quote.items : [];
     const container = document.getElementById("quote-detail");
 
     container.innerHTML = `
@@ -347,9 +373,9 @@ async function bootstrap() {
         <div class="metric"><span>毛利率</span><strong>${quote.grossMargin}%</strong></div>
       </div>
       <div class="panel subpanel section-spacing">
-        <div class="panel-head"><h2>报价项明细</h2><span>${quote.items.length} 项</span></div>
+        <div class="panel-head"><h2>报价项明细</h2><span>${items.length} 项</span></div>
         <div class="table-like">
-          ${quote.items.length > 0 ? quote.items.map((item) => `
+          ${items.length > 0 ? items.map((item) => `
             <div class="table-row table-row-wide table-row-split">
               <div>
                 <strong>${window.AppUi.getLabel("quoteItemTypeLabels", item.type)} / ${item.name}</strong>
