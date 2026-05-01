@@ -577,6 +577,7 @@ test("POST /api/customer-standard-quotations/:id/share-token returns a signed cu
     const payload = await response.json();
     assert.equal(typeof payload.token, "string");
     assert.equal(payload.token.length > 20, true);
+    assert.equal(/[\/+=]/.test(payload.token), false);
     assert.equal(typeof payload.expiresAt, "string");
     assert.equal(payload.url.includes("/standard-quotation.html?token="), true);
     assert.equal(payload.url.includes("lang=bi"), true);
