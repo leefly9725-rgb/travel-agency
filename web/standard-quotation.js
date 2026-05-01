@@ -3,9 +3,22 @@
 
   var params   = new URLSearchParams(window.location.search);
   var QUOTE_ID = params.get("id");
+  var ACCESS_TOKEN = params.get("token");
   var lang     = params.get("lang")      || "bi";
   var taxMode  = params.get("taxMode")   || "included";
   var showTerms = params.get("showTerms") !== "0";
+
+  if (!window.AuthStore) {
+    window.AuthStore = {
+      getToken: function () {
+        return sessionStorage.getItem("app_token") || localStorage.getItem("app_token");
+      },
+      clearSession: function () {
+        sessionStorage.removeItem("app_token");
+        localStorage.removeItem("app_token");
+      },
+    };
+  }
 
   // ── Label maps ────────────────────────────────────────────────────────────
   var ZH = {
@@ -432,13 +445,15 @@
       backLink.href = "/quote-detail.html?id=" + encodeURIComponent(QUOTE_ID);
     }
 
-    if (!QUOTE_ID) {
+    if (!ACCESS_TOKEN && !QUOTE_ID) {
       showError("缺少报价编号，请从报价详情页进入。");
       return;
     }
 
     window.AppUtils.fetchJson(
-      "/api/customer-standard-quotations/" + encodeURIComponent(QUOTE_ID),
+      ACCESS_TOKEN
+        ? "/api/customer-standard-quotations/by-token/" + encodeURIComponent(ACCESS_TOKEN)
+        : "/api/customer-standard-quotations/" + encodeURIComponent(QUOTE_ID),
       null,
       "报价单加载失败，请稍后重试。"
     ).then(function (quote) {

@@ -1,4 +1,5 @@
 const http = require("node:http");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { pinyin } = require("pinyin-pro");
@@ -100,12 +101,14 @@ function sendFile(response, filePath) {
 
   // HTML 文件：读取全文，注入 window.__ENV__，再响应
   if (ext === ".html") {
-    const envScript = `<script>\nwindow.__ENV__ = {\n  SUPABASE_URL: ${JSON.stringify(process.env.SUPABASE_URL || "")},\n  SUPABASE_ANON_KEY: ${JSON.stringify(process.env.SUPABASE_ANON_KEY || "")}\n};\n</script>`;
     let html = fs.readFileSync(filePath, "utf8");
-    if (html.includes("</head>")) {
-      html = html.replace("</head>", envScript + "\n</head>");
-    } else {
-      html = html.replace("<body>", envScript + "\n<body>");
+    if (html.includes("auth-guard.js")) {
+      const envScript = `<script>\nwindow.__ENV__ = {\n  SUPABASE_URL: ${JSON.stringify(process.env.SUPABASE_URL || "")},\n  SUPABASE_ANON_KEY: ${JSON.stringify(process.env.SUPABASE_ANON_KEY || "")}\n};\n</script>`;
+      if (html.includes("</head>")) {
+        html = html.replace("</head>", envScript + "\n</head>");
+      } else {
+        html = html.replace("<body>", envScript + "\n<body>");
+      }
     }
     response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
     response.end(html);
@@ -1169,6 +1172,66 @@ function buildCustomerQuotePayload(enriched) {
     items:       items.map(_sanitizeCustomerItem),
   };
 }
+
+function _base64UrlEncode(value) {
+  return Buffer.from(value).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function _base64UrlDecode(value) {
+  const normalized = String(value || "").replace(/-/g, "+").replace(/_/g, "/");
+  const padded = normalized + "=".repeat((4 - (normalized.length % 4)) % 4);
+  return Buffer.from(padded, "base64").toString("utf8");
+}
+
+function _getCustomerQuoteTokenSecret() {
+  const secret = process.env.JWT_SECRET || process.env.SESSION_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (secret) return secret;
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL === "1") {
+    throw new Error("Customer quote token secret is not configured.");
+  }
+  return "lds-ops-dev-customer-quote-token-secret";
+}
+
+function _signCustomerQuoteTokenPayload(payload) {
+  const body = _base64UrlEncode(JSON.stringify(payload));
+  const signature = crypto.createHmac("sha256", _getCustomerQuoteTokenSecret()).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+function createCustomerQuoteShareToken(quoteId, validityDays = 30) {
+  const days = Number.isFinite(Number(validityDays)) ? Number(validityDays) : 30;
+  const safeDays = Math.min(Math.max(days, 1), 365);
+  const now = Math.floor(Date.now() / 1000);
+  const exp = now + Math.round(safeDays * 24 * 60 * 60);
+  const token = _signCustomerQuoteTokenPayload({
+    qid: String(quoteId || ""),
+    purpose: "customer_standard_quote",
+    iat: now,
+    exp,
+    salt: crypto.randomBytes(12).toString("base64url"),
+  });
+  return { token, expiresAt: new Date(exp * 1000).toISOString() };
+}
+
+function verifyCustomerQuoteShareToken(token) {
+  const parts = String(token || "").split(".");
+  if (parts.length !== 2 || !parts[0] || !parts[1]) return null;
+  const expected = crypto.createHmac("sha256", _getCustomerQuoteTokenSecret()).update(parts[0]).digest("base64url");
+  const actualBuffer = Buffer.from(parts[1]);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(actualBuffer, expectedBuffer)) {
+    return null;
+  }
+  let payload;
+  try {
+    payload = JSON.parse(_base64UrlDecode(parts[0]));
+  } catch {
+    return null;
+  }
+  if (!payload || payload.purpose !== "customer_standard_quote" || !payload.qid) return null;
+  if (!Number.isFinite(Number(payload.exp)) || Number(payload.exp) < Math.floor(Date.now() / 1000)) return null;
+  return { quoteId: String(payload.qid), payload };
+}
 // ── End customer quotation sanitizers ────────────────────────────────────────
 
 async function handleApi(request, response, url) {
@@ -1483,7 +1546,65 @@ async function handleApi(request, response, url) {
     }
   }
 
-  // GET /api/customer-standard-quotations/:id — 客户版报价单（白名单脱敏，不含内部字段）
+  // POST /api/customer-standard-quotations/:id/share-token — 内部生成客户访问链接
+  {
+    const shareMatch = url.pathname.match(/^\/api\/customer-standard-quotations\/([^/]+)\/share-token$/);
+    if (request.method === "POST" && shareMatch) {
+      const quoteId = decodeURIComponent(shareMatch[1]);
+      let enriched;
+      try {
+        const { quote } = await quoteStore.getQuoteById(quoteId);
+        enriched = enrichQuote(quote);
+      } catch {
+        sendJson(response, 404, { error: "报价不存在。" });
+        return true;
+      }
+      if ((enriched.pricingMode || "standard") === "project_based") {
+        sendJson(response, 400, { error: "当前报价不是标准报价，不支持客户版分享。" });
+        return true;
+      }
+      try {
+        const body = parseJsonBody(await readRequestBody(request));
+        const { token, expiresAt } = createCustomerQuoteShareToken(quoteId, body.validityDays);
+        const shareUrl = `/standard-quotation.html?token=${encodeURIComponent(token)}&lang=bi&taxMode=included&showTerms=1`;
+        sendJson(response, 200, { token, expiresAt, url: shareUrl });
+      } catch {
+        sendJson(response, 500, { error: "客户分享链接配置不可用。" });
+      }
+      return true;
+    }
+  }
+
+  // GET /api/customer-standard-quotations/by-token/:token — 客户版报价单公开 token 访问
+  if (request.method === "GET") {
+    const tokenMatch = url.pathname.match(/^\/api\/customer-standard-quotations\/by-token\/([^/]+)$/);
+    if (tokenMatch) {
+      let verified;
+      try {
+        verified = verifyCustomerQuoteShareToken(decodeURIComponent(tokenMatch[1]));
+      } catch {
+        verified = null;
+      }
+      if (!verified) {
+        sendJson(response, 401, { error: "客户报价链接无效或已过期。" });
+        return true;
+      }
+      try {
+        const { quote } = await quoteStore.getQuoteById(verified.quoteId);
+        const enriched = enrichQuote(quote);
+        if ((enriched.pricingMode || "standard") === "project_based") {
+          sendJson(response, 400, { error: "当前报价不是标准报价，不支持客户版接口。" });
+          return true;
+        }
+        sendJson(response, 200, buildCustomerQuotePayload(enriched));
+      } catch {
+        sendJson(response, 404, { error: "报价不存在。" });
+      }
+      return true;
+    }
+  }
+
+  // GET /api/customer-standard-quotations/:id — 内部预览客户版报价单（白名单脱敏，不含内部字段）
   if (request.method === "GET") {
     const csqMatch = url.pathname.match(/^\/api\/customer-standard-quotations\/([^/]+)$/);
     if (csqMatch) {

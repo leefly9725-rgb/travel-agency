@@ -1,11 +1,13 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { createServer } = require("../server/app");
 
 const tempDataFile = path.join(process.cwd(), "tests", "temp-seed.json");
 const blockedFetchPorts = new Set([1, 7, 9, 11, 13, 15, 17, 19, 20, 21, 22, 23, 25, 37, 42, 43, 53, 69, 77, 79, 87, 95, 101, 102, 103, 104, 109, 110, 111, 113, 115, 117, 119, 123, 135, 137, 139, 143, 161, 179, 389, 427, 465, 512, 513, 514, 515, 526, 530, 531, 532, 540, 548, 554, 556, 563, 587, 601, 636, 989, 990, 993, 995, 1719, 1720, 1723, 2049, 3659, 4045, 5060, 5061, 6000, 6566, 6665, 6666, 6667, 6668, 6669, 6697, 10080]);
+const testJwtSecret = "test-customer-quote-token-secret";
 
 const baseData = {
   quotes: [
@@ -92,6 +94,26 @@ function assertDeepNoKeys(value, forbiddenKeys, pathLabel = "payload") {
   }
 }
 
+function base64UrlEncode(value) {
+  return Buffer.from(value).toString("base64").replace(/=/g, "").replace(/\+/g, "-").replace(/\//g, "_");
+}
+
+function signCustomerQuoteToken(payload) {
+  const body = base64UrlEncode(JSON.stringify(payload));
+  const signature = crypto.createHmac("sha256", testJwtSecret).update(body).digest("base64url");
+  return `${body}.${signature}`;
+}
+
+function createExpiredCustomerQuoteToken(quoteId) {
+  return signCustomerQuoteToken({
+    qid: quoteId,
+    purpose: "customer_standard_quote",
+    iat: 1,
+    exp: 2,
+    salt: "expired-test",
+  });
+}
+
 function seedCustomerQuoteFixture() {
   const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
   data.quotes.push({
@@ -164,7 +186,9 @@ async function withServer(run) {
   fs.writeFileSync(tempDataFile, JSON.stringify(baseData, null, 2));
   process.env.DATA_FILE = "./tests/temp-seed.json";
   const _prevBypass = process.env.ALLOW_DEV_BYPASS;
+  const _prevJwtSecret = process.env.JWT_SECRET;
   process.env.ALLOW_DEV_BYPASS = 'true';
+  process.env.JWT_SECRET = testJwtSecret;
 
   let server;
   let port;
@@ -182,6 +206,7 @@ async function withServer(run) {
   if (!server) {
     delete process.env.DATA_FILE;
     if (_prevBypass === undefined) { delete process.env.ALLOW_DEV_BYPASS; } else { process.env.ALLOW_DEV_BYPASS = _prevBypass; }
+    if (_prevJwtSecret === undefined) { delete process.env.JWT_SECRET; } else { process.env.JWT_SECRET = _prevJwtSecret; }
     if (fs.existsSync(tempDataFile)) {
       fs.unlinkSync(tempDataFile);
     }
@@ -194,6 +219,7 @@ async function withServer(run) {
     await new Promise((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
     delete process.env.DATA_FILE;
     if (_prevBypass === undefined) { delete process.env.ALLOW_DEV_BYPASS; } else { process.env.ALLOW_DEV_BYPASS = _prevBypass; }
+    if (_prevJwtSecret === undefined) { delete process.env.JWT_SECRET; } else { process.env.JWT_SECRET = _prevJwtSecret; }
     if (fs.existsSync(tempDataFile)) {
       fs.unlinkSync(tempDataFile);
     }
@@ -206,6 +232,10 @@ function apiFetch(port, path, options = {}) {
     ...rest,
     headers: { Authorization: 'Bearer dev-bypass-token', ...headers },
   });
+}
+
+function publicFetch(port, path, options = {}) {
+  return fetch(`http://127.0.0.1:${port}${path}`, options);
 }
 
 test("GET /api/templates returns default templates when local data has none", async () => {
@@ -532,6 +562,69 @@ test("GET /api/customer-standard-quotations/:id returns whitelisted customer pay
     assert.equal(item.supplierId,       undefined, "item.supplierId must not be in customer payload");
     assert.equal(item.internalNotes,    undefined, "item.internalNotes must not be in customer payload");
     assertDeepNoKeys(payload, ["notes", ...customerPayloadForbiddenKeys]);
+  });
+});
+
+test("POST /api/customer-standard-quotations/:id/share-token returns a signed customer link", async () => {
+  await withServer(async (port) => {
+    seedCustomerQuoteFixture();
+    const response = await apiFetch(port, '/api/customer-standard-quotations/Q-CUSTOMER/share-token', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ validityDays: 7 }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(typeof payload.token, "string");
+    assert.equal(payload.token.length > 20, true);
+    assert.equal(typeof payload.expiresAt, "string");
+    assert.equal(payload.url.includes("/standard-quotation.html?token="), true);
+    assert.equal(payload.url.includes("lang=bi"), true);
+  });
+});
+
+test("GET /api/customer-standard-quotations/by-token/:token returns whitelisted customer payload", async () => {
+  await withServer(async (port) => {
+    seedCustomerQuoteFixture();
+    const tokenResponse = await apiFetch(port, '/api/customer-standard-quotations/Q-CUSTOMER/share-token', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ validityDays: 30 }),
+    });
+    assert.equal(tokenResponse.status, 200);
+    const { token } = await tokenResponse.json();
+
+    const response = await publicFetch(port, `/api/customer-standard-quotations/by-token/${encodeURIComponent(token)}`);
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.id, "Q-CUSTOMER");
+    assert.equal(payload.customerNotes, "Customer visible quote note");
+    assert.equal(payload.items[0].customerNotes, "Customer visible item note");
+    assertDeepNoKeys(payload, ["notes", ...customerPayloadForbiddenKeys]);
+  });
+});
+
+test("GET /api/customer-standard-quotations/by-token/:token rejects invalid token", async () => {
+  await withServer(async (port) => {
+    const response = await publicFetch(port, '/api/customer-standard-quotations/by-token/not-a-valid-token');
+    assert.equal([401, 403].includes(response.status), true);
+  });
+});
+
+test("GET /api/customer-standard-quotations/by-token/:token rejects expired token", async () => {
+  await withServer(async (port) => {
+    seedCustomerQuoteFixture();
+    const token = createExpiredCustomerQuoteToken("Q-CUSTOMER");
+    const response = await publicFetch(port, `/api/customer-standard-quotations/by-token/${encodeURIComponent(token)}`);
+    assert.equal([401, 403].includes(response.status), true);
+  });
+});
+
+test("GET /api/customer-standard-quotations/:id requires login and blocks public id enumeration", async () => {
+  await withServer(async (port) => {
+    seedCustomerQuoteFixture();
+    const response = await publicFetch(port, '/api/customer-standard-quotations/Q-CUSTOMER');
+    assert.equal(response.status, 401);
   });
 });
 

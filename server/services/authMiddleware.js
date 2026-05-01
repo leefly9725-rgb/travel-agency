@@ -41,6 +41,7 @@ const STATIC_EXTS = new Set([
  */
 function isPublicPath(pathname) {
   if (PUBLIC_PATHS.has(pathname)) return true;
+  if (/^\/api\/customer-standard-quotations\/by-token\/[^/]+$/.test(pathname)) return true;
   if (PUBLIC_HTML.has(pathname)) return true;
   const dot = pathname.lastIndexOf('.');
   if (dot !== -1 && STATIC_EXTS.has(pathname.slice(dot).toLowerCase())) return true;
@@ -58,6 +59,7 @@ const ROUTE_PERMISSION_MAP = [
   ['GET',    /^\/api\/quotes$/,                        'standard_quote.view'],
   ['GET',    /^\/api\/quotes\/[^/]+$/,                 'standard_quote.view'],
   ['GET',    /^\/api\/customer-standard-quotations\/[^/]+$/, 'standard_quote.view'],
+  ['POST',   /^\/api\/customer-standard-quotations\/[^/]+\/share-token$/, 'standard_quote.view'],
   ['POST',   /^\/api\/quotes\/calculate$/,             'standard_quote.view'],
   ['POST',   /^\/api\/quotes$/,                        'standard_quote.create'],
   ['PUT',    /^\/api\/quotes\/[^/]+$/,                 'standard_quote.edit'],
