@@ -211,6 +211,13 @@ function renderActionButtons(quote) {
     sqLink.target = "_blank";
     sqLink.rel = "noopener noreferrer";
     container.appendChild(sqLink);
+
+    const shareBtn = document.createElement("button");
+    shareBtn.className = "button-link small-link workflow-btn";
+    shareBtn.style.cssText = "background:transparent;color:var(--accent);border:1.5px solid var(--accent);cursor:pointer;margin-left:8px";
+    shareBtn.textContent = "生成客户分享链接";
+    shareBtn.addEventListener("click", () => generateCustomerShareLink(quote.id, shareBtn));
+    container.appendChild(shareBtn);
   }
 
   // 删除按钮（追加到行尾，与主操作保持视觉距离）
@@ -332,6 +339,106 @@ async function cloneQuote(quoteId, btn) {
   } catch (e) {
     window.AppUtils.showMessage("quote-message", e.message, "error");
     if (btn) { btn.disabled = false; btn.textContent = "复制报价"; }
+  }
+}
+
+function formatShareExpiresAt(value) {
+  if (!value) return "";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const p = n => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+
+async function requestCustomerShareToken(quoteId) {
+  const isDev = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1";
+  const token = window.AuthStore?.getToken() || (isDev ? "dev-bypass-token" : "");
+  const headers = { "Content-Type": "application/json" };
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const response = await fetch(`/api/customer-standard-quotations/${encodeURIComponent(quoteId)}/share-token`, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({ validityDays: 30 }),
+  });
+  let payload = {};
+  try {
+    payload = await response.json();
+  } catch {
+    // Ignore response parse failures here; status-based handling below is enough.
+  }
+  if (!response.ok) {
+    const err = new Error("share-token request failed");
+    err.status = response.status;
+    throw err;
+  }
+  return payload;
+}
+
+async function copyCustomerShareLink(link, inputEl, statusEl) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(link);
+      statusEl.textContent = "已复制客户分享链接";
+      statusEl.style.color = "var(--success-text,#2e7d32)";
+      return;
+    } catch {
+      // Fall through to manual selection.
+    }
+  }
+  inputEl.focus();
+  inputEl.select();
+  statusEl.textContent = "已选中链接，请手动复制。";
+  statusEl.style.color = "var(--text-secondary,#666)";
+}
+
+function showCustomerShareDialog(link, expiresAt) {
+  const overlay = document.createElement("div");
+  overlay.style.cssText = "position:fixed;inset:0;background:rgba(0,0,0,0.45);display:flex;align-items:center;justify-content:center;z-index:2000;padding:16px";
+  overlay.innerHTML = `
+    <div style="background:var(--panel);border-radius:12px;padding:24px;width:560px;max-width:100%;box-shadow:0 8px 32px rgba(0,0,0,0.18)">
+      <h2 style="font-size:16px;font-weight:700;margin:0 0 8px">客户分享链接已生成</h2>
+      <p style="font-size:13px;color:var(--text-secondary,#666);margin:0 0 14px">默认 30 天有效，请仅发送给对应客户。</p>
+      <input id="customer-share-link-input" readonly value="${esc(link)}" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid var(--line);border-radius:8px;font:inherit;background:var(--bg);color:var(--ink)" />
+      <p id="customer-share-expires" style="font-size:12px;color:var(--text-secondary,#666);margin:8px 0 0">${expiresAt ? `有效期至：${esc(expiresAt)}` : "有效期：默认 30 天"}</p>
+      <p id="customer-share-status" style="font-size:12px;min-height:18px;margin:8px 0 0"></p>
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px;flex-wrap:wrap">
+        <button id="customer-share-copy" style="padding:8px 18px;border-radius:8px;border:none;background:var(--accent);color:#fff;font-size:13px;font-weight:600;cursor:pointer">复制链接</button>
+        <button id="customer-share-open" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--accent);background:transparent;color:var(--accent);font-size:13px;font-weight:600;cursor:pointer">打开客户报价单</button>
+        <button id="customer-share-close" style="padding:8px 18px;border-radius:8px;border:1.5px solid var(--line);background:transparent;color:var(--ink);font-size:13px;font-weight:600;cursor:pointer">关闭</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+
+  const inputEl = overlay.querySelector("#customer-share-link-input");
+  const statusEl = overlay.querySelector("#customer-share-status");
+  overlay.querySelector("#customer-share-copy").addEventListener("click", () => copyCustomerShareLink(link, inputEl, statusEl));
+  overlay.querySelector("#customer-share-open").addEventListener("click", () => window.open(link, "_blank", "noopener,noreferrer"));
+  overlay.querySelector("#customer-share-close").addEventListener("click", () => overlay.remove());
+  overlay.addEventListener("click", e => { if (e.target === overlay) overlay.remove(); });
+  inputEl.focus();
+  inputEl.select();
+}
+
+async function generateCustomerShareLink(quoteId, btn) {
+  if (btn) { btn.disabled = true; btn.textContent = "生成中..."; }
+  try {
+    const payload = await requestCustomerShareToken(quoteId);
+    const link = payload.url ? new URL(payload.url, window.location.origin).toString() : "";
+    if (!link) throw new Error("empty share url");
+    showCustomerShareDialog(link, formatShareExpiresAt(payload.expiresAt));
+  } catch (e) {
+    let message = "客户分享链接生成失败，请稍后重试。";
+    if (e && (e.status === 401 || e.status === 403)) {
+      message = "当前账号无权限生成客户分享链接，请重新登录或联系管理员。";
+    } else if (e && e.status === 404) {
+      message = "报价单不存在，无法生成客户分享链接。";
+    } else if (!e || !e.status) {
+      message = "网络异常，客户分享链接生成失败。";
+    }
+    window.AppUtils.showMessage("quote-message", message, "error");
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = "生成客户分享链接"; }
   }
 }
 
