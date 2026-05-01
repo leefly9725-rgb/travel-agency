@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>客户报价单</title>
+  <script src="/auth-guard.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", sans-serif;
+      background: #eff1f5;
+      color: #111;
+      min-height: 100vh;
+    }
+
+    /* ── Toolbar ─────────────────────────────────────────────────────────── */
+    .sq-toolbar {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px 20px; padding: 10px 20px;
+      background: #fff; border-bottom: 1px solid #dde2ec;
+      font-size: 13px; box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+    }
+    .sq-back {
+      color: #1565c0; text-decoration: none; font-weight: 600;
+      white-space: nowrap; flex-shrink: 0;
+    }
+    .sq-back:hover { text-decoration: underline; }
+    .sq-toolbar-controls {
+      display: flex; flex-wrap: wrap; align-items: center;
+      gap: 10px 16px; flex: 1;
+    }
+    .sq-ctrl { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .sq-ctrl label { font-size: 12px; color: #666; }
+    .sq-ctrl select {
+      padding: 5px 8px; border: 1.5px solid #d0d6e0; border-radius: 6px;
+      font-size: 12px; color: #333; cursor: pointer; background: #fafbfc;
+    }
+    .sq-ctrl select:focus { outline: none; border-color: #1565c0; }
+    .sq-cb {
+      display: flex; align-items: center; gap: 5px; cursor: pointer;
+      font-size: 12px; color: #444; user-select: none;
+    }
+    .sq-toolbar-spacer { flex: 1; }
+    .sq-print-btn {
+      padding: 6px 18px; background: #1e3352; color: #fff;
+      border: none; border-radius: 6px; font-size: 13px;
+      font-weight: 600; cursor: pointer; white-space: nowrap;
+    }
+    .sq-print-btn:hover { background: #253f61; }
+
+    /* ── Preview area ────────────────────────────────────────────────────── */
+    .sq-preview-wrap { padding: 28px 20px 60px; }
+    .sq-page {
+      width: 210mm;
+      min-height: 297mm;
+      background: #fff;
+      margin: 0 auto;
+      padding: 18mm 18mm 22mm;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+      border-radius: 4px;
+      line-height: 1.5;
+    }
+
+    /* ── State messages ──────────────────────────────────────────────────── */
+    .sq-state { padding: 60px 24px; text-align: center; font-size: 14px; color: #666; }
+    .sq-err-box {
+      display: inline-block; padding: 20px 28px;
+      background: #fff5f5; border: 1px solid #f5c6c6;
+      border-radius: 8px; text-align: center;
+    }
+
+    /* ── Sub-rows (hotel/vehicle detail expansions) ───────────────────────── */
+    .sq-sub-row td { background: #fafbfc !important; }
+
+    /* ── Print ───────────────────────────────────────────────────────────── */
+    @media print {
+      *, *::before, *::after {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+      }
+      body { background: #fff !important; }
+      .sq-toolbar { display: none !important; }
+      .sq-preview-wrap { padding: 0 !important; }
+      .sq-page {
+        width: 100% !important;
+        min-height: auto !important;
+        padding: 0 !important;
+        box-shadow: none !important;
+        border-radius: 0 !important;
+        margin: 0 !important;
+      }
+    }
+    @page { size: A4 portrait; margin: 15mm; }
+  </style>
+</head>
+<body style="visibility:hidden">
+
+  <!-- Toolbar -->
+  <div class="sq-toolbar">
+    <a class="sq-back" id="sq-back-link" href="/standard-quotes.html">← 返回详情</a>
+    <div class="sq-toolbar-controls">
+      <div class="sq-ctrl">
+        <label for="sq-lang">语言 / Language</label>
+        <select id="sq-lang">
+          <option value="bi">中文 + English</option>
+          <option value="zh">仅中文</option>
+          <option value="en">English only</option>
+        </select>
+      </div>
+      <div class="sq-ctrl">
+        <label for="sq-tax">税务 / Tax</label>
+        <select id="sq-tax">
+          <option value="included">含税 / Incl. VAT</option>
+          <option value="excluded">不含税 / Excl. VAT</option>
+        </select>
+      </div>
+      <label class="sq-cb">
+        <input type="checkbox" id="sq-terms" />
+        商务条款 / Terms
+      </label>
+      <div class="sq-toolbar-spacer"></div>
+      <button class="sq-print-btn" onclick="window.print()">打印 / Print</button>
+    </div>
+  </div>
+
+  <!-- Loading -->
+  <div id="sq-loading" class="sq-state">正在加载报价单…</div>
+
+  <!-- Error -->
+  <div id="sq-error" class="sq-state" hidden></div>
+
+  <!-- A4 preview -->
+  <div id="sq-preview-wrap" class="sq-preview-wrap" hidden>
+    <div class="sq-page" id="sq-page"></div>
+  </div>
+
+  <script src="/app-utils.js"></script>
+  <script src="/standard-quotation.js"></script>
+</body>
+</html>

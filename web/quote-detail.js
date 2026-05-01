@@ -201,6 +201,18 @@ function renderActionButtons(quote) {
     container.appendChild(cloneBtn);
   }
 
+  // 客户报价单按钮（仅标准报价，在新标签打开）
+  if ((quote.pricingMode || "standard") !== "project_based") {
+    const sqLink = document.createElement("a");
+    sqLink.className = "button-link small-link workflow-btn";
+    sqLink.style.cssText = "margin-left:8px;text-decoration:none;display:inline-block";
+    sqLink.textContent = "客户报价单";
+    sqLink.href = "/standard-quotation.html?id=" + encodeURIComponent(quote.id) + "&lang=bi&taxMode=included&showTerms=1";
+    sqLink.target = "_blank";
+    sqLink.rel = "noopener noreferrer";
+    container.appendChild(sqLink);
+  }
+
   // 删除按钮（追加到行尾，与主操作保持视觉距离）
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "button-link small-link workflow-btn";
