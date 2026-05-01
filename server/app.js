@@ -1076,6 +1076,17 @@ function getMetaPayload(data, templates, storageMode) {
 // These functions construct a strict whitelist payload for the customer-facing
 // quotation API. They must never return cost, margin, or internal workflow fields.
 
+function _customerVisibleNotes(source) {
+  if (!source || typeof source !== "object") return "";
+  return String(
+    source.customerNotes ??
+    source.customer_notes ??
+    source.publicNotes ??
+    source.public_notes ??
+    ""
+  );
+}
+
 function _sanitizeCustomerHotelDetails(details) {
   if (!Array.isArray(details)) return [];
   return details.map((d) => ({
@@ -1083,7 +1094,7 @@ function _sanitizeCustomerHotelDetails(details) {
     roomCount:     d.roomCount    || d.room_count  || 0,
     nights:        d.nights       || 0,
     priceSubtotal: d.priceSubtotal != null ? d.priceSubtotal : 0,
-    notes:         d.notes        || "",
+    customerNotes: _customerVisibleNotes(d),
   }));
 }
 
@@ -1095,7 +1106,7 @@ function _sanitizeCustomerVehicleDetails(details) {
     billingQuantity: d.billingQuantity || 1,
     pricingUnit:     d.pricingUnit     || "",
     priceSubtotal:   d.priceSubtotal   != null ? d.priceSubtotal : 0,
-    notes:           d.notes           || "",
+    customerNotes:   _customerVisibleNotes(d),
   }));
 }
 
@@ -1107,7 +1118,7 @@ function _sanitizeCustomerServiceDetails(details) {
     serviceDuration: d.serviceDuration || "",
     quantity:        d.quantity        || 1,
     priceSubtotal:   d.priceSubtotal   != null ? d.priceSubtotal : 0,
-    notes:           d.notes           || "",
+    customerNotes:   _customerVisibleNotes(d),
   }));
 }
 
@@ -1116,6 +1127,7 @@ function _sanitizeCustomerMealDetails(md) {
   return {
     mealPeople:  md.mealPeople || md.meal_people || 0,
     totalAmount: md.totalAmount != null ? md.totalAmount : 0,
+    customerNotes: _customerVisibleNotes(md),
   };
 }
 
@@ -1127,7 +1139,7 @@ function _sanitizeCustomerItem(item) {
     unit:           item.unit       || "",
     price:          item.price      || item.salesUnitPrice || 0,
     totalPrice:     item.totalPrice != null ? item.totalPrice : 0,
-    notes:          item.notes      || "",
+    customerNotes:  _customerVisibleNotes(item),
     hotelDetails:   _sanitizeCustomerHotelDetails(item.hotelDetails   || item.hotel_details),
     vehicleDetails: _sanitizeCustomerVehicleDetails(item.vehicleDetails || item.vehicle_details),
     serviceDetails: _sanitizeCustomerServiceDetails(item.serviceDetails || item.service_details),
@@ -1151,7 +1163,7 @@ function buildCustomerQuotePayload(enriched) {
     paxCount:    enriched.paxCount     || 0,
     currency:    enriched.currency     || "EUR",
     language:    enriched.language     || "zh-CN",
-    notes:       enriched.notes        || "",
+    customerNotes: _customerVisibleNotes(enriched),
     pricingMode: enriched.pricingMode  || "standard",
     totalPrice:  enriched.totalPrice   != null ? enriched.totalPrice : 0,
     items:       items.map(_sanitizeCustomerItem),

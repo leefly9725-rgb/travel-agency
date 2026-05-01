@@ -145,7 +145,7 @@
         + "<td style=\"text-align:center;font-size:10.5px;padding:5px 8px\">" + nights + " " + nightLabel + "</td>"
         + "<td style=\"text-align:right;font-size:10.5px;color:#555;padding:5px 8px\">" + fmt(nightly, cur) + "</td>"
         + "<td style=\"text-align:right;font-size:10.5px;font-weight:600;padding:5px 8px\">" + fmt(sub, cur) + "</td>"
-        + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(d.notes || "") + "</td>"
+        + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(d.customerNotes || d.notes || "") + "</td>"
         + "</tr>";
     }).join("");
   }
@@ -167,7 +167,7 @@
         + "<td style=\"text-align:center;font-size:10.5px;padding:5px 8px\">" + bq + " " + esc(pu) + "</td>"
         + "<td></td>"
         + "<td style=\"text-align:right;font-size:10.5px;font-weight:600;padding:5px 8px\">" + fmt(sub, cur) + "</td>"
-        + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(d.notes || "") + "</td>"
+        + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(d.customerNotes || d.notes || "") + "</td>"
         + "</tr>";
     }).join("");
   }
@@ -188,7 +188,7 @@
         + "<td style=\"text-align:center;font-size:10.5px;padding:5px 8px\">" + esc(dur) + "</td>"
         + "<td></td>"
         + "<td style=\"text-align:right;font-size:10.5px;font-weight:600;padding:5px 8px\">" + fmt(sub, cur) + "</td>"
-        + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(d.notes || "") + "</td>"
+        + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(d.customerNotes || d.notes || "") + "</td>"
         + "</tr>";
     }).join("");
   }
@@ -198,6 +198,7 @@
     if (!md) return "";
     var total = md.totalAmount != null ? md.totalAmount : (md.total_amount || 0);
     var ppl   = md.mealPeople || md.meal_people;
+    var notes = md.customerNotes || md.notes || "";
     var desc  = ppl ? paxSuffix().replace(" ", ppl + " ") : "";
     var diningLabel = lang === "en" ? "Dining total" : lang === "zh" ? "餐饮合计" : "餐饮合计 / Dining total";
     return "<tr class=\"sq-sub-row\">"
@@ -205,7 +206,7 @@
       + "<td colspan=\"3\" style=\"padding:5px 8px 5px 24px;font-size:10.5px;color:#555;font-style:italic\">" + diningLabel + (desc ? " · " + esc(desc) : "") + "</td>"
       + "<td></td>"
       + "<td style=\"text-align:right;font-size:10.5px;font-weight:600;padding:5px 8px\">" + fmt(total, cur) + "</td>"
-      + "<td></td>"
+      + "<td style=\"font-size:9.5px;color:#888;padding:5px 8px\">" + esc(notes) + "</td>"
       + "</tr>";
   }
 
@@ -237,7 +238,7 @@
       var unit    = item.unit     || "";
       var price   = item.price    || item.salesUnitPrice || 0;
       var sub     = item.totalPrice != null ? item.totalPrice : price * qty;
-      var notes   = item.notes    || "";
+      var notes   = item.customerNotes || item.notes || "";
 
       var hasHotel   = type === "hotel"                                    && (item.hotelDetails   || item.hotel_details   || []).length > 0;
       var hasVehicle = type === "vehicle"                                  && (item.vehicleDetails || item.vehicle_details || []).length > 0;
@@ -346,11 +347,12 @@
     var contactVal = (quote.contactName || "") + (quote.contactPhone ? " · " + quote.contactPhone : "");
 
     var notesBlock = "";
-    if (quote.notes) {
+    var customerNotes = quote.customerNotes || quote.notes || "";
+    if (customerNotes) {
       var notesTitle = lang === "en" ? "Notes" : lang === "zh" ? "备注" : "备注 / Notes";
       notesBlock = "<div style=\"margin-top:14px;padding:10px 14px;background:#fff9f0;border-radius:6px;border-left:3px solid #c9a040;font-size:11px;color:#555;line-height:1.6\">"
         + "<strong style=\"font-size:10px;letter-spacing:0.06em;text-transform:uppercase;color:#c9a040\">" + esc(notesTitle) + "</strong>"
-        + "<p style=\"margin:4px 0 0\">" + esc(quote.notes) + "</p>"
+        + "<p style=\"margin:4px 0 0\">" + esc(customerNotes) + "</p>"
         + "</div>";
     }
 

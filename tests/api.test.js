@@ -52,6 +52,114 @@ const baseData = {
   documents: [],
 };
 
+const customerPayloadForbiddenKeys = [
+  "totalCost",
+  "grossProfit",
+  "grossMargin",
+  "status",
+  "executionStatus",
+  "ownerId",
+  "reviewerId",
+  "reviewedAt",
+  "reviewNote",
+  "dataQuality",
+  "submittedAt",
+  "createdAt",
+  "updatedAt",
+  "projectId",
+  "tripDate",
+  "cost",
+  "costUnitPrice",
+  "supplier",
+  "supplierId",
+  "supplierName",
+  "internalNotes",
+  "costSubtotal",
+  "costNightlyRate",
+];
+
+function assertDeepNoKeys(value, forbiddenKeys, pathLabel = "payload") {
+  if (!value || typeof value !== "object") return;
+  if (Array.isArray(value)) {
+    value.forEach((entry, index) => assertDeepNoKeys(entry, forbiddenKeys, `${pathLabel}[${index}]`));
+    return;
+  }
+  for (const key of forbiddenKeys) {
+    assert.equal(Object.prototype.hasOwnProperty.call(value, key), false, `${pathLabel}.${key} must not be in customer payload`);
+  }
+  for (const [key, child] of Object.entries(value)) {
+    assertDeepNoKeys(child, forbiddenKeys, `${pathLabel}.${key}`);
+  }
+}
+
+function seedCustomerQuoteFixture() {
+  const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+  data.quotes.push({
+    id: "Q-CUSTOMER",
+    projectId: "P-CUSTOMER",
+    quoteNumber: "QT-CUSTOMER",
+    clientName: "Client",
+    projectName: "Project",
+    contactName: "Contact",
+    contactPhone: "123",
+    language: "zh-CN",
+    currency: "EUR",
+    startDate: "2026-06-01",
+    endDate: "2026-06-02",
+    tripDate: "2026-06-01",
+    travelDays: 2,
+    destination: "Belgrade",
+    paxCount: 8,
+    notes: "Internal quote note: margin can move",
+    customerNotes: "Customer visible quote note",
+    status: "draft",
+    executionStatus: "internal_pending",
+    ownerId: "owner-1",
+    reviewerId: "reviewer-1",
+    reviewedAt: "2026-05-01T10:00:00Z",
+    reviewNote: "Internal manager review",
+    submittedAt: "2026-05-01T09:00:00Z",
+    createdAt: "2026-05-01T08:00:00Z",
+    updatedAt: "2026-05-01T11:00:00Z",
+    items: [
+      {
+        type: "hotel",
+        name: "Hotel",
+        unit: "night",
+        supplier: "Supplier",
+        supplierId: "S-1",
+        supplierName: "Supplier Internal Name",
+        currency: "EUR",
+        cost: 100,
+        price: 150,
+        quantity: 2,
+        notes: "Internal item note: supplier quoted lower",
+        publicNotes: "Customer visible item note",
+        internalNotes: "Internal execution reminder",
+        hotelDetails: [
+          {
+            roomType: "Standard",
+            roomCount: 2,
+            nights: 1,
+            costNightlyRate: 80,
+            priceNightlyRate: 150,
+            supplier: "Hotel Supplier",
+            supplierId: "HS-1",
+            notes: "Internal detail note: use net rate",
+            public_notes: "Customer visible room note",
+          }
+        ]
+      }
+    ],
+    dataQuality: {
+      reviewStatus: "flagged_review",
+      issues: ["Test issue"],
+      note: "Need manual review",
+    }
+  });
+  fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+}
+
 async function withServer(run) {
   fs.writeFileSync(tempDataFile, JSON.stringify(baseData, null, 2));
   process.env.DATA_FILE = "./tests/temp-seed.json";
@@ -376,21 +484,29 @@ test("POST /api/quotes/:id/clone returns 400 for project_based quote", async () 
 
 test("GET /api/customer-standard-quotations/:id returns whitelisted customer payload", async () => {
   await withServer(async (port) => {
-    const response = await apiFetch(port, '/api/customer-standard-quotations/Q-1');
+    seedCustomerQuoteFixture();
+    const response = await apiFetch(port, '/api/customer-standard-quotations/Q-CUSTOMER');
     assert.equal(response.status, 200);
     const payload = await response.json();
 
     // ── Required fields present ──────────────────────────────────────────
-    assert.equal(payload.id, "Q-1");
+    assert.equal(payload.id, "Q-CUSTOMER");
     assert.equal(payload.clientName, "Client");
     assert.equal(payload.projectName, "Project");
-    assert.equal(payload.quoteNumber, "QT-1");
+    assert.equal(payload.quoteNumber, "QT-CUSTOMER");
     assert.equal(payload.currency, "EUR");
     assert.equal(typeof payload.totalPrice, "number");
     assert.equal(Array.isArray(payload.items), true);
+    assert.equal(payload.customerNotes, "Customer visible quote note");
+    assert.equal(Object.prototype.hasOwnProperty.call(payload, "notes"), false, "top-level notes must not be in customer payload");
     assert.equal(payload.items[0].type, "hotel");
     assert.equal(payload.items[0].name, "Hotel");
     assert.equal(typeof payload.items[0].totalPrice, "number");
+    assert.equal(payload.items[0].customerNotes, "Customer visible item note");
+    assert.equal(Object.prototype.hasOwnProperty.call(payload.items[0], "notes"), false, "item.notes must not be in customer payload");
+    assert.equal(Array.isArray(payload.items[0].hotelDetails), true);
+    assert.equal(payload.items[0].hotelDetails[0].customerNotes, "Customer visible room note");
+    assert.equal(Object.prototype.hasOwnProperty.call(payload.items[0].hotelDetails[0], "notes"), false, "detail.notes must not be in customer payload");
 
     // ── Internal top-level fields must be absent ─────────────────────────
     assert.equal(payload.totalCost,       undefined, "totalCost must not be in customer payload");
@@ -415,6 +531,7 @@ test("GET /api/customer-standard-quotations/:id returns whitelisted customer pay
     assert.equal(item.supplierName,     undefined, "item.supplierName must not be in customer payload");
     assert.equal(item.supplierId,       undefined, "item.supplierId must not be in customer payload");
     assert.equal(item.internalNotes,    undefined, "item.internalNotes must not be in customer payload");
+    assertDeepNoKeys(payload, ["notes", ...customerPayloadForbiddenKeys]);
   });
 });
 
@@ -453,5 +570,3 @@ test("GET /api/customer-standard-quotations/:id returns 400 for project_based qu
     assert.equal(csqResponse.status, 400);
   });
 });
-
-
