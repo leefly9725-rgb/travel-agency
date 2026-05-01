@@ -1501,27 +1501,27 @@ async function bootstrap() {
       renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
     };
 
-    row.querySelector(“.delete-item”).addEventListener(“click”, () => {
-      const itemName = nameField.value.trim() || “该报价项目”;
-      if (!window.confirm(`确认删除”${itemName}”吗？`)) {
+    row.querySelector(".delete-item").addEventListener("click", () => {
+      const itemName = nameField.value.trim() || "该报价项目";
+      if (!window.confirm(`确认删除"${itemName}"吗？`)) {
         return;
       }
       row.remove();
       refreshSortButtons();
-      renderPreview(form).catch((error) => window.AppUtils.showMessage(“quote-message”, error.message, “error”));
+      renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
     });
 
-    row.querySelector(“.move-item-up”).addEventListener(“click”, () => {
+    row.querySelector(".move-item-up").addEventListener("click", () => {
       const prev = row.previousElementSibling;
-      if (prev && prev.classList.contains(“item-card”)) {
+      if (prev && prev.classList.contains("item-card")) {
         itemsContainer.insertBefore(row, prev);
         refreshSortButtons();
       }
     });
 
-    row.querySelector(“.move-item-down”).addEventListener(“click”, () => {
+    row.querySelector(".move-item-down").addEventListener("click", () => {
       const next = row.nextElementSibling;
-      if (next && next.classList.contains(“item-card”)) {
+      if (next && next.classList.contains("item-card")) {
         itemsContainer.insertBefore(next, row);
         refreshSortButtons();
       }
