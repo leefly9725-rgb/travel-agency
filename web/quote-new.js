@@ -338,7 +338,11 @@ function createItemRow(types, currencies, defaultCurrency) {
           <strong>报价项目</strong>
           <p class="meta">选择服务类型后，可继续编辑名称、币种、供应商和备注；酒店、用车、导游翻译与用餐类型支持专用录入模型。</p>
         </div>
-        <button type="button" class="ghost mini-button delete-item">删除此项</button>
+        <div style="display:flex;align-items:center;gap:4px">
+          <button type="button" class="ghost mini-button move-item-up">↑ 上移</button>
+          <button type="button" class="ghost mini-button move-item-down">↓ 下移</button>
+          <button type="button" class="ghost mini-button delete-item">删除此项</button>
+        </div>
       </div>
       <div class="item-card-grid quote-item-grid quote-item-grid-wide">
         <label class="field-block field-span-1"><span>服务类型</span><select name="type">${createOptionList(types, "hotel", "quoteItemTypeLabels")}</select></label>
@@ -1346,6 +1350,16 @@ async function bootstrap() {
     refreshMealLegacyNote(row);
   }
 
+  function refreshSortButtons() {
+    const cards = Array.from(itemsContainer.querySelectorAll('.item-card'));
+    cards.forEach((card, idx) => {
+      const upBtn = card.querySelector('.move-item-up');
+      const downBtn = card.querySelector('.move-item-down');
+      if (upBtn) upBtn.disabled = idx === 0;
+      if (downBtn) downBtn.disabled = idx === cards.length - 1;
+    });
+  }
+
   function bindPreviewRefresh(row) {
     row.querySelectorAll('input, select').forEach((input) => {
       input.addEventListener('input', () => renderPreview(form).catch((error) => window.AppUtils.showMessage('quote-message', error.message, 'error')));
@@ -1487,13 +1501,30 @@ async function bootstrap() {
       renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
     };
 
-    row.querySelector(".delete-item").addEventListener("click", () => {
-      const itemName = nameField.value.trim() || "该报价项目";
-      if (!window.confirm(`确认删除“${itemName}”吗？`)) {
+    row.querySelector(“.delete-item”).addEventListener(“click”, () => {
+      const itemName = nameField.value.trim() || “该报价项目”;
+      if (!window.confirm(`确认删除”${itemName}”吗？`)) {
         return;
       }
       row.remove();
-      renderPreview(form).catch((error) => window.AppUtils.showMessage("quote-message", error.message, "error"));
+      refreshSortButtons();
+      renderPreview(form).catch((error) => window.AppUtils.showMessage(“quote-message”, error.message, “error”));
+    });
+
+    row.querySelector(“.move-item-up”).addEventListener(“click”, () => {
+      const prev = row.previousElementSibling;
+      if (prev && prev.classList.contains(“item-card”)) {
+        itemsContainer.insertBefore(row, prev);
+        refreshSortButtons();
+      }
+    });
+
+    row.querySelector(“.move-item-down”).addEventListener(“click”, () => {
+      const next = row.nextElementSibling;
+      if (next && next.classList.contains(“item-card”)) {
+        itemsContainer.insertBefore(next, row);
+        refreshSortButtons();
+      }
     });
 
     row.querySelector(".add-hotel-detail").addEventListener("click", () => {
@@ -1539,6 +1570,7 @@ async function bootstrap() {
     bindPreviewRefresh(row);
     window.AppUtils.setChineseValidity(row);
     syncTypeUI();
+    refreshSortButtons();
     return row;
   }
 

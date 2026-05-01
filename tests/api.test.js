@@ -185,6 +185,40 @@ test("PUT /api/quotes/:id updates quote dates and recalculates mixed-currency it
   });
 });
 
+test("PUT /api/quotes/:id preserves items array order", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quotes/Q-1', {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quoteNumber: "QT-1",
+        clientName: "Client",
+        projectName: "Project",
+        contactName: "Contact",
+        contactPhone: "123",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-06-01",
+        endDate: "2026-06-02",
+        destination: "Belgrade",
+        paxCount: 8,
+        notes: "",
+        items: [
+          { type: "misc", name: "ItemC", unit: "项", supplier: "", currency: "EUR", cost: 10, price: 20, quantity: 1, notes: "" },
+          { type: "misc", name: "ItemA", unit: "项", supplier: "", currency: "EUR", cost: 30, price: 50, quantity: 1, notes: "" },
+          { type: "misc", name: "ItemB", unit: "项", supplier: "", currency: "EUR", cost: 50, price: 80, quantity: 1, notes: "" },
+        ],
+      }),
+    });
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.equal(payload.items.length, 3);
+    assert.equal(payload.items[0].name, "ItemC");
+    assert.equal(payload.items[1].name, "ItemA");
+    assert.equal(payload.items[2].name, "ItemB");
+  });
+});
+
 test("DELETE /api/quotes/:id removes a quote", async () => {
   await withServer(async (port) => {
     const response = await apiFetch(port, '/api/quotes/Q-1', { method: "DELETE" });
@@ -277,6 +311,66 @@ test("POST /api/quotes/:id/reopen requires Supabase (returns 503 when not config
     assert.equal(response.status, 503);
     const payload = await response.json();
     assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("POST /api/quotes/:id/clone clones a standard quote as a new draft", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quotes/Q-1/clone', { method: "POST" });
+    assert.equal(response.status, 201);
+    const payload = await response.json();
+    assert.notEqual(payload.id, "Q-1");
+    assert.equal(payload.status || "draft", "draft");
+    assert.equal(payload.pricingMode || "standard", "standard");
+    assert.ok(String(payload.projectName || "").includes("副本"), "cloned projectName should include 副本");
+    assert.equal(payload.clientName, "Client");
+  });
+});
+
+test("POST /api/quotes/:id/clone does not modify the original quote", async () => {
+  await withServer(async (port) => {
+    await apiFetch(port, '/api/quotes/Q-1/clone', { method: "POST" });
+    const getResponse = await apiFetch(port, '/api/quotes/Q-1');
+    assert.equal(getResponse.status, 200);
+    const original = await getResponse.json();
+    assert.equal(original.id, "Q-1");
+    assert.equal(original.projectName, "Project");
+  });
+});
+
+test("POST /api/quotes/:id/clone returns 404 for non-existent quote", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quotes/NONEXISTENT/clone', { method: "POST" });
+    assert.equal(response.status, 404);
+  });
+});
+
+test("POST /api/quotes/:id/clone returns 400 for project_based quote", async () => {
+  await withServer(async (port) => {
+    const createResponse = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Test",
+        projectName: "Project Quote",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-06-01",
+        endDate: "2026-06-03",
+        destination: "Belgrade",
+        paxCount: 5,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [],
+      }),
+    });
+    assert.equal(createResponse.status, 201);
+    const newQuote = await createResponse.json();
+    const cloneResponse = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}/clone`, { method: "POST" });
+    assert.equal(cloneResponse.status, 400);
   });
 });
 

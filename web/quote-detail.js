@@ -191,6 +191,16 @@ function renderActionButtons(quote) {
     }
   }
 
+  // 复制报价按钮（仅标准报价可用，放在删除之前）
+  if ((quote.pricingMode || "standard") !== "project_based") {
+    const cloneBtn = document.createElement("button");
+    cloneBtn.className = "button-link small-link workflow-btn";
+    cloneBtn.style.cssText = "background:transparent;color:var(--accent);border:1.5px solid var(--accent);cursor:pointer;margin-left:8px";
+    cloneBtn.textContent = "复制报价";
+    cloneBtn.addEventListener("click", () => cloneQuote(quote.id, cloneBtn));
+    container.appendChild(cloneBtn);
+  }
+
   // 删除按钮（追加到行尾，与主操作保持视觉距离）
   const deleteBtn = document.createElement("button");
   deleteBtn.className = "button-link small-link workflow-btn";
@@ -293,6 +303,23 @@ async function reopenQuote(quoteId, btn) {
   } catch (e) {
     window.AppUtils.showMessage("quote-message", e.message, "error");
     if (btn) { btn.disabled = false; btn.textContent = "打回重改"; }
+  }
+}
+
+async function cloneQuote(quoteId, btn) {
+  if (!window.confirm("确认复制此报价单？将生成一份新的草稿报价，内容与原报价相同。")) return;
+  if (btn) { btn.disabled = true; btn.textContent = "复制中…"; }
+  try {
+    const result = await window.AppUtils.fetchJson(
+      `/api/quotes/${encodeURIComponent(quoteId)}/clone`,
+      { method: "POST" },
+      "复制报价失败，请稍后重试"
+    );
+    window.AppUtils.setFlash("报价已复制，正在跳转到新报价详情页。", "success");
+    window.location.href = `/quote-detail.html?id=${encodeURIComponent(result.id)}`;
+  } catch (e) {
+    window.AppUtils.showMessage("quote-message", e.message, "error");
+    if (btn) { btn.disabled = false; btn.textContent = "复制报价"; }
   }
 }
 

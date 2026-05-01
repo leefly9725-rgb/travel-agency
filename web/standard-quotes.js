@@ -20,7 +20,21 @@ function attachCardClicks(container) {
 }
 
 let currentSortKey = "updated_at";
+let currentSearch = "";
 let cachedQuotes = [];
+
+function filterQuotes(arr, search) {
+  const q = (search || "").trim().toLowerCase();
+  if (!q) return arr;
+  return arr.filter((quote) => {
+    const fields = [quote.quoteNumber, quote.projectName, quote.clientName, quote.contactName, quote.destination];
+    return fields.some((f) => f && String(f).toLowerCase().includes(q));
+  });
+}
+
+function applyAndRender() {
+  renderQuotes(sortQuotes(filterQuotes(cachedQuotes, currentSearch), currentSortKey));
+}
 
 function sortQuotes(arr, sortKey) {
   const copy = [...arr];
@@ -140,7 +154,7 @@ async function bootstrap() {
         window.AppUtils.showMessage("quote-message", "报价已删除。", "success");
         const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
         cachedQuotes = allQuotes.filter((q) => (q.pricingMode || "standard") !== "project_based");
-        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        applyAndRender();
       } catch (error) {
         window.AppUtils.showMessage("quote-message", error.message, "error");
       }
@@ -160,7 +174,7 @@ async function bootstrap() {
         );
         const q = cachedQuotes.find(x => x.id === id);
         if (q) q.status = "pending";
-        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        applyAndRender();
         window.AppUtils.showMessage("quote-message", "已提交审批，等待经理审核。", "success");
       } catch (err) {
         window.AppUtils.showMessage("quote-message", err.message, "error");
@@ -183,7 +197,7 @@ async function bootstrap() {
         );
         const q = cachedQuotes.find(x => x.id === id);
         if (q) q.status = "approved";
-        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        applyAndRender();
         window.AppUtils.showMessage("quote-message", "报价已批准。", "success");
       } catch (err) {
         window.AppUtils.showMessage("quote-message", err.message, "error");
@@ -208,7 +222,7 @@ async function bootstrap() {
         );
         const q = cachedQuotes.find(x => x.id === id);
         if (q) { q.status = "rejected"; q.reviewNote = reason; }
-        renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+        applyAndRender();
         window.AppUtils.showMessage("quote-message", "报价已拒绝。", "success");
       } catch (err) {
         window.AppUtils.showMessage("quote-message", err.message, "error");
@@ -225,18 +239,26 @@ async function bootstrap() {
     }
   });
 
+  const searchInput = document.getElementById("quote-search-input");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => {
+      currentSearch = searchInput.value;
+      applyAndRender();
+    });
+  }
+
   const sortSelect = document.getElementById("quote-sort-select");
   if (sortSelect) {
     sortSelect.addEventListener("change", () => {
       currentSortKey = sortSelect.value;
-      renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+      applyAndRender();
     });
   }
 
   try {
     const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
     cachedQuotes = allQuotes.filter((q) => (q.pricingMode || "standard") !== "project_based");
-    renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+    applyAndRender();
   } catch (error) {
     window.AppUtils.showMessage("quote-message", error.message, "error");
   }
@@ -248,5 +270,5 @@ document.addEventListener('authReady', function () {
   var newStd = document.querySelector('a[href="/quote-new.html"]');
   if (newStd && !window.can('standard_quote.create')) newStd.style.display = 'none';
 
-  if (cachedQuotes.length > 0) renderQuotes(sortQuotes(cachedQuotes, currentSortKey));
+  if (cachedQuotes.length > 0) applyAndRender();
 });

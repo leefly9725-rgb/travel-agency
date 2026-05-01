@@ -1493,6 +1493,65 @@ async function handleApi(request, response, url) {
     }
   }
 
+  // POST /api/quotes/:id/clone — 复制标准报价为新 draft
+  {
+    const m = url.pathname.match(/^\/api\/quotes\/([^/]+)\/clone$/);
+    if (request.method === "POST" && m) {
+      requirePermission(authCtx, "standard_quote.edit");
+      const quoteId = decodeURIComponent(m[1]);
+      let source;
+      try {
+        const { quote } = await quoteStore.getQuoteById(quoteId);
+        source = quote;
+      } catch {
+        sendJson(response, 404, { error: "源报价不存在。" });
+        return true;
+      }
+      if ((source.pricingMode || "standard") === "project_based") {
+        sendJson(response, 400, { error: "项目型报价不支持复制，请使用项目型报价编辑器新建。" });
+        return true;
+      }
+      const now = new Date().toISOString();
+      const cloned = {
+        id: createId("Q"),
+        quoteNumber: generateQuoteNumber(),
+        projectId: "",
+        clientName: source.clientName,
+        projectName: (source.projectName || "未命名报价") + " - 副本",
+        contactName: source.contactName,
+        contactPhone: source.contactPhone || "",
+        language: source.language || "zh-CN",
+        currency: source.currency || "EUR",
+        startDate: source.startDate,
+        endDate: source.endDate,
+        tripDate: source.tripDate || source.startDate,
+        travelDays: source.travelDays || 1,
+        destination: source.destination || "",
+        paxCount: source.paxCount || 0,
+        notes: source.notes || "",
+        pricingMode: "standard",
+        items: JSON.parse(JSON.stringify(source.items || [])),
+        projectGroups: [],
+        totalCost: 0,
+        totalSales: 0,
+        totalProfit: 0,
+        status: "draft",
+        executionStatus: "preparing",
+        ownerId: null,
+        reviewerId: null,
+        reviewedAt: null,
+        reviewNote: "",
+        submittedAt: null,
+        dataQuality: {},
+        createdAt: now,
+        updatedAt: now,
+      };
+      const result = await quoteStore.saveQuote(cloned);
+      sendJson(response, 201, enrichQuote(result.quote));
+      return true;
+    }
+  }
+
   // PATCH /api/quotes/:id — 局部字段更新（execution_status / owner_id，仅 manager/admin 可写）
   if (request.method === "PATCH") {
     const quoteId = matchIdRoute(url.pathname, "quotes");
