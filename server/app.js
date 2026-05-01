@@ -1072,6 +1072,93 @@ function getMetaPayload(data, templates, storageMode) {
   };
 }
 
+// ── Customer quotation whitelist sanitizers ──────────────────────────────────
+// These functions construct a strict whitelist payload for the customer-facing
+// quotation API. They must never return cost, margin, or internal workflow fields.
+
+function _sanitizeCustomerHotelDetails(details) {
+  if (!Array.isArray(details)) return [];
+  return details.map((d) => ({
+    roomType:      d.roomType     || d.room_type   || "",
+    roomCount:     d.roomCount    || d.room_count  || 0,
+    nights:        d.nights       || 0,
+    priceSubtotal: d.priceSubtotal != null ? d.priceSubtotal : 0,
+    notes:         d.notes        || "",
+  }));
+}
+
+function _sanitizeCustomerVehicleDetails(details) {
+  if (!Array.isArray(details)) return [];
+  return details.map((d) => ({
+    vehicleModel:    d.vehicleModel    || d.vehicle_model || "",
+    vehicleCount:    d.vehicleCount    || d.vehicle_count || 1,
+    billingQuantity: d.billingQuantity || 1,
+    pricingUnit:     d.pricingUnit     || "",
+    priceSubtotal:   d.priceSubtotal   != null ? d.priceSubtotal : 0,
+    notes:           d.notes           || "",
+  }));
+}
+
+function _sanitizeCustomerServiceDetails(details) {
+  if (!Array.isArray(details)) return [];
+  return details.map((d) => ({
+    serviceRole:     d.serviceRole     || "",
+    serviceLanguage: d.serviceLanguage || "",
+    serviceDuration: d.serviceDuration || "",
+    quantity:        d.quantity        || 1,
+    priceSubtotal:   d.priceSubtotal   != null ? d.priceSubtotal : 0,
+    notes:           d.notes           || "",
+  }));
+}
+
+function _sanitizeCustomerMealDetails(md) {
+  if (!md) return null;
+  return {
+    mealPeople:  md.mealPeople || md.meal_people || 0,
+    totalAmount: md.totalAmount != null ? md.totalAmount : 0,
+  };
+}
+
+function _sanitizeCustomerItem(item) {
+  return {
+    type:           item.type       || item.itemType      || "misc",
+    name:           item.name       || item.itemName      || "",
+    quantity:       item.quantity   || 1,
+    unit:           item.unit       || "",
+    price:          item.price      || item.salesUnitPrice || 0,
+    totalPrice:     item.totalPrice != null ? item.totalPrice : 0,
+    notes:          item.notes      || "",
+    hotelDetails:   _sanitizeCustomerHotelDetails(item.hotelDetails   || item.hotel_details),
+    vehicleDetails: _sanitizeCustomerVehicleDetails(item.vehicleDetails || item.vehicle_details),
+    serviceDetails: _sanitizeCustomerServiceDetails(item.serviceDetails || item.service_details),
+    mealDetails:    _sanitizeCustomerMealDetails(item.mealDetails     || item.meal_details),
+  };
+}
+
+function buildCustomerQuotePayload(enriched) {
+  const items = Array.isArray(enriched.items) ? enriched.items : [];
+  return {
+    id:          enriched.id,
+    quoteNumber: enriched.quoteNumber  || "",
+    clientName:  enriched.clientName   || "",
+    contactName: enriched.contactName  || "",
+    contactPhone:enriched.contactPhone || "",
+    projectName: enriched.projectName  || "",
+    destination: enriched.destination  || "",
+    startDate:   enriched.startDate    || "",
+    endDate:     enriched.endDate      || "",
+    travelDays:  enriched.travelDays   || 1,
+    paxCount:    enriched.paxCount     || 0,
+    currency:    enriched.currency     || "EUR",
+    language:    enriched.language     || "zh-CN",
+    notes:       enriched.notes        || "",
+    pricingMode: enriched.pricingMode  || "standard",
+    totalPrice:  enriched.totalPrice   != null ? enriched.totalPrice : 0,
+    items:       items.map(_sanitizeCustomerItem),
+  };
+}
+// ── End customer quotation sanitizers ────────────────────────────────────────
+
 async function handleApi(request, response, url) {
   const data = loadSeedData();
   const quoteStore = createQuoteStore({ data, saveData: saveSeedData });
@@ -1377,6 +1464,26 @@ async function handleApi(request, response, url) {
           }
         }
         sendJson(response, 200, enriched);
+      } catch (error) {
+        sendJson(response, 404, { error: error.message });
+      }
+      return true;
+    }
+  }
+
+  // GET /api/customer-standard-quotations/:id — 客户版报价单（白名单脱敏，不含内部字段）
+  if (request.method === "GET") {
+    const csqMatch = url.pathname.match(/^\/api\/customer-standard-quotations\/([^/]+)$/);
+    if (csqMatch) {
+      const quoteId = decodeURIComponent(csqMatch[1]);
+      try {
+        const { quote } = await quoteStore.getQuoteById(quoteId);
+        const enriched = enrichQuote(quote);
+        if ((enriched.pricingMode || "standard") === "project_based") {
+          sendJson(response, 400, { error: "当前报价不是标准报价，不支持客户版接口。" });
+          return true;
+        }
+        sendJson(response, 200, buildCustomerQuotePayload(enriched));
       } catch (error) {
         sendJson(response, 404, { error: error.message });
       }

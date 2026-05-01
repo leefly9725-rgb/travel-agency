@@ -57,6 +57,7 @@ const ROUTE_PERMISSION_MAP = [
   // standard_quote
   ['GET',    /^\/api\/quotes$/,                        'standard_quote.view'],
   ['GET',    /^\/api\/quotes\/[^/]+$/,                 'standard_quote.view'],
+  ['GET',    /^\/api\/customer-standard-quotations\/[^/]+$/, 'standard_quote.view'],
   ['POST',   /^\/api\/quotes\/calculate$/,             'standard_quote.view'],
   ['POST',   /^\/api\/quotes$/,                        'standard_quote.create'],
   ['PUT',    /^\/api\/quotes\/[^/]+$/,                 'standard_quote.edit'],

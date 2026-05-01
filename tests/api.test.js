@@ -374,4 +374,84 @@ test("POST /api/quotes/:id/clone returns 400 for project_based quote", async () 
   });
 });
 
+test("GET /api/customer-standard-quotations/:id returns whitelisted customer payload", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/customer-standard-quotations/Q-1');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+
+    // ── Required fields present ──────────────────────────────────────────
+    assert.equal(payload.id, "Q-1");
+    assert.equal(payload.clientName, "Client");
+    assert.equal(payload.projectName, "Project");
+    assert.equal(payload.quoteNumber, "QT-1");
+    assert.equal(payload.currency, "EUR");
+    assert.equal(typeof payload.totalPrice, "number");
+    assert.equal(Array.isArray(payload.items), true);
+    assert.equal(payload.items[0].type, "hotel");
+    assert.equal(payload.items[0].name, "Hotel");
+    assert.equal(typeof payload.items[0].totalPrice, "number");
+
+    // ── Internal top-level fields must be absent ─────────────────────────
+    assert.equal(payload.totalCost,       undefined, "totalCost must not be in customer payload");
+    assert.equal(payload.grossProfit,     undefined, "grossProfit must not be in customer payload");
+    assert.equal(payload.grossMargin,     undefined, "grossMargin must not be in customer payload");
+    assert.equal(payload.status,          undefined, "status must not be in customer payload");
+    assert.equal(payload.executionStatus, undefined, "executionStatus must not be in customer payload");
+    assert.equal(payload.ownerId,         undefined, "ownerId must not be in customer payload");
+    assert.equal(payload.reviewerId,      undefined, "reviewerId must not be in customer payload");
+    assert.equal(payload.reviewedAt,      undefined, "reviewedAt must not be in customer payload");
+    assert.equal(payload.reviewNote,      undefined, "reviewNote must not be in customer payload");
+    assert.equal(payload.dataQuality,     undefined, "dataQuality must not be in customer payload");
+    assert.equal(payload.submittedAt,     undefined, "submittedAt must not be in customer payload");
+    assert.equal(payload.updatedAt,       undefined, "updatedAt must not be in customer payload");
+    assert.equal(payload.createdAt,       undefined, "createdAt must not be in customer payload");
+
+    // ── Internal item-level fields must be absent ────────────────────────
+    const item = payload.items[0];
+    assert.equal(item.cost,             undefined, "item.cost must not be in customer payload");
+    assert.equal(item.totalCost,        undefined, "item.totalCost must not be in customer payload");
+    assert.equal(item.supplier,         undefined, "item.supplier must not be in customer payload");
+    assert.equal(item.supplierName,     undefined, "item.supplierName must not be in customer payload");
+    assert.equal(item.supplierId,       undefined, "item.supplierId must not be in customer payload");
+    assert.equal(item.internalNotes,    undefined, "item.internalNotes must not be in customer payload");
+  });
+});
+
+test("GET /api/customer-standard-quotations/:id returns 404 for non-existent quote", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/customer-standard-quotations/NONEXISTENT');
+    assert.equal(response.status, 404);
+  });
+});
+
+test("GET /api/customer-standard-quotations/:id returns 400 for project_based quote", async () => {
+  await withServer(async (port) => {
+    const createResponse = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Test",
+        projectName: "PB Quote",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-06-01",
+        endDate: "2026-06-03",
+        destination: "Belgrade",
+        paxCount: 5,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [],
+      }),
+    });
+    assert.equal(createResponse.status, 201);
+    const newQuote = await createResponse.json();
+    const csqResponse = await apiFetch(port, `/api/customer-standard-quotations/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(csqResponse.status, 400);
+  });
+});
+
 

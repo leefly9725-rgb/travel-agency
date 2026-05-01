@@ -436,7 +436,7 @@
     }
 
     window.AppUtils.fetchJson(
-      "/api/quotes/" + encodeURIComponent(QUOTE_ID),
+      "/api/customer-standard-quotations/" + encodeURIComponent(QUOTE_ID),
       null,
       "报价单加载失败，请稍后重试。"
     ).then(function (quote) {
