@@ -73,11 +73,24 @@ async function loadSupplierCategoryMap(fetchFn) {
   }
 }
 
-function resolveProjectItemCategory(item, supplierCategoryMap) {
-  const supplierCategory = supplierCategoryMap?.get(String(item?.supplierCatalogItemId || '').trim()) || '';
-  const explicitCategory = String(item?.itemCategory || '').trim();
-  const mappedCategory = ITEM_TYPE_TO_CATEGORY[item?.itemType] || '';
-  const categoryKey = supplierCategory || explicitCategory || mappedCategory || 'misc';
+// Unified effectiveType resolution rule (read-only — never modifies stored data):
+//   1. supplierCategoryMap lookup by catalogItemId — highest confidence (live catalog)
+//   2. event group  → itemCategory first, then ITEM_TYPE_TO_CATEGORY[itemType]
+//   3. travel/mixed → ITEM_TYPE_TO_CATEGORY[itemType] first, then itemCategory
+//   4. fallback: 'misc'
+function resolveEffectiveType(item, groupType, supplierCategoryMap) {
+  const catalogCategory = supplierCategoryMap?.get(String(item?.supplierCatalogItemId || '').trim()) || '';
+  if (catalogCategory) return catalogCategory;
+  const explicit = String(item?.itemCategory || '').trim();
+  const mapped = ITEM_TYPE_TO_CATEGORY[String(item?.itemType || '').trim()] || '';
+  if (String(groupType || '').trim().toLowerCase() === 'event') {
+    return explicit || mapped || 'misc';
+  }
+  return mapped || explicit || 'misc';
+}
+
+function resolveProjectItemCategory(item, supplierCategoryMap, groupType) {
+  const categoryKey = resolveEffectiveType(item, groupType, supplierCategoryMap);
   return {
     categoryKey,
     categoryLabel: CATALOG_CATEGORY_LABELS[categoryKey] || '其他',
@@ -270,7 +283,7 @@ function buildClientItem(item, supplierCategoryMap, groupType) {
   const qtyDisplay = isHotel && nights ? `${quantity} × ${nights} 晚` : `${quantity}`;
   const typeFallback = ITEM_TYPE_DISPLAY[item.itemType] || ITEM_TYPE_DISPLAY.misc;
 
-  const { categoryKey, categoryLabel } = resolveProjectItemCategory(item, supplierCategoryMap);
+  const { categoryKey, categoryLabel } = resolveProjectItemCategory(item, supplierCategoryMap, groupType);
 
   return {
     itemName: {

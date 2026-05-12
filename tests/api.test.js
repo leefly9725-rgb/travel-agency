@@ -1012,3 +1012,321 @@ test("project_based event group preserves itemCategory and unit after save and r
     assert.equal(personnelItem.unit, "人天", "personnel item unit should be preserved as 人天");
   });
 });
+
+test("project_based event: effectiveType — itemCategory returned by backend even when itemType=misc", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "EffType Client",
+        projectName: "EffectiveType Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-09-01",
+        endDate: "2026-09-02",
+        destination: "Belgrade",
+        paxCount: 30,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "event",
+            projectTitle: "活动组",
+            items: [
+              { itemType: "misc", itemCategory: "av_equipment", itemName: "LED屏", specification: "P4", unit: "套", quantity: 1, costUnitPrice: 2000, salesUnitPrice: 3000, remarks: "" },
+              { itemType: "misc", itemCategory: "stage_structure", itemName: "舞台", specification: "10m x 8m", unit: "套", quantity: 1, costUnitPrice: 5000, salesUnitPrice: 7000, remarks: "" },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    const group = loaded.projectGroups[0];
+    assert.equal(group.projectType, "event");
+
+    const avItem = group.items.find((i) => i.itemCategory === "av_equipment");
+    assert.ok(avItem, "itemCategory=av_equipment must be returned even when itemType=misc");
+    assert.equal(avItem.itemType, "misc", "itemType should remain misc (not overwritten)");
+
+    const stageItem = group.items.find((i) => i.itemCategory === "stage_structure");
+    assert.ok(stageItem, "itemCategory=stage_structure must be returned");
+    assert.equal(stageItem.itemType, "misc", "itemType stays misc for event rows");
+  });
+});
+
+test("project_based event: supplierId and supplierCatalogItemId preserved after save and reload", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Supplier Persist Client",
+        projectName: "Supplier Fields Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-09-03",
+        endDate: "2026-09-04",
+        destination: "Novi Sad",
+        paxCount: 20,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "event",
+            projectTitle: "供应商关联测试组",
+            items: [
+              {
+                itemType: "misc",
+                itemCategory: "av_equipment",
+                itemName: "LED大屏",
+                specification: "P4室内",
+                unit: "套",
+                quantity: 2,
+                costUnitPrice: 3000,
+                salesUnitPrice: 4500,
+                remarks: "",
+                supplierId: "SUP-001",
+                supplierCatalogItemId: "CITEM-888",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    const item = loaded.projectGroups[0].items[0];
+    assert.equal(item.supplierId, "SUP-001", "supplierId should be preserved");
+    assert.equal(item.supplierCatalogItemId, "CITEM-888", "supplierCatalogItemId should be preserved");
+  });
+});
+
+test("project_based event: supplierDisplay preserved after save and reload", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Display Persist Client",
+        projectName: "SupplierDisplay Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-09-05",
+        endDate: "2026-09-06",
+        destination: "Subotica",
+        paxCount: 15,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "event",
+            projectTitle: "供应商名称测试组",
+            items: [
+              {
+                itemType: "misc",
+                itemCategory: "personnel",
+                itemName: "礼仪人员",
+                specification: "全天候",
+                unit: "人天",
+                quantity: 5,
+                costUnitPrice: 600,
+                salesUnitPrice: 900,
+                remarks: "",
+                supplierId: "SUP-002",
+                supplierCatalogItemId: "CITEM-999",
+                supplierDisplay: "贝尔格莱德礼仪公司",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    const item = loaded.projectGroups[0].items[0];
+    assert.equal(item.supplierDisplay, "贝尔格莱德礼仪公司", "supplierDisplay should be preserved after reload");
+    assert.equal(item.itemCategory, "personnel", "itemCategory should also be preserved");
+  });
+});
+
+test("project_based: old data items without itemCategory field do not error on GET", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.quotes.push({
+      id: "Q-LEGACY-PB",
+      quoteNumber: "QT-LEGACY",
+      clientName: "Legacy Client",
+      projectName: "Legacy Project Based",
+      contactName: "Contact",
+      contactPhone: "",
+      language: "zh-CN",
+      currency: "EUR",
+      startDate: "2026-01-01",
+      endDate: "2026-01-02",
+      tripDate: "2026-01-01",
+      travelDays: 2,
+      destination: "Belgrade",
+      paxCount: 10,
+      notes: "",
+      pricingMode: "project_based",
+      items: [],
+      projectGroups: [
+        {
+          projectType: "event",
+          projectTitle: "旧版活动组",
+          items: [
+            { itemType: "misc", itemName: "旧物料", unit: "项", quantity: 1, costUnitPrice: 100, salesUnitPrice: 200, remarks: "" },
+          ],
+        },
+      ],
+      totalCost: 100,
+      totalSales: 200,
+      totalProfit: 100,
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: "2026-01-01T00:00:00Z",
+    });
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const getResp = await apiFetch(port, '/api/quotes/Q-LEGACY-PB');
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    assert.ok(Array.isArray(loaded.projectGroups), "projectGroups should be returned");
+    const item = loaded.projectGroups[0].items[0];
+    assert.ok(item, "item should be present");
+    // Legacy items may not have itemCategory in stored JSON; the server must not
+    // crash (500) on GET — itemCategory will be absent or empty, both are fine.
+    assert.ok(item.itemCategory === undefined || item.itemCategory === "", "itemCategory absent or empty for legacy items");
+    assert.equal(item.itemName, "旧物料", "itemName should be preserved");
+  });
+});
+
+test("project_based travel: itemType is preserved and not overwritten on save and reload", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Travel Type Client",
+        projectName: "Travel ItemType Preservation",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-10-01",
+        endDate: "2026-10-05",
+        destination: "Novi Sad",
+        paxCount: 12,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "travel",
+            projectTitle: "旅游差旅组",
+            items: [
+              { itemType: "guide_translation", itemCategory: "", itemName: "中文导游", specification: "专职导游", unit: "人天", quantity: 4, costUnitPrice: 400, salesUnitPrice: 600, remarks: "" },
+              { itemType: "ticket", itemCategory: "", itemName: "景区门票", specification: "成人票", unit: "张", quantity: 12, costUnitPrice: 30, salesUnitPrice: 50, remarks: "" },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    const group = loaded.projectGroups[0];
+    assert.equal(group.projectType, "travel");
+
+    const guideItem = group.items.find((i) => i.itemType === "guide_translation");
+    assert.ok(guideItem, "guide_translation itemType should be preserved");
+    assert.equal(guideItem.unit, "人天", "guide unit should be preserved");
+
+    const ticketItem = group.items.find((i) => i.itemType === "ticket");
+    assert.ok(ticketItem, "ticket itemType should be preserved");
+    assert.equal(ticketItem.unit, "张", "ticket unit should be preserved");
+  });
+});
+
+test("project_based mixed: both itemType and itemCategory preserved for different rows", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Mixed Client",
+        projectName: "Mixed Group Fields Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-11-01",
+        endDate: "2026-11-03",
+        destination: "Belgrade",
+        paxCount: 25,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "mixed",
+            projectTitle: "综合服务组",
+            items: [
+              { itemType: "hotel", itemCategory: "", itemName: "酒店住宿", specification: "标准间", unit: "晚", quantity: 2, costUnitPrice: 120, salesUnitPrice: 180, remarks: "" },
+              { itemType: "misc", itemCategory: "av_equipment", itemName: "会议AV", specification: "高清投影", unit: "套", quantity: 1, costUnitPrice: 800, salesUnitPrice: 1200, remarks: "" },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    const group = loaded.projectGroups[0];
+    assert.equal(group.projectType, "mixed");
+
+    const hotelItem = group.items.find((i) => i.itemType === "hotel");
+    assert.ok(hotelItem, "hotel itemType should be preserved in mixed group");
+    assert.equal(hotelItem.itemCategory, "", "hotel item should have empty itemCategory");
+    assert.equal(hotelItem.unit, "晚");
+
+    const avItem = group.items.find((i) => i.itemCategory === "av_equipment");
+    assert.ok(avItem, "av_equipment itemCategory should be preserved in mixed group");
+    assert.equal(avItem.itemType, "misc", "misc itemType preserved alongside itemCategory");
+    assert.equal(avItem.unit, "套");
+  });
+});

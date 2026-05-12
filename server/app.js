@@ -940,6 +940,7 @@ function normalizeProjectGroups(groups, validGroupTypes, extraValidItemTypes) {
         currency: item.currency || "EUR",
         supplierId: String(item.supplierId || "").trim(),
         supplierCatalogItemId: String(item.supplierCatalogItemId || "").trim(),
+        supplierDisplay: String(item.supplierDisplay || item.supplierName || "").trim(),
         costUnitPrice: costUnit,
         salesUnitPrice: salesUnit,
         costSubtotal,
