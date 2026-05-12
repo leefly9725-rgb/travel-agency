@@ -825,3 +825,190 @@ test("project_based quote preserves item unit after save and reload", async () =
     assert.equal(transportItem.unit, "辆次", "transport item unit should be preserved as saved");
   });
 });
+
+test("GET /api/quote-item-types returns projectGroupCodes for each type", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quote-item-types');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    payload.forEach((item) => {
+      assert.ok("projectGroupCodes" in item, `item ${item.code} should have projectGroupCodes field`);
+      assert.ok(Array.isArray(item.projectGroupCodes), `${item.code}.projectGroupCodes should be an array`);
+    });
+    const hotel = payload.find((t) => t.code === "hotel");
+    assert.ok(hotel, "hotel type should exist");
+    assert.ok(hotel.projectGroupCodes.includes("travel"), "hotel should include travel in projectGroupCodes");
+  });
+});
+
+test("POST /api/quote-item-types saves and returns projectGroupCodes (local mode)", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quote-item-types', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: "pgc_round_trip_test",
+        nameZh: "适用组测试类型",
+        defaultUnit: "次",
+        projectGroupCodes: ["event", "mixed"],
+        sortOrder: 97,
+        isActive: true,
+      }),
+    });
+    assert.equal(response.status, 201);
+    const saved = await response.json();
+    assert.ok(Array.isArray(saved.projectGroupCodes), "saved.projectGroupCodes should be array");
+    assert.ok(saved.projectGroupCodes.includes("event"), "should include event");
+    assert.ok(saved.projectGroupCodes.includes("mixed"), "should include mixed");
+  });
+});
+
+test("GET /api/supplier-categories returns defaultUnit for each category", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/supplier-categories');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.ok(Array.isArray(payload), "should return an array");
+    assert.ok(payload.length > 0, "should have at least one category");
+    payload.forEach((cat) => {
+      assert.ok("defaultUnit" in cat, `category ${cat.code} should have defaultUnit`);
+      assert.equal(typeof cat.defaultUnit, "string", `${cat.code}.defaultUnit should be a string`);
+    });
+    const av = payload.find((c) => c.code === "av_equipment");
+    assert.ok(av, "av_equipment category should be present");
+    assert.equal(av.defaultUnit, "套", "av_equipment defaultUnit should be 套");
+    const personnel = payload.find((c) => c.code === "personnel");
+    assert.ok(personnel, "personnel category should be present");
+    assert.equal(personnel.defaultUnit, "人天", "personnel defaultUnit should be 人天");
+  });
+});
+
+test("GET /api/supplier-categories returns defaultUnit fallback for categories without it in seed", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.supplierCategories = [
+      { id: "sc-test-1", code: "av_equipment", nameZh: "音视频设备", sortOrder: 1, isActive: true }
+    ];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const response = await apiFetch(port, '/api/supplier-categories');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const av = payload.find((c) => c.code === "av_equipment");
+    assert.ok(av, "av_equipment should be returned");
+    assert.equal(av.defaultUnit, "套", "av_equipment should fall back to 套 when defaultUnit missing");
+  });
+});
+
+test("POST /api/supplier-categories saves and returns defaultUnit (local mode)", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/supplier-categories', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: "test_cat_unit",
+        nameZh: "测试单位分类",
+        defaultUnit: "批",
+        sortOrder: 99,
+      }),
+    });
+    assert.equal(response.status, 201);
+    const saved = await response.json();
+    assert.equal(saved.code, "test_cat_unit");
+    assert.equal(saved.defaultUnit, "批");
+  });
+});
+
+test("PUT /api/supplier-categories/:id updates defaultUnit (local mode)", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/supplier-categories', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ code: "cat_unit_update", nameZh: "更新单位测试", defaultUnit: "项", sortOrder: 98 }),
+    });
+    assert.equal(createResp.status, 201);
+    const created = await createResp.json();
+
+    const updateResp = await apiFetch(port, `/api/supplier-categories/${encodeURIComponent(created.id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ nameZh: "更新单位测试", defaultUnit: "套", sortOrder: 98 }),
+    });
+    assert.equal(updateResp.status, 200);
+    const updated = await updateResp.json();
+    assert.equal(updated.defaultUnit, "套", "defaultUnit should be updated to 套");
+  });
+});
+
+test("project_based event group preserves itemCategory and unit after save and reload", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Event Test Client",
+        projectName: "Event Category Unit Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-08-01",
+        endDate: "2026-08-02",
+        destination: "Belgrade",
+        paxCount: 50,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "event",
+            projectTitle: "活动执行组",
+            items: [
+              {
+                itemType: "misc",
+                itemCategory: "av_equipment",
+                itemName: "LED大屏",
+                specification: "P4 室内",
+                unit: "套",
+                quantity: 2,
+                costUnitPrice: 3000,
+                salesUnitPrice: 4500,
+                remarks: "含安装调试",
+              },
+              {
+                itemType: "misc",
+                itemCategory: "personnel",
+                itemName: "活动执行人员",
+                specification: "专职执行团队",
+                unit: "人天",
+                quantity: 5,
+                costUnitPrice: 800,
+                salesUnitPrice: 1200,
+                remarks: "",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    assert.ok(Array.isArray(loaded.projectGroups));
+    const group = loaded.projectGroups[0];
+    assert.equal(group.projectType, "event");
+    assert.equal(group.items.length, 2);
+
+    const avItem = group.items.find((i) => i.itemCategory === "av_equipment");
+    assert.ok(avItem, "av_equipment item should be present");
+    assert.equal(avItem.unit, "套", "av_equipment item unit should be preserved as 套");
+
+    const personnelItem = group.items.find((i) => i.itemCategory === "personnel");
+    assert.ok(personnelItem, "personnel item should be present");
+    assert.equal(personnelItem.unit, "人天", "personnel item unit should be preserved as 人天");
+  });
+});

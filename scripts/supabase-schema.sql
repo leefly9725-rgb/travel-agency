@@ -235,3 +235,55 @@ create table if not exists public.quotation_project_items (
 create index if not exists idx_quotation_project_items_project_id on public.quotation_project_items (project_id);
 create index if not exists idx_quotation_projects_quotation_id    on public.quotation_projects (quotation_id);
 create index if not exists idx_quotes_pricing_mode                on public.quotes (pricing_mode);
+
+-- ── Type system tables (project group / item type / supplier category) ──────
+
+create table if not exists public.project_group_types (
+  id text primary key,
+  code text not null unique,
+  name_zh text not null,
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.quote_item_types (
+  id text primary key,
+  code text not null unique,
+  name_zh text not null,
+  project_group_id text references public.project_group_types(id) on delete set null,
+  project_group_codes text[] not null default array[]::text[],
+  category_group text not null default 'misc',
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  is_system boolean not null default false,
+  default_unit text not null default '',
+  supplier_category_codes text[] not null default array[]::text[],
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create table if not exists public.supplier_categories (
+  id text primary key,
+  code text not null unique,
+  name_zh text not null,
+  sort_order integer not null default 0,
+  is_active boolean not null default true,
+  default_unit text not null default '',
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_quote_item_types_code            on public.quote_item_types (code);
+create index if not exists idx_quote_item_types_project_group   on public.quote_item_types (project_group_id);
+create index if not exists idx_supplier_categories_code         on public.supplier_categories (code);
+
+-- ── Non-destructive migration: add columns to existing tables if missing ─────
+-- Run these against an existing production database that predates the above CREATE TABLE IF NOT EXISTS.
+
+alter table if exists public.quote_item_types
+  add column if not exists project_group_codes text[] not null default array[]::text[];
+
+alter table if exists public.quote_item_types
+  add column if not exists default_unit text not null default '';
+
+alter table if exists public.supplier_categories
+  add column if not exists default_unit text not null default '';

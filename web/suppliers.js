@@ -500,7 +500,7 @@ function renderCategoryManagementList() {
           <span class="cat-row-icon">${icon}</span>
           <div>
             <div class="cat-row-title">${label}</div>
-            <div class="cat-row-code">${code} · 排序 ${sortOrder} · ${linkedItemCount} 项物料</div>
+            <div class="cat-row-code">${code} · 默认单位：${c.defaultUnit || "—"} · 排序 ${sortOrder} · ${linkedItemCount} 项物料</div>
           </div>
         </div>
         <div class="cat-row-actions">
@@ -520,10 +520,11 @@ function openCatForm(cat) {
   const codeHint  = getRequiredElement("cat-code-hint");
   const isEdit    = !!cat;
 
-  form.id.value        = isEdit ? String(cat.id) : "";
-  form.nameZh.value    = isEdit ? (cat.nameZh || cat.name_zh || "") : "";
-  form.code.value      = isEdit ? (cat.code || "") : "";
-  form.sortOrder.value = isEdit ? (cat.sortOrder || cat.sort_order || 0) : "";
+  form.id.value          = isEdit ? String(cat.id) : "";
+  form.nameZh.value      = isEdit ? (cat.nameZh || cat.name_zh || "") : "";
+  form.code.value        = isEdit ? (cat.code || "") : "";
+  form.sortOrder.value   = isEdit ? (cat.sortOrder || cat.sort_order || 0) : "";
+  if (form.defaultUnit) form.defaultUnit.value = isEdit ? (cat.defaultUnit || cat.default_unit || "") : "";
 
   codeInput.readOnly     = isEdit;
   codeInput.style.background = isEdit ? "#f3f4f6" : "";
@@ -917,7 +918,11 @@ async function bootstrap() {
     if (!form.checkValidity()) { form.reportValidity(); return; }
     const id     = form.id.value.trim();
     const isEdit = !!id;
-    const payload = { nameZh: form.nameZh.value.trim(), sortOrder: Number(form.sortOrder.value || 0) };
+    const payload = {
+      nameZh: form.nameZh.value.trim(),
+      sortOrder: Number(form.sortOrder.value || 0),
+      defaultUnit: form.defaultUnit ? form.defaultUnit.value.trim() : "",
+    };
     if (!isEdit) payload.code = form.code.value.trim();
     try {
       const url    = isEdit ? `/api/supplier-categories/${encodeURIComponent(id)}` : "/api/supplier-categories";

@@ -806,20 +806,48 @@ async function listProjectGroupTypes(data, supabaseCfg, options = {}) {
 }
 
 const DEFAULT_SUPPLIER_CATEGORIES = [
-  { id: "sc-001", code: "av_equipment",    nameZh: "音视频设备", sortOrder: 1, isActive: true },
-  { id: "sc-002", code: "stage_structure", nameZh: "舞台搭建",   sortOrder: 2, isActive: true },
-  { id: "sc-003", code: "print_display",   nameZh: "印刷展示",   sortOrder: 3, isActive: true },
-  { id: "sc-004", code: "decoration",      nameZh: "装饰物料",   sortOrder: 4, isActive: true },
-  { id: "sc-005", code: "furniture",       nameZh: "家具陈设",   sortOrder: 5, isActive: true },
-  { id: "sc-006", code: "personnel",       nameZh: "人员服务",   sortOrder: 6, isActive: true },
-  { id: "sc-007", code: "logistics",       nameZh: "物流配送",   sortOrder: 7, isActive: true },
-  { id: "sc-008", code: "management",      nameZh: "管理费用",   sortOrder: 8, isActive: true },
+  { id: "sc-001", code: "av_equipment",    nameZh: "音视频设备", sortOrder: 1, isActive: true, defaultUnit: "套" },
+  { id: "sc-002", code: "stage_structure", nameZh: "舞台搭建",   sortOrder: 2, isActive: true, defaultUnit: "套" },
+  { id: "sc-003", code: "print_display",   nameZh: "印刷展示",   sortOrder: 3, isActive: true, defaultUnit: "项" },
+  { id: "sc-004", code: "decoration",      nameZh: "装饰物料",   sortOrder: 4, isActive: true, defaultUnit: "项" },
+  { id: "sc-005", code: "furniture",       nameZh: "家具陈设",   sortOrder: 5, isActive: true, defaultUnit: "套" },
+  { id: "sc-006", code: "personnel",       nameZh: "人员服务",   sortOrder: 6, isActive: true, defaultUnit: "人天" },
+  { id: "sc-007", code: "logistics",       nameZh: "物流配送",   sortOrder: 7, isActive: true, defaultUnit: "趟" },
+  { id: "sc-008", code: "management",      nameZh: "管理费用",   sortOrder: 8, isActive: true, defaultUnit: "项" },
 ];
+
+const SUPPLIER_CATEGORY_DEFAULT_UNITS = {
+  av_equipment: "套", stage_structure: "套", print_display: "项",
+  decoration: "项", furniture: "套", personnel: "人天",
+  logistics: "趟", management: "项", misc: "项",
+};
+
+function normalizeSupplierCategoryRecord(record, fallback) {
+  const base = fallback || {};
+  const code = String(record?.code || record?.id || base.code || "").trim().toLowerCase();
+  if (!code) return null;
+  const defUnit = SUPPLIER_CATEGORY_DEFAULT_UNITS[code] || "项";
+  return {
+    id: record?.id || base.id || createId("SC"),
+    code,
+    nameZh: String(record?.nameZh || record?.name_zh || base.nameZh || code).trim(),
+    sortOrder: Number(record?.sortOrder ?? record?.sort_order ?? base.sortOrder ?? 0),
+    isActive: record?.isActive !== undefined
+      ? Boolean(record.isActive)
+      : (record?.is_active !== undefined ? Boolean(record.is_active) : (base.isActive !== undefined ? Boolean(base.isActive) : true)),
+    defaultUnit: String(record?.defaultUnit || record?.default_unit || base.defaultUnit || defUnit).trim() || defUnit,
+  };
+}
 
 function ensureSupplierCategories(data) {
   if (!Array.isArray(data.supplierCategories) || data.supplierCategories.length === 0) {
     data.supplierCategories = DEFAULT_SUPPLIER_CATEGORIES.map((c) => ({ ...c }));
   }
+  // Backfill defaultUnit for records that predate this field
+  data.supplierCategories = data.supplierCategories.map((c) => {
+    const def = DEFAULT_SUPPLIER_CATEGORIES.find((d) => d.code === c.code);
+    return normalizeSupplierCategoryRecord(c, def);
+  }).filter(Boolean);
   return data.supplierCategories;
 }
 
@@ -2364,6 +2392,7 @@ async function handleApi(request, response, url) {
           code: payload.code,
           name_zh: payload.nameZh,
           project_group_id: projectGroupId,
+          project_group_codes: payload.projectGroupCodes || [],
           sort_order: payload.sortOrder,
           is_active: payload.isActive,
           default_unit: payload.defaultUnit,
@@ -2407,6 +2436,7 @@ async function handleApi(request, response, url) {
             sort_order: payload.sortOrder,
             is_active: payload.isActive,
             project_group_id: payload.projectGroupId || existingNorm.projectGroupId || null,
+            project_group_codes: payload.projectGroupCodes || existingNorm.projectGroupCodes || [],
             default_unit: payload.defaultUnit,
           };
           const row = await supabaseRequest(supabaseCfg, `quote_item_types?id=eq.${encodeURIComponent(qitId)}`, {
@@ -2554,7 +2584,8 @@ async function handleApi(request, response, url) {
     const supabaseCfg = getSupabaseConfig();
     if (supabaseCfg.enabled) {
       const rows = await supabaseRequest(supabaseCfg, "supplier_categories?select=*&is_active=eq.true&order=sort_order.asc");
-      sendJson(response, 200, Array.isArray(rows) ? rows : []);
+      const normalized = (Array.isArray(rows) ? rows : []).map((r) => normalizeSupplierCategoryRecord(r)).filter(Boolean);
+      sendJson(response, 200, normalized);
     } else {
       const data = await loadSeedData();
       sendJson(response, 200, ensureSupplierCategories(data));
@@ -2566,19 +2597,21 @@ async function handleApi(request, response, url) {
     const payload = parseJsonBody(await readRequestBody(request));
     const code = notEmpty(payload.code, "类别代码").toLowerCase().replace(/\s+/g, "_");
     const nameZh = notEmpty(payload.nameZh || payload.name_zh, "中文名称");
+    const defaultUnit = String(payload.defaultUnit || payload.default_unit || "").trim();
     const supabaseCfg = getSupabaseConfig();
     if (supabaseCfg.enabled) {
       const row = await supabaseRequest(supabaseCfg, "supplier_categories", {
         method: "POST",
-        body: JSON.stringify({ code, name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0) }),
+        body: JSON.stringify({ code, name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0), default_unit: defaultUnit }),
         headers: { Prefer: "return=representation" },
       });
-      sendJson(response, 201, Array.isArray(row) ? row[0] : row);
+      const saved = normalizeSupplierCategoryRecord(Array.isArray(row) ? row[0] : row);
+      sendJson(response, 201, saved || (Array.isArray(row) ? row[0] : row));
     } else {
       const data = await loadSeedData();
       const cats = ensureSupplierCategories(data);
       if (cats.some((c) => c.code === code)) { sendJson(response, 409, { error: `类别代码「${code}」已存在。` }); return true; }
-      const entry = { id: createId("SC"), code, nameZh, sortOrder: Number(payload.sortOrder || payload.sort_order || 0), isActive: true };
+      const entry = normalizeSupplierCategoryRecord({ id: createId("SC"), code, nameZh, defaultUnit, sortOrder: Number(payload.sortOrder || payload.sort_order || 0), isActive: true });
       cats.push(entry);
       data.supplierCategories = cats;
       await saveSeedData(data);
@@ -2594,19 +2627,21 @@ async function handleApi(request, response, url) {
       if (request.method === "PUT") {
         const payload = parseJsonBody(await readRequestBody(request));
         const nameZh = notEmpty(payload.nameZh || payload.name_zh, "中文名称");
+        const defaultUnit = String(payload.defaultUnit || payload.default_unit || "").trim();
         if (supabaseCfg.enabled) {
           const row = await supabaseRequest(supabaseCfg, `supplier_categories?id=eq.${encodeURIComponent(scId)}`, {
             method: "PATCH",
-            body: JSON.stringify({ name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0) }),
+            body: JSON.stringify({ name_zh: nameZh, sort_order: Number(payload.sortOrder || payload.sort_order || 0), default_unit: defaultUnit }),
             headers: { Prefer: "return=representation" },
           });
-          sendJson(response, 200, Array.isArray(row) ? row[0] : row);
+          const saved = normalizeSupplierCategoryRecord(Array.isArray(row) ? row[0] : row);
+          sendJson(response, 200, saved || (Array.isArray(row) ? row[0] : row));
         } else {
           const data = await loadSeedData();
           const cats = ensureSupplierCategories(data);
           const idx = cats.findIndex((c) => c.id === scId);
           if (idx === -1) { sendJson(response, 404, { error: "类别不存在。" }); return true; }
-          cats[idx] = { ...cats[idx], nameZh, sortOrder: Number(payload.sortOrder || payload.sort_order || 0) };
+          cats[idx] = normalizeSupplierCategoryRecord({ ...cats[idx], nameZh, defaultUnit, sortOrder: Number(payload.sortOrder || payload.sort_order || 0) });
           data.supplierCategories = cats;
           await saveSeedData(data);
           sendJson(response, 200, cats[idx]);

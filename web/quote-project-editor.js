@@ -469,9 +469,16 @@ window.ProjectEditor = (function () {
     return CATALOG_CATEGORY_LABELS[category] || category;
   }
 
+  const CATEGORY_DEFAULT_UNITS = {
+    av_equipment: "套", stage_structure: "套", print_display: "项",
+    decoration: "项", furniture: "套", personnel: "人天",
+    logistics: "趟", management: "项", misc: "项",
+  };
+
   function normalizeSupplierCategory(rawCategory) {
     const code = String(rawCategory?.code || rawCategory?.id || "").trim().toLowerCase();
     if (!code) return null;
+    const defUnit = CATEGORY_DEFAULT_UNITS[code] || "项";
     return {
       code,
       nameZh: String(rawCategory?.nameZh || rawCategory?.name_zh || getCatalogCategoryLabel(code)).trim() || getCatalogCategoryLabel(code),
@@ -479,7 +486,28 @@ window.ProjectEditor = (function () {
       isActive: rawCategory?.isActive !== undefined
         ? Boolean(rawCategory.isActive)
         : (rawCategory?.is_active !== undefined ? Boolean(rawCategory.is_active) : true),
+      defaultUnit: String(rawCategory?.defaultUnit || rawCategory?.default_unit || defUnit).trim() || defUnit,
     };
+  }
+
+  function getSupplierCategoryDefaultUnit(categoryCode) {
+    const code = String(categoryCode || "").trim().toLowerCase();
+    if (!code) return "项";
+    const cat = Array.isArray(supplierCategoryCache)
+      ? supplierCategoryCache.find((c) => c.code === code)
+      : null;
+    return cat?.defaultUnit || CATEGORY_DEFAULT_UNITS[code] || "项";
+  }
+
+  function syncRowCategoryUnit(rowEl) {
+    const categoryCode = String(rowEl.dataset.itemCategory || "").trim().toLowerCase();
+    const unitInput = rowEl.querySelector("[name='unit']");
+    if (!unitInput) return;
+    const systemUnit = getSupplierCategoryDefaultUnit(categoryCode);
+    if (!unitInput.value || unitInput.value === unitInput.dataset.systemUnit) {
+      unitInput.value = systemUnit;
+    }
+    unitInput.dataset.systemUnit = systemUnit;
   }
 
   function getVisibleServiceTypeMode(groupType) {
@@ -637,11 +665,19 @@ window.ProjectEditor = (function () {
     rowEl.dataset.supplierDisplay = supplierDisplay;
     rowEl.dataset.itemCategory = String(item.category || rowEl.dataset.itemCategory || "").trim().toLowerCase();
     syncVisibleServiceTypeField(rowEl);
-    // syncVisibleServiceTypeField → syncRowUnit may overwrite catalog unit with type defaultUnit;
-    // catalog unit is authoritative when present.
-    if (unitInput && item.unit) {
-      unitInput.value = item.unit;
-      unitInput.dataset.systemUnit = item.unit;
+    // Catalog unit takes highest priority; if catalog unit is absent, use supplier category defaultUnit
+    if (unitInput) {
+      if (item.unit) {
+        unitInput.value = item.unit;
+        unitInput.dataset.systemUnit = item.unit;
+      } else {
+        // No catalog unit: derive from supplier category defaultUnit
+        const catUnit = getSupplierCategoryDefaultUnit(rowEl.dataset.itemCategory);
+        if (!unitInput.value || unitInput.value === unitInput.dataset.systemUnit) {
+          unitInput.value = catUnit;
+        }
+        unitInput.dataset.systemUnit = catUnit;
+      }
     }
   }
 
@@ -1033,6 +1069,7 @@ window.ProjectEditor = (function () {
           const groupType = groupEl.querySelector("[name='projectType']")?.value || "travel";
           if (getVisibleServiceTypeMode(groupType) === "supplier-category") {
             rowEl.dataset.itemCategory = String(field.value || "").trim().toLowerCase();
+            syncRowCategoryUnit(rowEl);
           } else {
             const itemTypeInput = rowEl.querySelector("[name='itemType']");
             if (itemTypeInput) itemTypeInput.value = String(field.value || "").trim().toLowerCase();
@@ -1089,10 +1126,15 @@ window.ProjectEditor = (function () {
 
     const currentType = String(item.itemType || allowed[0]?.code || "misc").trim().toLowerCase();
     const currentTypeMeta = (itemTypeCache || []).find((entry) => entry.code === currentType);
-    const currentServiceType = getVisibleServiceTypeMode(groupType) === "supplier-category"
+    const isCategoryMode = getVisibleServiceTypeMode(groupType) === "supplier-category";
+    const currentServiceType = isCategoryMode
       ? String(tr.dataset.itemCategory || "").trim().toLowerCase()
       : currentType;
-    const unit = item.unit || currentTypeMeta?.defaultUnit || "\u9879";
+    // data-system-unit: for event rows use supplier category defaultUnit; for travel rows use item type defaultUnit
+    const systemUnitForRow = isCategoryMode
+      ? getSupplierCategoryDefaultUnit(String(tr.dataset.itemCategory || "").trim().toLowerCase())
+      : (currentTypeMeta?.defaultUnit || "\u9879");
+    const unit = item.unit || systemUnitForRow;
     tr.innerHTML = `
       <td class="proj-col-type">
         <input type="hidden" name="itemType" value="${escapeHtml(currentType)}" />
@@ -1102,7 +1144,7 @@ window.ProjectEditor = (function () {
       </td>
       <td class="proj-col-name"><div class="service-name-wrap"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="\u670d\u52a1\u540d\u79f0">${escapeHtml(item.itemName || "")}</textarea><div class="service-suggestion-box" hidden></div></div></td>
       <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="\u89c4\u683c / \u8bf4\u660e">${escapeHtml(item.specification || "")}</textarea></td>
-      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(currentTypeMeta?.defaultUnit || '\u9879')}" placeholder="\u5355\u4f4d" /></td>
+      <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(systemUnitForRow)}" placeholder="\u5355\u4f4d" /></td>
       <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
       <td class="proj-col-cost-unit view-internal"><input class="cell-input proj-cell-input-number" name="costUnitPrice" type="number" min="0" step="0.01" value="${item.costUnitPrice ? Number(item.costUnitPrice) : ""}" placeholder="0.00" /></td>
       <td class="proj-col-sales-unit"><input class="cell-input proj-cell-input-number" name="salesUnitPrice" type="number" min="0" step="0.01" value="${item.salesUnitPrice ? Number(item.salesUnitPrice) : ""}" placeholder="0.00" /></td>
