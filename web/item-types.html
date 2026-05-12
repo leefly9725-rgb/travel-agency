@@ -45,7 +45,19 @@
             </label>
             <label><span>中文名称</span><input name="nameZh" placeholder="例如：定制服务" required /></label>
             <label>
-              <span>分组</span>
+              <span>默认单位</span>
+              <input name="defaultUnit" placeholder="例如：项、套、人天" />
+            </label>
+            <label>
+              <span>适用项目组</span>
+              <span class="checkbox-group" style="display:flex;gap:16px;align-items:center;margin-top:4px">
+                <label class="checkbox-label" style="font-weight:normal"><input type="checkbox" name="pgc_travel" value="travel" /><span>旅游接待</span></label>
+                <label class="checkbox-label" style="font-weight:normal"><input type="checkbox" name="pgc_event" value="event" /><span>活动服务</span></label>
+                <label class="checkbox-label" style="font-weight:normal"><input type="checkbox" name="pgc_mixed" value="mixed" /><span>综合服务</span></label>
+              </span>
+            </label>
+            <label>
+              <span>内部分组</span>
               <select name="categoryGroup">
                 <option value="accommodation">住宿</option>
                 <option value="transport">交通</option>

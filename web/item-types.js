@@ -16,6 +16,9 @@ function renderTypeList() {
       const systemBadge = t.isSystem
         ? '<span class="status-badge" style="background:#e3f2fd;color:#1565c0;margin-left:4px">系统内置</span>'
         : "";
+      const pgcLabel = Array.isArray(t.projectGroupCodes) && t.projectGroupCodes.length
+        ? t.projectGroupCodes.join(" / ")
+        : "—";
       return `
         <article class="card">
           <div class="list-row list-row-top">
@@ -24,7 +27,7 @@ function renderTypeList() {
                 <h3>${t.nameZh}</h3>
                 ${statusBadge}${systemBadge}
               </div>
-              <p class="meta">代码：${t.code} · 分组：${t.categoryGroup || "—"} · 排序：${t.sortOrder ?? 0}</p>
+              <p class="meta">代码：${t.code} · 默认单位：${t.defaultUnit || "—"} · 适用组：${pgcLabel} · 排序：${t.sortOrder ?? 0}</p>
             </div>
             <div class="action-row">
               ${window.can('project_type.manage') ? `<button class="mini-button" data-edit-type="${t.id}">编辑</button>` : ''}
@@ -41,9 +44,16 @@ function fillTypeForm(type) {
   form.id.value = type ? type.id : "";
   form.code.value = type ? type.code : "";
   form.nameZh.value = type ? type.nameZh : "";
+  form.defaultUnit.value = type ? (type.defaultUnit || "") : "";
   form.categoryGroup.value = type ? (type.categoryGroup || "misc") : "misc";
   form.sortOrder.value = type ? (type.sortOrder ?? 10) : 10;
   form.isActive.checked = type ? (type.isActive !== false) : true;
+
+  const pgcValues = Array.isArray(type?.projectGroupCodes) ? type.projectGroupCodes : (type ? [] : ["travel", "event", "mixed"]);
+  ["travel", "event", "mixed"].forEach((code) => {
+    const cb = form.querySelector(`[name="pgc_${code}"]`);
+    if (cb) cb.checked = pgcValues.includes(code);
+  });
 
   // System types: disable code field
   form.code.disabled = Boolean(type?.isSystem);
@@ -76,9 +86,15 @@ async function bootstrap() {
     window.AppUtils.hideMessage("item-types-message");
     const form = event.currentTarget;
     const id = form.id.value.trim();
+    const projectGroupCodes = ["travel", "event", "mixed"].filter((code) => {
+      const cb = form.querySelector(`[name="pgc_${code}"]`);
+      return cb ? cb.checked : false;
+    });
     const payload = {
       code: form.code.value.trim(),
       nameZh: form.nameZh.value.trim(),
+      defaultUnit: form.defaultUnit.value.trim(),
+      projectGroupCodes: projectGroupCodes.length > 0 ? projectGroupCodes : ["mixed"],
       categoryGroup: form.categoryGroup.value,
       sortOrder: Number(form.sortOrder.value || 0),
       isActive: form.isActive.checked,

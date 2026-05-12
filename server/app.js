@@ -843,6 +843,9 @@ function normalizeQuoteItemTypePayload(payload, existingId, existing) {
     projectGroupId: String(payload.project_group_id || payload.projectGroupId || existing?.projectGroupId || "").trim() || null,
     sortOrder: Number(payload.sortOrder || payload.sort_order || 0),
     isActive: payload.isActive !== undefined ? Boolean(payload.isActive) : (payload.is_active !== undefined ? Boolean(payload.is_active) : true),
+    defaultUnit: String(payload.defaultUnit || payload.default_unit || existing?.defaultUnit || "").trim(),
+    projectGroupCodes: normalizeCodeArray(payload.projectGroupCodes || payload.project_group_codes || existing?.projectGroupCodes, existing?.projectGroupCodes || ["mixed"]),
+    isSystem: existing?.isSystem !== undefined ? Boolean(existing.isSystem) : false,
   };
 }
 
@@ -2346,15 +2349,15 @@ async function handleApi(request, response, url) {
 
   if (request.method === "POST" && url.pathname === "/api/quote-item-types") {
     const rawBody = parseJsonBody(await readRequestBody(request));
-    // project_group_id 必填
     const projectGroupId = String(rawBody.project_group_id || rawBody.projectGroupId || "").trim();
-    if (!projectGroupId) {
-      sendJson(response, 400, { error: "project_group_id 为必填项。" });
-      return true;
-    }
     const payload = normalizeQuoteItemTypePayload(rawBody);
     const supabaseCfg = getSupabaseConfig();
     if (supabaseCfg.enabled) {
+      // project_group_id is required as a FK when Supabase is active
+      if (!projectGroupId) {
+        sendJson(response, 400, { error: "project_group_id 为必填项。" });
+        return true;
+      }
       const row = await supabaseRequest(supabaseCfg, "quote_item_types", {
         method: "POST",
         body: JSON.stringify({
@@ -2363,6 +2366,7 @@ async function handleApi(request, response, url) {
           project_group_id: projectGroupId,
           sort_order: payload.sortOrder,
           is_active: payload.isActive,
+          default_unit: payload.defaultUnit,
         }),
         headers: { Prefer: "return=representation" },
       });
@@ -2379,7 +2383,7 @@ async function handleApi(request, response, url) {
     } else {
       const localData = loadSeedData();
       const localTypes = ensureQuoteItemTypes(localData);
-      const entry = { ...payload, projectGroupId };
+      const entry = { ...payload, projectGroupId: projectGroupId || null };
       localTypes.push(entry);
       localData.quotationItemTypes = localTypes;
       await saveSeedData(localData);
@@ -2403,6 +2407,7 @@ async function handleApi(request, response, url) {
             sort_order: payload.sortOrder,
             is_active: payload.isActive,
             project_group_id: payload.projectGroupId || existingNorm.projectGroupId || null,
+            default_unit: payload.defaultUnit,
           };
           const row = await supabaseRequest(supabaseCfg, `quote_item_types?id=eq.${encodeURIComponent(qitId)}`, {
             method: "PATCH",

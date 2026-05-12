@@ -664,3 +664,164 @@ test("GET /api/customer-standard-quotations/:id returns 400 for project_based qu
     assert.equal(csqResponse.status, 400);
   });
 });
+
+test("GET /api/quote-item-types returns defaultUnit for each type", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quote-item-types');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    assert.ok(Array.isArray(payload), "should return an array");
+    assert.ok(payload.length > 0, "should have at least one type");
+    payload.forEach((item) => {
+      assert.ok("defaultUnit" in item, `item ${item.code} should have defaultUnit field`);
+    });
+    const hotel = payload.find((t) => t.code === "hotel");
+    assert.ok(hotel, "hotel type should be present");
+    assert.equal(hotel.defaultUnit, "间");
+  });
+});
+
+test("POST /api/quote-item-types (local mode) saves and returns defaultUnit", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, '/api/quote-item-types', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: "custom_test_type",
+        nameZh: "测试自定义类型",
+        defaultUnit: "批次",
+        projectGroupCodes: ["travel", "mixed"],
+        sortOrder: 99,
+        isActive: true,
+      }),
+    });
+    assert.equal(response.status, 201);
+    const saved = await response.json();
+    assert.equal(saved.code, "custom_test_type");
+    assert.equal(saved.defaultUnit, "批次");
+    assert.ok(Array.isArray(saved.projectGroupCodes), "projectGroupCodes should be an array");
+    assert.ok(saved.projectGroupCodes.includes("travel"), "projectGroupCodes should include travel");
+  });
+});
+
+test("PUT /api/quote-item-types/:id (local mode) updates defaultUnit", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quote-item-types', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        code: "unit_update_test",
+        nameZh: "单位更新测试",
+        defaultUnit: "项",
+        projectGroupCodes: ["mixed"],
+        sortOrder: 98,
+        isActive: true,
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const created = await createResp.json();
+
+    const updateResp = await apiFetch(port, `/api/quote-item-types/${encodeURIComponent(created.id)}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nameZh: "单位更新测试",
+        defaultUnit: "套",
+        projectGroupCodes: ["event", "mixed"],
+        sortOrder: 98,
+        isActive: true,
+      }),
+    });
+    assert.equal(updateResp.status, 200);
+    const updated = await updateResp.json();
+    assert.equal(updated.defaultUnit, "套");
+  });
+});
+
+test("GET /api/quote-item-types returns defaultUnit even for types without it in seed", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.quotationItemTypes = [
+      { id: "QT-NOUNIT", code: "no_unit_type", nameZh: "无单位类型", isActive: true, sortOrder: 1 }
+    ];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const response = await apiFetch(port, '/api/quote-item-types');
+    assert.equal(response.status, 200);
+    const payload = await response.json();
+    const found = payload.find((t) => t.code === "no_unit_type");
+    assert.ok(found, "custom type without defaultUnit should be returned");
+    assert.equal(typeof found.defaultUnit, "string", "defaultUnit should be a string even when missing from seed");
+  });
+});
+
+test("project_based quote preserves item unit after save and reload", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, '/api/quotes', {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Test Client",
+        projectName: "Unit Preservation Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-07-01",
+        endDate: "2026-07-03",
+        destination: "Belgrade",
+        paxCount: 10,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "travel",
+            projectTitle: "差旅组",
+            items: [
+              {
+                itemType: "hotel",
+                itemName: "贝尔格莱德希尔顿",
+                specification: "标准间",
+                unit: "晚",
+                quantity: 3,
+                costUnitPrice: 150,
+                salesUnitPrice: 200,
+                remarks: "",
+              },
+              {
+                itemType: "transport",
+                itemName: "机场接送",
+                specification: "商务车",
+                unit: "辆次",
+                quantity: 2,
+                costUnitPrice: 80,
+                salesUnitPrice: 120,
+                remarks: "",
+              },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+
+    assert.ok(Array.isArray(loaded.projectGroups), "projectGroups should be an array");
+    assert.equal(loaded.projectGroups.length, 1);
+    const group = loaded.projectGroups[0];
+    assert.equal(group.items.length, 2);
+
+    const hotelItem = group.items.find((i) => i.itemType === "hotel");
+    assert.ok(hotelItem, "hotel item should be present");
+    assert.equal(hotelItem.unit, "晚", "hotel item unit should be preserved as saved");
+
+    const transportItem = group.items.find((i) => i.itemType === "transport");
+    assert.ok(transportItem, "transport item should be present");
+    assert.equal(transportItem.unit, "辆次", "transport item unit should be preserved as saved");
+  });
+});
