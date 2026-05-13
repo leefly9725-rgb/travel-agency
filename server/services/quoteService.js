@@ -408,6 +408,41 @@ function summarizeQuoteItems(items) {
   }, {});
 }
 
+// itemType → supplier catalog category fallback (for GET-time compat only, never stored)
+const ITEM_TYPE_TO_CATALOG_CATEGORY_FALLBACK = {
+  av_lighting:           "av_equipment",
+  build_production:      "stage_structure",
+  design_print:          "print_display",
+  staffing_execution:    "personnel",
+  logistics_transport:   "logistics",
+  venue_service:         "management",
+  material_purchase:     "decoration",
+};
+
+// Lightweight compat pass applied at GET time — never modifies stored data.
+// Ensures every item has expected string fields so frontend never sees undefined.
+// Provides itemCategory fallback from itemType when itemCategory is absent/empty.
+function liteNormalizeProjectGroups(groups) {
+  if (!Array.isArray(groups)) return [];
+  return groups.map((group) => {
+    const items = Array.isArray(group.items) ? group.items.map((item) => {
+      const storedCategory = String(item.itemCategory || "").trim();
+      const itemCategory = storedCategory ||
+        ITEM_TYPE_TO_CATALOG_CATEGORY_FALLBACK[String(item.itemType || "").trim()] || "";
+      return {
+        ...item,
+        itemType: String(item.itemType || "misc").trim(),
+        itemCategory,
+        supplierDisplay: String(item.supplierDisplay || item.supplierName || "").trim(),
+        supplierCatalogItemId: String(item.supplierCatalogItemId || "").trim(),
+        supplierId: String(item.supplierId || "").trim(),
+        unit: String(item.unit || "").trim(),
+      };
+    }) : group.items;
+    return { ...group, items };
+  });
+}
+
 function enrichQuote(quote) {
   const normalizedCurrency = normalizeCurrency(quote.currency || "EUR");
   const dateFields = normalizeQuoteDates(quote);
@@ -431,7 +466,7 @@ function enrichQuote(quote) {
       exchangeRates,
       items: [],
       itemSummary: {},
-      projectGroups: quote.projectGroups || [],
+      projectGroups: liteNormalizeProjectGroups(quote.projectGroups || []),
     };
   }
 

@@ -637,6 +637,27 @@ window.ProjectEditor = (function () {
     };
   }
 
+  function refreshRowMetaBadges(rowEl) {
+    const badgeEl = rowEl.querySelector(".row-meta-badges");
+    if (!badgeEl) return;
+    const supplierDisplay = String(rowEl.dataset.supplierDisplay || "").trim();
+    const catalogItemId = String(rowEl.dataset.supplierCatalogItemId || "").trim();
+    const categoryCode = String(rowEl.dataset.itemCategory || "").trim().toLowerCase();
+    const parts = [];
+    if (supplierDisplay) {
+      parts.push(`<span class="row-meta-badge row-meta-badge-supplier" title="${escapeHtml(supplierDisplay)}">供应商：${escapeHtml(supplierDisplay)}</span>`);
+    }
+    if (catalogItemId) {
+      parts.push('<span class="row-meta-badge row-meta-badge-catalog">来自价格库</span>');
+    }
+    if (categoryCode) {
+      const catLabel = getCatalogCategoryLabel(categoryCode);
+      parts.push(`<span class="row-meta-badge row-meta-badge-category" title="${escapeHtml(catLabel)}">${escapeHtml(catLabel)}</span>`);
+    }
+    badgeEl.innerHTML = parts.join("");
+    badgeEl.hidden = parts.length === 0;
+  }
+
   function applyCatalogItemToRow(rowEl, item) {
     const nameInput = rowEl.querySelector('[name="itemName"]');
     const specInput = rowEl.querySelector('[name="specification"]');
@@ -679,6 +700,7 @@ window.ProjectEditor = (function () {
         unitInput.dataset.systemUnit = catUnit;
       }
     }
+    refreshRowMetaBadges(rowEl);
   }
 
   function ensureSupplierCatalogLoaded() {
@@ -1142,7 +1164,7 @@ window.ProjectEditor = (function () {
           ${getVisibleServiceTypeOptions(groupType, currentServiceType).map((entry) => `<option value="${entry.value}"${entry.value === currentServiceType ? " selected" : ""}>${entry.label}</option>`).join("")}
         </select>
       </td>
-      <td class="proj-col-name"><div class="service-name-wrap"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="\u670d\u52a1\u540d\u79f0">${escapeHtml(item.itemName || "")}</textarea><div class="service-suggestion-box" hidden></div></div></td>
+      <td class="proj-col-name"><div class="service-name-wrap"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-name" name="itemName" rows="1" data-autosize-field="itemName" placeholder="\u670d\u52a1\u540d\u79f0">${escapeHtml(item.itemName || "")}</textarea><div class="service-suggestion-box" hidden></div></div><div class="row-meta-badges view-internal" hidden></div></td>
       <td class="proj-col-spec"><textarea class="cell-input proj-cell-textarea proj-cell-textarea-spec" name="specification" rows="1" data-autosize-field="specification" placeholder="\u89c4\u683c / \u8bf4\u660e">${escapeHtml(item.specification || "")}</textarea></td>
       <td class="proj-col-unit"><input class="cell-input proj-cell-input-unit" name="unit" value="${escapeHtml(unit)}" data-system-unit="${escapeHtml(systemUnitForRow)}" placeholder="\u5355\u4f4d" /></td>
       <td class="proj-col-qty"><input class="cell-input proj-cell-input-number" name="quantity" type="number" min="0" step="0.01" value="${Number(item.quantity || 1)}" /></td>
@@ -1155,6 +1177,7 @@ window.ProjectEditor = (function () {
       <td class="proj-col-actions proj-row-actions"><div class="proj-row-action-stack"><button type="button" class="ghost mini-button proj-row-action-btn pick-catalog-btn">\u4ece\u5e93\u9009</button><button type="button" class="ghost mini-button proj-row-action-btn delete-item-btn">\u5220\u9664</button></div></td>
     `;
     syncVisibleServiceTypeField(tr, groupType);
+    refreshRowMetaBadges(tr);
     return tr;
   }
 

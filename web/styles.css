@@ -3424,3 +3424,44 @@ body.proj-column-resizing * {
     width: 100%;
   }
 }
+
+/* ── Project editor: row supplier / category meta badges ─────────────────── */
+.row-meta-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+  line-height: 1;
+}
+
+.row-meta-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 10px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  white-space: nowrap;
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: default;
+}
+
+.row-meta-badge-supplier {
+  background: rgba(2, 119, 189, 0.07);
+  border: 1px solid rgba(2, 119, 189, 0.18);
+  color: #0277bd;
+}
+
+.row-meta-badge-catalog {
+  background: rgba(201, 168, 76, 0.10);
+  border: 1px solid rgba(201, 168, 76, 0.30);
+  color: #8a6c1a;
+}
+
+.row-meta-badge-category {
+  background: rgba(52, 103, 64, 0.07);
+  border: 1px solid rgba(52, 103, 64, 0.18);
+  color: #346740;
+}

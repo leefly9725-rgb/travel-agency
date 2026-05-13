@@ -1330,3 +1330,156 @@ test("project_based mixed: both itemType and itemCategory preserved for differen
     assert.equal(avItem.unit, "套");
   });
 });
+
+test("project_based: old data without supplierDisplay field does not error on GET", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.quotes.push({
+      id: "Q-LEGACY-NOSUP",
+      quoteNumber: "QT-LEGACY-NOSUP",
+      clientName: "Legacy No Supplier",
+      projectName: "Legacy No SupplierDisplay",
+      contactName: "Contact",
+      contactPhone: "",
+      language: "zh-CN",
+      currency: "EUR",
+      startDate: "2026-02-01",
+      endDate: "2026-02-02",
+      tripDate: "2026-02-01",
+      travelDays: 2,
+      destination: "Belgrade",
+      paxCount: 5,
+      notes: "",
+      pricingMode: "project_based",
+      items: [],
+      projectGroups: [
+        {
+          projectType: "event",
+          projectTitle: "旧版无供应商组",
+          items: [
+            { itemType: "misc", itemCategory: "av_equipment", itemName: "LED屏", unit: "套", quantity: 1, costUnitPrice: 500, salesUnitPrice: 800, remarks: "" },
+          ],
+        },
+      ],
+      totalCost: 500,
+      totalSales: 800,
+      totalProfit: 300,
+      createdAt: "2026-02-01T00:00:00Z",
+      updatedAt: "2026-02-01T00:00:00Z",
+    });
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const getResp = await apiFetch(port, "/api/quotes/Q-LEGACY-NOSUP");
+    assert.equal(getResp.status, 200, "GET must not crash when supplierDisplay is absent");
+    const loaded = await getResp.json();
+    const item = loaded.projectGroups[0].items[0];
+    assert.ok(item, "item should be present");
+    // supplierDisplay absent from stored JSON — GET must return "" or undefined, never crash
+    assert.ok(
+      item.supplierDisplay === "" || item.supplierDisplay === undefined,
+      "supplierDisplay should be empty string or absent for legacy items"
+    );
+    assert.equal(item.itemCategory, "av_equipment", "itemCategory should be preserved");
+    assert.equal(item.unit, "套", "unit should be preserved");
+  });
+});
+
+test("project_based event: old row with itemType=av_lighting and no itemCategory gets fallback itemCategory on GET", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.quotes.push({
+      id: "Q-LEGACY-AVLIGHT",
+      quoteNumber: "QT-LEGACY-AVLIGHT",
+      clientName: "Legacy AV Lighting",
+      projectName: "Legacy AV Lighting Fallback",
+      contactName: "Contact",
+      contactPhone: "",
+      language: "zh-CN",
+      currency: "EUR",
+      startDate: "2026-03-01",
+      endDate: "2026-03-02",
+      tripDate: "2026-03-01",
+      travelDays: 2,
+      destination: "Belgrade",
+      paxCount: 8,
+      notes: "",
+      pricingMode: "project_based",
+      items: [],
+      projectGroups: [
+        {
+          projectType: "event",
+          projectTitle: "旧版AV灯光组",
+          items: [
+            { itemType: "av_lighting", itemName: "舞台灯光", unit: "套", quantity: 1, costUnitPrice: 2000, salesUnitPrice: 3000, remarks: "" },
+          ],
+        },
+      ],
+      totalCost: 2000,
+      totalSales: 3000,
+      totalProfit: 1000,
+      createdAt: "2026-03-01T00:00:00Z",
+      updatedAt: "2026-03-01T00:00:00Z",
+    });
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const getResp = await apiFetch(port, "/api/quotes/Q-LEGACY-AVLIGHT");
+    assert.equal(getResp.status, 200, "GET must not crash for legacy av_lighting item");
+    const loaded = await getResp.json();
+    const item = loaded.projectGroups[0].items[0];
+    assert.ok(item, "item should be present");
+    assert.equal(item.itemType, "av_lighting", "itemType must be preserved");
+    // GET compat normalization should provide fallback itemCategory for av_lighting
+    assert.equal(item.itemCategory, "av_equipment", "fallback itemCategory should be av_equipment for av_lighting");
+    assert.equal(item.unit, "套", "unit must not be overwritten by GET normalization");
+    assert.equal(item.itemName, "舞台灯光", "itemName must not be changed");
+  });
+});
+
+test("project_based: GET normalization does not overwrite existing unit field", async () => {
+  await withServer(async (port) => {
+    const createResp = await apiFetch(port, "/api/quotes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientName: "Unit Preservation Client",
+        projectName: "Unit Not Overwritten Test",
+        contactName: "Contact",
+        contactPhone: "",
+        language: "zh-CN",
+        currency: "EUR",
+        startDate: "2026-04-01",
+        endDate: "2026-04-02",
+        destination: "Novi Sad",
+        paxCount: 10,
+        notes: "",
+        pricingMode: "project_based",
+        items: [],
+        projectGroups: [
+          {
+            projectType: "event",
+            projectTitle: "单位保留测试",
+            items: [
+              { itemType: "misc", itemCategory: "personnel", itemName: "礼仪人员", specification: "10人", unit: "人次", quantity: 10, costUnitPrice: 200, salesUnitPrice: 300, remarks: "" },
+              { itemType: "misc", itemCategory: "logistics", itemName: "货运", specification: "整车", unit: "趟", quantity: 2, costUnitPrice: 800, salesUnitPrice: 1200, remarks: "" },
+            ],
+          },
+        ],
+      }),
+    });
+    assert.equal(createResp.status, 201);
+    const newQuote = await createResp.json();
+
+    const getResp = await apiFetch(port, `/api/quotes/${encodeURIComponent(newQuote.id)}`);
+    assert.equal(getResp.status, 200);
+    const loaded = await getResp.json();
+    const group = loaded.projectGroups[0];
+
+    const personnelItem = group.items.find((i) => i.itemCategory === "personnel");
+    assert.ok(personnelItem, "personnel item should be present");
+    assert.equal(personnelItem.unit, "人次", "unit must not be overwritten for personnel item");
+
+    const logisticsItem = group.items.find((i) => i.itemCategory === "logistics");
+    assert.ok(logisticsItem, "logistics item should be present");
+    assert.equal(logisticsItem.unit, "趟", "unit must not be overwritten for logistics item");
+  });
+});
