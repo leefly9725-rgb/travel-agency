@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>报价单维护</title>
+  <title>新建报价单</title>
   <link rel="stylesheet" href="/styles.css" />
   <style>
     .initializing-project #mode-selector-panel,
@@ -30,19 +30,11 @@
 
     <div id="quote-message" class="message-box hidden" style="margin:0 0 0 0;border-radius:0"></div>
 
-    <div id="mode-selector-panel" class="panel" style="margin-bottom:0;border-bottom-left-radius:0;border-bottom-right-radius:0">
+    <div id="mode-selector-panel" class="panel" style="display:none" aria-hidden="true">
       <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
-        <span style="font-weight:600;color:var(--text-secondary,#666);font-size:13px">报价模式：</span>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
-          <input type="radio" name="pricingModeRadio" value="standard" checked id="mode-radio-standard" />
-          标准差旅报价
-        </label>
-        <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:14px">
-          <input type="radio" name="pricingModeRadio" value="project_based" id="mode-radio-project" />
-          项目型报价（活动 / 会议 / 展会）
-        </label>
-        <span style="flex:1"></span>
-        <span id="quote-form-mode" class="status-text subtle-status">新建模式</span>
+        <input type="radio" name="pricingModeRadio" value="standard" checked id="mode-radio-standard" style="display:none" />
+        <input type="radio" name="pricingModeRadio" value="project_based" id="mode-radio-project" style="display:none" />
+        <span id="quote-form-mode" style="display:none"></span>
       </div>
     </div>
 
@@ -51,7 +43,7 @@
         <div class="admin-page-head">
           <div>
             <p class="eyebrow">报价管理</p>
-            <h1 id="quote-form-title" class="page-title-sm">新建报价单</h1>
+            <h1 id="quote-form-title" class="page-title-sm">新建标准报价单</h1>
             <p id="quote-form-subtitle" class="page-subtitle">用于录入客户信息、行程日期和报价项目，右侧会同步显示汇总结果。</p>
           </div>
         </div>

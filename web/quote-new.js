@@ -1175,7 +1175,7 @@ async function bootstrap() {
       // 更新页面标题标签
       const titleEl = document.getElementById("quote-form-title");
       if (titleEl) {
-        titleEl.textContent = "项目型报价单";
+        titleEl.textContent = "新建项目型报价单";
       }
       const subtitleEl = document.getElementById("quote-form-subtitle");
       if (subtitleEl) {
@@ -1183,12 +1183,12 @@ async function bootstrap() {
       }
     } else {
       if (modeRadioStandard) modeRadioStandard.checked = true;
-      const modeSelectorPanel = document.getElementById("mode-selector-panel");
-      if (modeSelectorPanel) modeSelectorPanel.style.display = "";
       if (quoteItemsSection) quoteItemsSection.style.display = "";
       if (previewAside)     previewAside.style.display = "";
       if (standardEditorGrid) standardEditorGrid.style.gridTemplateColumns = "";
       if (projectModeWrapper) projectModeWrapper.style.display = "none";
+      const standardTitleEl = document.getElementById("quote-form-title");
+      if (standardTitleEl) standardTitleEl.textContent = "新建标准报价单";
     }
   }
 
@@ -1661,12 +1661,11 @@ async function bootstrap() {
     }
 
     const titleEl = document.getElementById("quote-form-title") || document.getElementById("proj-form-title");
-    if (titleEl) titleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑报价单";
+    if (titleEl) titleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑标准报价单";
     const projTitleEl = document.getElementById("proj-form-title");
     if (projTitleEl) projTitleEl.textContent = "编辑项目型报价单";
     const formTitleEl = document.getElementById("quote-form-title");
-    if (formTitleEl) formTitleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑报价单";
-    document.getElementById("quote-form-mode").textContent = "编辑模式";
+    if (formTitleEl) formTitleEl.textContent = quote.pricingMode === "project_based" ? "编辑项目型报价单" : "编辑标准报价单";
     const editSubmitBtn = form.querySelector('button[type="submit"]');
     if (editSubmitBtn && quote.pricingMode !== "project_based") {
       editSubmitBtn.textContent = "更新报价";
