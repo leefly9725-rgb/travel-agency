@@ -287,3 +287,39 @@ alter table if exists public.quote_item_types
 
 alter table if exists public.supplier_categories
   add column if not exists default_unit text not null default '';
+
+-- ── Business projects table (B1-01: 真正业务项目实体，独立于 quotation_projects 内部结构) ──
+
+create table if not exists public.projects (
+  id text primary key,
+  project_number text not null,
+  source_quote_id text unique,
+  source_quote_number text not null default '',
+  source_pricing_mode text not null default 'project_based',
+  project_name text not null,
+  client_name text not null,
+  contact_name text not null default '',
+  contact_phone text not null default '',
+  destination text not null default '',
+  start_date date,
+  end_date date,
+  pax_count integer not null default 0,
+  currency text not null default 'EUR',
+  status text not null default 'draft'
+    constraint projects_status_check check (status in ('draft','confirmed','running','completed','cancelled')),
+  owner_name text not null default '',
+  notes text not null default '',
+  quote_snapshot jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now())
+);
+
+create index if not exists idx_projects_updated_at on public.projects (updated_at desc);
+create index if not exists idx_projects_status on public.projects (status);
+
+-- Non-destructive migration for existing databases
+alter table if exists public.projects
+  add column if not exists owner_name text not null default '';
+
+alter table if exists public.projects
+  add column if not exists notes text not null default '';

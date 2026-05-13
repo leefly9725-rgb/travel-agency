@@ -1483,3 +1483,196 @@ test("project_based: GET normalization does not overwrite existing unit field", 
     assert.equal(logisticsItem.unit, "趟", "unit must not be overwritten for logistics item");
   });
 });
+
+// ── B1-01: 报价转项目 & 项目实体 ──────────────────────────────────────────────
+
+function seedProjectBasedQuote() {
+  const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+  data.quotes.push({
+    id: "Q-PB",
+    projectId: "",
+    quoteNumber: "QT-PB",
+    clientName: "ProjectClient",
+    projectName: "测试活动项目",
+    contactName: "王五",
+    contactPhone: "13900000001",
+    language: "zh-CN",
+    currency: "EUR",
+    startDate: "2026-07-01",
+    endDate: "2026-07-03",
+    tripDate: "2026-07-01",
+    travelDays: 3,
+    destination: "Novi Sad",
+    paxCount: 20,
+    notes: "",
+    pricingMode: "project_based",
+    totalCost: 500,
+    totalSales: 800,
+    totalProfit: 300,
+    projectGroups: [
+      {
+        id: "G-1",
+        projectType: "event",
+        projectTitle: "主会场布置",
+        sortOrder: 0,
+        projectCostTotal: 500,
+        projectSalesTotal: 800,
+        projectProfitTotal: 300,
+        items: [
+          {
+            itemType: "misc",
+            itemCategory: "decoration",
+            itemName: "花艺布置",
+            specification: "全场",
+            unit: "套",
+            quantity: 1,
+            currency: "EUR",
+            costUnitPrice: 500,
+            salesUnitPrice: 800,
+            costSubtotal: 500,
+            salesSubtotal: 800,
+            remarks: "",
+            sortOrder: 0,
+          }
+        ]
+      }
+    ],
+    createdAt: "2026-06-01T00:00:00.000Z",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  });
+  fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+}
+
+test("POST /api/quotes/:id/convert-to-project creates project from project_based quote", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const response = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    assert.equal(response.status, 201);
+    const project = await response.json();
+    assert.ok(project.id, "project.id should exist");
+    assert.ok(project.projectNumber, "project.projectNumber should exist");
+    assert.equal(project.projectName, "测试活动项目");
+    assert.equal(project.clientName, "ProjectClient");
+    assert.equal(project.sourceQuoteId, "Q-PB");
+    assert.equal(project.sourceQuoteNumber, "QT-PB");
+    assert.equal(project.status, "draft");
+    assert.ok(project.quoteSnapshot, "quoteSnapshot should be present");
+    assert.equal(project.quoteSnapshot.quoteId, "Q-PB");
+    assert.equal(project.totalCost, 500);
+    assert.equal(project.totalSales, 800);
+  });
+});
+
+test("POST /api/quotes/:id/convert-to-project returns 400 for standard quote", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, "/api/quotes/Q-1/convert-to-project", { method: "POST" });
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("POST /api/quotes/:id/convert-to-project returns 404 for non-existent quote", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, "/api/quotes/Q-NONEXISTENT/convert-to-project", { method: "POST" });
+    assert.equal(response.status, 404);
+    const payload = await response.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("POST /api/quotes/:id/convert-to-project is idempotent — no duplicate project", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const r1 = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    assert.equal(r1.status, 201);
+    const p1 = await r1.json();
+
+    const r2 = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    assert.equal(r2.status, 200, "second convert should return 200 (already exists)");
+    const p2 = await r2.json();
+    assert.equal(p1.id, p2.id, "project id must be the same on second convert");
+  });
+});
+
+test("GET /api/projects returns real project list after convert", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const response = await apiFetch(port, "/api/projects");
+    assert.equal(response.status, 200);
+    const projects = await response.json();
+    assert.ok(Array.isArray(projects), "should return array");
+    assert.equal(projects.length, 1);
+    assert.equal(projects[0].sourceQuoteId, "Q-PB");
+    assert.equal(projects[0].status, "draft");
+  });
+});
+
+test("GET /api/projects/:id returns real project detail with quoteSnapshot", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const response = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    assert.equal(response.status, 200);
+    const project = await response.json();
+    assert.equal(project.id, projectId);
+    assert.ok(project.quoteSnapshot, "quoteSnapshot should be present");
+    assert.equal(project.quoteSnapshot.quoteId, "Q-PB");
+    assert.ok(Array.isArray(project.quoteSnapshot.projectGroups), "projectGroups in snapshot");
+  });
+});
+
+test("PATCH /api/projects/:id/status updates status to confirmed", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "confirmed" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.status, "confirmed");
+
+    // Verify persisted
+    const getRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    const fetched = await getRes.json();
+    assert.equal(fetched.status, "confirmed");
+  });
+});
+
+test("PATCH /api/projects/:id/status returns 400 for invalid status", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "flying" }),
+    });
+    assert.equal(patchRes.status, 400);
+    const payload = await patchRes.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("PATCH /api/projects/:id/status returns 404 for non-existent project", async () => {
+  await withServer(async (port) => {
+    const patchRes = await apiFetch(port, "/api/projects/PRJ-NONEXISTENT/status", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "confirmed" }),
+    });
+    assert.equal(patchRes.status, 404);
+    const payload = await patchRes.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});

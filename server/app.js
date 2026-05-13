@@ -11,6 +11,7 @@ const {
   calculateInclusiveDays,
   calculateQuoteTotals,
   enrichQuote,
+  roundToTwo,
   supportedQuoteItemTypes,
 } = require("./services/quoteService");
 const { buildDocumentPreviews, supportedDocumentPreviewTypes } = require("./services/documentPreviewService");
@@ -169,6 +170,10 @@ function createId(prefix) {
 
 function generateQuoteNumber() {
   return `QT-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(Date.now()).slice(-4)}`;
+}
+
+function generateProjectNumber() {
+  return `PRJ-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(Date.now()).slice(-4)}`;
 }
 
 function formatDate(dateValue) {
@@ -1080,6 +1085,106 @@ function getProjectDetail(data, projectId) {
   };
 }
 
+// ── Business Projects (真正项目实体，独立于 quotation_projects 内部结构) ──────
+
+const VALID_PROJECT_STATUSES = ["draft", "confirmed", "running", "completed", "cancelled"];
+
+function ensureProjectData(data) {
+  if (!Array.isArray(data.projects)) data.projects = [];
+}
+
+function buildProjectSnapshot(quote) {
+  const totalCost = Number(quote.totalCost || 0);
+  const totalPrice = Number(quote.totalSales || quote.totalPrice || 0);
+  const grossProfit = roundToTwo(totalPrice - totalCost);
+  const grossMargin = totalPrice > 0 ? roundToTwo((grossProfit / totalPrice) * 100) : 0;
+  return {
+    quoteId: quote.id,
+    quoteNumber: quote.quoteNumber || "",
+    pricingMode: quote.pricingMode || "project_based",
+    projectGroups: Array.isArray(quote.projectGroups) ? quote.projectGroups : [],
+    totalCost,
+    totalSales: totalPrice,
+    totalPrice,
+    grossProfit,
+    grossMargin,
+    currency: quote.currency || "EUR",
+    clientName: quote.clientName || "",
+    projectName: quote.projectName || "",
+    contactName: quote.contactName || "",
+    contactPhone: quote.contactPhone || "",
+    destination: quote.destination || "",
+    startDate: quote.startDate || "",
+    endDate: quote.endDate || "",
+    paxCount: Number(quote.paxCount || 0),
+    createdAt: quote.createdAt || "",
+    convertedAt: new Date().toISOString(),
+  };
+}
+
+function convertQuoteToProjectLocal(data, quote) {
+  ensureProjectData(data);
+  const existing = data.projects.find((p) => p.sourceQuoteId === quote.id);
+  if (existing) return { project: existing, created: false };
+
+  const now = new Date().toISOString();
+  const enriched = enrichQuote(quote);
+  const project = {
+    id: createId("PRJ"),
+    projectNumber: generateProjectNumber(),
+    sourceQuoteId: quote.id,
+    sourceQuoteNumber: quote.quoteNumber || "",
+    sourcePricingMode: quote.pricingMode || "project_based",
+    projectName: quote.projectName || "",
+    clientName: quote.clientName || "",
+    contactName: quote.contactName || "",
+    contactPhone: quote.contactPhone || "",
+    destination: quote.destination || "",
+    startDate: quote.startDate || "",
+    endDate: quote.endDate || "",
+    paxCount: Number(quote.paxCount || 0),
+    currency: quote.currency || "EUR",
+    status: "draft",
+    ownerName: "",
+    notes: "",
+    quoteSnapshot: buildProjectSnapshot(enriched),
+    createdAt: now,
+    updatedAt: now,
+  };
+  data.projects.push(project);
+  return { project, created: true };
+}
+
+function serializeProject(project) {
+  const snap = project.quoteSnapshot || {};
+  return {
+    id: project.id,
+    projectNumber: project.projectNumber || "",
+    projectName: project.projectName || "",
+    clientName: project.clientName || "",
+    contactName: project.contactName || "",
+    contactPhone: project.contactPhone || "",
+    destination: project.destination || "",
+    startDate: project.startDate || "",
+    endDate: project.endDate || "",
+    paxCount: project.paxCount || 0,
+    currency: project.currency || "EUR",
+    status: project.status || "draft",
+    ownerName: project.ownerName || "",
+    notes: project.notes || "",
+    sourceQuoteId: project.sourceQuoteId || "",
+    sourceQuoteNumber: project.sourceQuoteNumber || "",
+    sourcePricingMode: project.sourcePricingMode || "project_based",
+    totalCost: snap.totalCost || 0,
+    totalSales: snap.totalSales || 0,
+    grossProfit: snap.grossProfit || 0,
+    grossMargin: snap.grossMargin || 0,
+    quoteSnapshot: project.quoteSnapshot || {},
+    createdAt: project.createdAt || "",
+    updatedAt: project.updatedAt || "",
+  };
+}
+
 function getMetaPayload(data, templates, storageMode) {
   const supabase = getSupabaseConfig();
 
@@ -1950,14 +2055,81 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/projects") {
-    const [qr, rr] = await Promise.all([quoteStore.listQuotes(), receptionStore.listReceptions()]);
-    sendJson(response, 200, deriveProjects({ quotes: qr.quotes, receptions: rr.receptions }));
+    const data = loadSeedData();
+    ensureProjectData(data);
+    const realProjects = [...data.projects].sort(
+      (a, b) => (b.updatedAt || "0").localeCompare(a.updatedAt || "0")
+    );
+    sendJson(response, 200, realProjects.map(serializeProject));
     return true;
+  }
+
+  // POST /api/quotes/:id/convert-to-project
+  if (request.method === "POST") {
+    const convertMatch = url.pathname.match(/^\/api\/quotes\/([^/]+)\/convert-to-project$/);
+    if (convertMatch) {
+      const quoteId = decodeURIComponent(convertMatch[1]);
+      const data = loadSeedData();
+      const rawQuote = (data.quotes || []).find((q) => q.id === quoteId);
+      if (!rawQuote) {
+        sendJson(response, 404, { error: "报价不存在。" });
+        return true;
+      }
+      if (rawQuote.pricingMode !== "project_based") {
+        sendJson(response, 400, { error: "只有项目型报价（project_based）可以转换为项目。" });
+        return true;
+      }
+      const { project, created } = convertQuoteToProjectLocal(data, rawQuote);
+      if (created) {
+        // Write back projectId into the quote for UI button state
+        const qi = data.quotes.findIndex((q) => q.id === quoteId);
+        if (qi >= 0) {
+          data.quotes[qi] = { ...data.quotes[qi], projectId: project.id, updatedAt: new Date().toISOString() };
+        }
+        saveSeedData(data);
+      }
+      sendJson(response, created ? 201 : 200, serializeProject(project));
+      return true;
+    }
+  }
+
+  // PATCH /api/projects/:id/status
+  if (request.method === "PATCH") {
+    const statusMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/status$/);
+    if (statusMatch) {
+      const projectId = decodeURIComponent(statusMatch[1]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const newStatus = body.status;
+      if (!VALID_PROJECT_STATUSES.includes(newStatus)) {
+        sendJson(response, 400, { error: `status 不合法，允许值：${VALID_PROJECT_STATUSES.join(", ")}` });
+        return true;
+      }
+      const data = loadSeedData();
+      ensureProjectData(data);
+      const idx = data.projects.findIndex((p) => p.id === projectId);
+      if (idx < 0) {
+        sendJson(response, 404, { error: "项目不存在。" });
+        return true;
+      }
+      data.projects[idx] = { ...data.projects[idx], status: newStatus, updatedAt: new Date().toISOString() };
+      saveSeedData(data);
+      sendJson(response, 200, serializeProject(data.projects[idx]));
+      return true;
+    }
   }
 
   if (request.method === "GET") {
     const projectId = matchIdRoute(url.pathname, "projects");
     if (projectId) {
+      // Try real project entity first
+      const data = loadSeedData();
+      ensureProjectData(data);
+      const realProject = data.projects.find((p) => p.id === projectId);
+      if (realProject) {
+        sendJson(response, 200, serializeProject(realProject));
+        return true;
+      }
+      // Fallback: old archive view (preserves existing test for P-1)
       try {
         const [qr, rr] = await Promise.all([quoteStore.listQuotes(), receptionStore.listReceptions()]);
         sendJson(response, 200, getProjectDetail({ quotes: qr.quotes, receptions: rr.receptions }, projectId));

@@ -167,6 +167,10 @@ function renderProjectQuotes(quotes) {
           </div>
           <div class="action-row quote-card-actions">
             ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-primary" href="${cardHref}" target="_blank" rel="noopener">编辑</a>` : ''}
+            ${quote.projectId
+              ? `<a class="button-link small-link" href="/project-detail.html?id=${encodeURIComponent(quote.projectId)}">查看项目</a>`
+              : `<button class="button-link small-link" data-convert-id="${esc(quote.id)}">转为项目</button>`
+            }
             ${window.can('project_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>` : ''}
           </div>
         </div>
@@ -187,6 +191,29 @@ async function bootstrap() {
   window.AppUtils.applyFlash("project-quote-message");
 
   document.body.addEventListener("click", async (event) => {
+    // ── 转为项目 ───────────────────────────────────────────────────────────────
+    const convertBtn = event.target.closest("[data-convert-id]");
+    if (convertBtn) {
+      const quoteId = convertBtn.getAttribute("data-convert-id");
+      if (!quoteId) return;
+      convertBtn.disabled = true;
+      convertBtn.textContent = "转换中…";
+      try {
+        const project = await window.AppUtils.fetchJson(
+          `/api/quotes/${encodeURIComponent(quoteId)}/convert-to-project`,
+          { method: "POST" },
+          "转换失败，请稍后重试。"
+        );
+        window.AppUtils.setFlash("project-quote-message", "报价已转换为项目。", "success");
+        window.location.href = `/project-detail.html?id=${encodeURIComponent(project.id)}`;
+      } catch (error) {
+        convertBtn.disabled = false;
+        convertBtn.textContent = "转为项目";
+        window.AppUtils.showMessage("project-quote-message", error.message, "error");
+      }
+      return;
+    }
+
     // ── 删除 ──────────────────────────────────────────────────────────────────
     const deleteBtn = event.target.closest("[data-delete-id]");
     if (deleteBtn) {
