@@ -1076,6 +1076,30 @@ window.ProjectEditor = (function () {
         summaryEl.textContent = '';
       });
   }
+  // Auto-select-all on first focus so the user can type directly to replace the value.
+  // Second click on an already-focused input leaves the cursor in place (normal behaviour).
+  function bindQuickReplaceNumberInput(input) {
+    if (input.dataset.quickReplaceBound === "1") return;
+    input.dataset.quickReplaceBound = "1";
+    let clickFocusing = false;
+    input.addEventListener("mousedown", () => {
+      clickFocusing = document.activeElement !== input;
+    });
+    input.addEventListener("focus", () => {
+      if (!clickFocusing) {
+        // Tab / programmatic focus: select immediately
+        input.select();
+      }
+      // Click focus: wait for mouseup so browser doesn't reset the selection
+    });
+    input.addEventListener("mouseup", () => {
+      if (clickFocusing) {
+        clickFocusing = false;
+        input.select();
+      }
+    });
+  }
+
   function bindRowEvents(rowEl, groupEl) {
     const nameInput = rowEl.querySelector('[name="itemName"]');
 
@@ -1125,6 +1149,9 @@ window.ProjectEditor = (function () {
       refreshGroupTotals(groupEl);
       refreshSummary();
     });
+
+    rowEl.querySelectorAll('input[name="quantity"], input[name="costUnitPrice"], input[name="salesUnitPrice"]')
+      .forEach(bindQuickReplaceNumberInput);
   }
 
   function renderEmptyRow() {
