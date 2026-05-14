@@ -1556,6 +1556,145 @@ button.ghost,
 .status-badge.e-executing { background: rgba(123,31,162,0.08); border-color: rgba(123,31,162,0.2); color: #7b1fa2; }
 .status-badge.e-completed { background: var(--success-bg); border-color: rgba(36,97,59,0.2); color: var(--success-text); }
 
+.project-status-panel {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid rgba(194, 106, 46, 0.18);
+  background: linear-gradient(180deg, rgba(247, 228, 210, 0.56) 0%, rgba(255, 255, 255, 0.82) 100%);
+}
+
+.project-status-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.project-status-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+
+.project-status-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 7px 13px;
+  border-radius: 999px;
+  border: 1px solid rgba(95, 107, 122, 0.18);
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.project-status-pill-running {
+  border-color: rgba(123, 31, 162, 0.26);
+  background: rgba(123, 31, 162, 0.1);
+  color: #6d1b8f;
+}
+
+.project-status-pill-completed {
+  border-color: rgba(36, 97, 59, 0.22);
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+
+.project-status-pill-cancelled {
+  border-color: rgba(154, 78, 70, 0.2);
+  background: rgba(154, 78, 70, 0.08);
+  color: #8a4b44;
+}
+
+.project-status-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.project-status-button {
+  min-height: 36px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(30, 36, 48, 0.12);
+  background: rgba(255, 255, 255, 0.78);
+  color: var(--text-secondary);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.project-status-button:hover,
+.project-status-button:focus-visible {
+  border-color: rgba(194, 106, 46, 0.28);
+  color: var(--accent);
+  background: rgba(255, 255, 255, 0.96);
+}
+
+.project-status-button.is-active {
+  border-color: rgba(194, 106, 46, 0.34);
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 8px 16px rgba(194, 106, 46, 0.16);
+}
+
+.project-status-panel[data-current-status="running"] .project-status-button.is-active {
+  border-color: rgba(123, 31, 162, 0.34);
+  background: #7b1fa2;
+  box-shadow: 0 8px 16px rgba(123, 31, 162, 0.16);
+}
+
+.project-status-panel[data-current-status="completed"] .project-status-button.is-active {
+  border-color: rgba(36, 97, 59, 0.28);
+  background: #2f7a4f;
+  box-shadow: 0 8px 16px rgba(36, 97, 59, 0.14);
+}
+
+.project-status-panel[data-current-status="cancelled"] .project-status-button.is-active {
+  border-color: rgba(154, 78, 70, 0.24);
+  background: #8a4b44;
+  box-shadow: none;
+}
+
+.project-status-button:disabled {
+  cursor: wait;
+  opacity: 0.7;
+}
+
+.project-status-hint {
+  min-height: 16px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.quote-card-converted {
+  border-color: rgba(30, 36, 48, 0.08);
+  background: rgba(255, 255, 255, 0.68);
+  box-shadow: 0 8px 18px rgba(30, 36, 48, 0.04);
+}
+
+.quote-card-converted[data-card-href]:hover {
+  border-color: rgba(30, 36, 48, 0.14);
+  box-shadow: 0 8px 18px rgba(30, 36, 48, 0.07);
+}
+
+.quote-card-converted .quote-card-hint,
+.quote-card-converted .quote-card-meta {
+  color: #7a828e;
+}
+
+.status-badge-converted {
+  background: rgba(47, 122, 79, 0.09);
+  border-color: rgba(47, 122, 79, 0.2);
+  color: #2f7a4f;
+}
+
 .quote-list-section-project {
   border-color: rgba(194, 106, 46, 0.18);
 }

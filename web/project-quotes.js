@@ -151,14 +151,17 @@ function renderProjectQuotes(quotes) {
     const dimAttr = ' style="opacity:0.45"';
     const execStatus = quote.executionStatus || "preparing";
     const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
+    const isConverted = Boolean(quote.projectId);
+    const cardClass = `card quote-card quote-card-project${isConverted ? " quote-card-converted" : ""}`;
 
     return `
-      <article class="card quote-card quote-card-project" data-card-href="${cardHref}">
+      <article class="${cardClass}" data-card-href="${cardHref}">
         <div class="list-row list-row-top quote-card-head">
           <div class="quote-card-main">
             <div class="title-row quote-title-row">
               <h3>${title}</h3>
               <span class="status-badge status-badge-strong">项目型报价</span>
+              ${isConverted ? '<span class="status-badge status-badge-converted">已转项目</span>' : ""}
               <span class="status-badge ${EXEC_CLS[execStatus] || 'e-preparing'}">${esc(execLabel)}</span>
               ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
             </div>
@@ -166,11 +169,11 @@ function renderProjectQuotes(quotes) {
             <p class="quote-card-hint">按项目组汇总的活动 / 会展 / 综合服务报价，可直接进入编辑页继续维护。</p>
           </div>
           <div class="action-row quote-card-actions">
-            ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-primary" href="${cardHref}" target="_blank" rel="noopener">编辑</a>` : ''}
             ${quote.projectId
-              ? `<a class="button-link small-link" href="/project-detail.html?id=${encodeURIComponent(quote.projectId)}">查看项目</a>`
-              : `<button class="button-link small-link" data-convert-id="${esc(quote.id)}">转为项目</button>`
+              ? `<a class="button-link small-link action-link-primary" href="/project-detail.html?id=${encodeURIComponent(quote.projectId)}">查看项目</a>`
+              : `<button class="button-link small-link action-link-primary" data-convert-id="${esc(quote.id)}">转为项目</button>`
             }
+            ${window.can('project_quote.edit') ? `<a class="button-link small-link action-link-secondary" href="${cardHref}" target="_blank" rel="noopener">编辑</a>` : ''}
             ${window.can('project_quote.delete') ? `<button class="ghost mini-button action-link-danger" data-delete-id="${esc(quote.id)}" data-name="${deleteName}">删除</button>` : ''}
           </div>
         </div>
