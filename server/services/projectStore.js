@@ -129,10 +129,13 @@ async function convertToProject(config, quoteStore, quoteId) {
   try {
     const result = await quoteStore.getQuoteById(quoteId);
     quote = result.quote;
-  } catch {
-    const err = new Error('报价不存在。');
-    err.status = 404;
-    throw err;
+  } catch (fetchErr) {
+    if (fetchErr && String(fetchErr.message).includes('报价不存在')) {
+      const err = new Error('报价不存在。');
+      err.status = 404;
+      throw err;
+    }
+    throw fetchErr;
   }
 
   // 2. Validate pricing mode
@@ -176,24 +179,39 @@ async function convertToProject(config, quoteStore, quoteId) {
     updatedAt: now,
   };
 
-  // 5. Insert into public.projects
+  // 5. Insert into public.projects (ignore-duplicates handles concurrent race)
   const payload = buildSupabaseProjectPayload(project);
-  const rows = await supabaseRequest(config, 'projects', {
+  let rows = await supabaseRequest(config, 'projects', {
     method: 'POST',
-    headers: { Prefer: 'return=representation' },
+    headers: { Prefer: 'resolution=ignore-duplicates,return=representation' },
     body: JSON.stringify(payload),
   });
 
+  // If rows is empty/null, a concurrent insert won the race — re-query
+  if (!Array.isArray(rows) || rows.length === 0) {
+    const existing2 = await supabaseRequest(
+      config,
+      `projects?source_quote_id=eq.${encodeURIComponent(quoteId)}&select=*`,
+    );
+    if (Array.isArray(existing2) && existing2.length > 0) {
+      return { project: normalizeProjectRecordFromSupabase(existing2[0]), created: false };
+    }
+    throw new Error('项目创建失败，Supabase 未返回记录。');
+  }
+
   // 6. Back-write project_id to public.quotes
-  await supabaseRequest(
+  const backWriteResult = await supabaseRequest(
     config,
     `quotes?id=eq.${encodeURIComponent(quoteId)}`,
     {
       method: 'PATCH',
-      headers: { Prefer: 'return=minimal' },
+      headers: { Prefer: 'return=representation' },
       body: JSON.stringify({ project_id: project.id }),
     },
   );
+  if (!Array.isArray(backWriteResult) || backWriteResult.length === 0) {
+    console.warn(`[projectStore] back-write project_id failed: quote ${quoteId} not found in Supabase`);
+  }
 
   const inserted = Array.isArray(rows) ? rows[0] : rows;
   return { project: normalizeProjectRecordFromSupabase(inserted || payload), created: true };
@@ -215,6 +233,12 @@ async function getProjectById(config, id) {
 }
 
 async function updateProjectStatus(config, id, status) {
+  const VALID = ['draft', 'confirmed', 'running', 'completed', 'cancelled'];
+  if (!VALID.includes(status)) {
+    const err = new Error(`status 不合法：${status}`);
+    err.status = 400;
+    throw err;
+  }
   // Check existence first so we can return 404 vs 500
   const existing = await supabaseRequest(
     config,
