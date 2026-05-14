@@ -120,10 +120,134 @@ function buildProjectSnapshot(quote) {
   };
 }
 
-// ── Supabase store methods (added in Task 3) ──────────────────────────────────
+// ── Supabase store methods ─────────────────────────────────────────────────────
+
+// convertToProject — idempotent; quoteStore is passed in (already created in handleApi)
+async function convertToProject(config, quoteStore, quoteId) {
+  // 1. Fetch quote (quoteStore handles Supabase vs local internally)
+  let quote;
+  try {
+    const result = await quoteStore.getQuoteById(quoteId);
+    quote = result.quote;
+  } catch {
+    const err = new Error('报价不存在。');
+    err.status = 404;
+    throw err;
+  }
+
+  // 2. Validate pricing mode
+  if (quote.pricingMode !== 'project_based') {
+    const err = new Error('只有项目型报价（project_based）可以转换为项目。');
+    err.status = 400;
+    throw err;
+  }
+
+  // 3. Idempotency: return existing project if already converted
+  const existing = await supabaseRequest(
+    config,
+    `projects?source_quote_id=eq.${encodeURIComponent(quoteId)}&select=*`,
+  );
+  if (Array.isArray(existing) && existing.length > 0) {
+    return { project: normalizeProjectRecordFromSupabase(existing[0]), created: false };
+  }
+
+  // 4. Build project object
+  const now = new Date().toISOString();
+  const project = {
+    id: createProjectId(),
+    projectNumber: generateProjectNumber(),
+    sourceQuoteId: quoteId,
+    sourceQuoteNumber: quote.quoteNumber || '',
+    sourcePricingMode: quote.pricingMode || 'project_based',
+    projectName: quote.projectName || '',
+    clientName: quote.clientName || '',
+    contactName: quote.contactName || '',
+    contactPhone: quote.contactPhone || '',
+    destination: quote.destination || '',
+    startDate: quote.startDate || '',
+    endDate: quote.endDate || '',
+    paxCount: Number(quote.paxCount || 0),
+    currency: quote.currency || 'EUR',
+    status: 'draft',
+    ownerName: '',
+    notes: '',
+    quoteSnapshot: buildProjectSnapshot(quote),
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  // 5. Insert into public.projects
+  const payload = buildSupabaseProjectPayload(project);
+  const rows = await supabaseRequest(config, 'projects', {
+    method: 'POST',
+    headers: { Prefer: 'return=representation' },
+    body: JSON.stringify(payload),
+  });
+
+  // 6. Back-write project_id to public.quotes
+  await supabaseRequest(
+    config,
+    `quotes?id=eq.${encodeURIComponent(quoteId)}`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ project_id: project.id }),
+    },
+  );
+
+  const inserted = Array.isArray(rows) ? rows[0] : rows;
+  return { project: normalizeProjectRecordFromSupabase(inserted || payload), created: true };
+}
+
+async function listProjects(config) {
+  const rows = await supabaseRequest(config, 'projects?select=*&order=updated_at.desc');
+  if (!Array.isArray(rows)) throw new Error('Supabase public.projects 查询失败。');
+  return rows.map(normalizeProjectRecordFromSupabase);
+}
+
+async function getProjectById(config, id) {
+  const rows = await supabaseRequest(
+    config,
+    `projects?select=*&id=eq.${encodeURIComponent(id)}`,
+  );
+  if (!Array.isArray(rows) || rows.length === 0) return null;
+  return normalizeProjectRecordFromSupabase(rows[0]);
+}
+
+async function updateProjectStatus(config, id, status) {
+  // Check existence first so we can return 404 vs 500
+  const existing = await supabaseRequest(
+    config,
+    `projects?select=id&id=eq.${encodeURIComponent(id)}`,
+  );
+  if (!Array.isArray(existing) || existing.length === 0) {
+    const err = new Error('项目不存在。');
+    err.status = 404;
+    throw err;
+  }
+
+  const now = new Date().toISOString();
+  const rows = await supabaseRequest(
+    config,
+    `projects?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify({ status, updated_at: now }),
+    },
+  );
+
+  const updated = Array.isArray(rows) ? rows[0] : rows;
+  if (!updated) throw new Error('更新失败，Supabase 未返回记录。');
+  return normalizeProjectRecordFromSupabase(updated);
+}
 
 module.exports = {
   deriveProjectFinancials,
   normalizeProjectRecordFromSupabase,
   buildSupabaseProjectPayload,
+  convertToProject,
+  listProjects,
+  getProjectById,
+  updateProjectStatus,
 };
