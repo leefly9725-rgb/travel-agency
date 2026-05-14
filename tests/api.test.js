@@ -1676,3 +1676,120 @@ test("PATCH /api/projects/:id/status returns 404 for non-existent project", asyn
     assert.ok(payload.error, "error field should be present");
   });
 });
+
+test("convert: projectGroups amounts used when quote top-level totalCost/totalSales are 0", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.quotes.push({
+      id: "Q-ZERO-TOP",
+      quoteNumber: "QT-ZERO",
+      clientName: "ZeroClient",
+      projectName: "零顶级金额测试",
+      currency: "EUR",
+      startDate: "2026-08-01",
+      endDate: "2026-08-03",
+      travelDays: 3,
+      paxCount: 10,
+      destination: "Belgrade",
+      pricingMode: "project_based",
+      totalCost: 0,
+      totalSales: 0,
+      projectGroups: [
+        {
+          id: "G-ZERO",
+          projectType: "event",
+          projectTitle: "测试组",
+          projectCostTotal: 300,
+          projectSalesTotal: 500,
+          items: [
+            {
+              itemType: "misc",
+              itemName: "测试项目",
+              unit: "套",
+              quantity: 1,
+              costUnitPrice: 300,
+              salesUnitPrice: 500,
+              costSubtotal: 300,
+              salesSubtotal: 500,
+            },
+          ],
+        },
+      ],
+    });
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const res = await apiFetch(port, "/api/quotes/Q-ZERO-TOP/convert-to-project", { method: "POST" });
+    assert.equal(res.status, 201);
+    const project = await res.json();
+    assert.equal(project.totalCost, 300, "totalCost should be derived from projectGroups when top-level is 0");
+    assert.equal(project.totalSales, 500, "totalSales should be derived from projectGroups when top-level is 0");
+    assert.ok(project.grossProfit > 0, "grossProfit should be positive");
+  });
+});
+
+test("GET /api/projects/:id: old snapshot totalSales=0 but projectGroups have data → dynamic recalc", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    if (!Array.isArray(data.projects)) data.projects = [];
+    data.projects.push({
+      id: "PRJ-OLD-ZERO",
+      projectNumber: "PRJ-20260101-ZERO",
+      sourceQuoteId: "Q-OLD-ZERO",
+      sourceQuoteNumber: "QT-OLD-ZERO",
+      sourcePricingMode: "project_based",
+      projectName: "旧项目零快照金额测试",
+      clientName: "OldClient",
+      currency: "EUR",
+      status: "running",
+      ownerName: "",
+      notes: "",
+      quoteSnapshot: {
+        quoteId: "Q-OLD-ZERO",
+        totalCost: 0,
+        totalSales: 0,
+        grossProfit: 0,
+        grossMargin: 0,
+        projectGroups: [
+          {
+            id: "G-OLD",
+            projectCostTotal: 400,
+            projectSalesTotal: 600,
+            items: [],
+          },
+        ],
+      },
+      createdAt: "2026-01-01T00:00:00.000Z",
+      updatedAt: "2026-01-01T00:00:00.000Z",
+    });
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    const res = await apiFetch(port, "/api/projects/PRJ-OLD-ZERO");
+    assert.equal(res.status, 200);
+    const project = await res.json();
+    assert.equal(project.totalSales, 600, "totalSales should be dynamically recalculated from projectGroups");
+    assert.equal(project.totalCost, 400, "totalCost should be dynamically recalculated from projectGroups");
+    assert.ok(project.grossProfit > 0, "grossProfit should be positive");
+  });
+});
+
+test("PATCH /api/projects/:id/status to running reflects in GET", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "running" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.status, "running");
+
+    const getRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    assert.equal(getRes.status, 200);
+    const fetched = await getRes.json();
+    assert.equal(fetched.status, "running", "status should persist as running after PATCH");
+  });
+});

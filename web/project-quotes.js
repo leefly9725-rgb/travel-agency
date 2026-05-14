@@ -100,7 +100,26 @@ function attachCardClicks(container) {
   });
 }
 
+const PROJECT_STATUS_LABELS = {
+  draft: "草稿",
+  confirmed: "已确认",
+  running: "执行中",
+  completed: "已完成",
+  cancelled: "已取消",
+};
+
+function projectStatusBadgeClass(status) {
+  return {
+    draft: "",
+    confirmed: "e-preparing",
+    running: "e-executing",
+    completed: "e-completed",
+    cancelled: "e-cancelled",
+  }[status] || "";
+}
+
 let cachedQuotes = [];
+let cachedProjectById = {};
 let currentSortKey = "updated_at";
 
 function sortProjectQuotes(arr, key) {
@@ -125,7 +144,7 @@ function sortProjectQuotes(arr, key) {
   }
 }
 
-function renderProjectQuotes(quotes) {
+function renderProjectQuotes(quotes, projectById) {
   const container = document.getElementById("project-quote-list");
   const countEl = document.getElementById("project-quote-count");
   if (countEl) countEl.textContent = `${quotes.length} 条`;
@@ -135,6 +154,7 @@ function renderProjectQuotes(quotes) {
     return;
   }
 
+  const pById = projectById || cachedProjectById;
   const EXEC_CLS = { preparing: 'e-preparing', executing: 'e-executing', completed: 'e-completed' };
 
   container.innerHTML = quotes.map((quote) => {
@@ -149,9 +169,22 @@ function renderProjectQuotes(quotes) {
     const dimPax = quote.paxCount == null;
     const dimGroups = groupCount === 0 && itemCount === 0;
     const dimAttr = ' style="opacity:0.45"';
-    const execStatus = quote.executionStatus || "preparing";
-    const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
     const isConverted = Boolean(quote.projectId);
+    const linkedProject = isConverted ? pById[quote.projectId] : null;
+
+    // Status badge: use real project status when converted and project found; fall back to exec status
+    let statusBadgeHtml;
+    if (linkedProject) {
+      const ps = linkedProject.status || "draft";
+      const psLabel = PROJECT_STATUS_LABELS[ps] || ps;
+      const psCls = projectStatusBadgeClass(ps);
+      statusBadgeHtml = `<span class="status-badge ${psCls}">${esc(psLabel)}</span>`;
+    } else {
+      const execStatus = quote.executionStatus || "preparing";
+      const execLabel = window.AppUi.getLabel("executionStatusLabels", execStatus) || execStatus;
+      statusBadgeHtml = `<span class="status-badge ${EXEC_CLS[execStatus] || 'e-preparing'}">${esc(execLabel)}</span>`;
+    }
+
     const cardClass = `card quote-card quote-card-project${isConverted ? " quote-card-converted" : ""}`;
 
     return `
@@ -162,7 +195,7 @@ function renderProjectQuotes(quotes) {
               <h3>${title}</h3>
               <span class="status-badge status-badge-strong">项目型报价</span>
               ${isConverted ? '<span class="status-badge status-badge-converted">已转项目</span>' : ""}
-              <span class="status-badge ${EXEC_CLS[execStatus] || 'e-preparing'}">${esc(execLabel)}</span>
+              ${statusBadgeHtml}
               ${isFlaggedReview(quote) ? '<span class="review-badge">待复核</span>' : ""}
             </div>
             <p class="meta quote-card-meta">${esc(quote.clientName || "未填写客户")} · ${esc(quote.startDate || "日期待定")} · ${esc(quote.destination || "地点待定")}</p>
@@ -234,7 +267,7 @@ async function bootstrap() {
         window.AppUtils.showMessage("project-quote-message", "报价已删除。", "success");
         const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
         cachedQuotes = allQuotes.filter((q) => q.pricingMode === "project_based");
-        renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
+        renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey), cachedProjectById);
       } catch (error) {
         window.AppUtils.showMessage("project-quote-message", error.message, "error");
       }
@@ -247,14 +280,21 @@ async function bootstrap() {
   if (sortSelect) {
     sortSelect.addEventListener("change", () => {
       currentSortKey = sortSelect.value;
-      renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
+      renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey), cachedProjectById);
     });
   }
 
   try {
-    const allQuotes = await window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。");
+    const [allQuotes, allProjects] = await Promise.all([
+      window.AppUtils.fetchJson("/api/quotes", null, "报价列表加载失败，请稍后重试。"),
+      window.AppUtils.fetchJson("/api/projects", null, null).catch(() => []),
+    ]);
     cachedQuotes = allQuotes.filter((q) => q.pricingMode === "project_based");
-    renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
+    cachedProjectById = {};
+    if (Array.isArray(allProjects)) {
+      allProjects.forEach((p) => { if (p && p.id) cachedProjectById[p.id] = p; });
+    }
+    renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey), cachedProjectById);
   } catch (error) {
     window.AppUtils.showMessage("project-quote-message", error.message, "error");
   }
@@ -266,5 +306,5 @@ document.addEventListener('authReady', function () {
   var newProj = document.querySelector('a[href="/quote-new.html?mode=project_based"]');
   if (newProj && !window.can('project_quote.create')) newProj.style.display = 'none';
 
-  if (cachedQuotes.length > 0) renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey));
+  if (cachedQuotes.length > 0) renderProjectQuotes(sortProjectQuotes(cachedQuotes, currentSortKey), cachedProjectById);
 });

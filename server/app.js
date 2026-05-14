@@ -1094,9 +1094,43 @@ function ensureProjectData(data) {
   if (!Array.isArray(data.projects)) data.projects = [];
 }
 
+// Calculates totals from projectGroups, supporting both camelCase and snake_case keys.
+function calculateProjectGroupTotals(quoteOrSnap) {
+  const groups = Array.isArray(quoteOrSnap && quoteOrSnap.projectGroups) ? quoteOrSnap.projectGroups : [];
+  let totalCost = 0;
+  let totalSales = 0;
+  for (const group of groups) {
+    if (!group) continue;
+    const items = Array.isArray(group.items) ? group.items : [];
+    let itemCost = 0;
+    let itemSales = 0;
+    for (const item of items) {
+      if (!item) continue;
+      const qty = Number(item.quantity || 0);
+      const cs = item.costSubtotal !== undefined ? item.costSubtotal : item.cost_subtotal;
+      const ss = item.salesSubtotal !== undefined ? item.salesSubtotal : item.sales_subtotal;
+      const cu = Number(item.costUnitPrice ?? item.cost_unit_price ?? item.costPrice ?? item.cost_price ?? 0);
+      const su = Number(item.salesUnitPrice ?? item.sales_unit_price ?? item.salesPrice ?? item.sales_price ?? item.sell_price ?? 0);
+      itemCost += cs != null ? Number(cs || 0) : qty * cu;
+      itemSales += ss != null ? Number(ss || 0) : qty * su;
+    }
+    const gc = group.projectCostTotal !== undefined ? group.projectCostTotal : group.project_cost_total;
+    const gs = group.projectSalesTotal !== undefined ? group.projectSalesTotal : group.project_sales_total;
+    totalCost += Number(gc || 0) > 0 ? Number(gc) : itemCost;
+    totalSales += Number(gs || 0) > 0 ? Number(gs) : itemSales;
+  }
+  return { totalCost, totalSales };
+}
+
 function buildProjectSnapshot(quote) {
-  const totalCost = Number(quote.totalCost || 0);
-  const totalPrice = Number(quote.totalSales || quote.totalPrice || 0);
+  let totalCost = Number(quote.totalCost || 0);
+  let totalPrice = Number(quote.totalSales || quote.totalPrice || 0);
+  // When top-level totals are missing, derive from projectGroups
+  if ((totalCost === 0 || totalPrice === 0) && Array.isArray(quote.projectGroups) && quote.projectGroups.length > 0) {
+    const derived = calculateProjectGroupTotals(quote);
+    if (totalCost === 0 && derived.totalCost > 0) totalCost = derived.totalCost;
+    if (totalPrice === 0 && derived.totalSales > 0) totalPrice = derived.totalSales;
+  }
   const grossProfit = roundToTwo(totalPrice - totalCost);
   const grossMargin = totalPrice > 0 ? roundToTwo((grossProfit / totalPrice) * 100) : 0;
   return {
@@ -1158,6 +1192,16 @@ function convertQuoteToProjectLocal(data, quote) {
 
 function serializeProject(project) {
   const snap = project.quoteSnapshot || {};
+  let totalCost = Number(snap.totalCost || 0);
+  let totalSales = Number(snap.totalSales || 0);
+  // Dynamically recalculate for old records where snapshot totals are 0 but projectGroups have data
+  if ((totalCost === 0 || totalSales === 0) && Array.isArray(snap.projectGroups) && snap.projectGroups.length > 0) {
+    const derived = calculateProjectGroupTotals(snap);
+    if (totalCost === 0 && derived.totalCost > 0) totalCost = derived.totalCost;
+    if (totalSales === 0 && derived.totalSales > 0) totalSales = derived.totalSales;
+  }
+  const grossProfit = roundToTwo(totalSales - totalCost);
+  const grossMargin = totalSales > 0 ? roundToTwo((grossProfit / totalSales) * 100) : 0;
   return {
     id: project.id,
     projectNumber: project.projectNumber || "",
@@ -1176,10 +1220,10 @@ function serializeProject(project) {
     sourceQuoteId: project.sourceQuoteId || "",
     sourceQuoteNumber: project.sourceQuoteNumber || "",
     sourcePricingMode: project.sourcePricingMode || "project_based",
-    totalCost: snap.totalCost || 0,
-    totalSales: snap.totalSales || 0,
-    grossProfit: snap.grossProfit || 0,
-    grossMargin: snap.grossMargin || 0,
+    totalCost,
+    totalSales,
+    grossProfit,
+    grossMargin,
     quoteSnapshot: project.quoteSnapshot || {},
     createdAt: project.createdAt || "",
     updatedAt: project.updatedAt || "",

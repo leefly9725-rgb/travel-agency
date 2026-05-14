@@ -5,17 +5,50 @@ const { roundToTwo } = require('./quoteService');
 
 // ── Pure helpers (no I/O, fully testable) ─────────────────────────────────────
 
+// Mirrors app.js calculateProjectGroupTotals — duplicated to avoid circular import.
+function calculateProjectGroupTotals(quoteOrSnap) {
+  const groups = Array.isArray(quoteOrSnap && quoteOrSnap.projectGroups) ? quoteOrSnap.projectGroups : [];
+  let totalCost = 0;
+  let totalSales = 0;
+  for (const group of groups) {
+    if (!group) continue;
+    const items = Array.isArray(group.items) ? group.items : [];
+    let itemCost = 0;
+    let itemSales = 0;
+    for (const item of items) {
+      if (!item) continue;
+      const qty = Number(item.quantity || 0);
+      const cs = item.costSubtotal !== undefined ? item.costSubtotal : item.cost_subtotal;
+      const ss = item.salesSubtotal !== undefined ? item.salesSubtotal : item.sales_subtotal;
+      const cu = Number(item.costUnitPrice ?? item.cost_unit_price ?? item.costPrice ?? item.cost_price ?? 0);
+      const su = Number(item.salesUnitPrice ?? item.sales_unit_price ?? item.salesPrice ?? item.sales_price ?? item.sell_price ?? 0);
+      itemCost += cs != null ? Number(cs || 0) : qty * cu;
+      itemSales += ss != null ? Number(ss || 0) : qty * su;
+    }
+    const gc = group.projectCostTotal !== undefined ? group.projectCostTotal : group.project_cost_total;
+    const gs = group.projectSalesTotal !== undefined ? group.projectSalesTotal : group.project_sales_total;
+    totalCost += Number(gc || 0) > 0 ? Number(gc) : itemCost;
+    totalSales += Number(gs || 0) > 0 ? Number(gs) : itemSales;
+  }
+  return { totalCost, totalSales };
+}
+
 function deriveProjectFinancials(project) {
   const snap =
     project && project.quoteSnapshot !== null && typeof project.quoteSnapshot === 'object'
       ? project.quoteSnapshot
       : {};
-  return {
-    totalSales: Number(snap.totalSales || 0),
-    totalCost: Number(snap.totalCost || 0),
-    grossProfit: Number(snap.grossProfit || 0),
-    grossMargin: Number(snap.grossMargin || 0),
-  };
+  let totalSales = Number(snap.totalSales || 0);
+  let totalCost = Number(snap.totalCost || 0);
+  // Dynamically recalculate for old records where snapshot totals are 0 but projectGroups have data
+  if ((totalCost === 0 || totalSales === 0) && Array.isArray(snap.projectGroups) && snap.projectGroups.length > 0) {
+    const derived = calculateProjectGroupTotals(snap);
+    if (totalCost === 0 && derived.totalCost > 0) totalCost = derived.totalCost;
+    if (totalSales === 0 && derived.totalSales > 0) totalSales = derived.totalSales;
+  }
+  const grossProfit = roundToTwo(totalSales - totalCost);
+  const grossMargin = totalSales > 0 ? roundToTwo((grossProfit / totalSales) * 100) : 0;
+  return { totalSales, totalCost, grossProfit, grossMargin };
 }
 
 function normalizeProjectRecordFromSupabase(row) {
@@ -92,8 +125,14 @@ function generateProjectNumber() {
 // ── Snapshot builder (mirrors app.js buildProjectSnapshot — same reason) ──────
 
 function buildProjectSnapshot(quote) {
-  const totalCost = Number(quote.totalCost || 0);
-  const totalSales = Number(quote.totalSales || quote.totalPrice || 0);
+  let totalCost = Number(quote.totalCost || 0);
+  let totalSales = Number(quote.totalSales || quote.totalPrice || 0);
+  // When top-level totals are missing, derive from projectGroups
+  if ((totalCost === 0 || totalSales === 0) && Array.isArray(quote.projectGroups) && quote.projectGroups.length > 0) {
+    const derived = calculateProjectGroupTotals(quote);
+    if (totalCost === 0 && derived.totalCost > 0) totalCost = derived.totalCost;
+    if (totalSales === 0 && derived.totalSales > 0) totalSales = derived.totalSales;
+  }
   const grossProfit = roundToTwo(totalSales - totalCost);
   const grossMargin = totalSales > 0 ? roundToTwo((grossProfit / totalSales) * 100) : 0;
   return {

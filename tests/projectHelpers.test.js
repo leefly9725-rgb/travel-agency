@@ -39,8 +39,9 @@ test("deriveProjectFinancials handles partial snapshot without throwing", () => 
   const r = deriveProjectFinancials({ quoteSnapshot: { totalSales: 500 } });
   assert.equal(r.totalSales, 500);
   assert.equal(r.totalCost, 0);
-  assert.equal(r.grossProfit, 0);
-  assert.equal(r.grossMargin, 0);
+  // grossProfit = totalSales - totalCost = 500 - 0 = 500
+  assert.equal(r.grossProfit, 500);
+  assert.equal(r.grossMargin, 100);
 });
 
 // ── normalizeProjectRecordFromSupabase ────────────────────────────────────────
