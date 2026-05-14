@@ -2062,7 +2062,7 @@ async function handleApi(request, response, url) {
         const projects = await projectStore.listProjects(supabase);
         sendJson(response, 200, projects.map(serializeProject));
       } catch (err) {
-        sendJson(response, 500, { error: err.message });
+        sendJson(response, err.status || 500, { error: err.message });
       }
       return true;
     }
