@@ -130,6 +130,55 @@ Never modify files blindly.
 
 ---
 
+## Superpowers Workflow Policy
+
+**LDS project rules and explicit user instructions always override Superpowers defaults.** When any conflict exists, LDS wins.
+
+### When to use Superpowers skills (mandatory)
+
+Use `systematic-debugging`, `writing-plans`, `test-driven-development`, and `verification-before-completion` for:
+
+- Any change to `server/`, `api/`, `server/services/quoteService.js`, or `server/dataStore.js`
+- Supabase schema changes, migrations, or data-compatibility concerns
+- Authentication, permissions, session tokens, `service_role_key` handling, or customer-facing data access
+- Quotation calculation logic (totals, margin, profit, currency conversion)
+- PDF export, composer, or print-layout bugs (`scripts/export-project-quotation-pdf.js`, `@media print`)
+- Project-based persistence bugs or normalization issues (`data/seed.json` structure, Supabase schema)
+- Multi-file features that touch more than two files or cross frontend/backend boundaries
+- Any production bug fix
+
+### Lightweight exception (Superpowers skills not required)
+
+For changes that are **purely and verifiably** one of the following, a lightweight workflow is allowed (read → minimal change → targeted check → LDS delivery summary):
+
+- CSS-only style tweaks (`web/styles.css`, inline style attributes)
+- UI label / static text changes (`web/ui-labels.js`, HTML string literals)
+- Single-line behavior changes with no API, data-model, or calculation impact
+
+If any doubt exists about scope, treat the change as non-trivial and use Superpowers.
+
+### Test requirements by change type
+
+| Change type | Required verification |
+|---|---|
+| Backend / API / calculation / security | Automated tests must pass (`npm test`). New logic must have corresponding test cases. |
+| UI visual-only (CSS, labels, layout) | Browser or manual verification is acceptable when automated tests would only assert DOM structure without business value. |
+| Documentation-only | No tests required. |
+
+### Design documents (`docs/superpowers/`)
+
+Create specs or plans under `docs/superpowers/specs/` or `docs/superpowers/plans/` **only** for:
+
+- New database schema design or migrations
+- New API contracts or breaking changes to existing routes
+- Security or permission model changes
+- Multi-file architectural decisions
+- Any work that requires alignment before coding begins
+
+Do **not** create design documents for: trivial UI tweaks, single-field additions, text changes, or CSS fixes.
+
+---
+
 ## Required Delivery Format
 
 At the end of every task Claude must provide:
