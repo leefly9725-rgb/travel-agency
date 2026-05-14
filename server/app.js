@@ -24,6 +24,7 @@ const {
 const { defaultQuoteTemplates } = require("./services/templateService");
 const { createTemplateStore } = require("./services/templateStore");
 const { createQuoteStore } = require("./services/quoteStore");
+const projectStore = require("./services/projectStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
@@ -2055,6 +2056,16 @@ async function handleApi(request, response, url) {
   }
 
   if (request.method === "GET" && url.pathname === "/api/projects") {
+    const supabase = getSupabaseConfig();
+    if (supabase.enabled) {
+      try {
+        const projects = await projectStore.listProjects(supabase);
+        sendJson(response, 200, projects.map(serializeProject));
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
     const data = loadSeedData();
     ensureProjectData(data);
     const realProjects = [...data.projects].sort(
@@ -2069,6 +2080,16 @@ async function handleApi(request, response, url) {
     const convertMatch = url.pathname.match(/^\/api\/quotes\/([^/]+)\/convert-to-project$/);
     if (convertMatch) {
       const quoteId = decodeURIComponent(convertMatch[1]);
+      const supabase = getSupabaseConfig();
+      if (supabase.enabled) {
+        try {
+          const { project, created } = await projectStore.convertToProject(supabase, quoteStore, quoteId);
+          sendJson(response, created ? 201 : 200, serializeProject(project));
+        } catch (err) {
+          sendJson(response, err.status || 500, { error: err.message });
+        }
+        return true;
+      }
       const data = loadSeedData();
       const rawQuote = (data.quotes || []).find((q) => q.id === quoteId);
       if (!rawQuote) {
@@ -2104,6 +2125,16 @@ async function handleApi(request, response, url) {
         sendJson(response, 400, { error: `status 不合法，允许值：${VALID_PROJECT_STATUSES.join(", ")}` });
         return true;
       }
+      const supabase = getSupabaseConfig();
+      if (supabase.enabled) {
+        try {
+          const project = await projectStore.updateProjectStatus(supabase, projectId, newStatus);
+          sendJson(response, 200, serializeProject(project));
+        } catch (err) {
+          sendJson(response, err.status || 500, { error: err.message });
+        }
+        return true;
+      }
       const data = loadSeedData();
       ensureProjectData(data);
       const idx = data.projects.findIndex((p) => p.id === projectId);
@@ -2121,13 +2152,30 @@ async function handleApi(request, response, url) {
   if (request.method === "GET") {
     const projectId = matchIdRoute(url.pathname, "projects");
     if (projectId) {
-      // Try real project entity first
-      const data = loadSeedData();
-      ensureProjectData(data);
-      const realProject = data.projects.find((p) => p.id === projectId);
-      if (realProject) {
-        sendJson(response, 200, serializeProject(realProject));
-        return true;
+      const supabase = getSupabaseConfig();
+      if (supabase.enabled) {
+        let project = null;
+        try {
+          project = await projectStore.getProjectById(supabase, projectId);
+        } catch (err) {
+          sendJson(response, 500, { error: err.message });
+          return true;
+        }
+        if (project) {
+          sendJson(response, 200, serializeProject(project));
+          return true;
+        }
+        // not found in Supabase → fall through to archive fallback below
+      } else {
+        // Local JSON path: try real project entity first
+        const data = loadSeedData();
+        ensureProjectData(data);
+        const realProject = data.projects.find((p) => p.id === projectId);
+        if (realProject) {
+          sendJson(response, 200, serializeProject(realProject));
+          return true;
+        }
+        // fall through to archive fallback below
       }
       // Fallback: old archive view (preserves existing test for P-1)
       try {
