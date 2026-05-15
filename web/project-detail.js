@@ -834,9 +834,11 @@ function setupEditFormHandlers(projectId, itemId) {
     const hint = form.querySelector(".ei-save-hint");
     const submitBtn = form.querySelector("button[type=submit]");
     const formData = new FormData(form);
+    const NULL_ON_EMPTY = new Set(["plannedDate", "startDate", "endDate", "quantity"]);
     const patch = {};
     for (const [k, v] of formData.entries()) {
-      patch[k] = v === "" ? null : v;
+      if (k === "applyToSameSupplier") continue;
+      patch[k] = (v === "" && NULL_ON_EMPTY.has(k)) ? null : v;
     }
     if (patch.quantity !== undefined && patch.quantity !== null) patch.quantity = Number(patch.quantity);
 

@@ -2228,3 +2228,59 @@ test("B1-03: customer interface not affected — GET /api/projects/:id still wor
     assert.equal(project.sourceQuoteId, "Q-PB");
   });
 });
+
+// ── B1-03A: null 字段防护测试 ──────────────────────────────────────────────
+
+test("B1-03A: PATCH notes/location/owner/title/unit null saves as empty string", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ notes: null, location: null, owner: null, title: null, unit: null }),
+    });
+    assert.equal(patchRes.status, 200, "null text fields should not cause 400");
+    const updated = await patchRes.json();
+    assert.equal(updated.notes, "", "notes null → ''");
+    assert.equal(updated.location, "", "location null → ''");
+    assert.equal(updated.owner, "", "owner null → ''");
+    assert.equal(updated.title, "", "title null → ''");
+    assert.equal(updated.unit, "", "unit null → ''");
+  });
+});
+
+test("B1-03A: PATCH date fields null saves as null", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const itemId = items[0].id;
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plannedDate: "2026-07-01" }),
+    });
+
+    const clearRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plannedDate: null, startDate: null, endDate: null }),
+    });
+    assert.equal(clearRes.status, 200);
+    const cleared = await clearRes.json();
+    assert.equal(cleared.plannedDate, null, "plannedDate null is allowed");
+    assert.equal(cleared.startDate, null, "startDate null is allowed");
+    assert.equal(cleared.endDate, null, "endDate null is allowed");
+  });
+});

@@ -263,6 +263,11 @@ async function updateExecutionItem(config, projectId, itemId, patch) {
     throw err;
   }
 
+  const TEXT_NOT_NULL = ['title', 'description', 'unit', 'location', 'owner', 'notes'];
+  for (const f of TEXT_NOT_NULL) {
+    if (patch[f] === null) patch[f] = '';
+  }
+
   const now = new Date().toISOString();
 
   if (config.enabled) {
