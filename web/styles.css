@@ -4055,3 +4055,21 @@ body.proj-column-resizing * {
   font-size: 12px;
   color: var(--error-text);
 }
+
+/* ── B1-03B: 补齐供应商信息栏 ── */
+.ei-backfill-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.ei-backfill-hint {
+  font-size: 12px;
+  color: #92400e;
+  flex: 1;
+}

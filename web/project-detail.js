@@ -108,9 +108,14 @@ function getExecutionCategoryLabel(item) {
 function groupExecutionItems(items) {
   const groups = new Map();
   for (const item of items) {
-    const key = item.supplierDisplay || item.supplierId || item.sourceGroupTitle || "未分组";
-    if (!groups.has(key)) groups.set(key, []);
-    groups.get(key).push(item);
+    const hasSupplier = !!(item.supplierDisplay || item.supplierId);
+    const supplierName = item.supplierDisplay || item.supplierId || '';
+    const fallbackTitle = item.sourceGroupTitle || '未分组';
+    const key = hasSupplier ? `s:${supplierName}` : `g:${fallbackTitle}`;
+    if (!groups.has(key)) {
+      groups.set(key, { hasSupplier, supplierName, fallbackTitle, items: [] });
+    }
+    groups.get(key).items.push(item);
   }
   return groups;
 }
@@ -642,9 +647,19 @@ function renderExecutionItemsSection(items, projectId) {
     `;
   }
 
+  const hasMissingSupplier = items.some(i => !i.supplierId && !i.supplierDisplay);
+  const backfillBar = hasMissingSupplier ? `
+    <div class="ei-backfill-bar">
+      <button type="button" class="button-secondary" id="backfill-supplier-btn" data-project-id="${esc(projectId)}">补齐供应商信息</button>
+      <span class="ei-backfill-hint">从报价快照中回填供应商信息，不会覆盖已编辑的执行状态、负责人、日期和备注。</span>
+      <span id="backfill-hint" class="project-status-hint" aria-live="polite"></span>
+    </div>
+  ` : '';
+
   const groups = groupExecutionItems(items);
-  const groupHtml = Array.from(groups.entries()).map(([groupKey, groupItems]) => {
+  const groupHtml = Array.from(groups.entries()).map(([, { hasSupplier, supplierName, fallbackTitle, items: groupItems }]) => {
     const doneCount = groupItems.filter(i => i.status === "done").length;
+    const groupLabel = hasSupplier ? `供应商：${esc(supplierName)}` : `未指定供应商 · ${esc(fallbackTitle)}`;
     const rows = groupItems.map((item) => `
       <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
         <td class="ei-cell">${esc(getExecutionCategoryLabel(item))}</td>
@@ -674,7 +689,7 @@ function renderExecutionItemsSection(items, projectId) {
     return `
       <div class="ei-group">
         <div class="ei-group-head">
-          <span class="ei-group-name">${esc(groupKey)}</span>
+          <span class="ei-group-name">${groupLabel}</span>
           <span class="ei-group-count">${groupItems.length} 项 · 已完成 ${doneCount}</span>
         </div>
         <div style="overflow-x:auto">
@@ -706,6 +721,7 @@ function renderExecutionItemsSection(items, projectId) {
         <h2>项目执行清单</h2>
       </div>
       ${renderExecutionStatsBar(items)}
+      ${backfillBar}
       <div id="execution-groups-container">${groupHtml}</div>
     </section>
   `;
@@ -841,6 +857,31 @@ function setupExecutionItemsHandlers(projectId) {
       } catch (err) {
         if (hint) hint.textContent = "生成失败：" + err.message;
         genBtn.disabled = false;
+      }
+    });
+  }
+
+  const backfillBtn = container.querySelector("#backfill-supplier-btn");
+  if (backfillBtn) {
+    backfillBtn.addEventListener("click", async () => {
+      const hint = container.querySelector("#backfill-hint");
+      backfillBtn.disabled = true;
+      if (hint) hint.textContent = "回填中…";
+      try {
+        const result = await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`,
+          { method: "POST" },
+          "回填失败，请稍后重试"
+        );
+        await loadAndRenderExecutionItems(projectId);
+        const msg = result.updatedCount > 0
+          ? `已补齐 ${result.updatedCount} 条供应商信息；${result.skippedCount} 条报价快照中无供应商信息，需手工维护。`
+          : "没有可回填的供应商信息，可能报价快照中未记录供应商。";
+        window.AppUtils.showMessage("project-message", msg, "success");
+      } catch (err) {
+        const hint2 = container.querySelector("#backfill-hint");
+        if (hint2) hint2.textContent = "回填失败：" + err.message;
+        backfillBtn.disabled = false;
       }
     });
   }

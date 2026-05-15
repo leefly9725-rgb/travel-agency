@@ -2215,6 +2215,22 @@ async function handleApi(request, response, url) {
     }
   }
 
+  // POST /api/projects/:id/execution-items/backfill-suppliers
+  if (request.method === "POST") {
+    const eiBackfillMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/execution-items\/backfill-suppliers$/);
+    if (eiBackfillMatch) {
+      const projectId = decodeURIComponent(eiBackfillMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await projectExecutionStore.backfillSupplierFields(supabase, projectId);
+        sendJson(response, 200, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
   // PATCH /api/projects/:id/execution-items/:itemId
   if (request.method === "PATCH") {
     const eiPatchMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/execution-items\/([^/]+)$/);

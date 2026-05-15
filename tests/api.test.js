@@ -2520,3 +2520,178 @@ test("B1-03A: supplierId/supplierDisplay in PROTECTED_EI cannot be overwritten v
     assert.equal(resultItem.owner, "合法字段", "legitimate field should be updated");
   });
 });
+
+// ── B1-03B: 供应商回填测试 ──────────────────────────────────────────────────
+
+// Helper: 从种子 quote 生成执行项，然后把供应商字段清空（模拟 B1-03A 部署前的历史数据）
+async function setupStaleExecutionItems(port) {
+  seedProjectBasedQuoteWithTwoSupplierItems();
+  const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+  const { id: projectId } = await convertRes.json();
+  await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+  // 清空所有执行项的供应商字段，模拟历史脏数据
+  const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+  data.projectExecutionItems = (data.projectExecutionItems || []).map(ei =>
+    ei.projectId === projectId
+      ? { ...ei, supplierId: "", supplierCatalogItemId: "", supplierDisplay: "" }
+      : ei
+  );
+  fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+  return projectId;
+}
+
+test("B1-03B: backfill fills supplierId / supplierDisplay / supplierCatalogItemId from quoteSnapshot", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupStaleExecutionItems(port);
+
+    // 确认当前供应商字段为空
+    const beforeRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const before = await beforeRes.json();
+    assert.ok(before.every(i => !i.supplierId && !i.supplierDisplay), "supplier fields should be empty before backfill");
+
+    // 执行回填
+    const backfillRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" });
+    assert.equal(backfillRes.status, 200, "backfill should return 200");
+    const result = await backfillRes.json();
+    assert.ok(typeof result.updatedCount === "number", "updatedCount should be a number");
+    assert.ok(result.updatedCount > 0, "should have updated at least one item");
+    assert.ok(typeof result.skippedCount === "number", "skippedCount should be present");
+    assert.ok(typeof result.totalCount === "number", "totalCount should be present");
+    assert.ok(typeof result.availableSupplierCount === "number", "availableSupplierCount should be present");
+
+    // 验证回填后供应商字段正确
+    const afterRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const after = await afterRes.json();
+    const sup1Items = after.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1Items.length >= 2, "at least 2 items should now have SUP-001");
+    assert.ok(sup1Items.every(i => i.supplierDisplay === "鲜花供应商A"), "supplierDisplay should be filled");
+    const sup2Items = after.filter(i => i.supplierId === "SUP-002");
+    assert.ok(sup2Items.length >= 1, "at least 1 item should have SUP-002");
+    assert.equal(sup2Items[0].supplierDisplay, "物流公司B", "物流公司B should be filled");
+  });
+});
+
+test("B1-03B: backfill does NOT modify quoteSnapshot", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupStaleExecutionItems(port);
+
+    // 读取 backfill 前的 quoteSnapshot
+    const projectBefore = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const snapshotBefore = JSON.stringify(projectBefore.quoteSnapshot);
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" });
+
+    // 读取 backfill 后的 quoteSnapshot
+    const projectAfter = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const snapshotAfter = JSON.stringify(projectAfter.quoteSnapshot);
+
+    assert.equal(snapshotBefore, snapshotAfter, "quoteSnapshot must remain unchanged after backfill");
+  });
+});
+
+test("B1-03B: backfill does NOT overwrite owner / status / supplierStatus / notes / location", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupStaleExecutionItems(port);
+
+    // 先生成并取得第一个执行项，写入自定义业务字段
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const target = items[0];
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(target.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner: "张三", status: "in_progress", notes: "已联系", location: "测试地点" }),
+    });
+
+    // 执行回填
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" });
+
+    // 验证业务字段未被修改
+    const afterRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const afterItems = await afterRes.json();
+    const updated = afterItems.find(i => i.id === target.id);
+    assert.ok(updated, "item should still exist");
+    assert.equal(updated.owner, "张三", "owner should not be overwritten");
+    assert.equal(updated.status, "in_progress", "status should not be overwritten");
+    assert.equal(updated.notes, "已联系", "notes should not be overwritten");
+    assert.equal(updated.location, "测试地点", "location should not be overwritten");
+  });
+});
+
+test("B1-03B: backfill skips items that already have supplierId (default force=false)", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupStaleExecutionItems(port);
+
+    // 第一次回填
+    const r1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" })).json();
+    assert.ok(r1.updatedCount > 0, "first backfill should update some items");
+
+    // 第二次回填：已有供应商的项目应被跳过
+    const r2 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" })).json();
+    assert.equal(r2.updatedCount, 0, "second backfill should update 0 items (already filled)");
+  });
+});
+
+test("B1-03B: backfill skips items where quoteSnapshot has no supplier info (skippedCount reflects this)", async () => {
+  await withServer(async (port) => {
+    // 用 Q-PB（无供应商 quote）建立项目
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    const result = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" })).json();
+
+    assert.equal(result.updatedCount, 0, "no supplier info in quoteSnapshot → updatedCount should be 0");
+    assert.ok(result.skippedCount >= 0, "skippedCount should be present");
+    assert.equal(result.availableSupplierCount, 0, "no supplier in quoteSnapshot → availableSupplierCount = 0");
+  });
+});
+
+test("B1-03B: after backfill, applyToSameSupplier sync works on newly-filled supplier items", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupStaleExecutionItems(port);
+
+    // 先回填
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" });
+
+    // 找到 SUP-001 的两个执行项
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const sup1Items = items.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1Items.length >= 2, "need at least 2 SUP-001 items for sync test");
+
+    const targetId = sup1Items[0].id;
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner: "李四", status: "done", applyToSameSupplier: true }),
+    });
+    assert.equal(patchRes.status, 200);
+    const patchResult = await patchRes.json();
+    assert.ok(patchResult.affectedCount >= 2, "should sync at least 2 SUP-001 items");
+
+    // 验证所有 SUP-001 项目均已同步
+    const afterRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const afterItems = await afterRes.json();
+    const sup1After = afterItems.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1After.every(i => i.owner === "李四"), "all SUP-001 items should be synced: owner");
+    assert.ok(sup1After.every(i => i.status === "done"), "all SUP-001 items should be synced: status");
+  });
+});
+
+test("B1-03B: customer interface not affected — quoteSnapshot intact after backfill", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupStaleExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/backfill-suppliers`, { method: "POST" });
+
+    const projectRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    assert.equal(projectRes.status, 200);
+    const project = await projectRes.json();
+    assert.ok(project.quoteSnapshot, "quoteSnapshot should still be present");
+    assert.ok(project.sourceQuoteId === "Q-PB-S", "sourceQuoteId should be unchanged");
+  });
+});

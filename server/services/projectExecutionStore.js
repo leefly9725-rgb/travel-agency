@@ -436,6 +436,156 @@ async function updateExecutionItem(config, projectId, itemId, patch, options = {
   return { item: updatedItem, affectedCount: affectedItems.length, items: affectedItems };
 }
 
+async function backfillSupplierFields(config, projectId, options = {}) {
+  const { force = false } = options;
+
+  // 1. Read quoteSnapshot (read-only, never modified)
+  let quoteSnapshot = null;
+  if (config.enabled) {
+    const rows = await supabaseRequest(
+      config,
+      `projects?select=quote_snapshot&id=eq.${encodeURIComponent(projectId)}`
+    );
+    if (!Array.isArray(rows) || rows.length === 0) {
+      const err = new Error('项目不存在。'); err.status = 404; throw err;
+    }
+    quoteSnapshot = rows[0].quote_snapshot || {};
+  } else {
+    const data = loadSeedData();
+    if (!Array.isArray(data.projects)) data.projects = [];
+    const project = data.projects.find(p => p.id === projectId);
+    if (!project) { const err = new Error('项目不存在。'); err.status = 404; throw err; }
+    quoteSnapshot = project.quoteSnapshot || {};
+  }
+
+  // 2. Build supplier lookup structures from quoteSnapshot
+  const supplierByItemId = new Map(); // quoteItemId → {supplierId, supplierCatalogItemId, supplierDisplay}
+  const groupMeta = [];               // [{id, title, items: [{id, title, hasSupplier, supplierInfo}]}]
+  let availableSupplierCount = 0;
+
+  const groups = Array.isArray(quoteSnapshot?.projectGroups)
+    ? quoteSnapshot.projectGroups
+    : Array.isArray(quoteSnapshot?.project_groups)
+      ? quoteSnapshot.project_groups
+      : [];
+
+  for (const group of groups) {
+    if (!group) continue;
+    const groupId = group.id || '';
+    const groupTitle = group.projectTitle || group.project_title || '';
+    const metaItems = [];
+    for (const item of (Array.isArray(group.items) ? group.items : [])) {
+      if (!item) continue;
+      const supplierId = item.supplierId || item.supplier_id || '';
+      const supplierCatalogItemId = item.supplierCatalogItemId || item.supplier_catalog_item_id || '';
+      const supplierDisplay = item.supplierDisplay || item.supplier_display || item.supplierName || item.supplier_name || item.supplier || '';
+      const title = item.itemName || item.name_zh || item.name || item.title || item.serviceName || '';
+      const hasSupplier = !!(supplierId || supplierDisplay);
+      const supplierInfo = { supplierId, supplierCatalogItemId, supplierDisplay };
+      if (item.id) supplierByItemId.set(item.id, supplierInfo);
+      if (hasSupplier) availableSupplierCount++;
+      metaItems.push({ id: item.id || '', title, hasSupplier, supplierInfo });
+    }
+    groupMeta.push({ id: groupId, title: groupTitle, items: metaItems });
+  }
+
+  // 3. Read current execution items
+  const existingItems = await listExecutionItems(config, projectId);
+  const totalCount = existingItems.length;
+
+  // 4. Match each execution item to a supplier
+  function findSupplierInfo(ei) {
+    // P1: sourceQuoteItemId exact match
+    if (ei.sourceQuoteItemId && supplierByItemId.has(ei.sourceQuoteItemId)) {
+      return supplierByItemId.get(ei.sourceQuoteItemId);
+    }
+    // P2: sourceGroupId + title match
+    for (const g of groupMeta) {
+      if (g.id && ei.sourceGroupId && g.id === ei.sourceGroupId) {
+        const m = g.items.find(i => i.title && i.title === ei.title);
+        if (m && m.hasSupplier) return m.supplierInfo;
+      }
+    }
+    // P3: sourceGroupTitle + title match
+    for (const g of groupMeta) {
+      if (g.title && ei.sourceGroupTitle && g.title === ei.sourceGroupTitle) {
+        const m = g.items.find(i => i.title && i.title === ei.title);
+        if (m && m.hasSupplier) return m.supplierInfo;
+      }
+    }
+    return null;
+  }
+
+  const toUpdate = [];
+  let skippedCount = 0;
+
+  for (const ei of existingItems) {
+    if (!force && (ei.supplierId || ei.supplierDisplay)) continue; // already has supplier
+    const si = findSupplierInfo(ei);
+    if (si && (si.supplierId || si.supplierDisplay)) {
+      toUpdate.push({ ei, supplierInfo: si });
+    } else {
+      skippedCount++;
+    }
+  }
+
+  const now = new Date().toISOString();
+
+  // 5. Execute updates (only supplier fields; never touches other fields)
+  if (config.enabled) {
+    for (const { ei, supplierInfo } of toUpdate) {
+      await supabaseRequest(
+        config,
+        `project_execution_items?id=eq.${encodeURIComponent(ei.id)}&project_id=eq.${encodeURIComponent(projectId)}`,
+        {
+          method: 'PATCH',
+          headers: { Prefer: 'return=minimal' },
+          body: JSON.stringify({
+            supplier_id: supplierInfo.supplierId,
+            supplier_catalog_item_id: supplierInfo.supplierCatalogItemId,
+            supplier_display: supplierInfo.supplierDisplay,
+            updated_at: now,
+          }),
+        }
+      );
+    }
+  } else {
+    if (toUpdate.length > 0) {
+      const data = loadSeedData();
+      ensureExecutionItemsData(data);
+      for (const { ei, supplierInfo } of toUpdate) {
+        const idx = data.projectExecutionItems.findIndex(i => i.id === ei.id && i.projectId === projectId);
+        if (idx >= 0) {
+          data.projectExecutionItems[idx] = {
+            ...data.projectExecutionItems[idx],
+            supplierId: supplierInfo.supplierId,
+            supplierCatalogItemId: supplierInfo.supplierCatalogItemId,
+            supplierDisplay: supplierInfo.supplierDisplay,
+            updatedAt: now,
+          };
+        }
+      }
+      saveSeedData(data);
+    }
+  }
+
+  // 6. Build result items list with updated supplier info merged in
+  const updatedIdMap = new Map(toUpdate.map(({ ei, supplierInfo }) => [ei.id, supplierInfo]));
+  const items = existingItems.map(ei => {
+    const si = updatedIdMap.get(ei.id);
+    if (!si) return normalizeLocalExecutionItem(ei);
+    return normalizeLocalExecutionItem({
+      ...ei,
+      supplierId: si.supplierId,
+      supplierCatalogItemId: si.supplierCatalogItemId,
+      supplierDisplay: si.supplierDisplay,
+      updatedAt: now,
+    });
+  });
+
+  return { updatedCount: toUpdate.length, skippedCount, totalCount, availableSupplierCount, items };
+}
+
 async function deleteExecutionItem(config, projectId, itemId) {
   if (config.enabled) {
     const existing = await supabaseRequest(
@@ -471,4 +621,5 @@ module.exports = {
   generateExecutionItemsFromProject,
   updateExecutionItem,
   deleteExecutionItem,
+  backfillSupplierFields,
 };
