@@ -16,36 +16,76 @@
     </header>
 
     <div id="project-message" class="message-box hidden"></div>
-    <section class="panel">
-      <div class="panel-head">
-        <h1>项目主档列表</h1>
-        <span>V1.1 简易项目档案中心</span>
+    <section class="projects-workbench">
+      <div class="projects-workbench-header">
+        <div>
+          <span class="projects-eyebrow">PROJECT MASTER CENTER</span>
+          <h1>项目主档中心</h1>
+          <p>统一管理从项目型报价转化而来的执行项目，跟踪负责人、优先级、运营准备状态和内部截止时间。</p>
+        </div>
+        <div class="projects-header-actions">
+          <button type="button" id="refresh-projects-btn" class="secondary-button">刷新</button>
+          <a class="secondary-button" href="/quotes.html">项目型报价列表</a>
+          <a class="button-link" href="/">返回工作台</a>
+        </div>
       </div>
-      <div id="project-filters" class="filter-bar">
-        <select id="filter-status" aria-label="筛选项目状态">
-          <option value="">全部项目状态</option>
-          <option value="draft">草稿</option>
-          <option value="confirmed">已确认</option>
-          <option value="running">执行中</option>
-          <option value="completed">已完成</option>
-          <option value="cancelled">已取消</option>
-        </select>
-        <select id="filter-op-status" aria-label="筛选运营准备状态">
-          <option value="">全部运营状态</option>
-          <option value="not_started">未开始</option>
-          <option value="preparing">准备中</option>
-          <option value="ready">已准备</option>
-          <option value="blocked">阻塞</option>
-        </select>
-        <select id="filter-priority" aria-label="筛选优先级">
-          <option value="">全部优先级</option>
-          <option value="low">低</option>
-          <option value="normal">普通</option>
-          <option value="high">高</option>
-          <option value="urgent">紧急</option>
-        </select>
-      </div>
-      <div id="project-list" class="stack"></div>
+
+      <div id="project-stats" class="projects-stats-grid" aria-label="项目统计概览"></div>
+
+      <section id="project-filters" class="projects-control-panel" aria-label="项目筛选与搜索">
+        <div class="projects-search-field">
+          <label for="project-search">搜索项目</label>
+          <input id="project-search" type="search" placeholder="项目名称、客户、目的地、编号、负责人" autocomplete="off" />
+        </div>
+        <label>
+          <span>项目状态</span>
+          <select id="filter-status" aria-label="筛选项目状态">
+            <option value="">全部项目状态</option>
+            <option value="draft">草稿</option>
+            <option value="confirmed">已确认</option>
+            <option value="running">执行中</option>
+            <option value="completed">已完成</option>
+            <option value="cancelled">已取消</option>
+          </select>
+        </label>
+        <label>
+          <span>运营准备</span>
+          <select id="filter-op-status" aria-label="筛选运营准备状态">
+            <option value="">全部运营状态</option>
+            <option value="not_started">未开始</option>
+            <option value="preparing">准备中</option>
+            <option value="ready">已准备</option>
+            <option value="blocked">阻塞</option>
+          </select>
+        </label>
+        <label>
+          <span>优先级</span>
+          <select id="filter-priority" aria-label="筛选优先级">
+            <option value="">全部优先级</option>
+            <option value="low">低</option>
+            <option value="normal">普通</option>
+            <option value="high">高</option>
+            <option value="urgent">紧急</option>
+          </select>
+        </label>
+        <label>
+          <span>排序</span>
+          <select id="project-sort" aria-label="项目排序">
+            <option value="default">运营优先</option>
+            <option value="deadline">内部截止日期优先</option>
+            <option value="priority">优先级最高</option>
+            <option value="startDate">最近开始日期</option>
+            <option value="sales">销售额最高</option>
+            <option value="updated">最近更新 / 创建</option>
+          </select>
+        </label>
+        <div class="projects-control-actions">
+          <span id="project-result-count">显示 0 / 0 个项目</span>
+          <button type="button" id="reset-project-filters-main" class="secondary-button">清除筛选</button>
+        </div>
+      </section>
+
+      <div id="project-list" class="projects-list"></div>
     </section>
   </div>
   <script src="/ui-labels.js"></script>

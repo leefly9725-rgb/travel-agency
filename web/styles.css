@@ -4825,3 +4825,504 @@ details[open] .panel-summary::before {
     width: 100%;
   }
 }
+
+/* B1-03E project master center */
+.projects-workbench {
+  display: grid;
+  gap: 16px;
+}
+
+.projects-workbench-header,
+.projects-control-panel,
+.project-list-card,
+.projects-empty-state {
+  border: 1px solid rgba(194, 106, 46, 0.14);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.92), rgba(255, 252, 247, 0.94));
+  box-shadow: 0 18px 44px rgba(36, 29, 22, 0.08);
+}
+
+.projects-workbench-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  align-items: flex-start;
+  padding: 24px;
+  border-radius: 16px;
+}
+
+.projects-eyebrow {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.projects-workbench-header h1 {
+  margin: 0;
+  color: #162235;
+  font-size: 30px;
+  line-height: 1.15;
+}
+
+.projects-workbench-header p {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.projects-header-actions,
+.project-card-actions,
+.projects-control-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.projects-header-actions {
+  justify-content: flex-end;
+  min-width: 260px;
+}
+
+.projects-header-actions .button-link,
+.projects-header-actions .secondary-button,
+.project-card-actions .button-link,
+.project-card-actions .secondary-button,
+.projects-control-actions .secondary-button,
+.projects-empty-state .button-link,
+.projects-empty-state .secondary-button {
+  width: auto;
+  min-height: 34px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+.projects-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.projects-stat-card {
+  min-height: 96px;
+  padding: 13px 14px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 8px 24px rgba(36, 29, 22, 0.05);
+}
+
+.projects-stat-card span,
+.project-list-core span,
+.project-list-ops span,
+.project-finance-strip span {
+  display: block;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.projects-stat-card strong {
+  display: block;
+  margin-top: 8px;
+  color: #162235;
+  font-size: 26px;
+  line-height: 1;
+}
+
+.projects-stat-card small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.projects-stat-running {
+  border-color: rgba(24, 68, 112, 0.22);
+  background: rgba(24, 68, 112, 0.06);
+}
+
+.projects-stat-confirmed,
+.projects-stat-near {
+  border-color: rgba(194, 106, 46, 0.24);
+  background: rgba(194, 106, 46, 0.08);
+}
+
+.projects-stat-ready {
+  border-color: rgba(36, 97, 59, 0.2);
+  background: rgba(36, 97, 59, 0.07);
+}
+
+.projects-stat-blocked,
+.projects-stat-urgent {
+  border-color: rgba(163, 61, 47, 0.22);
+  background: rgba(163, 61, 47, 0.08);
+}
+
+.projects-control-panel {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.6fr) repeat(4, minmax(150px, 1fr)) auto;
+  gap: 12px;
+  align-items: end;
+  padding: 16px;
+  border-radius: 14px;
+}
+
+.projects-control-panel label,
+.projects-search-field {
+  display: grid;
+  gap: 6px;
+}
+
+.projects-control-panel label span,
+.projects-search-field label {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.projects-control-panel input,
+.projects-control-panel select {
+  width: 100%;
+  height: 40px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--ink);
+  padding: 0 12px;
+  font: inherit;
+}
+
+.projects-control-panel input:focus,
+.projects-control-panel select:focus {
+  outline: none;
+  border-color: rgba(194, 106, 46, 0.42);
+  box-shadow: 0 0 0 3px rgba(194, 106, 46, 0.12);
+}
+
+.projects-control-actions {
+  justify-content: flex-end;
+  min-width: 180px;
+}
+
+.projects-control-actions span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.projects-list {
+  display: grid;
+  gap: 14px;
+}
+
+.project-list-card {
+  position: relative;
+  overflow: hidden;
+  padding: 18px;
+  border-radius: 14px;
+}
+
+.project-list-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: rgba(30, 36, 48, 0.16);
+}
+
+.project-card-priority-high::before {
+  background: #c26a2e;
+}
+
+.project-card-priority-urgent::before,
+.project-card-op-blocked::before {
+  background: #a33d2f;
+}
+
+.project-list-card-top,
+.project-list-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.project-list-title-block {
+  min-width: 0;
+}
+
+.project-list-number {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-list-title-block h3 {
+  margin: 4px 0 0;
+  color: #162235;
+  font-size: 21px;
+  line-height: 1.25;
+}
+
+.project-list-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.pl-chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 10px;
+  border: 1px solid rgba(30, 36, 48, 0.12);
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.pl-status-draft,
+.pl-priority-low,
+.pl-op-not_started,
+.pl-status-cancelled {
+  color: #5f6b7a;
+  background: rgba(95, 107, 122, 0.08);
+  border-color: rgba(95, 107, 122, 0.18);
+}
+
+.pl-status-confirmed,
+.pl-priority-normal,
+.pl-op-preparing {
+  color: #835019;
+  background: rgba(194, 106, 46, 0.09);
+  border-color: rgba(194, 106, 46, 0.22);
+}
+
+.pl-status-running {
+  color: #184470;
+  background: rgba(24, 68, 112, 0.08);
+  border-color: rgba(24, 68, 112, 0.22);
+}
+
+.pl-status-completed,
+.pl-op-ready {
+  color: var(--success-text);
+  background: var(--success-bg);
+  border-color: rgba(36, 97, 59, 0.2);
+}
+
+.pl-priority-high {
+  color: #b05d10;
+  background: rgba(230, 126, 34, 0.11);
+  border-color: rgba(230, 126, 34, 0.28);
+}
+
+.pl-priority-urgent,
+.pl-op-blocked {
+  color: var(--error-text);
+  background: var(--error-bg);
+  border-color: rgba(163, 61, 47, 0.24);
+}
+
+.project-list-core,
+.project-list-ops {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.project-list-core > div,
+.project-list-ops > div {
+  min-width: 0;
+  padding: 11px 12px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.project-list-core strong,
+.project-list-ops strong {
+  display: block;
+  margin-top: 5px;
+  color: #162235;
+  font-size: 14px;
+  line-height: 1.35;
+  word-break: break-word;
+}
+
+.project-deadline-cell {
+  border-color: rgba(194, 106, 46, 0.22) !important;
+  background: rgba(194, 106, 46, 0.06) !important;
+}
+
+.project-deadline-pill {
+  display: inline-flex;
+  margin-top: 7px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  font-style: normal;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.deadline-empty {
+  color: #6f7784;
+  background: rgba(95, 107, 122, 0.08);
+}
+
+.deadline-normal {
+  color: #184470;
+  background: rgba(24, 68, 112, 0.08);
+}
+
+.deadline-soon,
+.deadline-today {
+  color: #9a551f;
+  background: rgba(194, 106, 46, 0.14);
+}
+
+.deadline-overdue {
+  color: var(--error-text);
+  background: var(--error-bg);
+}
+
+.project-list-footer {
+  align-items: center;
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid rgba(30, 36, 48, 0.08);
+}
+
+.project-finance-strip {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  color: var(--muted);
+}
+
+.project-finance-strip span {
+  display: inline-flex;
+  gap: 5px;
+  align-items: baseline;
+  font-weight: 700;
+}
+
+.project-finance-strip strong {
+  color: #273142;
+  font-size: 13px;
+}
+
+.projects-empty-state,
+.projects-loading {
+  padding: 26px;
+  border-radius: 14px;
+  text-align: center;
+}
+
+.projects-empty-state strong {
+  display: block;
+  color: #162235;
+  font-size: 18px;
+}
+
+.projects-empty-state p,
+.projects-loading {
+  color: var(--muted);
+}
+
+.projects-empty-state p {
+  margin: 8px 0 14px;
+}
+
+.projects-error-state {
+  border-color: rgba(163, 61, 47, 0.22);
+  background: rgba(163, 61, 47, 0.06);
+}
+
+@media (max-width: 1280px) {
+  .projects-stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .projects-control-panel {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .projects-search-field {
+    grid-column: span 2;
+  }
+}
+
+@media (max-width: 900px) {
+  .projects-workbench-header,
+  .project-list-card-top,
+  .project-list-footer {
+    flex-direction: column;
+  }
+
+  .projects-header-actions,
+  .project-list-chips,
+  .project-card-actions,
+  .projects-control-actions {
+    justify-content: flex-start;
+  }
+
+  .projects-header-actions {
+    min-width: 0;
+  }
+
+  .projects-stats-grid,
+  .project-list-core,
+  .project-list-ops,
+  .projects-control-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .projects-search-field,
+  .projects-control-actions {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 620px) {
+  .projects-workbench-header,
+  .projects-control-panel,
+  .project-list-card {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .projects-workbench-header h1 {
+    font-size: 24px;
+  }
+
+  .projects-stats-grid,
+  .project-list-core,
+  .project-list-ops,
+  .projects-control-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .projects-search-field,
+  .projects-control-actions {
+    grid-column: auto;
+  }
+
+  .projects-header-actions .button-link,
+  .projects-header-actions .secondary-button,
+  .project-card-actions .button-link,
+  .project-card-actions .secondary-button,
+  .projects-control-actions .secondary-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
