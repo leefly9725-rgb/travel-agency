@@ -2222,15 +2222,22 @@ async function handleApi(request, response, url) {
       const projectId = decodeURIComponent(eiPatchMatch[1]);
       const itemId = decodeURIComponent(eiPatchMatch[2]);
       const body = parseJsonBody(await readRequestBody(request));
-      const PROTECTED_EI = new Set(["id", "projectId", "sourceQuoteItemId", "sourceGroupId", "sourceGroupTitle", "createdAt", "updatedAt"]);
+      const PROTECTED_EI = new Set([
+        "id", "projectId", "sourceQuoteItemId", "sourceGroupId", "sourceGroupTitle",
+        "supplierId", "supplierCatalogItemId", "supplierDisplay",
+        "createdAt", "updatedAt",
+      ]);
+      const applyToSameSupplier = !!body.applyToSameSupplier;
       const patch = {};
       for (const [k, v] of Object.entries(body)) {
-        if (!PROTECTED_EI.has(k)) patch[k] = v;
+        if (!PROTECTED_EI.has(k) && k !== 'applyToSameSupplier') patch[k] = v;
       }
       const supabase = getSupabaseConfig();
       try {
-        const item = await projectExecutionStore.updateExecutionItem(supabase, projectId, itemId, patch);
-        sendJson(response, 200, item);
+        const result = await projectExecutionStore.updateExecutionItem(
+          supabase, projectId, itemId, patch, { applyToSameSupplier }
+        );
+        sendJson(response, 200, result);
       } catch (err) {
         sendJson(response, err.status || 500, { error: err.message });
       }

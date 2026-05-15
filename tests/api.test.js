@@ -2284,3 +2284,239 @@ test("B1-03A: PATCH date fields null saves as null", async () => {
     assert.equal(cleared.endDate, null, "endDate null is allowed");
   });
 });
+
+// ── B1-03A: 同供应商批量同步测试 ──────────────────────────────────────────
+
+function seedProjectBasedQuoteWithTwoSupplierItems() {
+  const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+  data.quotes.push({
+    id: "Q-PB-S",
+    projectId: "",
+    quoteNumber: "QT-PB-S",
+    clientName: "SupplierClient",
+    projectName: "供应商同步测试项目",
+    contactName: "李四",
+    contactPhone: "13900000002",
+    language: "zh-CN",
+    currency: "EUR",
+    startDate: "2026-08-01",
+    endDate: "2026-08-03",
+    tripDate: "2026-08-01",
+    travelDays: 3,
+    destination: "Novi Sad",
+    paxCount: 10,
+    notes: "",
+    pricingMode: "project_based",
+    totalCost: 1000,
+    totalSales: 1500,
+    totalProfit: 500,
+    projectGroups: [
+      {
+        id: "G-S1",
+        projectType: "event",
+        projectTitle: "供应商A服务组",
+        sortOrder: 0,
+        items: [
+          {
+            id: "ITEM-S1",
+            itemType: "misc",
+            itemCategory: "decoration",
+            itemName: "花艺布置",
+            unit: "套",
+            quantity: 1,
+            currency: "EUR",
+            costUnitPrice: 300,
+            salesUnitPrice: 450,
+            costSubtotal: 300,
+            salesSubtotal: 450,
+            supplierId: "SUP-001",
+            supplierDisplay: "鲜花供应商A",
+          },
+          {
+            id: "ITEM-S2",
+            itemType: "misc",
+            itemCategory: "decoration",
+            itemName: "背景板安装",
+            unit: "套",
+            quantity: 1,
+            currency: "EUR",
+            costUnitPrice: 200,
+            salesUnitPrice: 300,
+            costSubtotal: 200,
+            salesSubtotal: 300,
+            supplierId: "SUP-001",
+            supplierDisplay: "鲜花供应商A",
+          },
+          {
+            id: "ITEM-S3",
+            itemType: "misc",
+            itemCategory: "logistics",
+            itemName: "物流运输",
+            unit: "次",
+            quantity: 1,
+            currency: "EUR",
+            costUnitPrice: 500,
+            salesUnitPrice: 750,
+            costSubtotal: 500,
+            salesSubtotal: 750,
+            supplierId: "SUP-002",
+            supplierDisplay: "物流公司B",
+          },
+        ],
+      },
+    ],
+    createdAt: "2026-06-01T00:00:00.000Z",
+    updatedAt: "2026-06-01T00:00:00.000Z",
+  });
+  fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+}
+
+test("B1-03A: generate inherits supplierId and supplierDisplay from quote items", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuoteWithTwoSupplierItems();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    assert.ok(items.length >= 2, "should have at least 2 items");
+    const sup1Items = items.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1Items.length >= 2, "should have 2 items for SUP-001");
+    assert.ok(sup1Items.every(i => i.supplierDisplay === "鲜花供应商A"), "supplierDisplay inherited");
+  });
+});
+
+test("B1-03A: applyToSameSupplier=true syncs owner/status/notes to sibling items", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuoteWithTwoSupplierItems();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const sup1Items = items.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1Items.length >= 2, "need at least 2 SUP-001 items");
+    const targetId = sup1Items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner: "张三", status: "in_progress", notes: "已联系", applyToSameSupplier: true }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    assert.ok(result.item, "result.item should exist");
+    assert.ok(result.affectedCount >= 2, `affectedCount should be ≥ 2, got ${result.affectedCount}`);
+    assert.ok(Array.isArray(result.items), "result.items should be array");
+
+    const afterRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const afterItems = await afterRes.json();
+    const sup1After = afterItems.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1After.every(i => i.owner === "张三"), "all SUP-001 items should have owner 张三");
+    assert.ok(sup1After.every(i => i.status === "in_progress"), "all SUP-001 items should be in_progress");
+    assert.ok(sup1After.every(i => i.notes === "已联系"), "all SUP-001 items should have notes synced");
+  });
+});
+
+test("B1-03A: applyToSameSupplier does NOT sync title/quantity/unit", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuoteWithTwoSupplierItems();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const sup1Items = items.filter(i => i.supplierId === "SUP-001");
+    const targetId = sup1Items[0].id;
+    const siblingId = sup1Items[1].id;
+    const siblingOriginalTitle = sup1Items[1].title;
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "修改后的标题", owner: "李四", applyToSameSupplier: true }),
+    });
+
+    const afterRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const afterItems = await afterRes.json();
+    const sibling = afterItems.find(i => i.id === siblingId);
+    assert.equal(sibling.title, siblingOriginalTitle, "sibling title must NOT be synced");
+    assert.equal(sibling.owner, "李四", "sibling owner MUST be synced");
+  });
+});
+
+test("B1-03A: applyToSameSupplier=false only updates current item", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuoteWithTwoSupplierItems();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const sup1Items = items.filter(i => i.supplierId === "SUP-001");
+    const targetId = sup1Items[0].id;
+    const siblingId = sup1Items[1].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner: "独自更新", applyToSameSupplier: false }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    const ownerId = result.owner || (result.item && result.item.owner);
+    assert.equal(ownerId, "独自更新", "current item updated");
+
+    const afterRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const afterItems = await afterRes.json();
+    const sibling = afterItems.find(i => i.id === siblingId);
+    assert.notEqual(sibling.owner, "独自更新", "sibling must NOT be updated when applyToSameSupplier=false");
+  });
+});
+
+test("B1-03A: no supplierId/supplierDisplay — applyToSameSupplier returns affectedCount 1", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ owner: "测试", applyToSameSupplier: true }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    if (result.affectedCount !== undefined) {
+      assert.equal(result.affectedCount, 1, "affectedCount should be 1 when no supplier");
+    }
+  });
+});
+
+test("B1-03A: supplierId/supplierDisplay in PROTECTED_EI cannot be overwritten via PATCH", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuoteWithTwoSupplierItems();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const item = items.find(i => i.supplierId === "SUP-001");
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(item.id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierId: "INJECTED", supplierDisplay: "INJECTED", owner: "合法字段" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    const resultItem = result.item || result;
+    assert.equal(resultItem.supplierId, "SUP-001", "supplierId must not change");
+    assert.equal(resultItem.supplierDisplay, "鲜花供应商A", "supplierDisplay must not change");
+    assert.equal(resultItem.owner, "合法字段", "legitimate field should be updated");
+  });
+});

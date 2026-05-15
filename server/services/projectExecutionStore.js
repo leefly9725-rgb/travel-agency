@@ -263,7 +263,15 @@ const UPDATABLE_FIELDS = new Set([
   'location', 'owner', 'status', 'supplierStatus', 'notes', 'sortOrder',
 ]);
 
-async function updateExecutionItem(config, projectId, itemId, patch) {
+const SYNC_FIELDS = new Set([
+  'owner', 'status', 'supplierStatus',
+  'plannedDate', 'startDate', 'endDate',
+  'location', 'notes',
+]);
+
+async function updateExecutionItem(config, projectId, itemId, patch, options = {}) {
+  const { applyToSameSupplier = false } = options;
+
   if (patch.status !== undefined && !VALID_STATUSES.has(patch.status)) {
     const err = new Error(`status 不合法：${patch.status}`);
     err.status = 400;
@@ -281,6 +289,7 @@ async function updateExecutionItem(config, projectId, itemId, patch) {
   }
 
   const now = new Date().toISOString();
+  let updatedItem;
 
   if (config.enabled) {
     const existing = await supabaseRequest(
@@ -317,9 +326,9 @@ async function updateExecutionItem(config, projectId, itemId, patch) {
         body: JSON.stringify(snakePatch),
       }
     );
-    const updated = Array.isArray(rows) ? rows[0] : rows;
-    if (!updated) throw new Error('更新失败，Supabase 未返回记录。');
-    return normalizeExecutionItemFromSupabase(updated);
+    const raw = Array.isArray(rows) ? rows[0] : rows;
+    if (!raw) throw new Error('更新失败，Supabase 未返回记录。');
+    updatedItem = normalizeExecutionItemFromSupabase(raw);
   } else {
     const data = loadSeedData();
     ensureExecutionItemsData(data);
@@ -340,8 +349,91 @@ async function updateExecutionItem(config, projectId, itemId, patch) {
     updated.updatedAt = now;
     data.projectExecutionItems[idx] = updated;
     saveSeedData(data);
-    return normalizeLocalExecutionItem(updated);
+    updatedItem = normalizeLocalExecutionItem(updated);
   }
+
+  if (!applyToSameSupplier) {
+    return updatedItem;
+  }
+
+  // ── 批量同步同供应商执行项 ────────────────────────────────────────────────
+  const supplierId = updatedItem.supplierId;
+  const supplierDisplay = updatedItem.supplierDisplay;
+
+  if (!supplierId && !supplierDisplay) {
+    return { item: updatedItem, affectedCount: 1, items: [updatedItem] };
+  }
+
+  // 只同步本次 patch 中属于 SYNC_FIELDS 的字段
+  const syncPatch = {};
+  for (const field of SYNC_FIELDS) {
+    if (patch[field] !== undefined) syncPatch[field] = patch[field];
+  }
+
+  const affectedItems = [updatedItem];
+
+  if (config.enabled) {
+    const allRows = await supabaseRequest(
+      config,
+      `project_execution_items?project_id=eq.${encodeURIComponent(projectId)}&select=*`
+    );
+    if (Array.isArray(allRows) && Object.keys(syncPatch).length > 0) {
+      const siblings = allRows.filter(r =>
+        r.id !== itemId &&
+        (supplierId ? r.supplier_id === supplierId : r.supplier_display === supplierDisplay)
+      );
+      if (siblings.length > 0) {
+        const syncSnake = { updated_at: now };
+        if (syncPatch.owner !== undefined) syncSnake.owner = syncPatch.owner;
+        if (syncPatch.status !== undefined) syncSnake.status = syncPatch.status;
+        if (syncPatch.supplierStatus !== undefined) syncSnake.supplier_status = syncPatch.supplierStatus;
+        if (syncPatch.plannedDate !== undefined) syncSnake.planned_date = syncPatch.plannedDate || null;
+        if (syncPatch.startDate !== undefined) syncSnake.start_date = syncPatch.startDate || null;
+        if (syncPatch.endDate !== undefined) syncSnake.end_date = syncPatch.endDate || null;
+        if (syncPatch.location !== undefined) syncSnake.location = syncPatch.location;
+        if (syncPatch.notes !== undefined) syncSnake.notes = syncPatch.notes;
+
+        const siblingIds = siblings.map(r => r.id).join(',');
+        const batchRows = await supabaseRequest(
+          config,
+          `project_execution_items?id=in.(${siblingIds})`,
+          {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(syncSnake),
+          }
+        );
+        if (Array.isArray(batchRows)) {
+          batchRows.forEach(r => affectedItems.push(normalizeExecutionItemFromSupabase(r)));
+        }
+      }
+    }
+  } else {
+    if (Object.keys(syncPatch).length > 0) {
+      const data = loadSeedData();
+      ensureExecutionItemsData(data);
+      let changed = false;
+      for (let i = 0; i < data.projectExecutionItems.length; i++) {
+        const ei = data.projectExecutionItems[i];
+        if (ei.id === itemId || ei.projectId !== projectId) continue;
+        const match = supplierId
+          ? ei.supplierId === supplierId
+          : ei.supplierDisplay === supplierDisplay;
+        if (!match) continue;
+        const updated = { ...ei };
+        for (const field of SYNC_FIELDS) {
+          if (syncPatch[field] !== undefined) updated[field] = syncPatch[field];
+        }
+        updated.updatedAt = now;
+        data.projectExecutionItems[i] = updated;
+        affectedItems.push(normalizeLocalExecutionItem(updated));
+        changed = true;
+      }
+      if (changed) saveSeedData(data);
+    }
+  }
+
+  return { item: updatedItem, affectedCount: affectedItems.length, items: affectedItems };
 }
 
 async function deleteExecutionItem(config, projectId, itemId) {
