@@ -1564,12 +1564,10 @@ button.ghost,
 
 .project-status-panel {
   display: grid;
-  gap: 14px;
-  margin-top: 16px;
-  padding: 16px 18px;
-  border-radius: 16px;
-  border: 1px solid rgba(194, 106, 46, 0.18);
-  background: linear-gradient(180deg, rgba(247, 228, 210, 0.56) 0%, rgba(255, 255, 255, 0.82) 100%);
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
 }
 
 .project-status-summary {
@@ -1601,9 +1599,9 @@ button.ghost,
 }
 
 .project-status-pill-running {
-  border-color: rgba(123, 31, 162, 0.26);
-  background: rgba(123, 31, 162, 0.1);
-  color: #6d1b8f;
+  border-color: rgba(30, 80, 150, 0.26);
+  background: rgba(30, 80, 150, 0.08);
+  color: #1e4f96;
 }
 
 .project-status-pill-completed {
@@ -1651,9 +1649,9 @@ button.ghost,
 }
 
 .project-status-panel[data-current-status="running"] .project-status-button.is-active {
-  border-color: rgba(123, 31, 162, 0.34);
-  background: #7b1fa2;
-  box-shadow: 0 8px 16px rgba(123, 31, 162, 0.16);
+  border-color: rgba(30, 80, 150, 0.34);
+  background: #1e5096;
+  box-shadow: 0 4px 10px rgba(30, 80, 150, 0.18);
 }
 
 .project-status-panel[data-current-status="completed"] .project-status-button.is-active {
@@ -4072,4 +4070,136 @@ body.proj-column-resizing * {
   font-size: 12px;
   color: #92400e;
   flex: 1;
+}
+
+/* ── B1-03C: 项目摘要条、chip、主档分组、折叠区、backfill 优化 ── */
+
+/* 项目摘要条 */
+.proj-meta-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.proj-meta-item {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+/* 状态 chip 更小 */
+.project-status-pill {
+  min-height: 26px;
+  padding: 3px 10px;
+  font-size: 12px;
+}
+
+/* 优先级 / 运营状态 chip */
+.proj-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.proj-chip-priority {
+  background: rgba(194, 106, 46, 0.1);
+  border-color: rgba(194, 106, 46, 0.22);
+  color: var(--accent);
+}
+
+.proj-chip-op {
+  background: rgba(30, 80, 150, 0.08);
+  border-color: rgba(30, 80, 150, 0.18);
+  color: #1e4f96;
+}
+
+/* 状态按钮更紧凑 */
+.project-status-button {
+  min-height: 30px;
+  padding: 4px 10px;
+  font-size: 12px;
+}
+
+/* 主档分组 */
+.pm-group {
+  margin-top: 16px;
+}
+
+.pm-group:first-child {
+  margin-top: 12px;
+}
+
+.pm-group-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 8px 0;
+  padding-bottom: 4px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* 折叠区 */
+.collapsible-panel {
+  /* 用原生 <details> */
+}
+
+.panel-summary {
+  list-style: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  user-select: none;
+}
+
+.panel-summary::-webkit-details-marker {
+  display: none;
+}
+
+.panel-summary::before {
+  content: "›";
+  font-size: 16px;
+  color: var(--muted);
+  transition: transform 0.15s;
+  display: inline-block;
+}
+
+details[open] .panel-summary::before {
+  transform: rotate(90deg);
+}
+
+.panel-summary h2 {
+  margin: 0;
+}
+
+/* backfill bar 优化 */
+.ei-backfill-bar {
+  display: flex;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: 8px 10px;
+  padding: 8px 10px;
+  background: rgba(250, 240, 220, 0.6);
+  border: 1px solid rgba(194, 106, 46, 0.22);
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+
+.ei-backfill-btn {
+  flex-shrink: 0;
+}
+
+.ei-backfill-hint {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex: 1;
+  min-width: 160px;
+  line-height: 1.5;
 }

@@ -140,6 +140,15 @@ function generateItemsFromSnapshot(projectId, quoteSnapshot) {
   const items = [];
   const now = new Date().toISOString();
 
+  // 默认到位截止时间 = 项目开始日期前一天
+  let defaultPlannedDate = null;
+  const snapStartDate = quoteSnapshot.startDate || quoteSnapshot.start_date;
+  if (snapStartDate && /^\d{4}-\d{2}-\d{2}$/.test(String(snapStartDate))) {
+    const d = new Date(snapStartDate + 'T12:00:00');
+    d.setDate(d.getDate() - 1);
+    defaultPlannedDate = d.toISOString().slice(0, 10);
+  }
+
   for (let gi = 0; gi < groups.length; gi++) {
     const group = groups[gi];
     if (!group) continue;
@@ -180,7 +189,7 @@ function generateItemsFromSnapshot(projectId, quoteSnapshot) {
         description,
         quantity,
         unit,
-        plannedDate: null,
+        plannedDate: defaultPlannedDate,
         startDate: null,
         endDate: null,
         location: quoteSnapshot.destination || '',

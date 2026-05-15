@@ -141,9 +141,10 @@ function renderExecutionStatsBar(items) {
   `;
 }
 
-function renderStatusPanel(currentStatus, projectId) {
+function renderStatusPanel(currentStatus, projectId, project) {
   const status = VALID_STATUSES.includes(currentStatus) ? currentStatus : "draft";
   const statusLabel = PROJECT_STATUS_LABELS[status] || status;
+  const p = project || {};
   const actions = VALID_STATUSES.map((s) => `
     <button
       type="button"
@@ -154,13 +155,23 @@ function renderStatusPanel(currentStatus, projectId) {
     >${PROJECT_STATUS_LABELS[s] || s}</button>
   `).join("");
 
+  const dateRange = (p.startDate || p.endDate)
+    ? `${esc(p.startDate || "")}${p.endDate ? " — " + esc(p.endDate) : ""}`
+    : null;
+  const paxStr = p.paxCount != null ? `${esc(String(p.paxCount))} 人` : null;
+  const priorityStr = p.priority && PRIORITY_LABELS[p.priority] ? PRIORITY_LABELS[p.priority] : null;
+  const opStr = p.operationStatus && OP_STATUS_LABELS[p.operationStatus] ? OP_STATUS_LABELS[p.operationStatus] : null;
+
   return `
     <div class="project-status-panel" data-current-status="${esc(status)}">
-      <div class="project-status-summary">
-        <span class="project-status-title">项目状态</span>
-        <span class="project-status-pill project-status-pill-${getProjectStatusClass(status)}">当前：${esc(statusLabel)}</span>
+      <div class="proj-meta-bar">
+        <span class="project-status-pill project-status-pill-${getProjectStatusClass(status)}">${esc(statusLabel)}</span>
+        ${priorityStr ? `<span class="proj-chip proj-chip-priority">${esc(priorityStr)}</span>` : ""}
+        ${opStr ? `<span class="proj-chip proj-chip-op">${esc(opStr)}</span>` : ""}
+        ${dateRange ? `<span class="proj-meta-item">${dateRange}</span>` : ""}
+        ${paxStr ? `<span class="proj-meta-item">${paxStr}</span>` : ""}
       </div>
-      <div class="project-status-actions" role="group" aria-label="项目状态">
+      <div class="project-status-actions" role="group" aria-label="切换项目状态">
         ${actions}
       </div>
       <span id="status-save-hint" class="project-status-hint" aria-live="polite"></span>
@@ -193,56 +204,68 @@ function renderMasterPanel(project) {
         <h2>运营主档</h2>
         <button type="button" class="button-link small-link" id="edit-master-btn">编辑主档</button>
       </div>
-      <div class="project-master-grid" id="master-readonly">
-        <div class="project-master-field">
-          <label>项目名称</label>${def(project.projectName)}
+      <div id="master-readonly">
+        <div class="pm-group">
+          <h3 class="pm-group-title">基础信息</h3>
+          <div class="project-master-grid">
+            <div class="project-master-field">
+              <label>客户名称</label>${def(project.clientName)}
+            </div>
+            <div class="project-master-field">
+              <label>联系人</label>${def(project.contactName)}
+            </div>
+            <div class="project-master-field">
+              <label>联系电话</label>${def(project.contactPhone)}
+            </div>
+            <div class="project-master-field">
+              <label>目的地</label>${def(project.destination)}
+            </div>
+            <div class="project-master-field">
+              <label>开始日期</label>${def(project.startDate)}
+            </div>
+            <div class="project-master-field">
+              <label>结束日期</label>${def(project.endDate)}
+            </div>
+            <div class="project-master-field">
+              <label>人数</label>${def(project.paxCount != null ? project.paxCount + " 人" : null)}
+            </div>
+          </div>
         </div>
-        <div class="project-master-field">
-          <label>客户名称</label>${def(project.clientName)}
+        <div class="pm-group">
+          <h3 class="pm-group-title">责任人</h3>
+          <div class="project-master-grid">
+            <div class="project-master-field">
+              <label>项目负责人</label>${def(project.operationOwner)}
+            </div>
+            <div class="project-master-field">
+              <label>销售负责人</label>${def(project.salesOwner)}
+            </div>
+            <div class="project-master-field">
+              <label>协作人</label>${def(project.coordinator)}
+            </div>
+          </div>
         </div>
-        <div class="project-master-field">
-          <label>联系人</label>${def(project.contactName)}
-        </div>
-        <div class="project-master-field">
-          <label>联系电话</label>${def(project.contactPhone)}
-        </div>
-        <div class="project-master-field">
-          <label>目的地</label>${def(project.destination)}
-        </div>
-        <div class="project-master-field">
-          <label>开始日期</label>${def(project.startDate)}
-        </div>
-        <div class="project-master-field">
-          <label>结束日期</label>${def(project.endDate)}
-        </div>
-        <div class="project-master-field">
-          <label>人数</label>${def(project.paxCount != null ? project.paxCount + " 人" : null)}
-        </div>
-        <div class="project-master-field">
-          <label>项目负责人</label>${def(project.operationOwner)}
-        </div>
-        <div class="project-master-field">
-          <label>销售负责人</label>${def(project.salesOwner)}
-        </div>
-        <div class="project-master-field">
-          <label>协作人</label>${def(project.coordinator)}
-        </div>
-        <div class="project-master-field">
-          <label>优先级</label>
-          <span class="field-value">${esc(PRIORITY_LABELS[project.priority] || project.priority || "普通")}</span>
-        </div>
-        <div class="project-master-field">
-          <label>运营准备状态</label>
-          <span class="field-value">${esc(OP_STATUS_LABELS[project.operationStatus] || project.operationStatus || "未开始")}</span>
-        </div>
-        <div class="project-master-field">
-          <label>内部准备截止日期</label>${def(project.internalDeadline)}
-        </div>
-        <div class="project-master-field project-master-textarea-field">
-          <label>内部运营备注</label>${def(project.operationNotes)}
-        </div>
-        <div class="project-master-field project-master-textarea-field">
-          <label>风险/阻塞说明</label>${def(project.riskNotes)}
+        <div class="pm-group">
+          <h3 class="pm-group-title">运营控制</h3>
+          <div class="project-master-grid">
+            <div class="project-master-field">
+              <label>优先级</label>
+              <span class="field-value">${esc(PRIORITY_LABELS[project.priority] || project.priority || "普通")}</span>
+            </div>
+            <div class="project-master-field">
+              <label>运营准备状态</label>
+              <span class="field-value">${esc(OP_STATUS_LABELS[project.operationStatus] || project.operationStatus || "未开始")}</span>
+            </div>
+            <div class="project-master-field">
+              <label>内部准备截止日期</label>${def(project.internalDeadline)}
+            </div>
+            <div class="project-master-field project-master-textarea-field">
+              <label>内部运营备注</label>${def(project.operationNotes)}
+            </div>
+            <div class="project-master-field project-master-textarea-field">
+              <label>风险/阻塞说明</label>${def(project.riskNotes)}
+            </div>
+          </div>
         </div>
       </div>
       <div id="master-edit-form" style="display:none"></div>
@@ -404,7 +427,7 @@ function renderRealProject(project) {
           <p class="meta">${esc(project.clientName)}</p>
         </div>
       </div>
-      ${renderStatusPanel(project.status, project.id)}
+      ${renderStatusPanel(project.status, project.id, project)}
     </section>
 
     ${renderMasterPanel(project)}
@@ -433,18 +456,22 @@ function renderRealProject(project) {
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>报价快照 · 明细</h2></div>
-      ${renderSnapshotGroups(snap.projectGroups, currency)}
+      <details class="collapsible-panel">
+        <summary class="panel-summary"><h2>报价快照 · 明细</h2></summary>
+        ${renderSnapshotGroups(snap.projectGroups, currency)}
+      </details>
     </section>
 
     <section class="panel">
-      <div class="panel-head"><h2>汇总</h2></div>
-      <div class="detail-grid">
-        <div class="metric"><span>成本合计</span><strong>${formatCurrency(project.totalCost, currency)}</strong></div>
-        <div class="metric"><span>销售合计</span><strong>${formatCurrency(project.totalSales, currency)}</strong></div>
-        <div class="metric"><span>毛利</span><strong>${formatCurrency(project.grossProfit, currency)}</strong></div>
-        <div class="metric"><span>毛利率</span><strong>${Number(project.grossMargin || 0).toFixed(1)}%</strong></div>
-      </div>
+      <details class="collapsible-panel">
+        <summary class="panel-summary"><h2>汇总</h2></summary>
+        <div class="detail-grid" style="margin-top:12px">
+          <div class="metric"><span>成本合计</span><strong>${formatCurrency(project.totalCost, currency)}</strong></div>
+          <div class="metric"><span>销售合计</span><strong>${formatCurrency(project.totalSales, currency)}</strong></div>
+          <div class="metric"><span>毛利</span><strong>${formatCurrency(project.grossProfit, currency)}</strong></div>
+          <div class="metric"><span>毛利率</span><strong>${Number(project.grossMargin || 0).toFixed(1)}%</strong></div>
+        </div>
+      </details>
     </section>
   `;
 }
@@ -571,9 +598,9 @@ async function handleMasterPanelEvents(container, project) {
         // 重新渲染只读网格
         const tempDiv = document.createElement("div");
         tempDiv.innerHTML = renderMasterPanel(updated);
-        const newGrid = tempDiv.querySelector("#master-readonly");
-        if (newGrid && readonly) {
-          readonly.innerHTML = newGrid.innerHTML;
+        const newReadonly = tempDiv.querySelector("#master-readonly");
+        if (newReadonly && readonly) {
+          readonly.innerHTML = newReadonly.innerHTML;
         }
         editArea.style.display = "none";
         editArea.innerHTML = "";
@@ -650,8 +677,8 @@ function renderExecutionItemsSection(items, projectId) {
   const hasMissingSupplier = items.some(i => !i.supplierId && !i.supplierDisplay);
   const backfillBar = hasMissingSupplier ? `
     <div class="ei-backfill-bar">
-      <button type="button" class="button-secondary" id="backfill-supplier-btn" data-project-id="${esc(projectId)}">补齐供应商信息</button>
-      <span class="ei-backfill-hint">从报价快照中回填供应商信息，不会覆盖已编辑的执行状态、负责人、日期和备注。</span>
+      <button type="button" class="button-secondary ei-backfill-btn" id="backfill-supplier-btn" data-project-id="${esc(projectId)}">补齐供应商信息</button>
+      <span class="ei-backfill-hint">检测到部分执行项缺少供应商信息，可从报价快照补齐，不会覆盖已编辑的状态、负责人和备注。</span>
       <span id="backfill-hint" class="project-status-hint" aria-live="polite"></span>
     </div>
   ` : '';
@@ -663,7 +690,7 @@ function renderExecutionItemsSection(items, projectId) {
     const rows = groupItems.map((item) => `
       <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
         <td class="ei-cell">${esc(getExecutionCategoryLabel(item))}</td>
-        <td class="ei-cell ei-cell-title">${esc(item.title || "—")}</td>
+        <td class="ei-cell ei-cell-title" title="${esc(item.notes || "")}">${esc(item.title || "—")}</td>
         <td class="ei-cell ei-cell-num">${item.quantity != null ? item.quantity : "—"}${item.unit ? "&nbsp;" + esc(item.unit) : ""}</td>
         <td class="ei-cell">${esc(item.plannedDate || "—")}</td>
         <td class="ei-cell">${esc(item.location || "—")}</td>
@@ -678,7 +705,6 @@ function renderExecutionItemsSection(items, projectId) {
             ${esc(SUPPLIER_STATUS_LABELS[item.supplierStatus] || item.supplierStatus)}
           </span>
         </td>
-        <td class="ei-cell ei-cell-notes" title="${esc(item.notes || "")}">${esc(item.notes || "—")}</td>
         <td class="ei-cell ei-cell-actions">
           <button type="button" class="button-link small-link ei-edit-btn" data-item-id="${esc(item.id)}">编辑</button>
           <button type="button" class="button-link small-link ei-delete-btn" data-item-id="${esc(item.id)}" style="color:#c44">删除</button>
@@ -699,12 +725,11 @@ function renderExecutionItemsSection(items, projectId) {
                 <th>分类</th>
                 <th>执行内容</th>
                 <th>数量/单位</th>
-                <th>计划日期</th>
+                <th>到位截止时间</th>
                 <th>地点</th>
                 <th>负责人</th>
                 <th>执行状态</th>
                 <th>供应商状态</th>
-                <th>备注</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -762,16 +787,8 @@ function renderExecutionItemEditRow(item) {
           </div>
           <div class="ei-edit-row2">
             <div class="ei-edit-field">
-              <label>计划日期</label>
+              <label>到位截止时间</label>
               <input name="plannedDate" type="date" value="${esc(item.plannedDate || "")}" />
-            </div>
-            <div class="ei-edit-field">
-              <label>开始日期</label>
-              <input name="startDate" type="date" value="${esc(item.startDate || "")}" />
-            </div>
-            <div class="ei-edit-field">
-              <label>结束日期</label>
-              <input name="endDate" type="date" value="${esc(item.endDate || "")}" />
             </div>
             <div class="ei-edit-field">
               <label>地点</label>

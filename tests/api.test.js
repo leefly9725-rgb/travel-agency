@@ -2371,6 +2371,66 @@ function seedProjectBasedQuoteWithTwoSupplierItems() {
   fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
 }
 
+// ── B1-03C: 时间字段简化测试 ──────────────────────────────────────────────────
+
+test("B1-03C: generate sets plannedDate = startDate - 1 day", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote(); // startDate: "2026-07-01"
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    assert.ok(items.length > 0, "should have items");
+    assert.ok(items.every(i => i.plannedDate === "2026-06-30"), "plannedDate should be startDate - 1 day");
+  });
+});
+
+test("B1-03C: generate with no startDate in quoteSnapshot sets plannedDate = null", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote(); // startDate: "2026-07-01"
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    // 直接从 seed 文件中移除 quoteSnapshot.startDate，模拟无日期场景
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    const proj = data.projects.find(p => p.id === projectId);
+    if (proj && proj.quoteSnapshot) {
+      delete proj.quoteSnapshot.startDate;
+      delete proj.quoteSnapshot.start_date;
+    }
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    assert.ok(items.length > 0, "should have items");
+    assert.ok(items.every(i => i.plannedDate === null), "plannedDate should be null when quoteSnapshot has no startDate");
+  });
+});
+
+test("B1-03C: PATCH plannedDate still works (backward compat)", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plannedDate: "2026-08-15" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    const item = result.id ? result : result.item;
+    assert.equal(item.plannedDate, "2026-08-15", "plannedDate should be updated");
+  });
+});
+
 test("B1-03A: generate inherits supplierId and supplierDisplay from quote items", async () => {
   await withServer(async (port) => {
     seedProjectBasedQuoteWithTwoSupplierItems();
