@@ -3,45 +3,91 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>项目型报价</title>
+  <title>项目型报价工作台</title>
   <link rel="stylesheet" href="/styles.css" />
   <script src="/auth-guard.js"></script>
   <link rel="stylesheet" href="/app-shell.css" />
 </head>
 <body style="visibility: hidden">
-  <div class="page-shell quote-list-shell">
+  <div class="page-shell project-quote-workbench">
     <header class="topbar quote-list-topbar">
       <a class="topbar-link" href="/">← 首页</a>
-      <div class="topbar-actions">
-        <a class="button-link" href="/quote-new.html?mode=project_based" target="_blank" rel="noopener">新建项目型报价</a>
-      </div>
     </header>
 
-    <section class="panel quote-list-section quote-list-section-project">
-      <div class="panel-head list-section-head">
+    <section class="pq-workbench">
+      <div class="pq-workbench-header">
         <div>
-          <p class="section-kicker">项目型报价</p>
-          <div class="list-title-row">
-            <h1>项目型报价列表</h1>
-            <span id="project-quote-count" class="count-pill">0 条</span>
-          </div>
-          <span class="list-section-subtitle">用于活动、会议、展会等按项目组拆分的复杂报价。</span>
+          <span class="pq-eyebrow">PROJECT QUOTE WORKBENCH</span>
+          <h1>项目型报价工作台</h1>
+          <p>管理活动、会议、展会等复杂项目报价，快速判断报价质量、转化状态并进入项目执行。</p>
         </div>
-        <div class="list-toolbar">
-          <label class="sort-toolbar" for="project-quote-sort-select">
-            <span>排序方式</span>
-            <select id="project-quote-sort-select">
-              <option value="updated_at">最近更新</option>
-              <option value="created_at">最新创建</option>
-              <option value="quoteNumber">报价编号</option>
-              <option value="clientName">客户名称</option>
-              <option value="projectName">项目名称</option>
-            </select>
-          </label>
+        <div class="pq-header-actions">
+          <a class="button-link" href="/quote-new.html?mode=project_based" target="_blank" rel="noopener">新建项目型报价</a>
+          <a class="secondary-button" href="/projects.html">项目主档中心</a>
+          <a class="secondary-button" href="/">返回工作台</a>
         </div>
       </div>
+
+      <div id="project-quote-stats" class="pq-stats-grid" aria-label="项目型报价统计概览"></div>
+
       <div id="project-quote-message" class="message-box hidden"></div>
-      <div id="project-quote-list" class="stack quote-list-stack"></div>
+
+      <section class="pq-control-panel" aria-label="项目型报价搜索筛选">
+        <div class="pq-search-field">
+          <label for="project-quote-search">搜索报价</label>
+          <input id="project-quote-search" type="search" placeholder="报价编号、项目、客户、目的地、关联项目编号" autocomplete="off" />
+        </div>
+        <label>
+          <span>转化状态</span>
+          <select id="project-quote-conversion-filter" aria-label="筛选转化状态">
+            <option value="">全部转化状态</option>
+            <option value="unconverted">未转项目</option>
+            <option value="converted">已转项目</option>
+          </select>
+        </label>
+        <label>
+          <span>复核状态</span>
+          <select id="project-quote-review-filter" aria-label="筛选复核状态">
+            <option value="">全部复核状态</option>
+            <option value="flagged">待复核</option>
+          </select>
+        </label>
+        <label>
+          <span>执行 / 项目状态</span>
+          <select id="project-quote-status-filter" aria-label="筛选执行或项目状态">
+            <option value="">全部状态</option>
+            <option value="preparing">准备中</option>
+            <option value="executing">执行中</option>
+            <option value="draft">草稿</option>
+            <option value="confirmed">已确认</option>
+            <option value="running">执行中项目</option>
+            <option value="completed">已完成</option>
+            <option value="cancelled">已取消</option>
+          </select>
+        </label>
+        <label>
+          <span>排序方式</span>
+          <select id="project-quote-sort-select" aria-label="项目型报价排序">
+            <option value="updated_at">最近更新</option>
+            <option value="created_at">最新创建</option>
+            <option value="quoteNumber">报价编号</option>
+            <option value="clientName">客户名称</option>
+            <option value="projectName">项目名称</option>
+            <option value="totalSales">报价金额最高</option>
+            <option value="margin_high">毛利率最高</option>
+            <option value="margin_low">毛利率最低</option>
+            <option value="group_count">项目组最多</option>
+            <option value="item_count">明细项最多</option>
+          </select>
+        </label>
+        <div class="pq-control-actions">
+          <span id="project-quote-result-count">显示 0 / 0 条项目型报价</span>
+          <button type="button" id="project-quote-reset-filters" class="secondary-button">清空筛选</button>
+          <span id="project-quote-count" class="count-pill">0 条</span>
+        </div>
+      </section>
+
+      <div id="project-quote-list" class="pq-list"></div>
     </section>
   </div>
   <script src="/ui-labels.js"></script>
