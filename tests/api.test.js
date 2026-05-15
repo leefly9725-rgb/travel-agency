@@ -1793,3 +1793,173 @@ test("PATCH /api/projects/:id/status to running reflects in GET", async () => {
     assert.equal(fetched.status, "running", "status should persist as running after PATCH");
   });
 });
+
+// ── B1-02 运营主档字段测试 ──────────────────────────────────────────────────────
+
+test("B1-02: convert-to-project sets default operational fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const res = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    assert.equal(res.status, 201);
+    const project = await res.json();
+    assert.equal(project.priority, "normal", "priority defaults to normal");
+    assert.equal(project.operationStatus, "not_started", "operationStatus defaults to not_started");
+    assert.equal(project.operationOwner, "", "operationOwner defaults to empty string");
+    assert.equal(project.salesOwner, "", "salesOwner defaults to empty string");
+    assert.equal(project.coordinator, "", "coordinator defaults to empty string");
+    assert.equal(project.internalDeadline, "", "internalDeadline defaults to empty string");
+    assert.equal(project.operationNotes, "", "operationNotes defaults to empty string");
+    assert.equal(project.riskNotes, "", "riskNotes defaults to empty string");
+  });
+});
+
+test("B1-02: PATCH /api/projects/:id updates master fields and persists", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        projectName: "更新后的项目名",
+        clientName: "新客户",
+        contactName: "张三",
+        contactPhone: "13800138000",
+        destination: "Niš",
+        startDate: "2026-09-01",
+        endDate: "2026-09-05",
+        paxCount: 30,
+        operationOwner: "李四",
+        salesOwner: "王五",
+        coordinator: "赵六",
+        priority: "high",
+        operationStatus: "preparing",
+        internalDeadline: "2026-08-20",
+        operationNotes: "需要提前确认场地",
+        riskNotes: "签证存在风险",
+      }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.projectName, "更新后的项目名");
+    assert.equal(updated.clientName, "新客户");
+    assert.equal(updated.contactName, "张三");
+    assert.equal(updated.contactPhone, "13800138000");
+    assert.equal(updated.destination, "Niš");
+    assert.equal(updated.startDate, "2026-09-01");
+    assert.equal(updated.endDate, "2026-09-05");
+    assert.equal(updated.paxCount, 30);
+    assert.equal(updated.operationOwner, "李四");
+    assert.equal(updated.salesOwner, "王五");
+    assert.equal(updated.coordinator, "赵六");
+    assert.equal(updated.priority, "high");
+    assert.equal(updated.operationStatus, "preparing");
+    assert.equal(updated.internalDeadline, "2026-08-20");
+    assert.equal(updated.operationNotes, "需要提前确认场地");
+    assert.equal(updated.riskNotes, "签证存在风险");
+
+    // 确认持久化
+    const getRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    assert.equal(getRes.status, 200);
+    const fetched = await getRes.json();
+    assert.equal(fetched.projectName, "更新后的项目名");
+    assert.equal(fetched.operationOwner, "李四");
+    assert.equal(fetched.priority, "high");
+    assert.equal(fetched.operationStatus, "preparing");
+    assert.equal(fetched.riskNotes, "签证存在风险");
+  });
+});
+
+test("B1-02: PATCH /api/projects/:id returns 400 for invalid priority", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority: "critical" }),
+    });
+    assert.equal(res.status, 400);
+    const payload = await res.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("B1-02: PATCH /api/projects/:id returns 400 for invalid operationStatus", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operationStatus: "done" }),
+    });
+    assert.equal(res.status, 400);
+    const payload = await res.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("B1-02: PATCH /api/projects/:id returns 404 for non-existent project", async () => {
+  await withServer(async (port) => {
+    const res = await apiFetch(port, "/api/projects/PRJ-NONEXISTENT-MASTER", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ projectName: "测试" }),
+    });
+    assert.equal(res.status, 404);
+    const payload = await res.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("B1-02: PATCH /api/projects/:id does not allow updating protected fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const original = await convertRes.json();
+    const projectId = original.id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quoteSnapshot: { injected: true },
+        totalCost: 99999,
+        grossProfit: 99999,
+        projectNumber: "FAKE-NUMBER",
+        operationOwner: "合法字段",
+      }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.totalCost, original.totalCost, "totalCost must not change");
+    assert.equal(updated.grossProfit, original.grossProfit, "grossProfit must not change");
+    assert.equal(updated.projectNumber, original.projectNumber, "projectNumber must not change");
+    assert.ok(updated.quoteSnapshot && !updated.quoteSnapshot.injected, "quoteSnapshot must not be replaced");
+    assert.equal(updated.operationOwner, "合法字段");
+  });
+});
+
+test("B1-02: existing PATCH /api/projects/:id/status still works after adding master route", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "running" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.status, "running");
+  });
+});

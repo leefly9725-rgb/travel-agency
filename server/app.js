@@ -1096,7 +1096,11 @@ function ensureProjectData(data) {
 
 // Calculates totals from projectGroups, supporting both camelCase and snake_case keys.
 function calculateProjectGroupTotals(quoteOrSnap) {
-  const groups = Array.isArray(quoteOrSnap && quoteOrSnap.projectGroups) ? quoteOrSnap.projectGroups : [];
+  const groups = Array.isArray(quoteOrSnap?.projectGroups)
+    ? quoteOrSnap.projectGroups
+    : Array.isArray(quoteOrSnap?.project_groups)
+      ? quoteOrSnap.project_groups
+      : [];
   let totalCost = 0;
   let totalSales = 0;
   for (const group of groups) {
@@ -1182,6 +1186,14 @@ function convertQuoteToProjectLocal(data, quote) {
     status: "draft",
     ownerName: "",
     notes: "",
+    operationOwner: "",
+    salesOwner: "",
+    coordinator: "",
+    priority: "normal",
+    operationStatus: "not_started",
+    internalDeadline: "",
+    operationNotes: "",
+    riskNotes: "",
     quoteSnapshot: buildProjectSnapshot(enriched),
     createdAt: now,
     updatedAt: now,
@@ -1227,6 +1239,14 @@ function serializeProject(project) {
     quoteSnapshot: project.quoteSnapshot || {},
     createdAt: project.createdAt || "",
     updatedAt: project.updatedAt || "",
+    operationOwner: project.operationOwner || project.ownerName || "",
+    salesOwner: project.salesOwner || "",
+    coordinator: project.coordinator || "",
+    priority: project.priority || "normal",
+    operationStatus: project.operationStatus || "not_started",
+    internalDeadline: project.internalDeadline || "",
+    operationNotes: project.operationNotes || "",
+    riskNotes: project.riskNotes || "",
   };
 }
 
@@ -2189,6 +2209,80 @@ async function handleApi(request, response, url) {
       data.projects[idx] = { ...data.projects[idx], status: newStatus, updatedAt: new Date().toISOString() };
       saveSeedData(data);
       sendJson(response, 200, serializeProject(data.projects[idx]));
+      return true;
+    }
+
+    // PATCH /api/projects/:id (项目主档编辑)
+    const masterMatch = url.pathname.match(/^\/api\/projects\/([^/]+)$/);
+    if (masterMatch) {
+      const projectId = decodeURIComponent(masterMatch[1]);
+      const body = parseJsonBody(await readRequestBody(request));
+
+      // 受保护字段（不允许客户端覆盖）
+      const PROTECTED = new Set([
+        "id", "projectNumber", "sourceQuoteId", "sourceQuoteNumber", "sourcePricingMode",
+        "quoteSnapshot", "totalCost", "totalSales", "grossProfit", "grossMargin",
+        "createdAt", "updatedAt", "currency", "ownerName", "notes", "status",
+      ]);
+      const patch = {};
+      for (const [k, v] of Object.entries(body)) {
+        if (!PROTECTED.has(k)) patch[k] = v;
+      }
+
+      // 枚举校验
+      const VALID_PRIORITIES = ["low", "normal", "high", "urgent"];
+      const VALID_OP_STATUSES = ["not_started", "preparing", "ready", "blocked"];
+      if (patch.priority !== undefined && !VALID_PRIORITIES.includes(patch.priority)) {
+        sendJson(response, 400, { error: `priority 不合法：${patch.priority}` });
+        return true;
+      }
+      if (patch.operationStatus !== undefined && !VALID_OP_STATUSES.includes(patch.operationStatus)) {
+        sendJson(response, 400, { error: `operationStatus 不合法：${patch.operationStatus}` });
+        return true;
+      }
+      if (patch.paxCount !== undefined) {
+        const pc = Number(patch.paxCount);
+        if (isNaN(pc) || pc < 0) {
+          sendJson(response, 400, { error: "paxCount 必须为非负数。" });
+          return true;
+        }
+        patch.paxCount = pc;
+      }
+
+      const supabase = getSupabaseConfig();
+      if (supabase.enabled) {
+        try {
+          const project = await projectStore.updateProjectMaster(supabase, projectId, patch);
+          sendJson(response, 200, serializeProject(project));
+        } catch (err) {
+          sendJson(response, err.status || 500, { error: err.message });
+        }
+        return true;
+      }
+
+      // Local JSON fallback
+      const data = loadSeedData();
+      ensureProjectData(data);
+      const idx = data.projects.findIndex((p) => p.id === projectId);
+      if (idx < 0) {
+        sendJson(response, 404, { error: "项目不存在。" });
+        return true;
+      }
+      const MASTER_FIELDS = [
+        "projectName", "clientName", "contactName", "contactPhone", "destination",
+        "startDate", "endDate", "paxCount",
+        "operationOwner", "salesOwner", "coordinator",
+        "priority", "operationStatus", "internalDeadline",
+        "operationNotes", "riskNotes",
+      ];
+      const updated = { ...data.projects[idx] };
+      for (const field of MASTER_FIELDS) {
+        if (patch[field] !== undefined) updated[field] = patch[field];
+      }
+      updated.updatedAt = new Date().toISOString();
+      data.projects[idx] = updated;
+      saveSeedData(data);
+      sendJson(response, 200, serializeProject(updated));
       return true;
     }
   }

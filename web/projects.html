@@ -20,6 +20,30 @@
         <h1>项目主档列表</h1>
         <span>V1.1 简易项目档案中心</span>
       </div>
+      <div id="project-filters" class="filter-bar">
+        <select id="filter-status" aria-label="筛选项目状态">
+          <option value="">全部项目状态</option>
+          <option value="draft">草稿</option>
+          <option value="confirmed">已确认</option>
+          <option value="running">执行中</option>
+          <option value="completed">已完成</option>
+          <option value="cancelled">已取消</option>
+        </select>
+        <select id="filter-op-status" aria-label="筛选运营准备状态">
+          <option value="">全部运营状态</option>
+          <option value="not_started">未开始</option>
+          <option value="preparing">准备中</option>
+          <option value="ready">已准备</option>
+          <option value="blocked">阻塞</option>
+        </select>
+        <select id="filter-priority" aria-label="筛选优先级">
+          <option value="">全部优先级</option>
+          <option value="low">低</option>
+          <option value="normal">普通</option>
+          <option value="high">高</option>
+          <option value="urgent">紧急</option>
+        </select>
+      </div>
       <div id="project-list" class="stack"></div>
     </section>
   </div>

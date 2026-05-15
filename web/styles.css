@@ -3610,3 +3610,189 @@ body.proj-column-resizing * {
   border: 1px solid rgba(52, 103, 64, 0.18);
   color: #346740;
 }
+
+/* ── B1-02 项目列表筛选栏 ─────────────────────────────────────────────────────── */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 12px 0 16px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+
+.filter-bar select {
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 13px;
+  cursor: pointer;
+  min-width: 120px;
+}
+
+.filter-bar select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.filter-empty {
+  text-align: center;
+  padding: 32px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+/* ── B1-02 优先级 badge ───────────────────────────────────────────────────────── */
+.priority-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.priority-badge-low    { background: rgba(95,107,122,0.08); border-color: rgba(95,107,122,0.2);  color: #5f6b7a; }
+.priority-badge-normal { background: rgba(2,119,189,0.07);  border-color: rgba(2,119,189,0.18);  color: #0277bd; }
+.priority-badge-high   { background: rgba(230,126,34,0.10); border-color: rgba(230,126,34,0.25); color: #b05d10; }
+.priority-badge-urgent { background: rgba(163,61,47,0.08);  border-color: rgba(163,61,47,0.2);   color: #a33d2f; }
+
+/* ── B1-02 运营准备状态 badge ────────────────────────────────────────────────── */
+.op-status-badge {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+
+.op-status-badge-not_started { background: rgba(95,107,122,0.08); border-color: rgba(95,107,122,0.2);  color: #5f6b7a; }
+.op-status-badge-preparing   { background: rgba(2,119,189,0.07);  border-color: rgba(2,119,189,0.18);  color: #0277bd; }
+.op-status-badge-ready       { background: var(--success-bg);     border-color: rgba(36,97,59,0.2);    color: var(--success-text); }
+.op-status-badge-blocked     { background: var(--error-bg);       border-color: rgba(163,61,47,0.2);   color: var(--error-text); }
+
+/* ── B1-02 项目主档只读面板 ──────────────────────────────────────────────────── */
+.project-master-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 20px;
+  margin-top: 12px;
+}
+
+.project-master-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-master-field label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.project-master-field .field-value {
+  font-size: 14px;
+  color: var(--ink);
+  font-weight: 500;
+  word-break: break-word;
+}
+
+.project-master-field .field-value.empty-value {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.project-master-textarea-field {
+  grid-column: 1 / -1;
+}
+
+/* ── B1-02 项目主档编辑表单 ──────────────────────────────────────────────────── */
+.project-master-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px 20px;
+  margin-top: 12px;
+}
+
+.project-master-form .form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-master-form .form-field label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.project-master-form .form-field input,
+.project-master-form .form-field select {
+  padding: 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  font-size: 13px;
+}
+
+.project-master-form .form-field input:focus,
+.project-master-form .form-field select:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.project-master-form .form-field-full {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.project-master-form .form-field-full label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.project-master-form textarea {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  font-size: 13px;
+  min-height: 72px;
+  resize: vertical;
+  width: 100%;
+}
+
+.project-master-form textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.project-master-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.project-master-save-hint {
+  font-size: 12px;
+  color: var(--success-text);
+  min-width: 60px;
+}

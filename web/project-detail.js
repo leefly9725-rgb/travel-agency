@@ -104,6 +104,174 @@ function renderStatusPanel(currentStatus, projectId) {
   `;
 }
 
+const PRIORITY_LABELS = {
+  low: "低",
+  normal: "普通",
+  high: "高",
+  urgent: "紧急",
+};
+
+const OP_STATUS_LABELS = {
+  not_started: "未开始",
+  preparing: "准备中",
+  ready: "已准备",
+  blocked: "阻塞",
+};
+
+function renderMasterPanel(project) {
+  const def = (v) => v != null && v !== ""
+    ? `<span class="field-value">${esc(v)}</span>`
+    : `<span class="field-value empty-value">—</span>`;
+
+  return `
+    <section class="panel" id="master-panel">
+      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+        <h2>运营主档</h2>
+        <button type="button" class="button-link small-link" id="edit-master-btn">编辑主档</button>
+      </div>
+      <div class="project-master-grid" id="master-readonly">
+        <div class="project-master-field">
+          <label>项目名称</label>${def(project.projectName)}
+        </div>
+        <div class="project-master-field">
+          <label>客户名称</label>${def(project.clientName)}
+        </div>
+        <div class="project-master-field">
+          <label>联系人</label>${def(project.contactName)}
+        </div>
+        <div class="project-master-field">
+          <label>联系电话</label>${def(project.contactPhone)}
+        </div>
+        <div class="project-master-field">
+          <label>目的地</label>${def(project.destination)}
+        </div>
+        <div class="project-master-field">
+          <label>开始日期</label>${def(project.startDate)}
+        </div>
+        <div class="project-master-field">
+          <label>结束日期</label>${def(project.endDate)}
+        </div>
+        <div class="project-master-field">
+          <label>人数</label>${def(project.paxCount != null ? project.paxCount + " 人" : null)}
+        </div>
+        <div class="project-master-field">
+          <label>项目负责人</label>${def(project.operationOwner)}
+        </div>
+        <div class="project-master-field">
+          <label>销售负责人</label>${def(project.salesOwner)}
+        </div>
+        <div class="project-master-field">
+          <label>协作人</label>${def(project.coordinator)}
+        </div>
+        <div class="project-master-field">
+          <label>优先级</label>
+          <span class="field-value">${esc(PRIORITY_LABELS[project.priority] || project.priority || "普通")}</span>
+        </div>
+        <div class="project-master-field">
+          <label>运营准备状态</label>
+          <span class="field-value">${esc(OP_STATUS_LABELS[project.operationStatus] || project.operationStatus || "未开始")}</span>
+        </div>
+        <div class="project-master-field">
+          <label>内部准备截止日期</label>${def(project.internalDeadline)}
+        </div>
+        <div class="project-master-field project-master-textarea-field">
+          <label>内部运营备注</label>${def(project.operationNotes)}
+        </div>
+        <div class="project-master-field project-master-textarea-field">
+          <label>风险/阻塞说明</label>${def(project.riskNotes)}
+        </div>
+      </div>
+      <div id="master-edit-form" style="display:none"></div>
+    </section>
+  `;
+}
+
+function renderMasterEditForm(project) {
+  return `
+    <form class="project-master-form" id="master-form" novalidate>
+      <div class="form-field">
+        <label for="mf-projectName">项目名称</label>
+        <input id="mf-projectName" name="projectName" type="text" value="${esc(project.projectName || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-clientName">客户名称</label>
+        <input id="mf-clientName" name="clientName" type="text" value="${esc(project.clientName || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-contactName">联系人</label>
+        <input id="mf-contactName" name="contactName" type="text" value="${esc(project.contactName || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-contactPhone">联系电话</label>
+        <input id="mf-contactPhone" name="contactPhone" type="text" value="${esc(project.contactPhone || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-destination">目的地</label>
+        <input id="mf-destination" name="destination" type="text" value="${esc(project.destination || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-startDate">开始日期</label>
+        <input id="mf-startDate" name="startDate" type="date" value="${esc(project.startDate || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-endDate">结束日期</label>
+        <input id="mf-endDate" name="endDate" type="date" value="${esc(project.endDate || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-paxCount">人数</label>
+        <input id="mf-paxCount" name="paxCount" type="number" min="0" value="${esc(String(project.paxCount ?? ""))}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-operationOwner">项目负责人</label>
+        <input id="mf-operationOwner" name="operationOwner" type="text" value="${esc(project.operationOwner || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-salesOwner">销售负责人</label>
+        <input id="mf-salesOwner" name="salesOwner" type="text" value="${esc(project.salesOwner || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-coordinator">协作人</label>
+        <input id="mf-coordinator" name="coordinator" type="text" value="${esc(project.coordinator || "")}" />
+      </div>
+      <div class="form-field">
+        <label for="mf-priority">优先级</label>
+        <select id="mf-priority" name="priority">
+          <option value="low"${project.priority === "low" ? " selected" : ""}>低</option>
+          <option value="normal"${(!project.priority || project.priority === "normal") ? " selected" : ""}>普通</option>
+          <option value="high"${project.priority === "high" ? " selected" : ""}>高</option>
+          <option value="urgent"${project.priority === "urgent" ? " selected" : ""}>紧急</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="mf-operationStatus">运营准备状态</label>
+        <select id="mf-operationStatus" name="operationStatus">
+          <option value="not_started"${(!project.operationStatus || project.operationStatus === "not_started") ? " selected" : ""}>未开始</option>
+          <option value="preparing"${project.operationStatus === "preparing" ? " selected" : ""}>准备中</option>
+          <option value="ready"${project.operationStatus === "ready" ? " selected" : ""}>已准备</option>
+          <option value="blocked"${project.operationStatus === "blocked" ? " selected" : ""}>阻塞</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label for="mf-internalDeadline">内部准备截止日期</label>
+        <input id="mf-internalDeadline" name="internalDeadline" type="date" value="${esc(project.internalDeadline || "")}" />
+      </div>
+      <div class="form-field-full">
+        <label for="mf-operationNotes">内部运营备注</label>
+        <textarea id="mf-operationNotes" name="operationNotes">${esc(project.operationNotes || "")}</textarea>
+      </div>
+      <div class="form-field-full">
+        <label for="mf-riskNotes">风险/阻塞说明</label>
+        <textarea id="mf-riskNotes" name="riskNotes">${esc(project.riskNotes || "")}</textarea>
+      </div>
+      <div class="project-master-actions" style="grid-column:1/-1">
+        <button type="submit" class="button-primary">保存</button>
+        <button type="button" id="cancel-master-btn" class="button-link small-link">取消</button>
+        <span id="master-save-hint" class="project-master-save-hint" aria-live="polite"></span>
+      </div>
+    </form>
+  `;
+}
+
 function renderSnapshotGroups(projectGroups, currency) {
   if (!Array.isArray(projectGroups) || projectGroups.length === 0) {
     return '<p class="empty">暂无报价明细快照。</p>';
@@ -173,22 +341,16 @@ function renderRealProject(project) {
         </div>
       </div>
       ${renderStatusPanel(project.status, project.id)}
-      <div class="detail-grid section-spacing">
-        <div class="metric"><span>联系人</span><strong>${esc(project.contactName || "—")}</strong></div>
-        <div class="metric"><span>电话</span><strong>${esc(project.contactPhone || "—")}</strong></div>
-        <div class="metric"><span>目的地</span><strong>${esc(project.destination || "—")}</strong></div>
-        <div class="metric"><span>开始日期</span><strong>${esc(project.startDate || "—")}</strong></div>
-        <div class="metric"><span>结束日期</span><strong>${esc(project.endDate || "—")}</strong></div>
-        <div class="metric"><span>人数</span><strong>${project.paxCount || 0} 人</strong></div>
-        <div class="metric"><span>币种</span><strong>${esc(currency)}</strong></div>
-      </div>
     </section>
+
+    ${renderMasterPanel(project)}
 
     <section class="panel">
       <div class="panel-head"><h2>来源报价</h2></div>
       <div class="detail-grid">
         <div class="metric"><span>报价编号</span><strong>${esc(project.sourceQuoteNumber || "—")}</strong></div>
         <div class="metric"><span>报价模式</span><strong>项目型报价</strong></div>
+        <div class="metric"><span>币种</span><strong>${esc(currency)}</strong></div>
       </div>
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         ${project.sourceQuoteId
@@ -287,6 +449,76 @@ function renderArchiveProject(project) {
   `;
 }
 
+async function handleMasterPanelEvents(container, project) {
+  const editBtn = container.querySelector("#edit-master-btn");
+  if (!editBtn) return;
+
+  editBtn.addEventListener("click", () => {
+    const readonly = container.querySelector("#master-readonly");
+    const editArea = container.querySelector("#master-edit-form");
+    if (!readonly || !editArea) return;
+    readonly.style.display = "none";
+    editBtn.style.display = "none";
+    editArea.style.display = "block";
+    editArea.innerHTML = renderMasterEditForm(project);
+
+    const form = editArea.querySelector("#master-form");
+    const cancelBtn = editArea.querySelector("#cancel-master-btn");
+    const hint = editArea.querySelector("#master-save-hint");
+
+    cancelBtn?.addEventListener("click", () => {
+      editArea.style.display = "none";
+      editArea.innerHTML = "";
+      editBtn.style.display = "";
+      readonly.style.display = "";
+    });
+
+    form?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const patch = {};
+      for (const [k, v] of formData.entries()) {
+        patch[k] = v;
+      }
+      if (patch.paxCount !== undefined) patch.paxCount = Number(patch.paxCount);
+
+      const submitBtns = form.querySelectorAll("button[type=submit]");
+      submitBtns.forEach((b) => { b.disabled = true; });
+      if (hint) hint.textContent = "保存中…";
+
+      try {
+        const updated = await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(project.id)}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(patch),
+          },
+          "保存失败，请稍后重试。"
+        );
+        Object.assign(project, updated);
+        // 重新渲染只读网格
+        const tempDiv = document.createElement("div");
+        tempDiv.innerHTML = renderMasterPanel(updated);
+        const newGrid = tempDiv.querySelector("#master-readonly");
+        if (newGrid && readonly) {
+          readonly.innerHTML = newGrid.innerHTML;
+        }
+        editArea.style.display = "none";
+        editArea.innerHTML = "";
+        editBtn.style.display = "";
+        readonly.style.display = "";
+        window.AppUtils.showMessage("project-message", "运营主档已保存。", "success");
+      } catch (err) {
+        if (hint) hint.textContent = "保存失败";
+        window.AppUtils.showMessage("project-message", err.message, "error");
+      } finally {
+        submitBtns.forEach((b) => { b.disabled = false; });
+      }
+    });
+  });
+}
+
 async function handleStatusButtonClick(event) {
   const button = event.target.closest("[data-status-action]");
   if (!button) return;
@@ -346,6 +578,7 @@ async function bootstrap() {
       container.innerHTML = renderRealProject(project);
       document.title = `项目 · ${project.projectName || project.projectNumber}`;
       container.addEventListener("click", handleStatusButtonClick);
+      handleMasterPanelEvents(container, project);
     } else {
       container.innerHTML = renderArchiveProject(project);
     }

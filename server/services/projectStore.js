@@ -7,7 +7,11 @@ const { roundToTwo } = require('./quoteService');
 
 // Mirrors app.js calculateProjectGroupTotals — duplicated to avoid circular import.
 function calculateProjectGroupTotals(quoteOrSnap) {
-  const groups = Array.isArray(quoteOrSnap && quoteOrSnap.projectGroups) ? quoteOrSnap.projectGroups : [];
+  const groups = Array.isArray(quoteOrSnap?.projectGroups)
+    ? quoteOrSnap.projectGroups
+    : Array.isArray(quoteOrSnap?.project_groups)
+      ? quoteOrSnap.project_groups
+      : [];
   let totalCost = 0;
   let totalSales = 0;
   for (const group of groups) {
@@ -77,6 +81,14 @@ function normalizeProjectRecordFromSupabase(row) {
     quoteSnapshot: snap,
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
+    operationOwner: row.operation_owner || '',
+    salesOwner: row.sales_owner || '',
+    coordinator: row.coordinator || '',
+    priority: row.priority || 'normal',
+    operationStatus: row.operation_status || 'not_started',
+    internalDeadline: row.internal_deadline || '',
+    operationNotes: row.operation_notes || '',
+    riskNotes: row.risk_notes || '',
     ...deriveProjectFinancials({ quoteSnapshot: snap }),
   };
 }
@@ -305,6 +317,89 @@ async function updateProjectStatus(config, id, status) {
   return normalizeProjectRecordFromSupabase(updated);
 }
 
+const VALID_PRIORITIES = ['low', 'normal', 'high', 'urgent'];
+const VALID_OPERATION_STATUSES = ['not_started', 'preparing', 'ready', 'blocked'];
+
+const MASTER_CAMEL_TO_SNAKE = {
+  projectName: 'project_name',
+  clientName: 'client_name',
+  contactName: 'contact_name',
+  contactPhone: 'contact_phone',
+  destination: 'destination',
+  startDate: 'start_date',
+  endDate: 'end_date',
+  paxCount: 'pax_count',
+  operationOwner: 'operation_owner',
+  salesOwner: 'sales_owner',
+  coordinator: 'coordinator',
+  priority: 'priority',
+  operationStatus: 'operation_status',
+  internalDeadline: 'internal_deadline',
+  operationNotes: 'operation_notes',
+  riskNotes: 'risk_notes',
+};
+
+async function updateProjectMaster(config, id, patch) {
+  // 1. 确认存在
+  const existing = await supabaseRequest(
+    config,
+    `projects?select=id&id=eq.${encodeURIComponent(id)}`,
+  );
+  if (!Array.isArray(existing) || existing.length === 0) {
+    const err = new Error('项目不存在。');
+    err.status = 404;
+    throw err;
+  }
+
+  // 2. 枚举校验
+  if (patch.priority !== undefined && !VALID_PRIORITIES.includes(patch.priority)) {
+    const err = new Error(`priority 不合法：${patch.priority}`);
+    err.status = 400;
+    throw err;
+  }
+  if (patch.operationStatus !== undefined && !VALID_OPERATION_STATUSES.includes(patch.operationStatus)) {
+    const err = new Error(`operationStatus 不合法：${patch.operationStatus}`);
+    err.status = 400;
+    throw err;
+  }
+  if (patch.paxCount !== undefined) {
+    const pc = Number(patch.paxCount);
+    if (isNaN(pc) || pc < 0) {
+      const err = new Error('paxCount 必须为非负数。');
+      err.status = 400;
+      throw err;
+    }
+  }
+
+  // 3. 构造 snake_case payload（仅白名单字段）
+  const payload = { updated_at: new Date().toISOString() };
+  for (const [camelKey, snakeKey] of Object.entries(MASTER_CAMEL_TO_SNAKE)) {
+    if (patch[camelKey] !== undefined) {
+      let val = patch[camelKey];
+      if (camelKey === 'paxCount') val = Number(val);
+      if ((camelKey === 'startDate' || camelKey === 'endDate' || camelKey === 'internalDeadline') && val === '') {
+        val = null;
+      }
+      payload[snakeKey] = val;
+    }
+  }
+
+  // 4. Supabase PATCH
+  const rows = await supabaseRequest(
+    config,
+    `projects?id=eq.${encodeURIComponent(id)}`,
+    {
+      method: 'PATCH',
+      headers: { Prefer: 'return=representation' },
+      body: JSON.stringify(payload),
+    },
+  );
+
+  const updated = Array.isArray(rows) ? rows[0] : rows;
+  if (!updated) throw new Error('更新失败，Supabase 未返回记录。');
+  return normalizeProjectRecordFromSupabase(updated);
+}
+
 module.exports = {
   deriveProjectFinancials,
   normalizeProjectRecordFromSupabase,
@@ -313,4 +408,5 @@ module.exports = {
   listProjects,
   getProjectById,
   updateProjectStatus,
+  updateProjectMaster,
 };
