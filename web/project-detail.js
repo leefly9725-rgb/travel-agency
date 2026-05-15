@@ -664,58 +664,79 @@ function renderExecutionItemEditRow(item) {
     .map(([v, l]) => `<option value="${v}"${item.supplierStatus === v ? " selected" : ""}>${l}</option>`)
     .join("");
 
+  const hasSupplier = !!(item.supplierId || item.supplierDisplay);
+  const syncChecked = hasSupplier ? " checked" : "";
+  const syncDisabled = hasSupplier ? "" : " disabled";
+  const syncHint = hasSupplier
+    ? `同步到"${esc(item.supplierDisplay || item.supplierId)}"的其他执行项`
+    : "当前执行项无供应商信息，无法同步";
+
   return `
     <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}" class="ei-edit-row">
-      <td style="padding:4px 6px" colspan="12">
-        <form class="ei-edit-form" data-item-id="${esc(item.id)}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px;background:#fafafa;border-radius:4px">
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">执行内容</label>
-            <input name="title" type="text" value="${esc(item.title || "")}" style="width:100%;box-sizing:border-box" />
+      <td colspan="13" style="padding:0">
+        <form class="ei-edit-card" data-item-id="${esc(item.id)}">
+          <div class="ei-edit-row1">
+            <div class="ei-edit-field ei-edit-field-wide">
+              <label>执行内容</label>
+              <input name="title" type="text" value="${esc(item.title || "")}" />
+            </div>
+            <div class="ei-edit-field">
+              <label>数量</label>
+              <input name="quantity" type="number" value="${item.quantity != null ? item.quantity : ""}" />
+            </div>
+            <div class="ei-edit-field">
+              <label>单位</label>
+              <input name="unit" type="text" value="${esc(item.unit || "")}" />
+            </div>
           </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">数量</label>
-            <input name="quantity" type="number" value="${item.quantity != null ? item.quantity : ""}" style="width:100%;box-sizing:border-box" />
+          <div class="ei-edit-row2">
+            <div class="ei-edit-field">
+              <label>计划日期</label>
+              <input name="plannedDate" type="date" value="${esc(item.plannedDate || "")}" />
+            </div>
+            <div class="ei-edit-field">
+              <label>开始日期</label>
+              <input name="startDate" type="date" value="${esc(item.startDate || "")}" />
+            </div>
+            <div class="ei-edit-field">
+              <label>结束日期</label>
+              <input name="endDate" type="date" value="${esc(item.endDate || "")}" />
+            </div>
+            <div class="ei-edit-field">
+              <label>地点</label>
+              <input name="location" type="text" value="${esc(item.location || "")}" />
+            </div>
+            <div class="ei-edit-field">
+              <label>负责人</label>
+              <input name="owner" type="text" value="${esc(item.owner || "")}" />
+            </div>
           </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">单位</label>
-            <input name="unit" type="text" value="${esc(item.unit || "")}" style="width:100%;box-sizing:border-box" />
+          <div class="ei-edit-row3">
+            <div class="ei-edit-field">
+              <label>执行状态</label>
+              <select name="status">${statusOptions}</select>
+            </div>
+            <div class="ei-edit-field">
+              <label>供应商状态</label>
+              <select name="supplierStatus">${supplierOptions}</select>
+            </div>
+            <div class="ei-edit-sync">
+              <label class="ei-sync-label">
+                <input type="checkbox" name="applyToSameSupplier" value="1"${syncChecked}${syncDisabled} />
+                <span>${syncHint}</span>
+              </label>
+            </div>
           </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">计划日期</label>
-            <input name="plannedDate" type="date" value="${esc(item.plannedDate || "")}" style="width:100%;box-sizing:border-box" />
+          <div class="ei-edit-row4">
+            <div class="ei-edit-field ei-edit-field-wide">
+              <label>备注</label>
+              <textarea name="notes">${esc(item.notes || "")}</textarea>
+            </div>
           </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">开始日期</label>
-            <input name="startDate" type="date" value="${esc(item.startDate || "")}" style="width:100%;box-sizing:border-box" />
-          </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">结束日期</label>
-            <input name="endDate" type="date" value="${esc(item.endDate || "")}" style="width:100%;box-sizing:border-box" />
-          </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">地点</label>
-            <input name="location" type="text" value="${esc(item.location || "")}" style="width:100%;box-sizing:border-box" />
-          </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">负责人</label>
-            <input name="owner" type="text" value="${esc(item.owner || "")}" style="width:100%;box-sizing:border-box" />
-          </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">执行状态</label>
-            <select name="status" style="width:100%;box-sizing:border-box">${statusOptions}</select>
-          </div>
-          <div>
-            <label style="font-size:12px;display:block;margin-bottom:2px">供应商状态</label>
-            <select name="supplierStatus" style="width:100%;box-sizing:border-box">${supplierOptions}</select>
-          </div>
-          <div style="grid-column:1/-1">
-            <label style="font-size:12px;display:block;margin-bottom:2px">备注</label>
-            <textarea name="notes" style="width:100%;box-sizing:border-box;height:56px">${esc(item.notes || "")}</textarea>
-          </div>
-          <div style="grid-column:1/-1;display:flex;gap:8px;align-items:center">
-            <button type="submit" class="button-primary" style="padding:4px 12px;font-size:13px">保存</button>
+          <div class="ei-edit-actions">
+            <button type="submit" class="button-primary">保存</button>
             <button type="button" class="ei-cancel-btn button-link small-link" data-item-id="${esc(item.id)}">取消</button>
-            <span class="ei-save-hint" aria-live="polite" style="font-size:12px;color:#666"></span>
+            <span class="ei-save-hint" aria-live="polite"></span>
           </div>
         </form>
       </td>
@@ -826,7 +847,7 @@ function setupExecutionItemsHandlers(projectId) {
 }
 
 function setupEditFormHandlers(projectId, itemId) {
-  const form = document.querySelector(`.ei-edit-form[data-item-id="${itemId}"]`);
+  const form = document.querySelector(`.ei-edit-card[data-item-id="${itemId}"]`);
   if (!form) return;
 
   form.addEventListener("submit", async (e) => {
@@ -842,11 +863,16 @@ function setupEditFormHandlers(projectId, itemId) {
     }
     if (patch.quantity !== undefined && patch.quantity !== null) patch.quantity = Number(patch.quantity);
 
+    const syncCheckbox = form.querySelector('input[name="applyToSameSupplier"]');
+    if (syncCheckbox && syncCheckbox.checked && !syncCheckbox.disabled) {
+      patch.applyToSameSupplier = true;
+    }
+
     if (submitBtn) submitBtn.disabled = true;
     if (hint) hint.textContent = "保存中…";
 
     try {
-      await window.AppUtils.fetchJson(
+      const result = await window.AppUtils.fetchJson(
         `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`,
         {
           method: "PATCH",
@@ -855,7 +881,11 @@ function setupEditFormHandlers(projectId, itemId) {
         },
         "保存失败，请稍后重试"
       );
+      const affectedCount = result && result.affectedCount != null ? result.affectedCount : 1;
       await loadAndRenderExecutionItems(projectId);
+      if (affectedCount > 1) {
+        window.AppUtils.showMessage("project-message", `已保存，并同步更新了同供应商 ${affectedCount} 条执行项。`, "success");
+      }
     } catch (err) {
       if (hint) hint.textContent = "保存失败：" + err.message;
       if (submitBtn) submitBtn.disabled = false;
