@@ -4203,3 +4203,550 @@ details[open] .panel-summary::before {
   min-width: 160px;
   line-height: 1.5;
 }
+
+/* ── B1-03D Project detail workspace polish ─────────────────────────────── */
+.project-workspace-header,
+.project-master-panel,
+.project-execution-panel {
+  min-width: 0;
+  border-radius: 16px;
+  box-shadow: 0 10px 28px rgba(30, 36, 48, 0.08);
+}
+
+#project-detail,
+#project-detail > * {
+  min-width: 0;
+}
+
+#project-detail > .panel {
+  max-width: 100%;
+}
+
+.project-execution-panel {
+  overflow: hidden;
+}
+
+.project-workspace-header {
+  display: grid;
+  gap: 16px;
+  padding: 22px;
+  border-color: rgba(194, 106, 46, 0.18);
+  background: linear-gradient(180deg, rgba(255, 252, 246, 0.98), rgba(255, 249, 240, 0.94));
+}
+
+.project-workspace-main,
+.project-workspace-facts,
+.project-status-row,
+.project-execution-head,
+.project-master-head,
+.ei-group-head {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.project-workspace-title {
+  min-width: 0;
+}
+
+.project-workspace-title h1 {
+  margin: 0;
+  font-size: clamp(24px, 3vw, 34px);
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.project-client {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.project-workspace-chips,
+.project-workspace-facts,
+.project-status-actions,
+.ei-group-summary,
+.auxiliary-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.project-workspace-chips {
+  justify-content: flex-end;
+}
+
+.project-workspace-facts {
+  padding: 12px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+.project-fact {
+  min-width: 160px;
+  flex: 1;
+}
+
+.project-fact span,
+.ei-stat-card span,
+.ei-group-kicker {
+  display: block;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.project-fact strong {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.project-status-panel {
+  justify-self: end;
+  margin-top: 0;
+  padding: 10px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.project-status-label {
+  flex: 0 0 auto;
+  padding: 6px 2px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.project-status-actions {
+  justify-content: flex-start;
+  padding: 3px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 999px;
+  background: rgba(244, 239, 231, 0.72);
+}
+
+.project-status-button {
+  width: auto;
+  min-height: 28px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 12px;
+}
+
+.project-status-button.is-active,
+.project-status-panel[data-current-status="running"] .project-status-button.is-active,
+.project-status-panel[data-current-status="completed"] .project-status-button.is-active,
+.project-status-panel[data-current-status="cancelled"] .project-status-button.is-active {
+  background: #1e2430;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(30, 36, 48, 0.12);
+}
+
+.project-status-pill {
+  min-height: 28px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  font-size: 12px;
+}
+
+.project-status-pill-draft,
+.project-status-pill-confirmed {
+  border-color: rgba(194, 106, 46, 0.24);
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.proj-chip-priority-urgent,
+.proj-chip-op-blocked {
+  background: var(--error-bg);
+  border-color: rgba(163, 61, 47, 0.18);
+  color: var(--error-text);
+}
+
+.proj-chip-priority-high {
+  background: rgba(194, 106, 46, 0.11);
+  border-color: rgba(194, 106, 46, 0.22);
+  color: var(--accent);
+}
+
+.proj-chip-op-ready {
+  background: var(--success-bg);
+  border-color: rgba(36, 97, 59, 0.2);
+  color: var(--success-text);
+}
+
+.project-master-head h2,
+.project-execution-head h2 {
+  margin: 0;
+}
+
+.project-master-edit-btn {
+  width: auto;
+  align-self: center;
+}
+
+.pm-group {
+  padding: 14px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.54);
+}
+
+.pm-group-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.pm-group-title::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: rgba(30, 36, 48, 0.08);
+}
+
+.project-master-grid {
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+}
+
+.project-master-field {
+  gap: 5px;
+  min-width: 0;
+}
+
+.project-master-field label {
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.project-master-field .field-value {
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.project-master-field .field-value-strong {
+  font-weight: 800;
+}
+
+.project-master-textarea-field .field-value {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.ei-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 8px 0 14px;
+}
+
+.ei-stat-card {
+  min-height: 72px;
+  padding: 12px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ei-stat-card strong {
+  display: block;
+  margin-top: 8px;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.ei-stat-progress strong { color: #1e5096; }
+.ei-stat-done strong,
+.ei-stat-confirmed strong { color: var(--success-text); }
+.ei-stat-pending strong { color: var(--review-text); }
+
+.supplier-execution-group {
+  margin-bottom: 16px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.66);
+}
+
+.ei-group-head {
+  padding: 14px 16px;
+  background: rgba(30, 36, 48, 0.035);
+}
+
+.ei-group-title-block {
+  min-width: 0;
+}
+
+.ei-group-name {
+  display: block;
+  margin-top: 4px;
+  font-size: 15px;
+  line-height: 1.35;
+}
+
+.ei-group-summary {
+  justify-content: flex-end;
+  align-items: center;
+}
+
+.ei-group-summary > span:not(.ei-sup-badge) {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ei-table-wrap {
+  overflow-x: auto;
+}
+
+.ei-table {
+  table-layout: fixed;
+  min-width: 980px;
+}
+
+.ei-table th:nth-child(1) { width: 82px; }
+.ei-table th:nth-child(2) { width: 220px; }
+.ei-table th:nth-child(3) { width: 90px; }
+.ei-table th:nth-child(4) { width: 118px; }
+.ei-table th:nth-child(5) { width: 130px; }
+.ei-table th:nth-child(6) { width: 100px; }
+.ei-table th:nth-child(7) { width: 100px; }
+.ei-table th:nth-child(8) { width: 112px; }
+.ei-table th:nth-child(9) { width: 96px; }
+
+.ei-cell {
+  padding: 10px;
+}
+
+.ei-cell-title {
+  max-width: none;
+  line-height: 1.42;
+}
+
+.ei-cell-date span {
+  display: inline-flex;
+  padding: 4px 8px;
+  border-radius: 8px;
+  background: rgba(194, 106, 46, 0.1);
+  color: #8a4b14;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.ei-cell-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.ei-cell-actions .small-link {
+  width: auto;
+  padding: 6px 9px;
+  border-radius: 8px;
+}
+
+.danger-link {
+  background: var(--error-bg);
+  color: var(--error-text);
+}
+
+.ei-status-badge,
+.ei-sup-badge {
+  min-height: 24px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+
+.ei-sup-quoted {
+  background: rgba(194, 106, 46, 0.1);
+  color: var(--accent);
+}
+
+.ei-backfill-bar {
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: rgba(255, 247, 230, 0.72);
+}
+
+.ei-backfill-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 220px;
+  flex: 1;
+}
+
+.ei-backfill-copy strong {
+  font-size: 13px;
+}
+
+.ei-backfill-copy span {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.ei-backfill-btn {
+  width: auto;
+  white-space: nowrap;
+}
+
+.ei-edit-card {
+  gap: 12px;
+  padding: 16px;
+  border-top: 0;
+  background: #fffaf3;
+}
+
+.ei-edit-section {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.ei-edit-section h4 {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.ei-edit-row1,
+.ei-edit-row2,
+.ei-edit-row3 {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ei-edit-row1 {
+  grid-template-columns: minmax(0, 2fr) minmax(110px, 0.6fr) minmax(90px, 0.5fr);
+}
+
+.ei-edit-field,
+.ei-edit-field-wide {
+  min-width: 0;
+}
+
+.ei-edit-sync {
+  align-items: end;
+  min-width: 0;
+  padding-top: 0;
+}
+
+.ei-edit-actions {
+  justify-content: flex-end;
+  padding-top: 4px;
+}
+
+.ei-edit-actions button {
+  width: auto;
+}
+
+.auxiliary-panel {
+  padding: 16px;
+  border-radius: 14px;
+  box-shadow: 0 6px 18px rgba(30, 36, 48, 0.05);
+}
+
+.panel-summary {
+  min-height: 34px;
+  padding: 2px 0;
+}
+
+.panel-summary::before {
+  content: "›";
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: rgba(30, 36, 48, 0.06);
+}
+
+.panel-summary h2 {
+  font-size: 16px;
+}
+
+.auxiliary-grid {
+  margin-top: 12px;
+}
+
+.auxiliary-actions {
+  margin-top: 12px;
+}
+
+@media (max-width: 1100px) {
+  .ei-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .project-workspace-main,
+  .project-status-row,
+  .project-master-head,
+  .project-execution-head,
+  .ei-group-head {
+    flex-direction: column;
+  }
+
+  .project-workspace-chips,
+  .project-status-actions,
+  .ei-group-summary {
+    justify-content: flex-start;
+  }
+
+  .project-status-actions {
+    border-radius: 12px;
+  }
+
+  .project-status-panel {
+    justify-self: stretch;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-workspace-header,
+  .project-master-panel,
+  .project-execution-panel,
+  .auxiliary-panel {
+    padding: 14px;
+    border-radius: 12px;
+  }
+
+  .project-fact,
+  .ei-backfill-copy {
+    min-width: 100%;
+  }
+
+  .ei-stats-grid,
+  .ei-edit-row1,
+  .ei-edit-row2,
+  .ei-edit-row3 {
+    grid-template-columns: 1fr;
+  }
+
+  .ei-backfill-btn,
+  .project-master-edit-btn,
+  .auxiliary-actions .button-link {
+    width: 100%;
+  }
+}

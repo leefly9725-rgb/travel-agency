@@ -105,6 +105,26 @@ function getExecutionCategoryLabel(item) {
   return "其他";
 }
 
+function getProjectDateRange(project) {
+  if (!project?.startDate && !project?.endDate) return "—";
+  if (project.startDate && project.endDate) return `${project.startDate} 至 ${project.endDate}`;
+  return project.startDate || project.endDate;
+}
+
+function getDominantSupplierStatus(items) {
+  const priority = ["confirmed", "selected", "quoted", "inquiring", "not_started", "not_required"];
+  const counts = new Map();
+  items.forEach((item) => {
+    const key = item.supplierStatus || "not_started";
+    counts.set(key, (counts.get(key) || 0) + 1);
+  });
+  let best = "not_started";
+  for (const status of priority) {
+    if ((counts.get(status) || 0) > (counts.get(best) || 0)) best = status;
+  }
+  return best;
+}
+
 function groupExecutionItems(items) {
   const groups = new Map();
   for (const item of items) {
@@ -125,26 +145,28 @@ function renderExecutionStatsBar(items) {
   const pending = items.filter(i => i.status === "pending").length;
   const inProgress = items.filter(i => i.status === "in_progress").length;
   const done = items.filter(i => i.status === "done").length;
-  const cancelled = items.filter(i => i.status === "cancelled").length;
   const confirmed = items.filter(i => i.supplierStatus === "confirmed").length;
+  const stats = [
+    ["总项数", total, "total"],
+    ["待处理", pending, "pending"],
+    ["进行中", inProgress, "progress"],
+    ["已完成", done, "done"],
+    ["供应商已确认", confirmed, "confirmed"],
+  ];
   return `
-    <div class="ei-stats-bar">
-      <span class="ei-stat"><strong>${total}</strong> 项</span>
-      <span class="ei-stat-sep">·</span>
-      <span class="ei-stat ei-stat-pending"><strong>${pending}</strong> 待处理</span>
-      <span class="ei-stat ei-stat-progress"><strong>${inProgress}</strong> 进行中</span>
-      <span class="ei-stat ei-stat-done"><strong>${done}</strong> 已完成</span>
-      ${cancelled > 0 ? `<span class="ei-stat ei-stat-cancel"><strong>${cancelled}</strong> 已取消</span>` : ""}
-      <span class="ei-stat-sep">·</span>
-      <span class="ei-stat ei-stat-confirmed"><strong>${confirmed}</strong> 供应商已确认</span>
+    <div class="ei-stats-grid" aria-label="执行清单统计">
+      ${stats.map(([label, value, key]) => `
+        <div class="ei-stat-card ei-stat-${key}">
+          <span>${label}</span>
+          <strong>${value}</strong>
+        </div>
+      `).join("")}
     </div>
   `;
 }
 
 function renderStatusPanel(currentStatus, projectId, project) {
   const status = VALID_STATUSES.includes(currentStatus) ? currentStatus : "draft";
-  const statusLabel = PROJECT_STATUS_LABELS[status] || status;
-  const p = project || {};
   const actions = VALID_STATUSES.map((s) => `
     <button
       type="button"
@@ -155,24 +177,13 @@ function renderStatusPanel(currentStatus, projectId, project) {
     >${PROJECT_STATUS_LABELS[s] || s}</button>
   `).join("");
 
-  const dateRange = (p.startDate || p.endDate)
-    ? `${esc(p.startDate || "")}${p.endDate ? " — " + esc(p.endDate) : ""}`
-    : null;
-  const paxStr = p.paxCount != null ? `${esc(String(p.paxCount))} 人` : null;
-  const priorityStr = p.priority && PRIORITY_LABELS[p.priority] ? PRIORITY_LABELS[p.priority] : null;
-  const opStr = p.operationStatus && OP_STATUS_LABELS[p.operationStatus] ? OP_STATUS_LABELS[p.operationStatus] : null;
-
   return `
     <div class="project-status-panel" data-current-status="${esc(status)}">
-      <div class="proj-meta-bar">
-        <span class="project-status-pill project-status-pill-${getProjectStatusClass(status)}">${esc(statusLabel)}</span>
-        ${priorityStr ? `<span class="proj-chip proj-chip-priority">${esc(priorityStr)}</span>` : ""}
-        ${opStr ? `<span class="proj-chip proj-chip-op">${esc(opStr)}</span>` : ""}
-        ${dateRange ? `<span class="proj-meta-item">${dateRange}</span>` : ""}
-        ${paxStr ? `<span class="proj-meta-item">${paxStr}</span>` : ""}
-      </div>
-      <div class="project-status-actions" role="group" aria-label="切换项目状态">
-        ${actions}
+      <div class="project-status-row">
+        <span class="project-status-label">项目状态</span>
+        <div class="project-status-actions" role="group" aria-label="切换项目状态">
+          ${actions}
+        </div>
       </div>
       <span id="status-save-hint" class="project-status-hint" aria-live="polite"></span>
     </div>
@@ -199,14 +210,17 @@ function renderMasterPanel(project) {
     : `<span class="field-value empty-value">—</span>`;
 
   return `
-    <section class="panel" id="master-panel">
-      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-        <h2>运营主档</h2>
-        <button type="button" class="button-link small-link" id="edit-master-btn">编辑主档</button>
+    <section class="panel project-master-panel" id="master-panel">
+      <div class="panel-head project-master-head">
+        <div>
+          <p class="section-kicker">OPERATION MASTER</p>
+          <h2>运营主档</h2>
+        </div>
+        <button type="button" class="button-link small-link project-master-edit-btn" id="edit-master-btn">编辑主档</button>
       </div>
       <div id="master-readonly">
         <div class="pm-group">
-          <h3 class="pm-group-title">基础信息</h3>
+          <h3 class="pm-group-title"><span>基础信息</span></h3>
           <div class="project-master-grid">
             <div class="project-master-field">
               <label>客户名称</label>${def(project.clientName)}
@@ -232,7 +246,7 @@ function renderMasterPanel(project) {
           </div>
         </div>
         <div class="pm-group">
-          <h3 class="pm-group-title">责任人</h3>
+          <h3 class="pm-group-title"><span>责任人</span></h3>
           <div class="project-master-grid">
             <div class="project-master-field">
               <label>项目负责人</label>${def(project.operationOwner)}
@@ -246,15 +260,15 @@ function renderMasterPanel(project) {
           </div>
         </div>
         <div class="pm-group">
-          <h3 class="pm-group-title">运营控制</h3>
+          <h3 class="pm-group-title"><span>运营控制</span></h3>
           <div class="project-master-grid">
             <div class="project-master-field">
               <label>优先级</label>
-              <span class="field-value">${esc(PRIORITY_LABELS[project.priority] || project.priority || "普通")}</span>
+              <span class="field-value field-value-strong">${esc(PRIORITY_LABELS[project.priority] || project.priority || "普通")}</span>
             </div>
             <div class="project-master-field">
               <label>运营准备状态</label>
-              <span class="field-value">${esc(OP_STATUS_LABELS[project.operationStatus] || project.operationStatus || "未开始")}</span>
+              <span class="field-value field-value-strong">${esc(OP_STATUS_LABELS[project.operationStatus] || project.operationStatus || "未开始")}</span>
             </div>
             <div class="project-master-field">
               <label>内部准备截止日期</label>${def(project.internalDeadline)}
@@ -417,17 +431,30 @@ function renderSnapshotGroups(projectGroups, currency) {
 function renderRealProject(project) {
   const snap = project.quoteSnapshot || {};
   const currency = project.currency || snap.currency || "EUR";
+  const status = VALID_STATUSES.includes(project.status) ? project.status : "draft";
+  const priority = project.priority || "normal";
+  const operationStatus = project.operationStatus || "not_started";
 
   return `
-    <section class="panel">
-      <div class="panel-head panel-head-wrap">
-        <div>
-          <p class="section-kicker">项目编号：${esc(project.projectNumber)}</p>
+    <section class="panel project-workspace-header">
+      <div class="project-workspace-main">
+        <div class="project-workspace-title">
+          <p class="section-kicker">项目编号：${esc(project.projectNumber || "—")}</p>
           <h1>${esc(project.projectName || "未命名项目")}</h1>
-          <p class="meta">${esc(project.clientName)}</p>
+          <p class="project-client">${esc(project.clientName || "—")}</p>
+        </div>
+        <div class="project-workspace-chips" aria-label="项目关键状态">
+          <span class="project-status-pill project-status-pill-${getProjectStatusClass(status)}" data-project-status-pill>${esc(PROJECT_STATUS_LABELS[status] || status)}</span>
+          <span class="proj-chip proj-chip-priority proj-chip-priority-${esc(priority)}">${esc(PRIORITY_LABELS[priority] || priority)}</span>
+          <span class="proj-chip proj-chip-op proj-chip-op-${esc(operationStatus)}">${esc(OP_STATUS_LABELS[operationStatus] || operationStatus)}</span>
         </div>
       </div>
-      ${renderStatusPanel(project.status, project.id, project)}
+      <div class="project-workspace-facts">
+        <div class="project-fact"><span>日期范围</span><strong>${esc(getProjectDateRange(project))}</strong></div>
+        <div class="project-fact"><span>PAX</span><strong>${project.paxCount != null ? esc(String(project.paxCount)) : "—"}</strong></div>
+        <div class="project-fact"><span>目的地</span><strong>${esc(project.destination || "—")}</strong></div>
+      </div>
+      ${renderStatusPanel(project.status, project.id)}
     </section>
 
     ${renderMasterPanel(project)}
@@ -439,33 +466,35 @@ function renderRealProject(project) {
       </section>
     </div>
 
-    <section class="panel">
-      <div class="panel-head"><h2>来源报价</h2></div>
-      <div class="detail-grid">
-        <div class="metric"><span>报价编号</span><strong>${esc(project.sourceQuoteNumber || "—")}</strong></div>
-        <div class="metric"><span>报价模式</span><strong>项目型报价</strong></div>
-        <div class="metric"><span>币种</span><strong>${esc(currency)}</strong></div>
-      </div>
-      <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
-        ${project.sourceQuoteId
-          ? `<a class="button-link small-link" href="/quote-new.html?id=${encodeURIComponent(project.sourceQuoteId)}&mode=project_based" target="_blank" rel="noopener">查看原报价</a>
-             <a class="button-link small-link" href="/project-quotation.html?id=${encodeURIComponent(project.sourceQuoteId)}" target="_blank" rel="noopener">客户报价单</a>`
-          : '<span style="color:#999;font-size:13px">来源报价不可链接</span>'
-        }
-      </div>
+    <section class="panel auxiliary-panel">
+      <details class="collapsible-panel" open>
+        <summary class="panel-summary"><h2>来源报价</h2></summary>
+        <div class="detail-grid auxiliary-grid">
+          <div class="metric"><span>报价编号</span><strong>${esc(project.sourceQuoteNumber || "—")}</strong></div>
+          <div class="metric"><span>报价模式</span><strong>项目型报价</strong></div>
+          <div class="metric"><span>币种</span><strong>${esc(currency)}</strong></div>
+        </div>
+        <div class="auxiliary-actions">
+          ${project.sourceQuoteId
+            ? `<a class="button-link small-link" href="/quote-new.html?id=${encodeURIComponent(project.sourceQuoteId)}&mode=project_based" target="_blank" rel="noopener">查看原报价</a>
+               <a class="button-link small-link" href="/project-quotation.html?id=${encodeURIComponent(project.sourceQuoteId)}" target="_blank" rel="noopener">客户报价单</a>`
+            : '<span class="empty">来源报价不可链接</span>'
+          }
+        </div>
+      </details>
     </section>
 
-    <section class="panel">
+    <section class="panel auxiliary-panel">
       <details class="collapsible-panel">
         <summary class="panel-summary"><h2>报价快照 · 明细</h2></summary>
         ${renderSnapshotGroups(snap.projectGroups, currency)}
       </details>
     </section>
 
-    <section class="panel">
+    <section class="panel auxiliary-panel">
       <details class="collapsible-panel">
         <summary class="panel-summary"><h2>汇总</h2></summary>
-        <div class="detail-grid" style="margin-top:12px">
+        <div class="detail-grid auxiliary-grid">
           <div class="metric"><span>成本合计</span><strong>${formatCurrency(project.totalCost, currency)}</strong></div>
           <div class="metric"><span>销售合计</span><strong>${formatCurrency(project.totalSales, currency)}</strong></div>
           <div class="metric"><span>毛利</span><strong>${formatCurrency(project.grossProfit, currency)}</strong></div>
@@ -638,10 +667,11 @@ async function handleStatusButtonClick(event) {
     );
     if (panel) {
       panel.setAttribute("data-current-status", newStatus);
-      const pill = panel.querySelector(".project-status-pill");
+      const pill = document.querySelector("[data-project-status-pill]");
       if (pill) {
         pill.className = `project-status-pill project-status-pill-${getProjectStatusClass(newStatus)}`;
-        pill.textContent = `当前：${PROJECT_STATUS_LABELS[newStatus] || newStatus}`;
+        pill.setAttribute("data-project-status-pill", "");
+        pill.textContent = PROJECT_STATUS_LABELS[newStatus] || newStatus;
       }
       buttons.forEach((btn) => {
         const isActive = btn.getAttribute("data-status-action") === newStatus;
@@ -677,8 +707,11 @@ function renderExecutionItemsSection(items, projectId) {
   const hasMissingSupplier = items.some(i => !i.supplierId && !i.supplierDisplay);
   const backfillBar = hasMissingSupplier ? `
     <div class="ei-backfill-bar">
+      <div class="ei-backfill-copy">
+        <strong>供应商信息不完整</strong>
+        <span>可从报价快照补齐，不会覆盖已编辑的状态、负责人和备注。</span>
+      </div>
       <button type="button" class="button-secondary ei-backfill-btn" id="backfill-supplier-btn" data-project-id="${esc(projectId)}">补齐供应商信息</button>
-      <span class="ei-backfill-hint">检测到部分执行项缺少供应商信息，可从报价快照补齐，不会覆盖已编辑的状态、负责人和备注。</span>
       <span id="backfill-hint" class="project-status-hint" aria-live="polite"></span>
     </div>
   ` : '';
@@ -686,13 +719,15 @@ function renderExecutionItemsSection(items, projectId) {
   const groups = groupExecutionItems(items);
   const groupHtml = Array.from(groups.entries()).map(([, { hasSupplier, supplierName, fallbackTitle, items: groupItems }]) => {
     const doneCount = groupItems.filter(i => i.status === "done").length;
-    const groupLabel = hasSupplier ? `供应商：${esc(supplierName)}` : `未指定供应商 · ${esc(fallbackTitle)}`;
+    const pendingCount = groupItems.filter(i => i.status === "pending").length;
+    const supplierStatus = getDominantSupplierStatus(groupItems);
+    const groupLabel = hasSupplier ? esc(supplierName) : `未指定供应商 · ${esc(fallbackTitle)}`;
     const rows = groupItems.map((item) => `
       <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
         <td class="ei-cell">${esc(getExecutionCategoryLabel(item))}</td>
         <td class="ei-cell ei-cell-title" title="${esc(item.notes || "")}">${esc(item.title || "—")}</td>
         <td class="ei-cell ei-cell-num">${item.quantity != null ? item.quantity : "—"}${item.unit ? "&nbsp;" + esc(item.unit) : ""}</td>
-        <td class="ei-cell">${esc(item.plannedDate || "—")}</td>
+        <td class="ei-cell ei-cell-date"><span>${esc(item.plannedDate || "—")}</span></td>
         <td class="ei-cell">${esc(item.location || "—")}</td>
         <td class="ei-cell">${esc(item.owner || "—")}</td>
         <td class="ei-cell">
@@ -707,18 +742,26 @@ function renderExecutionItemsSection(items, projectId) {
         </td>
         <td class="ei-cell ei-cell-actions">
           <button type="button" class="button-link small-link ei-edit-btn" data-item-id="${esc(item.id)}">编辑</button>
-          <button type="button" class="button-link small-link ei-delete-btn" data-item-id="${esc(item.id)}" style="color:#c44">删除</button>
+          <button type="button" class="button-link small-link danger-link ei-delete-btn" data-item-id="${esc(item.id)}">删除</button>
         </td>
       </tr>
     `).join("");
 
     return `
-      <div class="ei-group">
+      <div class="ei-group supplier-execution-group">
         <div class="ei-group-head">
-          <span class="ei-group-name">${groupLabel}</span>
-          <span class="ei-group-count">${groupItems.length} 项 · 已完成 ${doneCount}</span>
+          <div class="ei-group-title-block">
+            <span class="ei-group-kicker">${hasSupplier ? "供应商执行包" : "待分配执行包"}</span>
+            <strong class="ei-group-name">${groupLabel}</strong>
+          </div>
+          <div class="ei-group-summary">
+            <span>${groupItems.length} 项</span>
+            <span>已完成 ${doneCount}</span>
+            ${pendingCount > 0 ? `<span>待处理 ${pendingCount}</span>` : ""}
+            <span class="ei-sup-badge ei-sup-${esc(supplierStatus)}">${esc(SUPPLIER_STATUS_LABELS[supplierStatus] || supplierStatus)}</span>
+          </div>
         </div>
-        <div style="overflow-x:auto">
+        <div class="ei-table-wrap">
           <table class="ei-table">
             <thead>
               <tr>
@@ -741,9 +784,12 @@ function renderExecutionItemsSection(items, projectId) {
   }).join("");
 
   return `
-    <section class="panel" id="execution-items-panel">
-      <div class="panel-head">
-        <h2>项目执行清单</h2>
+    <section class="panel project-execution-panel" id="execution-items-panel">
+      <div class="panel-head project-execution-head">
+        <div>
+          <p class="section-kicker">EXECUTION</p>
+          <h2>项目执行清单</h2>
+        </div>
       </div>
       ${renderExecutionStatsBar(items)}
       ${backfillBar}
@@ -769,9 +815,11 @@ function renderExecutionItemEditRow(item) {
 
   return `
     <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}" class="ei-edit-row">
-      <td colspan="13" style="padding:0">
+      <td colspan="9" style="padding:0">
         <form class="ei-edit-card" data-item-id="${esc(item.id)}">
-          <div class="ei-edit-row1">
+          <div class="ei-edit-section">
+            <h4>内容与数量</h4>
+            <div class="ei-edit-row1">
             <div class="ei-edit-field ei-edit-field-wide">
               <label>执行内容</label>
               <input name="title" type="text" value="${esc(item.title || "")}" />
@@ -784,8 +832,11 @@ function renderExecutionItemEditRow(item) {
               <label>单位</label>
               <input name="unit" type="text" value="${esc(item.unit || "")}" />
             </div>
+            </div>
           </div>
-          <div class="ei-edit-row2">
+          <div class="ei-edit-section">
+            <h4>到位截止 / 地点 / 负责人</h4>
+            <div class="ei-edit-row2">
             <div class="ei-edit-field">
               <label>到位截止时间</label>
               <input name="plannedDate" type="date" value="${esc(item.plannedDate || "")}" />
@@ -798,8 +849,11 @@ function renderExecutionItemEditRow(item) {
               <label>负责人</label>
               <input name="owner" type="text" value="${esc(item.owner || "")}" />
             </div>
+            </div>
           </div>
-          <div class="ei-edit-row3">
+          <div class="ei-edit-section">
+            <h4>执行状态 / 供应商状态 / 同供应商同步</h4>
+            <div class="ei-edit-row3">
             <div class="ei-edit-field">
               <label>执行状态</label>
               <select name="status">${statusOptions}</select>
@@ -814,11 +868,15 @@ function renderExecutionItemEditRow(item) {
                 <span>${syncHint}</span>
               </label>
             </div>
+            </div>
           </div>
-          <div class="ei-edit-row4">
+          <div class="ei-edit-section">
+            <h4>备注</h4>
+            <div class="ei-edit-row4">
             <div class="ei-edit-field ei-edit-field-wide">
               <label>备注</label>
               <textarea name="notes">${esc(item.notes || "")}</textarea>
+            </div>
             </div>
           </div>
           <div class="ei-edit-actions">
