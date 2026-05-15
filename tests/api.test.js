@@ -1963,3 +1963,268 @@ test("B1-02: existing PATCH /api/projects/:id/status still works after adding ma
     assert.equal(updated.status, "running");
   });
 });
+
+// ── B1-03 项目执行清单测试 ──────────────────────────────────────────────────────
+
+test("B1-03: GET /api/projects/:id/execution-items returns empty array initially", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    assert.equal(res.status, 200);
+    const items = await res.json();
+    assert.ok(Array.isArray(items), "should return array");
+    assert.equal(items.length, 0, "initially empty");
+  });
+});
+
+test("B1-03: POST generate creates execution items from quoteSnapshot", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const genRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, {
+      method: "POST",
+    });
+    assert.ok(genRes.status === 201 || genRes.status === 200, "should return 200 or 201");
+    const result = await genRes.json();
+    assert.ok(Array.isArray(result.items), "result.items should be array");
+    assert.ok(result.items.length > 0, "should generate at least one item");
+    assert.equal(result.created, true, "created should be true on first generate");
+
+    // All items should have required fields
+    for (const item of result.items) {
+      assert.ok(item.id, "item.id should exist");
+      assert.equal(item.projectId, projectId, "item.projectId should match");
+      assert.equal(item.status, "pending", "status defaults to pending");
+      assert.ok(item.title, "title should be set");
+    }
+  });
+});
+
+test("B1-03: repeated POST generate returns existing items, created=false", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const secondRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    assert.equal(secondRes.status, 200, "second generate should return 200");
+    const result = await secondRes.json();
+    assert.equal(result.created, false, "created should be false on duplicate generate");
+    assert.ok(Array.isArray(result.items), "items should be array");
+  });
+});
+
+test("B1-03: GET /api/projects/:id/execution-items returns items after generate", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    assert.equal(listRes.status, 200);
+    const items = await listRes.json();
+    assert.ok(Array.isArray(items) && items.length > 0, "should return generated items");
+  });
+});
+
+test("B1-03: PATCH /api/projects/:id/execution-items/:itemId updates allowed fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    assert.ok(items.length > 0, "need at least one item to patch");
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        owner: "张三",
+        status: "in_progress",
+        supplierStatus: "inquiring",
+        notes: "已联系供应商",
+        location: "贝尔格莱德",
+      }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.owner, "张三");
+    assert.equal(updated.status, "in_progress");
+    assert.equal(updated.supplierStatus, "inquiring");
+    assert.equal(updated.notes, "已联系供应商");
+    assert.equal(updated.location, "贝尔格莱德");
+  });
+});
+
+test("B1-03: PATCH does not allow updating protected fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const itemId = items[0].id;
+    const originalProjectId = items[0].projectId;
+    const originalSourceGroupId = items[0].sourceGroupId;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "INJECTED-ID",
+        projectId: "INJECTED-PROJECT",
+        sourceGroupId: "INJECTED-GROUP",
+        createdAt: "1970-01-01",
+        owner: "合法字段",
+      }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.id, itemId, "id must not be changed");
+    assert.equal(updated.projectId, originalProjectId, "projectId must not be changed");
+    assert.equal(updated.sourceGroupId, originalSourceGroupId, "sourceGroupId must not be changed");
+    assert.equal(updated.owner, "合法字段", "legitimate field should be updated");
+  });
+});
+
+test("B1-03: PATCH returns 400 for invalid status", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "flying" }),
+    });
+    assert.equal(patchRes.status, 400);
+    const payload = await patchRes.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("B1-03: DELETE /api/projects/:id/execution-items/:itemId removes the item", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    const countBefore = items.length;
+    assert.ok(countBefore > 0, "need at least one item to delete");
+    const itemId = items[0].id;
+
+    const delRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "DELETE",
+    });
+    assert.equal(delRes.status, 200);
+
+    const listAfter = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const itemsAfter = await listAfter.json();
+    assert.equal(itemsAfter.length, countBefore - 1, "one item should be removed");
+    assert.ok(!itemsAfter.find((i) => i.id === itemId), "deleted item should not appear");
+  });
+});
+
+test("B1-03: quoteSnapshot is not modified by generate/patch/delete", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const original = await convertRes.json();
+    const projectId = original.id;
+    const originalSnapshot = JSON.stringify(original.quoteSnapshot);
+
+    // generate
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    // patch first item
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const items = await listRes.json();
+    if (items.length > 0) {
+      await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(items[0].id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ owner: "测试" }),
+      });
+      // delete first item
+      await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(items[0].id)}`, {
+        method: "DELETE",
+      });
+    }
+
+    const projectRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    const projectAfter = await projectRes.json();
+    assert.equal(JSON.stringify(projectAfter.quoteSnapshot), originalSnapshot, "quoteSnapshot must remain frozen");
+  });
+});
+
+test("B1-03: execution items local fallback does not crash without Supabase", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    // All execution item operations should work in local mode
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    assert.equal(listRes.status, 200, "GET should not crash");
+
+    const genRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    assert.ok(genRes.status === 200 || genRes.status === 201, "generate should not crash");
+
+    const listAfterGen = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    assert.equal(listAfterGen.status, 200, "GET after generate should not crash");
+  });
+});
+
+test("B1-03: DELETE returns 404 for non-existent item", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const delRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/PEI-NONEXISTENT`, {
+      method: "DELETE",
+    });
+    assert.equal(delRes.status, 404);
+    const payload = await delRes.json();
+    assert.ok(payload.error, "error field should be present");
+  });
+});
+
+test("B1-03: customer interface not affected — GET /api/projects/:id still works", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    const projectRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    assert.equal(projectRes.status, 200);
+    const project = await projectRes.json();
+    assert.ok(project.quoteSnapshot, "quoteSnapshot should still be present");
+    assert.equal(project.sourceQuoteId, "Q-PB");
+  });
+});

@@ -1,3 +1,19 @@
+const EXECUTION_STATUS_LABELS = {
+  pending: "待处理",
+  in_progress: "进行中",
+  done: "已完成",
+  cancelled: "已取消",
+};
+
+const SUPPLIER_STATUS_LABELS = {
+  not_required: "无需供应商",
+  not_started: "未开始",
+  inquiring: "询价中",
+  quoted: "已报价",
+  selected: "已选择",
+  confirmed: "已确认",
+};
+
 const PROJECT_STATUS_LABELS = {
   draft: "草稿",
   confirmed: "已确认",
@@ -345,6 +361,13 @@ function renderRealProject(project) {
 
     ${renderMasterPanel(project)}
 
+    <div id="execution-items-container">
+      <section class="panel">
+        <div class="panel-head"><h2>项目执行清单</h2></div>
+        <p style="color:#888;font-size:13px;margin:8px 0">加载中…</p>
+      </section>
+    </div>
+
     <section class="panel">
       <div class="panel-head"><h2>来源报价</h2></div>
       <div class="detail-grid">
@@ -560,6 +583,284 @@ async function handleStatusButtonClick(event) {
   }
 }
 
+function renderExecutionItemsSection(items, projectId) {
+  if (!Array.isArray(items) || items.length === 0) {
+    return `
+      <section class="panel" id="execution-items-panel">
+        <div class="panel-head"><h2>项目执行清单</h2></div>
+        <p class="empty">暂无执行清单</p>
+        <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
+          <button type="button" class="button-primary" id="generate-execution-btn" data-project-id="${esc(projectId)}">
+            从报价快照生成执行清单
+          </button>
+          <span id="generate-execution-hint" class="project-status-hint" aria-live="polite"></span>
+        </div>
+      </section>
+    `;
+  }
+
+  const rows = items.map((item) => `
+    <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
+      <td style="padding:6px 8px">${esc(item.category || item.type || "—")}</td>
+      <td style="padding:6px 8px">${esc(item.title || "—")}</td>
+      <td style="padding:6px 8px;white-space:nowrap">${item.quantity != null ? item.quantity : "—"}${item.unit ? " " + esc(item.unit) : ""}</td>
+      <td style="padding:6px 8px">${esc(item.plannedDate || "—")}</td>
+      <td style="padding:6px 8px">${esc(item.startDate || "—")}</td>
+      <td style="padding:6px 8px">${esc(item.endDate || "—")}</td>
+      <td style="padding:6px 8px">${esc(item.location || "—")}</td>
+      <td style="padding:6px 8px">${esc(item.owner || "—")}</td>
+      <td style="padding:6px 8px">
+        <span class="ei-status-badge ei-status-${esc(item.status)}" style="padding:2px 6px;border-radius:4px;font-size:12px">
+          ${esc(EXECUTION_STATUS_LABELS[item.status] || item.status)}
+        </span>
+      </td>
+      <td style="padding:6px 8px;font-size:12px">${esc(SUPPLIER_STATUS_LABELS[item.supplierStatus] || item.supplierStatus)}</td>
+      <td style="padding:6px 8px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.notes || "")}">${esc(item.notes || "—")}</td>
+      <td style="padding:6px 8px;white-space:nowrap">
+        <button type="button" class="button-link small-link ei-edit-btn" data-item-id="${esc(item.id)}" style="margin-right:4px">编辑</button>
+        <button type="button" class="button-link small-link ei-delete-btn" data-item-id="${esc(item.id)}" style="color:#c44">删除</button>
+      </td>
+    </tr>
+  `).join("");
+
+  return `
+    <section class="panel" id="execution-items-panel">
+      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
+        <h2>项目执行清单 <span style="font-weight:normal;font-size:13px;color:#888">(${items.length} 项)</span></h2>
+        <button type="button" class="button-link small-link" id="generate-execution-btn" data-project-id="${esc(projectId)}">
+          重新生成
+        </button>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:13px">
+          <thead>
+            <tr style="background:#f5f5f5;text-align:left">
+              <th style="padding:6px 8px">分类</th>
+              <th style="padding:6px 8px">执行内容</th>
+              <th style="padding:6px 8px">数量/单位</th>
+              <th style="padding:6px 8px">计划日期</th>
+              <th style="padding:6px 8px">开始日期</th>
+              <th style="padding:6px 8px">结束日期</th>
+              <th style="padding:6px 8px">地点</th>
+              <th style="padding:6px 8px">负责人</th>
+              <th style="padding:6px 8px">执行状态</th>
+              <th style="padding:6px 8px">供应商状态</th>
+              <th style="padding:6px 8px">备注</th>
+              <th style="padding:6px 8px">操作</th>
+            </tr>
+          </thead>
+          <tbody id="execution-items-tbody">${rows}</tbody>
+        </table>
+      </div>
+    </section>
+  `;
+}
+
+function renderExecutionItemEditRow(item) {
+  const statusOptions = Object.entries(EXECUTION_STATUS_LABELS)
+    .map(([v, l]) => `<option value="${v}"${item.status === v ? " selected" : ""}>${l}</option>`)
+    .join("");
+  const supplierOptions = Object.entries(SUPPLIER_STATUS_LABELS)
+    .map(([v, l]) => `<option value="${v}"${item.supplierStatus === v ? " selected" : ""}>${l}</option>`)
+    .join("");
+
+  return `
+    <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}" class="ei-edit-row">
+      <td style="padding:4px 6px" colspan="12">
+        <form class="ei-edit-form" data-item-id="${esc(item.id)}" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px;padding:8px;background:#fafafa;border-radius:4px">
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">执行内容</label>
+            <input name="title" type="text" value="${esc(item.title || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">数量</label>
+            <input name="quantity" type="number" value="${item.quantity != null ? item.quantity : ""}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">单位</label>
+            <input name="unit" type="text" value="${esc(item.unit || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">计划日期</label>
+            <input name="plannedDate" type="date" value="${esc(item.plannedDate || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">开始日期</label>
+            <input name="startDate" type="date" value="${esc(item.startDate || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">结束日期</label>
+            <input name="endDate" type="date" value="${esc(item.endDate || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">地点</label>
+            <input name="location" type="text" value="${esc(item.location || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">负责人</label>
+            <input name="owner" type="text" value="${esc(item.owner || "")}" style="width:100%;box-sizing:border-box" />
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">执行状态</label>
+            <select name="status" style="width:100%;box-sizing:border-box">${statusOptions}</select>
+          </div>
+          <div>
+            <label style="font-size:12px;display:block;margin-bottom:2px">供应商状态</label>
+            <select name="supplierStatus" style="width:100%;box-sizing:border-box">${supplierOptions}</select>
+          </div>
+          <div style="grid-column:1/-1">
+            <label style="font-size:12px;display:block;margin-bottom:2px">备注</label>
+            <textarea name="notes" style="width:100%;box-sizing:border-box;height:56px">${esc(item.notes || "")}</textarea>
+          </div>
+          <div style="grid-column:1/-1;display:flex;gap:8px;align-items:center">
+            <button type="submit" class="button-primary" style="padding:4px 12px;font-size:13px">保存</button>
+            <button type="button" class="ei-cancel-btn button-link small-link" data-item-id="${esc(item.id)}">取消</button>
+            <span class="ei-save-hint" aria-live="polite" style="font-size:12px;color:#666"></span>
+          </div>
+        </form>
+      </td>
+    </tr>
+  `;
+}
+
+async function loadAndRenderExecutionItems(projectId) {
+  const container = document.getElementById("execution-items-container");
+  if (!container) return;
+
+  try {
+    const items = await window.AppUtils.fetchJson(
+      `/api/projects/${encodeURIComponent(projectId)}/execution-items`,
+      null,
+      "执行清单加载失败"
+    );
+    container.innerHTML = renderExecutionItemsSection(items, projectId);
+    setupExecutionItemsHandlers(projectId);
+  } catch (err) {
+    container.innerHTML = `
+      <section class="panel">
+        <div class="panel-head"><h2>项目执行清单</h2></div>
+        <p style="color:#c44;font-size:13px">${esc(err.message)}</p>
+      </section>
+    `;
+  }
+}
+
+function setupExecutionItemsHandlers(projectId) {
+  const container = document.getElementById("execution-items-container");
+  if (!container) return;
+
+  // Generate / re-generate button
+  const genBtn = container.querySelector("#generate-execution-btn");
+  if (genBtn) {
+    genBtn.addEventListener("click", async () => {
+      const hint = container.querySelector("#generate-execution-hint");
+      genBtn.disabled = true;
+      if (hint) hint.textContent = "生成中…";
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`,
+          { method: "POST" },
+          "生成失败，请稍后重试"
+        );
+        await loadAndRenderExecutionItems(projectId);
+      } catch (err) {
+        if (hint) hint.textContent = "生成失败：" + err.message;
+        genBtn.disabled = false;
+      }
+    });
+  }
+
+  // Edit / delete buttons (event delegation on tbody)
+  const tbody = container.querySelector("#execution-items-tbody");
+  if (!tbody) return;
+
+  tbody.addEventListener("click", async (e) => {
+    const editBtn = e.target.closest(".ei-edit-btn");
+    const cancelBtn = e.target.closest(".ei-cancel-btn");
+    const deleteBtn = e.target.closest(".ei-delete-btn");
+
+    if (editBtn) {
+      const itemId = editBtn.getAttribute("data-item-id");
+      const row = document.getElementById(`ei-row-${itemId}`);
+      if (!row) return;
+      // Fetch current item data from the table row or re-fetch
+      try {
+        const allItems = await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/execution-items`,
+          null,
+          "加载失败"
+        );
+        const item = allItems.find((i) => i.id === itemId);
+        if (!item) return;
+        const editRowHtml = renderExecutionItemEditRow(item);
+        const temp = document.createElement("tbody");
+        temp.innerHTML = editRowHtml;
+        row.replaceWith(temp.firstElementChild);
+        setupEditFormHandlers(projectId, itemId);
+      } catch (err) {
+        window.AppUtils.showMessage("project-message", err.message, "error");
+      }
+    }
+
+    if (cancelBtn) {
+      await loadAndRenderExecutionItems(projectId);
+    }
+
+    if (deleteBtn) {
+      const itemId = deleteBtn.getAttribute("data-item-id");
+      if (!confirm("确认删除此执行项？")) return;
+      deleteBtn.disabled = true;
+      try {
+        await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`,
+          { method: "DELETE" },
+          "删除失败，请稍后重试"
+        );
+        await loadAndRenderExecutionItems(projectId);
+      } catch (err) {
+        window.AppUtils.showMessage("project-message", err.message, "error");
+        deleteBtn.disabled = false;
+      }
+    }
+  });
+}
+
+function setupEditFormHandlers(projectId, itemId) {
+  const form = document.querySelector(`.ei-edit-form[data-item-id="${itemId}"]`);
+  if (!form) return;
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const hint = form.querySelector(".ei-save-hint");
+    const submitBtn = form.querySelector("button[type=submit]");
+    const formData = new FormData(form);
+    const patch = {};
+    for (const [k, v] of formData.entries()) {
+      patch[k] = v === "" ? null : v;
+    }
+    if (patch.quantity !== undefined && patch.quantity !== null) patch.quantity = Number(patch.quantity);
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (hint) hint.textContent = "保存中…";
+
+    try {
+      await window.AppUtils.fetchJson(
+        `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        },
+        "保存失败，请稍后重试"
+      );
+      await loadAndRenderExecutionItems(projectId);
+    } catch (err) {
+      if (hint) hint.textContent = "保存失败：" + err.message;
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+}
+
 async function bootstrap() {
   window.AppUtils.applyFlash("project-message");
   const params = new URLSearchParams(window.location.search);
@@ -579,6 +880,7 @@ async function bootstrap() {
       document.title = `项目 · ${project.projectName || project.projectNumber}`;
       container.addEventListener("click", handleStatusButtonClick);
       handleMasterPanelEvents(container, project);
+      loadAndRenderExecutionItems(project.id);
     } else {
       container.innerHTML = renderArchiveProject(project);
     }

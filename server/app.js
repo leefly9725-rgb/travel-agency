@@ -25,6 +25,7 @@ const { defaultQuoteTemplates } = require("./services/templateService");
 const { createTemplateStore } = require("./services/templateStore");
 const { createQuoteStore } = require("./services/quoteStore");
 const projectStore = require("./services/projectStore");
+const projectExecutionStore = require("./services/projectExecutionStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
@@ -99,6 +100,8 @@ function sendFile(response, filePath) {
     ".css": "text/css; charset=utf-8",
     ".js": "application/javascript; charset=utf-8",
     ".json": "application/json; charset=utf-8",
+    ".svg": "image/svg+xml",
+    ".ico": "image/x-icon",
   };
 
   // HTML 文件：读取全文，注入 window.__ENV__，再响应
@@ -2174,6 +2177,80 @@ async function handleApi(request, response, url) {
         saveSeedData(data);
       }
       sendJson(response, created ? 201 : 200, serializeProject(project));
+      return true;
+    }
+  }
+
+  // ── B1-03: 执行清单路由（必须在通用 GET/PATCH /api/projects/:id 之前）────────
+
+  // GET /api/projects/:id/execution-items
+  if (request.method === "GET") {
+    const eiListMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/execution-items$/);
+    if (eiListMatch) {
+      const projectId = decodeURIComponent(eiListMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const items = await projectExecutionStore.listExecutionItems(supabase, projectId);
+        sendJson(response, 200, items);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // POST /api/projects/:id/execution-items/generate
+  if (request.method === "POST") {
+    const eiGenMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/execution-items\/generate$/);
+    if (eiGenMatch) {
+      const projectId = decodeURIComponent(eiGenMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await projectExecutionStore.generateExecutionItemsFromProject(supabase, projectId);
+        sendJson(response, result.created ? 201 : 200, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // PATCH /api/projects/:id/execution-items/:itemId
+  if (request.method === "PATCH") {
+    const eiPatchMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/execution-items\/([^/]+)$/);
+    if (eiPatchMatch) {
+      const projectId = decodeURIComponent(eiPatchMatch[1]);
+      const itemId = decodeURIComponent(eiPatchMatch[2]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const PROTECTED_EI = new Set(["id", "projectId", "sourceQuoteItemId", "sourceGroupId", "sourceGroupTitle", "createdAt", "updatedAt"]);
+      const patch = {};
+      for (const [k, v] of Object.entries(body)) {
+        if (!PROTECTED_EI.has(k)) patch[k] = v;
+      }
+      const supabase = getSupabaseConfig();
+      try {
+        const item = await projectExecutionStore.updateExecutionItem(supabase, projectId, itemId, patch);
+        sendJson(response, 200, item);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // DELETE /api/projects/:id/execution-items/:itemId
+  if (request.method === "DELETE") {
+    const eiDelMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/execution-items\/([^/]+)$/);
+    if (eiDelMatch) {
+      const projectId = decodeURIComponent(eiDelMatch[1]);
+      const itemId = decodeURIComponent(eiDelMatch[2]);
+      const supabase = getSupabaseConfig();
+      try {
+        await projectExecutionStore.deleteExecutionItem(supabase, projectId, itemId);
+        sendJson(response, 200, { ok: true });
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
       return true;
     }
   }
