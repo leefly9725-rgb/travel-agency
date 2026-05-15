@@ -4353,6 +4353,81 @@ details[open] .panel-summary::before {
   box-shadow: 0 4px 12px rgba(30, 36, 48, 0.12);
 }
 
+.project-status-button[data-status-action="draft"] {
+  color: #7a604d;
+}
+
+.project-status-button[data-status-action="confirmed"] {
+  color: #9a5a1c;
+}
+
+.project-status-button[data-status-action="running"] {
+  color: #1e5096;
+}
+
+.project-status-button[data-status-action="completed"] {
+  color: var(--success-text);
+}
+
+.project-status-button[data-status-action="cancelled"] {
+  color: var(--error-text);
+}
+
+.project-status-button[data-status-action="draft"]:hover,
+.project-status-button[data-status-action="draft"]:focus-visible {
+  background: rgba(122, 96, 77, 0.08);
+}
+
+.project-status-button[data-status-action="confirmed"]:hover,
+.project-status-button[data-status-action="confirmed"]:focus-visible {
+  background: rgba(194, 106, 46, 0.1);
+}
+
+.project-status-button[data-status-action="running"]:hover,
+.project-status-button[data-status-action="running"]:focus-visible {
+  background: rgba(30, 80, 150, 0.1);
+}
+
+.project-status-button[data-status-action="completed"]:hover,
+.project-status-button[data-status-action="completed"]:focus-visible {
+  background: rgba(36, 97, 59, 0.1);
+}
+
+.project-status-button[data-status-action="cancelled"]:hover,
+.project-status-button[data-status-action="cancelled"]:focus-visible {
+  background: rgba(163, 61, 47, 0.09);
+}
+
+.project-status-button[data-status-action="draft"].is-active {
+  background: #7a604d;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(122, 96, 77, 0.18);
+}
+
+.project-status-button[data-status-action="confirmed"].is-active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(194, 106, 46, 0.2);
+}
+
+.project-status-button[data-status-action="running"].is-active {
+  background: #1e5096;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(30, 80, 150, 0.2);
+}
+
+.project-status-button[data-status-action="completed"].is-active {
+  background: #2f7a4f;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(36, 97, 59, 0.18);
+}
+
+.project-status-button[data-status-action="cancelled"].is-active {
+  background: #a33d2f;
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(163, 61, 47, 0.16);
+}
+
 .project-status-pill {
   min-height: 28px;
   padding: 4px 11px;
