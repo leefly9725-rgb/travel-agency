@@ -31,8 +31,10 @@ const PROJECT_ITEM_CATEGORY_LABELS = {
   guide_translation: "导游/翻译",
   driver_guide: "司兼导",
   ticket: "门票",
+  tickets: "门票",
   fuel: "燃油",
   toll_parking: "路桥停车",
+  parking: "停车",
   meal: "餐饮",
   dining: "餐饮",
   guide: "导游",
@@ -46,6 +48,8 @@ const PROJECT_ITEM_CATEGORY_LABELS = {
   personnel: "人员服务",
   logistics: "物流运输",
   management: "项目管理",
+  travel: "旅游服务",
+  meeting: "会议",
 };
 
 function isFlaggedReview(record) {
@@ -91,6 +95,45 @@ function getProjectItemCategoryLabel(item, group) {
   }
 
   return "未分类";
+}
+
+function getExecutionCategoryLabel(item) {
+  for (const c of [item.category, item.type]) {
+    const k = String(c || "").trim();
+    if (k && PROJECT_ITEM_CATEGORY_LABELS[k]) return PROJECT_ITEM_CATEGORY_LABELS[k];
+  }
+  return "其他";
+}
+
+function groupExecutionItems(items) {
+  const groups = new Map();
+  for (const item of items) {
+    const key = item.supplierDisplay || item.supplierId || item.sourceGroupTitle || "未分组";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return groups;
+}
+
+function renderExecutionStatsBar(items) {
+  const total = items.length;
+  const pending = items.filter(i => i.status === "pending").length;
+  const inProgress = items.filter(i => i.status === "in_progress").length;
+  const done = items.filter(i => i.status === "done").length;
+  const cancelled = items.filter(i => i.status === "cancelled").length;
+  const confirmed = items.filter(i => i.supplierStatus === "confirmed").length;
+  return `
+    <div class="ei-stats-bar">
+      <span class="ei-stat"><strong>${total}</strong> 项</span>
+      <span class="ei-stat-sep">·</span>
+      <span class="ei-stat ei-stat-pending"><strong>${pending}</strong> 待处理</span>
+      <span class="ei-stat ei-stat-progress"><strong>${inProgress}</strong> 进行中</span>
+      <span class="ei-stat ei-stat-done"><strong>${done}</strong> 已完成</span>
+      ${cancelled > 0 ? `<span class="ei-stat ei-stat-cancel"><strong>${cancelled}</strong> 已取消</span>` : ""}
+      <span class="ei-stat-sep">·</span>
+      <span class="ei-stat ei-stat-confirmed"><strong>${confirmed}</strong> 供应商已确认</span>
+    </div>
+  `;
 }
 
 function renderStatusPanel(currentStatus, projectId) {
@@ -588,7 +631,7 @@ function renderExecutionItemsSection(items, projectId) {
     return `
       <section class="panel" id="execution-items-panel">
         <div class="panel-head"><h2>项目执行清单</h2></div>
-        <p class="empty">暂无执行清单</p>
+        <p class="empty">暂无执行清单，请先从报价快照生成。</p>
         <div style="margin-top:12px;display:flex;align-items:center;gap:12px">
           <button type="button" class="button-primary" id="generate-execution-btn" data-project-id="${esc(projectId)}">
             从报价快照生成执行清单
@@ -599,59 +642,71 @@ function renderExecutionItemsSection(items, projectId) {
     `;
   }
 
-  const rows = items.map((item) => `
-    <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
-      <td style="padding:6px 8px">${esc(item.category || item.type || "—")}</td>
-      <td style="padding:6px 8px">${esc(item.title || "—")}</td>
-      <td style="padding:6px 8px;white-space:nowrap">${item.quantity != null ? item.quantity : "—"}${item.unit ? " " + esc(item.unit) : ""}</td>
-      <td style="padding:6px 8px">${esc(item.plannedDate || "—")}</td>
-      <td style="padding:6px 8px">${esc(item.startDate || "—")}</td>
-      <td style="padding:6px 8px">${esc(item.endDate || "—")}</td>
-      <td style="padding:6px 8px">${esc(item.location || "—")}</td>
-      <td style="padding:6px 8px">${esc(item.owner || "—")}</td>
-      <td style="padding:6px 8px">
-        <span class="ei-status-badge ei-status-${esc(item.status)}" style="padding:2px 6px;border-radius:4px;font-size:12px">
-          ${esc(EXECUTION_STATUS_LABELS[item.status] || item.status)}
-        </span>
-      </td>
-      <td style="padding:6px 8px;font-size:12px">${esc(SUPPLIER_STATUS_LABELS[item.supplierStatus] || item.supplierStatus)}</td>
-      <td style="padding:6px 8px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(item.notes || "")}">${esc(item.notes || "—")}</td>
-      <td style="padding:6px 8px;white-space:nowrap">
-        <button type="button" class="button-link small-link ei-edit-btn" data-item-id="${esc(item.id)}" style="margin-right:4px">编辑</button>
-        <button type="button" class="button-link small-link ei-delete-btn" data-item-id="${esc(item.id)}" style="color:#c44">删除</button>
-      </td>
-    </tr>
-  `).join("");
+  const groups = groupExecutionItems(items);
+  const groupHtml = Array.from(groups.entries()).map(([groupKey, groupItems]) => {
+    const doneCount = groupItems.filter(i => i.status === "done").length;
+    const rows = groupItems.map((item) => `
+      <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
+        <td class="ei-cell">${esc(getExecutionCategoryLabel(item))}</td>
+        <td class="ei-cell ei-cell-title">${esc(item.title || "—")}</td>
+        <td class="ei-cell ei-cell-num">${item.quantity != null ? item.quantity : "—"}${item.unit ? "&nbsp;" + esc(item.unit) : ""}</td>
+        <td class="ei-cell">${esc(item.plannedDate || "—")}</td>
+        <td class="ei-cell">${esc(item.location || "—")}</td>
+        <td class="ei-cell">${esc(item.owner || "—")}</td>
+        <td class="ei-cell">
+          <span class="ei-status-badge ei-status-${esc(item.status)}">
+            ${esc(EXECUTION_STATUS_LABELS[item.status] || item.status)}
+          </span>
+        </td>
+        <td class="ei-cell">
+          <span class="ei-sup-badge ei-sup-${esc(item.supplierStatus)}">
+            ${esc(SUPPLIER_STATUS_LABELS[item.supplierStatus] || item.supplierStatus)}
+          </span>
+        </td>
+        <td class="ei-cell ei-cell-notes" title="${esc(item.notes || "")}">${esc(item.notes || "—")}</td>
+        <td class="ei-cell ei-cell-actions">
+          <button type="button" class="button-link small-link ei-edit-btn" data-item-id="${esc(item.id)}">编辑</button>
+          <button type="button" class="button-link small-link ei-delete-btn" data-item-id="${esc(item.id)}" style="color:#c44">删除</button>
+        </td>
+      </tr>
+    `).join("");
+
+    return `
+      <div class="ei-group">
+        <div class="ei-group-head">
+          <span class="ei-group-name">${esc(groupKey)}</span>
+          <span class="ei-group-count">${groupItems.length} 项 · 已完成 ${doneCount}</span>
+        </div>
+        <div style="overflow-x:auto">
+          <table class="ei-table">
+            <thead>
+              <tr>
+                <th>分类</th>
+                <th>执行内容</th>
+                <th>数量/单位</th>
+                <th>计划日期</th>
+                <th>地点</th>
+                <th>负责人</th>
+                <th>执行状态</th>
+                <th>供应商状态</th>
+                <th>备注</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }).join("");
 
   return `
     <section class="panel" id="execution-items-panel">
-      <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
-        <h2>项目执行清单 <span style="font-weight:normal;font-size:13px;color:#888">(${items.length} 项)</span></h2>
-        <button type="button" class="button-link small-link" id="generate-execution-btn" data-project-id="${esc(projectId)}">
-          重新生成
-        </button>
+      <div class="panel-head">
+        <h2>项目执行清单</h2>
       </div>
-      <div style="overflow-x:auto">
-        <table style="width:100%;border-collapse:collapse;font-size:13px">
-          <thead>
-            <tr style="background:#f5f5f5;text-align:left">
-              <th style="padding:6px 8px">分类</th>
-              <th style="padding:6px 8px">执行内容</th>
-              <th style="padding:6px 8px">数量/单位</th>
-              <th style="padding:6px 8px">计划日期</th>
-              <th style="padding:6px 8px">开始日期</th>
-              <th style="padding:6px 8px">结束日期</th>
-              <th style="padding:6px 8px">地点</th>
-              <th style="padding:6px 8px">负责人</th>
-              <th style="padding:6px 8px">执行状态</th>
-              <th style="padding:6px 8px">供应商状态</th>
-              <th style="padding:6px 8px">备注</th>
-              <th style="padding:6px 8px">操作</th>
-            </tr>
-          </thead>
-          <tbody id="execution-items-tbody">${rows}</tbody>
-        </table>
-      </div>
+      ${renderExecutionStatsBar(items)}
+      <div id="execution-groups-container">${groupHtml}</div>
     </section>
   `;
 }
@@ -770,7 +825,6 @@ function setupExecutionItemsHandlers(projectId) {
   const container = document.getElementById("execution-items-container");
   if (!container) return;
 
-  // Generate / re-generate button
   const genBtn = container.querySelector("#generate-execution-btn");
   if (genBtn) {
     genBtn.addEventListener("click", async () => {
@@ -791,11 +845,10 @@ function setupExecutionItemsHandlers(projectId) {
     });
   }
 
-  // Edit / delete buttons (event delegation on tbody)
-  const tbody = container.querySelector("#execution-items-tbody");
-  if (!tbody) return;
+  const groupsContainer = container.querySelector("#execution-groups-container");
+  if (!groupsContainer) return;
 
-  tbody.addEventListener("click", async (e) => {
+  groupsContainer.addEventListener("click", async (e) => {
     const editBtn = e.target.closest(".ei-edit-btn");
     const cancelBtn = e.target.closest(".ei-cancel-btn");
     const deleteBtn = e.target.closest(".ei-delete-btn");
@@ -804,7 +857,6 @@ function setupExecutionItemsHandlers(projectId) {
       const itemId = editBtn.getAttribute("data-item-id");
       const row = document.getElementById(`ei-row-${itemId}`);
       if (!row) return;
-      // Fetch current item data from the table row or re-fetch
       try {
         const allItems = await window.AppUtils.fetchJson(
           `/api/projects/${encodeURIComponent(projectId)}/execution-items`,

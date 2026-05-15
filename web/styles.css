@@ -3796,3 +3796,262 @@ body.proj-column-resizing * {
   color: var(--success-text);
   min-width: 60px;
 }
+
+/* ── B1-03A 执行清单 UI ─────────────────────────────────────────────────── */
+.ei-stats-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0 12px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 12px;
+}
+
+.ei-stat {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.ei-stat strong {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.ei-stat-sep {
+  color: var(--line);
+  font-size: 14px;
+}
+
+.ei-stat-progress strong { color: #0277bd; }
+.ei-stat-done strong     { color: var(--success-text); }
+.ei-stat-cancel strong   { color: var(--error-text); }
+.ei-stat-confirmed strong { color: #2f7a4f; }
+
+.ei-group {
+  margin-bottom: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ei-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 14px;
+  background: rgba(30, 36, 48, 0.03);
+  border-bottom: 1px solid var(--line);
+}
+
+.ei-group-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.ei-group-count {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.ei-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.ei-table thead tr {
+  background: rgba(30, 36, 48, 0.02);
+  text-align: left;
+}
+
+.ei-table th {
+  padding: 7px 10px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.ei-cell {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(30, 36, 48, 0.05);
+  vertical-align: middle;
+}
+
+.ei-table tbody tr:last-child .ei-cell {
+  border-bottom: none;
+}
+
+.ei-table tbody tr:hover .ei-cell {
+  background: rgba(194, 106, 46, 0.03);
+}
+
+.ei-cell-title {
+  font-weight: 500;
+  max-width: 200px;
+}
+
+.ei-cell-num {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.ei-cell-notes {
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+}
+
+.ei-cell-actions {
+  white-space: nowrap;
+}
+
+.ei-status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.ei-status-pending     { background: var(--review-bg); color: var(--review-text); }
+.ei-status-in_progress { background: rgba(2,119,189,0.1); color: #0277bd; }
+.ei-status-done        { background: var(--success-bg); color: var(--success-text); }
+.ei-status-cancelled   { background: var(--error-bg); color: var(--error-text); }
+
+.ei-sup-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  white-space: nowrap;
+  background: rgba(30, 36, 48, 0.06);
+  color: var(--muted);
+}
+
+.ei-sup-confirmed { background: var(--success-bg); color: var(--success-text); font-weight: 700; }
+.ei-sup-inquiring { background: rgba(2,119,189,0.08); color: #0277bd; }
+.ei-sup-quoted    { background: rgba(123,31,162,0.08); color: #7b1fa2; }
+.ei-sup-selected  { background: rgba(194,106,46,0.1); color: var(--accent); }
+
+/* ── B1-03A 编辑卡片 ──────────────────────────────────────────── */
+.ei-edit-row td {
+  padding: 0 !important;
+}
+
+.ei-edit-card {
+  padding: 14px 16px;
+  background: rgba(30, 36, 48, 0.025);
+  border-top: 2px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ei-edit-row1,
+.ei-edit-row2,
+.ei-edit-row3 {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ei-edit-row4 {
+  display: flex;
+}
+
+.ei-edit-field {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 130px;
+}
+
+.ei-edit-field-wide {
+  flex: 2;
+  min-width: 200px;
+}
+
+.ei-edit-field label {
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.ei-edit-field input,
+.ei-edit-field select,
+.ei-edit-field textarea {
+  padding: 6px 9px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: white;
+  color: var(--ink);
+  font-size: 13px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.ei-edit-field input:focus,
+.ei-edit-field select:focus,
+.ei-edit-field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+  border-color: transparent;
+}
+
+.ei-edit-field textarea {
+  min-height: 56px;
+  resize: vertical;
+  width: 100%;
+}
+
+.ei-edit-sync {
+  display: flex;
+  align-items: center;
+  min-width: 220px;
+  padding-top: 18px;
+}
+
+.ei-sync-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.ei-sync-label input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.ei-sync-label input:disabled + span {
+  color: rgba(95, 107, 122, 0.5);
+}
+
+.ei-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 2px;
+}
+
+.ei-save-hint {
+  font-size: 12px;
+  color: var(--error-text);
+}
