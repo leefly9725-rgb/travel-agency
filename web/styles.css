@@ -6806,3 +6806,311 @@ details[open] .panel-summary::before {
     padding: 3px 9px;
   }
 }
+
+/* ── B1-04B-POLISH: project detail visual refinement ─────────────────────── */
+.project-ops-brief {
+  position: relative;
+  align-items: stretch;
+  padding: 12px 14px 12px 16px;
+  box-shadow: inset 3px 0 0 rgba(24, 68, 112, 0.24);
+}
+
+.project-ops-brief::before {
+  content: "";
+  position: absolute;
+  top: 16px;
+  left: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(24, 68, 112, 0.42);
+}
+
+.project-ops-brief.is-clear {
+  border-color: rgba(24, 68, 112, 0.1);
+  background: rgba(248, 250, 252, 0.72);
+  box-shadow: inset 3px 0 0 rgba(24, 68, 112, 0.18);
+}
+
+.project-ops-brief.has-risk {
+  border-color: rgba(163, 61, 47, 0.28);
+  background: linear-gradient(90deg, rgba(163, 61, 47, 0.08), rgba(255, 247, 230, 0.74));
+  box-shadow: inset 3px 0 0 var(--error-text);
+}
+
+.project-ops-brief.has-risk::before {
+  background: var(--error-text);
+  box-shadow: 0 0 0 4px rgba(163, 61, 47, 0.1);
+}
+
+.project-ops-brief.has-risk strong {
+  color: #7f2d20;
+}
+
+.pt-due-overdue,
+.pt-priority-urgent {
+  color: var(--error-text);
+  background: rgba(163, 61, 47, 0.1);
+  border-color: rgba(163, 61, 47, 0.28);
+}
+
+.pt-due-today,
+.pt-due-soon,
+.pt-priority-high,
+.pt-stat-due,
+.pt-stat-unassigned {
+  color: #8a4b14;
+  background: rgba(194, 106, 46, 0.1);
+  border-color: rgba(194, 106, 46, 0.26);
+}
+
+.pt-status-in_progress {
+  color: #184470;
+  background: rgba(24, 68, 112, 0.08);
+  border-color: rgba(24, 68, 112, 0.22);
+}
+
+.pt-status-done {
+  color: var(--success-text);
+  background: rgba(36, 97, 59, 0.08);
+  border-color: rgba(36, 97, 59, 0.2);
+}
+
+.pt-status-cancelled {
+  color: #64748b;
+  background: rgba(100, 116, 139, 0.08);
+  border-color: rgba(100, 116, 139, 0.18);
+}
+
+.is-risk-stat {
+  border-color: rgba(163, 61, 47, 0.24);
+  background: rgba(163, 61, 47, 0.06);
+}
+
+.is-risk-stat strong {
+  color: var(--error-text);
+}
+
+.ops-risk-callout {
+  border-color: rgba(163, 61, 47, 0.26);
+  background: linear-gradient(90deg, rgba(163, 61, 47, 0.08), rgba(255, 247, 230, 0.58));
+  box-shadow: inset 3px 0 0 var(--error-text);
+}
+
+.project-task-card {
+  box-shadow: none;
+}
+
+.project-task-compact {
+  gap: 8px;
+  padding: 10px 12px 10px 14px;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.project-task-compact .project-task-card-head {
+  align-items: center;
+}
+
+.project-task-compact .project-task-title-block h4 {
+  font-size: 14px;
+}
+
+.project-task-compact-grid > div {
+  padding: 6px 8px;
+  background: rgba(248, 250, 252, 0.58);
+}
+
+.project-task-card-foot {
+  padding-top: 2px;
+  border-top: 1px solid rgba(30, 36, 48, 0.05);
+}
+
+.project-task-card-foot p {
+  color: #475569;
+}
+
+.project-task-card-foot span {
+  display: inline;
+  margin-right: 6px;
+}
+
+.project-task-card-foot .pt-edit-btn {
+  color: #334155;
+  background: rgba(255, 255, 255, 0.64);
+  border: 1px solid rgba(30, 36, 48, 0.08);
+}
+
+.project-task-done {
+  opacity: 0.86;
+  background: rgba(249, 253, 250, 0.72);
+}
+
+.project-task-done::before {
+  background: rgba(36, 97, 59, 0.42);
+}
+
+.project-task-cancelled {
+  opacity: 0.62;
+  background: rgba(248, 250, 252, 0.72);
+}
+
+.project-task-cancelled::before {
+  background: rgba(100, 116, 139, 0.36);
+}
+
+.project-task-cancelled:hover,
+.project-task-cancelled:focus-within {
+  opacity: 0.9;
+}
+
+.project-execution-panel {
+  border-color: rgba(30, 36, 48, 0.08);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(250, 248, 244, 0.8));
+}
+
+.supplier-execution-group {
+  border: 1px solid rgba(30, 36, 48, 0.08);
+  box-shadow: none;
+}
+
+.ei-group-head {
+  background: rgba(248, 250, 252, 0.78);
+  border-bottom: 1px solid rgba(30, 36, 48, 0.07);
+}
+
+.ei-group-name {
+  color: #162235;
+}
+
+.ei-group-summary > span:not(.ei-sup-badge) {
+  background: rgba(248, 250, 252, 0.84);
+}
+
+.ei-table thead tr {
+  background: rgba(248, 250, 252, 0.68);
+}
+
+.ei-table th {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.ei-cell {
+  padding: 7px 8px;
+}
+
+.ei-status-badge,
+.ei-sup-badge {
+  box-shadow: none;
+}
+
+.ei-group-no-supplier {
+  border-color: rgba(194, 106, 46, 0.34);
+  background: rgba(255, 247, 230, 0.5);
+}
+
+.project-master-panel {
+  background: rgba(255, 255, 255, 0.78);
+}
+
+.project-master-panel .pm-group {
+  border-color: rgba(30, 36, 48, 0.06);
+  background: rgba(248, 250, 252, 0.42);
+}
+
+.project-master-panel .project-master-grid {
+  gap: 8px 12px;
+}
+
+.project-master-field .field-value {
+  overflow-wrap: anywhere;
+}
+
+.project-master-panel .project-master-textarea-field .field-value {
+  -webkit-line-clamp: 2;
+  line-height: 1.45;
+}
+
+.project-master-edit-btn {
+  border-color: rgba(194, 106, 46, 0.16);
+  background: rgba(194, 106, 46, 0.08);
+  color: var(--accent);
+}
+
+.project-task-edit-card,
+.ei-edit-card {
+  border-color: rgba(194, 106, 46, 0.24);
+  background: rgba(255, 252, 247, 0.88);
+  box-shadow: inset 3px 0 0 rgba(194, 106, 46, 0.36);
+}
+
+.pt-edit-grid input,
+.pt-edit-grid select,
+.pt-edit-grid textarea,
+.ei-edit-card input,
+.ei-edit-card select,
+.ei-edit-card textarea {
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.pt-sync-row,
+.ei-edit-sync {
+  padding: 8px 10px;
+  border: 1px solid rgba(194, 106, 46, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 247, 230, 0.52);
+}
+
+.pt-sync-label,
+.ei-sync-label {
+  line-height: 1.45;
+}
+
+.pt-edit-actions,
+.ei-edit-actions {
+  padding-top: 10px;
+  border-top: 1px solid rgba(30, 36, 48, 0.07);
+}
+
+.ops-anchor-link:focus-visible,
+.pt-edit-btn:focus-visible,
+.ei-edit-btn:focus-visible,
+.ei-delete-btn:focus-visible,
+.button-link:focus-visible,
+.small-link:focus-visible,
+.project-status-button:focus-visible {
+  outline: 2px solid rgba(24, 68, 112, 0.78);
+  outline-offset: 3px;
+  box-shadow: 0 0 0 4px rgba(24, 68, 112, 0.12);
+}
+
+@media (max-width: 1100px) {
+  .project-task-card-foot .pt-edit-btn {
+    justify-self: end;
+  }
+}
+
+@media (max-width: 720px) {
+  .project-ops-brief {
+    padding-left: 14px;
+  }
+
+  .project-task-filter-shell {
+    gap: 4px;
+    padding: 4px;
+  }
+
+  .project-task-filter-shell span {
+    min-height: 24px;
+    padding: 3px 8px;
+  }
+
+  .project-task-card-foot .pt-edit-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .ei-table {
+    min-width: 920px;
+  }
+}
