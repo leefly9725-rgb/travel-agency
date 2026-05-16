@@ -6718,3 +6718,91 @@ details[open] .panel-summary::before {
     justify-content: center;
   }
 }
+
+/* ── B1-04B: Anchor nav, risk highlights, master de-emphasis ─────────────── */
+
+.ops-anchor-nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 4px 0 2px;
+}
+
+.ops-anchor-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 11px;
+  border: 1px solid rgba(30, 36, 48, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.64);
+  color: #334155;
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background 0.14s, border-color 0.14s;
+}
+
+.ops-anchor-link:hover {
+  background: rgba(30, 36, 48, 0.07);
+  border-color: rgba(30, 36, 48, 0.22);
+  text-decoration: none;
+}
+
+/* Due-risk left border on task cards */
+.project-task-due-urgent::before {
+  background: var(--error-text);
+}
+
+.project-task-due-soon::before {
+  background: var(--accent);
+}
+
+/* Risk stat highlight: make the count number alarming */
+.is-risk-stat strong {
+  color: var(--error-text);
+}
+
+/* No-supplier execution group: amber warning tint */
+.ei-group-no-supplier {
+  border-color: rgba(194, 106, 46, 0.3);
+  background: rgba(255, 247, 230, 0.6);
+}
+
+.ei-group-no-supplier .ei-group-head {
+  border-bottom-color: rgba(194, 106, 46, 0.16);
+}
+
+/* Risk callout banner in task/execution sections */
+.ops-risk-callout {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 10px;
+  padding: 9px 14px;
+  border: 1px solid rgba(163, 61, 47, 0.22);
+  border-radius: 10px;
+  background: rgba(163, 61, 47, 0.05);
+  color: var(--error-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+/* Master panel: reduced visual weight vs task/execution panels */
+.project-master-panel {
+  box-shadow: 0 2px 8px rgba(30, 36, 48, 0.04);
+  border-color: rgba(30, 36, 48, 0.07);
+}
+
+@media (max-width: 720px) {
+  .ops-anchor-nav {
+    gap: 4px;
+  }
+
+  .ops-anchor-link {
+    font-size: 11px;
+    padding: 3px 9px;
+  }
+}

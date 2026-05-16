@@ -147,16 +147,16 @@ function renderExecutionStatsBar(items) {
   const done = items.filter(i => i.status === "done").length;
   const confirmed = items.filter(i => i.supplierStatus === "confirmed").length;
   const stats = [
-    ["总项数", total, "total"],
-    ["待处理", pending, "pending"],
-    ["进行中", inProgress, "progress"],
-    ["已完成", done, "done"],
-    ["供应商已确认", confirmed, "confirmed"],
+    ["总项数", total, "total", false],
+    ["待处理", pending, "pending", pending > 0],
+    ["进行中", inProgress, "progress", false],
+    ["已完成", done, "done", false],
+    ["供应商已确认", confirmed, "confirmed", false],
   ];
   return `
     <div class="ei-stats-grid" aria-label="执行清单统计">
-      ${stats.map(([label, value, key]) => `
-        <div class="ei-stat-card ei-stat-${key}">
+      ${stats.map(([label, value, key, isRisk]) => `
+        <div class="ei-stat-card ei-stat-${key}${isRisk ? " is-risk-stat" : ""}">
           <span>${label}</span>
           <strong>${value}</strong>
         </div>
@@ -489,6 +489,13 @@ function renderRealProject(project) {
         </div>
       </div>
       ${renderStatusPanel(project.status, project.id)}
+      <nav class="ops-anchor-nav" aria-label="页面区块快捷入口">
+        <a class="ops-anchor-link" href="#master-panel">运营主档</a>
+        <a class="ops-anchor-link" href="#project-tasks-panel">接待 / 执行任务</a>
+        <a class="ops-anchor-link" href="#execution-items-panel">执行清单</a>
+        <a class="ops-anchor-link" href="#project-source-quote">来源报价</a>
+        <a class="ops-anchor-link" href="#project-snapshot">报价快照</a>
+      </nav>
     </section>
 
     ${renderMasterPanel(project)}
@@ -507,14 +514,14 @@ function renderRealProject(project) {
       </section>
     </div>
 
-    <section class="panel auxiliary-panel project-reference-panel">
+    <section class="panel auxiliary-panel project-reference-panel" id="project-snapshot">
       <details class="collapsible-panel">
         <summary class="panel-summary"><h2>报价快照 · 明细</h2></summary>
         ${renderSnapshotGroups(snap.projectGroups, currency)}
       </details>
     </section>
 
-    <section class="panel auxiliary-panel project-reference-panel">
+    <section class="panel auxiliary-panel project-reference-panel" id="project-source-quote">
       <details class="collapsible-panel">
         <summary class="panel-summary"><h2>来源报价</h2></summary>
         <div class="detail-grid auxiliary-grid">
@@ -532,7 +539,7 @@ function renderRealProject(project) {
       </details>
     </section>
 
-    <section class="panel auxiliary-panel project-reference-panel">
+    <section class="panel auxiliary-panel project-reference-panel" id="project-summary">
       <details class="collapsible-panel">
         <summary class="panel-summary"><h2>报价汇总</h2></summary>
         <div class="detail-grid auxiliary-grid">
@@ -789,7 +796,7 @@ function renderExecutionItemsSection(items, projectId) {
     `).join("");
 
     return `
-      <div class="ei-group supplier-execution-group">
+      <div class="ei-group supplier-execution-group${hasSupplier ? "" : " ei-group-no-supplier"}">
         <div class="ei-group-head">
           <div class="ei-group-title-block">
             <span class="ei-group-kicker">${hasSupplier ? "供应商执行包" : "待分配执行包"}</span>
@@ -1219,18 +1226,18 @@ function renderTaskStats(tasks) {
     if (isProjectTaskDueRisk(task)) dueRisk += 1;
   }
   const stats = [
-    ["总任务", tasks.length, "total"],
-    ["待处理", counts.todo, "todo"],
-    ["进行中", counts.in_progress, "progress"],
-    ["已完成", counts.done, "done"],
-    ["已取消", counts.cancelled, "cancelled"],
-    ["未分配", noAssignee, "unassigned"],
-    ["临近/逾期", dueRisk, "due"],
+    ["总任务", tasks.length, "total", false],
+    ["待处理", counts.todo, "todo", false],
+    ["进行中", counts.in_progress, "progress", false],
+    ["已完成", counts.done, "done", false],
+    ["已取消", counts.cancelled, "cancelled", false],
+    ["未分配", noAssignee, "unassigned", noAssignee > 0],
+    ["临近/逾期", dueRisk, "due", dueRisk > 0],
   ];
   return `
     <div class="pt-stats-grid pt-stats-compact" aria-label="接待 / 执行任务统计">
-      ${stats.map(([label, value, key]) => `
-        <div class="pt-stat-card pt-stat-${key}">
+      ${stats.map(([label, value, key, isRisk]) => `
+        <div class="pt-stat-card pt-stat-${key}${isRisk ? " is-risk-stat" : ""}">
           <span>${esc(label)}</span>
           <strong>${esc(value)}</strong>
         </div>
@@ -1239,14 +1246,29 @@ function renderTaskStats(tasks) {
   `;
 }
 
+function renderTaskRiskCallout(tasks) {
+  const overdue = tasks.filter(t => isOpenProjectTask(t) && getProjectTaskDueInfo(t).tone === "overdue").length;
+  const today = tasks.filter(t => isOpenProjectTask(t) && getProjectTaskDueInfo(t).tone === "today").length;
+  const unassignedOpen = tasks.filter(t => isOpenProjectTask(t) && !String(t.assignee || "").trim()).length;
+  if (overdue === 0 && today === 0 && unassignedOpen === 0) return "";
+  const parts = [];
+  if (overdue > 0) parts.push(`${overdue} 个任务已逾期`);
+  if (today > 0) parts.push(`${today} 个任务今日截止`);
+  if (unassignedOpen > 0) parts.push(`${unassignedOpen} 个开放任务未分配负责人`);
+  return `<div class="ops-risk-callout" role="status" aria-live="polite"><span>${esc(parts.join(" · "))}</span></div>`;
+}
+
 function renderTaskCard(task) {
   const status = getTaskStatusClass(task.status);
   const priority = getTaskPriorityClassName(task.priority);
   const dueInfo = getProjectTaskDueInfo(task);
   const assignee = String(task.assignee || "").trim();
   const notes = String(task.notes || "").trim();
+  const dueCls = isOpenProjectTask(task)
+    ? (dueInfo.tone === "overdue" || dueInfo.tone === "today") ? " project-task-due-urgent" : dueInfo.tone === "soon" ? " project-task-due-soon" : ""
+    : "";
   return `
-    <article id="pt-card-${esc(task.id)}" class="project-task-card project-task-compact project-task-${esc(status)} project-task-priority-${esc(priority)}" data-task-id="${esc(task.id)}">
+    <article id="pt-card-${esc(task.id)}" class="project-task-card project-task-compact project-task-${esc(status)} project-task-priority-${esc(priority)}${dueCls}" data-task-id="${esc(task.id)}">
       <div class="project-task-card-head">
         <div class="project-task-title-block">
           <h4>${esc(task.title || "未命名任务")}</h4>
@@ -1380,6 +1402,7 @@ function renderProjectTasksSection(tasks) {
         <button type="button" class="button-link small-link" id="generate-tasks-btn">从执行清单同步</button>
       </div>
       ${renderTaskStats(tasks)}
+      ${renderTaskRiskCallout(tasks)}
       <div class="project-task-filter-shell" aria-label="任务筛选预留">
         <span class="is-active">全部</span>
         <span>待处理</span>
