@@ -2755,3 +2755,234 @@ test("B1-03B: customer interface not affected — quoteSnapshot intact after bac
     assert.ok(project.sourceQuoteId === "Q-PB-S", "sourceQuoteId should be unchanged");
   });
 });
+
+// ── B1-04: 接待/执行任务 (projectTasks) ──────────────────────────────────────
+
+async function setupProjectWithExecutionItems(port) {
+  seedProjectBasedQuote();
+  const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+  const { id: projectId } = await convertRes.json();
+  await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+  return projectId;
+}
+
+test("B1-04: GET /api/projects/:id/tasks returns empty array initially", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`);
+    assert.equal(res.status, 200);
+    const tasks = await res.json();
+    assert.ok(Array.isArray(tasks), "should return array");
+    assert.equal(tasks.length, 0, "no tasks before generate");
+  });
+});
+
+test("B1-04: POST generate creates tasks from executionItems", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+
+    const genRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+    assert.equal(genRes.status, 201, "first generate should return 201");
+    const result = await genRes.json();
+    assert.ok(result.createdCount > 0, "createdCount should be > 0");
+    assert.ok(Array.isArray(result.tasks), "tasks should be array");
+    assert.ok(result.tasks.length > 0, "tasks should not be empty");
+  });
+});
+
+test("B1-04: repeated generate does not duplicate tasks (idempotent)", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+
+    const r1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" })).json();
+    const r2 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" })).json();
+
+    assert.equal(r1.createdCount, r2.tasks.length, "task count should remain same on second generate");
+    assert.equal(r2.createdCount, 0, "second generate createdCount should be 0");
+  });
+});
+
+test("B1-04: task field mapping from executionItem is correct", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+
+    const eiRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`);
+    const executionItems = await eiRes.json();
+    assert.ok(executionItems.length > 0, "need at least one executionItem");
+    const ei = executionItems[0];
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+    const taskRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`);
+    const tasks = await taskRes.json();
+    assert.ok(tasks.length > 0, "tasks should not be empty");
+
+    const task = tasks.find(t => t.sourceExecutionItemId === ei.id);
+    assert.ok(task, "task should map to executionItem by sourceExecutionItemId");
+    assert.equal(task.title, ei.title, "title should match");
+    assert.equal(task.sourceExecutionItemId, ei.id, "sourceExecutionItemId should match");
+    assert.equal(task.assignee, ei.owner || "", "assignee maps from owner");
+    assert.equal(task.dueDate, ei.plannedDate || null, "dueDate maps from plannedDate");
+    assert.equal(task.supplierDisplay, ei.supplierDisplay || "", "supplierDisplay should match");
+    assert.ok(["todo","in_progress","done","cancelled"].includes(task.status), "status should be valid task status");
+    assert.equal(task.priority, "normal", "default priority is normal");
+  });
+});
+
+test("B1-04: PATCH can update assignee, status, priority, dates, location, notes", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const taskId = tasks[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        assignee: "张三",
+        status: "in_progress",
+        priority: "high",
+        dueDate: "2026-06-30",
+        executionDate: "2026-07-01",
+        location: "主会场",
+        notes: "需提前到场",
+      }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.assignee, "张三");
+    assert.equal(updated.status, "in_progress");
+    assert.equal(updated.priority, "high");
+    assert.equal(updated.dueDate, "2026-06-30");
+    assert.equal(updated.executionDate, "2026-07-01");
+    assert.equal(updated.location, "主会场");
+    assert.equal(updated.notes, "需提前到场");
+  });
+});
+
+test("B1-04: PATCH cannot overwrite protected fields", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const task = tasks[0];
+    const taskId = task.id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: "INJECTED-ID",
+        projectId: "INJECTED-PID",
+        sourceExecutionItemId: "INJECTED-EI",
+        supplierId: "INJECTED-SUP",
+        supplierDisplay: "INJECTED-DISPLAY",
+        taskType: "INJECTED-TYPE",
+        createdAt: "2000-01-01T00:00:00Z",
+        assignee: "合法更新",
+      }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    assert.equal(result.id, taskId, "id must not change");
+    assert.equal(result.projectId, projectId, "projectId must not change");
+    assert.equal(result.sourceExecutionItemId, task.sourceExecutionItemId, "sourceExecutionItemId must not change");
+    assert.equal(result.supplierId, task.supplierId, "supplierId must not change");
+    assert.equal(result.supplierDisplay, task.supplierDisplay, "supplierDisplay must not change");
+    assert.equal(result.assignee, "合法更新", "legitimate field should be updated");
+  });
+});
+
+test("B1-04: generate returns createdCount 0 when no executionItems exist", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const genRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+    assert.equal(genRes.status, 200, "should return 200 not 500");
+    const result = await genRes.json();
+    assert.equal(result.createdCount, 0, "no executionItems means createdCount 0");
+    assert.ok(Array.isArray(result.tasks), "tasks should be array");
+    assert.equal(result.tasks.length, 0, "tasks should be empty");
+  });
+});
+
+test("B1-04: PATCH returns 400 for invalid status", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const taskId = tasks[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "invalid_status" }),
+    });
+    assert.equal(patchRes.status, 400);
+  });
+});
+
+test("B1-04: PATCH returns 400 for invalid priority", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const taskId = tasks[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priority: "super_urgent" }),
+    });
+    assert.equal(patchRes.status, 400);
+  });
+});
+
+test("B1-04: GET /api/projects/:id does not expose projectTasks or tasks fields", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const projectRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`);
+    assert.equal(projectRes.status, 200);
+    const project = await projectRes.json();
+
+    assert.equal(Object.prototype.hasOwnProperty.call(project, "projectTasks"), false, "projectTasks must not appear in project response");
+    assert.equal(Object.prototype.hasOwnProperty.call(project, "tasks"), false, "tasks must not appear in project response");
+    assert.ok(project.quoteSnapshot, "quoteSnapshot should still be present");
+  });
+});
+
+test("B1-04: quoteSnapshot is not modified by task generate or PATCH", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+
+    const before = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const snapshotBefore = JSON.stringify(before.quoteSnapshot);
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    if (tasks.length > 0) {
+      await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(tasks[0].id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ assignee: "李四", status: "done" }),
+      });
+    }
+
+    const after = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const snapshotAfter = JSON.stringify(after.quoteSnapshot);
+
+    assert.equal(snapshotBefore, snapshotAfter, "quoteSnapshot must not be modified");
+  });
+});

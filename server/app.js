@@ -26,6 +26,7 @@ const { createTemplateStore } = require("./services/templateStore");
 const { createQuoteStore } = require("./services/quoteStore");
 const projectStore = require("./services/projectStore");
 const projectExecutionStore = require("./services/projectExecutionStore");
+const projectTaskStore = require("./services/projectTaskStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
@@ -2177,6 +2178,68 @@ async function handleApi(request, response, url) {
         saveSeedData(data);
       }
       sendJson(response, created ? 201 : 200, serializeProject(project));
+      return true;
+    }
+  }
+
+  // ── B1-04: 接待/执行任务路由（必须在通用 GET/PATCH /api/projects/:id 之前）──
+
+  // GET /api/projects/:id/tasks
+  if (request.method === "GET") {
+    const taskListMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/tasks$/);
+    if (taskListMatch) {
+      const projectId = decodeURIComponent(taskListMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const tasks = await projectTaskStore.listProjectTasks(supabase, projectId);
+        sendJson(response, 200, tasks);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // POST /api/projects/:id/tasks/generate
+  if (request.method === "POST") {
+    const taskGenMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/tasks\/generate$/);
+    if (taskGenMatch) {
+      const projectId = decodeURIComponent(taskGenMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await projectTaskStore.generateTasksFromExecutionItems(supabase, projectId);
+        sendJson(response, result.createdCount > 0 ? 201 : 200, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // PATCH /api/projects/:id/tasks/:taskId
+  if (request.method === "PATCH") {
+    const taskPatchMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/tasks\/([^/]+)$/);
+    if (taskPatchMatch) {
+      const projectId = decodeURIComponent(taskPatchMatch[1]);
+      const taskId = decodeURIComponent(taskPatchMatch[2]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const PROTECTED_TASK = new Set([
+        "id", "projectId", "sourceExecutionItemId", "sourceQuoteItemId",
+        "sourceGroupId", "sourceGroupTitle",
+        "supplierId", "supplierCatalogItemId", "supplierDisplay",
+        "taskType", "createdAt", "updatedAt",
+      ]);
+      const patch = {};
+      for (const [k, v] of Object.entries(body)) {
+        if (!PROTECTED_TASK.has(k)) patch[k] = v;
+      }
+      const supabase = getSupabaseConfig();
+      try {
+        const task = await projectTaskStore.updateProjectTask(supabase, projectId, taskId, patch);
+        sendJson(response, 200, task);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
       return true;
     }
   }

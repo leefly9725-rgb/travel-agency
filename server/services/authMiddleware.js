@@ -129,6 +129,10 @@ const ROUTE_PERMISSION_MAP = [
   ['POST',   /^\/api\/projects\/[^/]+\/execution-items\/backfill-suppliers$/, 'standard_quote.edit'],
   ['PATCH',  /^\/api\/projects\/[^/]+\/execution-items\/[^/]+$/,              'standard_quote.edit'],
   ['DELETE', /^\/api\/projects\/[^/]+\/execution-items\/[^/]+$/,              'standard_quote.edit'],
+  // project tasks (B1-04)
+  ['GET',    /^\/api\/projects\/[^/]+\/tasks$/,                               'standard_quote.view'],
+  ['POST',   /^\/api\/projects\/[^/]+\/tasks\/generate$/,                     'standard_quote.edit'],
+  ['PATCH',  /^\/api\/projects\/[^/]+\/tasks\/[^/]+$/,                        'standard_quote.edit'],
   ['GET',    /^\/api\/document-previews$/,             'standard_quote.view'],
 
   // meta — 已登录即可访问，不限资源权限（空字符串表示仅需登录）
