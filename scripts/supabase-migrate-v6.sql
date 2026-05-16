@@ -35,10 +35,11 @@ CREATE TABLE IF NOT EXISTS public.project_tasks (
   updated_at                timestamptz NOT NULL DEFAULT now()
 );
 
--- 2. 唯一约束：每个 executionItem 最多生成一个 task（幂等保证）
-ALTER TABLE public.project_tasks
-  ADD CONSTRAINT IF NOT EXISTS project_tasks_project_execution_unique
-  UNIQUE (project_id, source_execution_item_id);
+-- 2. 唯一索引：每个 executionItem 最多生成一个 task（幂等保证）
+-- 注：使用 CREATE UNIQUE INDEX IF NOT EXISTS 替代 ADD CONSTRAINT IF NOT EXISTS，
+-- 后者在 PostgreSQL / Supabase 中不支持 IF NOT EXISTS 语法，前者完全幂等。
+CREATE UNIQUE INDEX IF NOT EXISTS idx_project_tasks_project_execution_unique
+  ON public.project_tasks (project_id, source_execution_item_id);
 
 -- 3. 索引
 CREATE INDEX IF NOT EXISTS idx_pt_project_id
