@@ -2229,14 +2229,17 @@ async function handleApi(request, response, url) {
         "supplierId", "supplierCatalogItemId", "supplierDisplay",
         "taskType", "createdAt", "updatedAt",
       ]);
+      const applyToSameSupplier = !!body.applyToSameSupplier;
       const patch = {};
       for (const [k, v] of Object.entries(body)) {
-        if (!PROTECTED_TASK.has(k)) patch[k] = v;
+        if (!PROTECTED_TASK.has(k) && k !== 'applyToSameSupplier') patch[k] = v;
       }
       const supabase = getSupabaseConfig();
       try {
-        const task = await projectTaskStore.updateProjectTask(supabase, projectId, taskId, patch);
-        sendJson(response, 200, task);
+        const result = await projectTaskStore.updateProjectTask(
+          supabase, projectId, taskId, patch, { applyToSameSupplier }
+        );
+        sendJson(response, 200, result);
       } catch (err) {
         sendJson(response, err.status || 500, { error: err.message });
       }

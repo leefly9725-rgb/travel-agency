@@ -2986,3 +2986,141 @@ test("B1-04: quoteSnapshot is not modified by task generate or PATCH", async () 
     assert.equal(snapshotBefore, snapshotAfter, "quoteSnapshot must not be modified");
   });
 });
+
+// ── B1-04A: 项目任务同供应商批量同步 ──────────────────────────────────────
+
+async function setupProjectTasksWithSuppliers(port) {
+  seedProjectBasedQuoteWithTwoSupplierItems();
+  const convertRes = await apiFetch(port, `/api/quotes/Q-PB-S/convert-to-project`, { method: "POST" });
+  const { id: projectId } = await convertRes.json();
+  await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+  await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+  return projectId;
+}
+
+test("B1-04A: applyToSameSupplier=true syncs assignee/status to sibling tasks", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectTasksWithSuppliers(port);
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sup1Tasks = tasks.filter(t => t.supplierId === "SUP-001");
+    assert.ok(sup1Tasks.length >= 2, `need at least 2 SUP-001 tasks, got ${sup1Tasks.length}`);
+
+    const targetId = sup1Tasks[0].id;
+    const siblingId = sup1Tasks[1].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignee: "王五", status: "in_progress", applyToSameSupplier: true }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    assert.ok(result.item, "result.item should exist");
+    assert.ok(result.affectedCount >= 2, `affectedCount should be ≥ 2, got ${result.affectedCount}`);
+    assert.ok(Array.isArray(result.tasks), "result.tasks should be array");
+
+    const afterTasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sibling = afterTasks.find(t => t.id === siblingId);
+    assert.equal(sibling.assignee, "王五", "sibling assignee must be synced");
+    assert.equal(sibling.status, "in_progress", "sibling status must be synced");
+  });
+});
+
+test("B1-04A: applyToSameSupplier does NOT sync notes or protected fields", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectTasksWithSuppliers(port);
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sup1Tasks = tasks.filter(t => t.supplierId === "SUP-001");
+    assert.ok(sup1Tasks.length >= 2, "need at least 2 SUP-001 tasks");
+
+    const targetId = sup1Tasks[0].id;
+    const siblingId = sup1Tasks[1].id;
+    const siblingTitleBefore = tasks.find(t => t.id === siblingId)?.title;
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignee: "赵六", notes: "内部备注", applyToSameSupplier: true }),
+    });
+
+    const afterTasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sibling = afterTasks.find(t => t.id === siblingId);
+    assert.equal(sibling.assignee, "赵六", "assignee should be synced");
+    assert.notEqual(sibling.notes, "内部备注", "notes must NOT be synced to sibling");
+    assert.equal(sibling.title, siblingTitleBefore, "title must NOT change");
+  });
+});
+
+test("B1-04A: applyToSameSupplier=false only updates current task", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectTasksWithSuppliers(port);
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sup1Tasks = tasks.filter(t => t.supplierId === "SUP-001");
+    assert.ok(sup1Tasks.length >= 2, "need at least 2 SUP-001 tasks");
+
+    const targetId = sup1Tasks[0].id;
+    const siblingId = sup1Tasks[1].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignee: "独自更新", applyToSameSupplier: false }),
+    });
+    assert.equal(patchRes.status, 200);
+
+    const afterTasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sibling = afterTasks.find(t => t.id === siblingId);
+    assert.notEqual(sibling.assignee, "独自更新", "sibling must NOT be updated when applyToSameSupplier=false");
+  });
+});
+
+test("B1-04A: no supplier — applyToSameSupplier returns affectedCount 1", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`, { method: "POST" });
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    assert.ok(tasks.length > 0, "should have at least one task");
+
+    const taskId = tasks[0].id;
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignee: "测试员", applyToSameSupplier: true }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    // no-supplier task: may return plain task or { item, affectedCount: 1 }
+    const affectedCount = result.affectedCount !== undefined ? result.affectedCount : 1;
+    assert.equal(affectedCount, 1, "affectedCount should be 1 when task has no supplier");
+  });
+});
+
+test("B1-04A: applyToSameSupplier does not affect tasks from different supplier", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectTasksWithSuppliers(port);
+
+    const tasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sup1Tasks = tasks.filter(t => t.supplierId === "SUP-001");
+    const sup2Tasks = tasks.filter(t => t.supplierId === "SUP-002");
+    assert.ok(sup1Tasks.length >= 1, "need SUP-001 tasks");
+    assert.ok(sup2Tasks.length >= 1, "need SUP-002 tasks");
+
+    const targetId = sup1Tasks[0].id;
+    const sup2Id = sup2Tasks[0].id;
+    const sup2AssigneeBefore = sup2Tasks[0].assignee;
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignee: "新负责人", applyToSameSupplier: true }),
+    });
+
+    const afterTasks = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/tasks`)).json();
+    const sup2After = afterTasks.find(t => t.id === sup2Id);
+    assert.equal(sup2After.assignee, sup2AssigneeBefore, "SUP-002 task must not be affected by SUP-001 sync");
+  });
+});
