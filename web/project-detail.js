@@ -1375,4 +1375,294 @@ function setupTaskEditFormHandlers(projectId, taskId) {
   });
 }
 
+function getTaskStatusClass(status) {
+  return ["todo", "in_progress", "done", "cancelled"].includes(status) ? status : "todo";
+}
+
+function getTaskPriorityClassName(priority) {
+  return ["low", "normal", "high", "urgent"].includes(priority) ? priority : "normal";
+}
+
+function isOpenProjectTask(task) {
+  return task.status === "todo" || task.status === "in_progress";
+}
+
+function getProjectTaskToday() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function getProjectTaskDueInfo(task) {
+  if (!task.dueDate) return { tone: "empty", text: "未设置" };
+  const due = new Date(`${task.dueDate}T00:00:00`);
+  if (Number.isNaN(due.getTime())) return { tone: "empty", text: "日期异常" };
+  const days = Math.round((due.getTime() - getProjectTaskToday().getTime()) / (24 * 60 * 60 * 1000));
+  if (!isOpenProjectTask(task)) return { tone: "normal", text: task.dueDate };
+  if (days < 0) return { tone: "overdue", text: `已逾期 ${Math.abs(days)} 天` };
+  if (days === 0) return { tone: "today", text: "今日截止" };
+  if (days <= 3) return { tone: "soon", text: `还有 ${days} 天` };
+  return { tone: "normal", text: task.dueDate };
+}
+
+function isProjectTaskDueRisk(task) {
+  const tone = getProjectTaskDueInfo(task).tone;
+  return tone === "overdue" || tone === "today" || tone === "soon";
+}
+
+function renderTaskStats(tasks) {
+  const counts = { todo: 0, in_progress: 0, done: 0, cancelled: 0 };
+  let noAssignee = 0;
+  let dueRisk = 0;
+  for (const task of tasks) {
+    counts[getTaskStatusClass(task.status)] += 1;
+    if (!String(task.assignee || "").trim()) noAssignee += 1;
+    if (isProjectTaskDueRisk(task)) dueRisk += 1;
+  }
+  const stats = [
+    ["总任务", tasks.length, "total"],
+    ["待处理", counts.todo, "todo"],
+    ["进行中", counts.in_progress, "progress"],
+    ["已完成", counts.done, "done"],
+    ["已取消", counts.cancelled, "cancelled"],
+    ["负责人未分配", noAssignee, "unassigned"],
+    ["临近 / 逾期", dueRisk, "due"],
+  ];
+  return `
+    <div class="pt-stats-grid" aria-label="接待 / 执行任务统计">
+      ${stats.map(([label, value, key]) => `
+        <div class="pt-stat-card pt-stat-${key}">
+          <span>${esc(label)}</span>
+          <strong>${esc(value)}</strong>
+        </div>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderTaskCard(task) {
+  const status = getTaskStatusClass(task.status);
+  const priority = getTaskPriorityClassName(task.priority);
+  const dueInfo = getProjectTaskDueInfo(task);
+  const assignee = String(task.assignee || "").trim();
+  return `
+    <article id="pt-card-${esc(task.id)}" class="project-task-card project-task-${esc(status)} project-task-priority-${esc(priority)}" data-task-id="${esc(task.id)}">
+      <div class="project-task-card-head">
+        <div class="project-task-title-block">
+          <h4>${esc(task.title || "未命名任务")}</h4>
+          <p>${esc(task.supplierDisplay || "未记录供应商")}</p>
+        </div>
+        <div class="project-task-chips">
+          <span class="pt-chip pt-status-${esc(status)}">${esc(TASK_STATUS_LABELS[status] || status)}</span>
+          <span class="pt-chip pt-priority-${esc(priority)}">${esc(TASK_PRIORITY_LABELS[priority] || priority)}</span>
+          <span class="pt-chip pt-due-${esc(dueInfo.tone)}">${esc(dueInfo.text)}</span>
+        </div>
+      </div>
+      <div class="project-task-facts">
+        <div><span>到位截止</span><strong>${esc(task.dueDate || "—")}</strong></div>
+        <div><span>执行日期</span><strong>${esc(task.executionDate || "—")}</strong></div>
+        <div><span>地点</span><strong>${esc(task.location || "—")}</strong></div>
+        <div><span>负责人</span><strong class="${assignee ? "" : "empty-value"}">${esc(assignee || "—")}</strong></div>
+      </div>
+      <div class="project-task-notes">
+        <span>备注</span>
+        <p>${task.notes ? esc(task.notes) : '<span class="empty-value">—</span>'}</p>
+      </div>
+      <div class="project-task-actions">
+        <button type="button" class="button-link small-link pt-edit-btn" data-task-id="${esc(task.id)}">编辑任务</button>
+      </div>
+    </article>
+  `;
+}
+
+function renderTaskEditRow(task) {
+  const status = getTaskStatusClass(task.status);
+  const priority = getTaskPriorityClassName(task.priority);
+  const statusOptions = Object.entries(TASK_STATUS_LABELS)
+    .map(([value, label]) => `<option value="${value}"${status === value ? " selected" : ""}>${label}</option>`).join("");
+  const priorityOptions = Object.entries(TASK_PRIORITY_LABELS)
+    .map(([value, label]) => `<option value="${value}"${priority === value ? " selected" : ""}>${label}</option>`).join("");
+  return `
+    <article id="pt-card-${esc(task.id)}" class="project-task-card project-task-edit-card" data-task-id="${esc(task.id)}">
+      <form class="pt-edit-form" data-task-id="${esc(task.id)}">
+        <div class="pt-edit-readonly">
+          <div><span>任务标题</span><strong>${esc(task.title || "未命名任务")}</strong></div>
+          <div><span>供应商</span><strong>${esc(task.supplierDisplay || "未记录供应商")}</strong></div>
+        </div>
+        <div class="pt-edit-grid">
+          <label><span>负责人</span><input name="assignee" value="${esc(task.assignee || "")}" /></label>
+          <label><span>到位截止日期</span><input type="date" name="dueDate" value="${esc(task.dueDate || "")}" /></label>
+          <label><span>执行日期</span><input type="date" name="executionDate" value="${esc(task.executionDate || "")}" /></label>
+          <label><span>地点</span><input name="location" value="${esc(task.location || "")}" /></label>
+          <label><span>状态</span><select name="status">${statusOptions}</select></label>
+          <label><span>优先级</span><select name="priority">${priorityOptions}</select></label>
+          <label class="pt-edit-wide"><span>备注</span><textarea name="notes" rows="3">${esc(task.notes || "")}</textarea></label>
+        </div>
+        <div class="pt-edit-actions">
+          <button type="submit" class="button-primary">保存</button>
+          <button type="button" class="button-link small-link pt-cancel-btn">取消</button>
+          <span class="pt-save-hint" aria-live="polite"></span>
+        </div>
+      </form>
+    </article>
+  `;
+}
+
+function groupTasksByAssignee(tasks) {
+  const groups = new Map();
+  for (const task of tasks) {
+    const key = String(task.assignee || "").trim() || "__unassigned__";
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(task);
+  }
+  const sorted = [];
+  if (groups.has("__unassigned__")) sorted.push(["__unassigned__", groups.get("__unassigned__")]);
+  const assigned = [];
+  for (const [key, items] of groups) {
+    if (key !== "__unassigned__") assigned.push([key, items]);
+  }
+  assigned.sort((a, b) => a[0].localeCompare(b[0], "zh-CN"));
+  return sorted.concat(assigned);
+}
+
+function renderProjectTasksSection(tasks) {
+  if (tasks.length === 0) {
+    return `
+      <section class="panel project-tasks-panel" id="project-tasks-panel">
+        <div class="panel-head project-tasks-head">
+          <div>
+            <p class="section-kicker">RECEPTION / EXECUTION TASKS</p>
+            <h2>接待 / 执行任务</h2>
+          </div>
+        </div>
+        <div class="project-tasks-empty">
+          <strong>暂无接待 / 执行任务</strong>
+          <p>从执行清单生成任务后，可在这里跟踪负责人、日期、地点、状态和备注。</p>
+          <button type="button" class="button-primary" id="generate-tasks-btn">从执行清单生成任务</button>
+          <span id="generate-tasks-hint" class="project-status-hint" aria-live="polite"></span>
+        </div>
+      </section>`;
+  }
+
+  const groupHtml = groupTasksByAssignee(tasks).map(([assignee, groupTasks]) => {
+    const unassigned = assignee === "__unassigned__";
+    return `
+      <section class="project-task-group${unassigned ? " project-task-group-unassigned" : ""}">
+        <div class="project-task-group-head">
+          <h3>${unassigned ? "未分配负责人" : esc(assignee)}</h3>
+          <span>${groupTasks.length} 个任务</span>
+        </div>
+        <div class="project-task-list">${groupTasks.map(renderTaskCard).join("")}</div>
+      </section>`;
+  }).join("");
+
+  return `
+    <section class="panel project-tasks-panel" id="project-tasks-panel">
+      <div class="panel-head project-tasks-head">
+        <div>
+          <p class="section-kicker">RECEPTION / EXECUTION TASKS</p>
+          <h2>接待 / 执行任务</h2>
+        </div>
+        <button type="button" class="button-link small-link" id="generate-tasks-btn">从执行清单同步</button>
+      </div>
+      ${renderTaskStats(tasks)}
+      <div id="task-groups-container" class="project-task-groups">${groupHtml}</div>
+      <span id="generate-tasks-hint" class="project-status-hint" aria-live="polite"></span>
+    </section>`;
+}
+
+function setupProjectTasksHandlers(projectId) {
+  const container = document.getElementById("project-tasks-container");
+  if (!container) return;
+
+  const genBtn = container.querySelector("#generate-tasks-btn");
+  if (genBtn) {
+    genBtn.addEventListener("click", async () => {
+      const hint = container.querySelector("#generate-tasks-hint");
+      genBtn.disabled = true;
+      if (hint) hint.textContent = "生成中...";
+      try {
+        const result = await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/tasks/generate`,
+          { method: "POST" },
+          "生成失败，请稍后重试"
+        );
+        await loadAndRenderProjectTasks(projectId);
+        const msg = result.createdCount > 0
+          ? `已生成 ${result.createdCount} 个任务。`
+          : "任务已是最新，无需重新生成。";
+        window.AppUtils.showMessage("project-message", msg, "success");
+      } catch (err) {
+        if (hint) hint.textContent = `生成失败：${err.message}`;
+        genBtn.disabled = false;
+      }
+    });
+  }
+
+  const groupsContainer = container.querySelector("#task-groups-container");
+  if (!groupsContainer) return;
+
+  groupsContainer.addEventListener("click", async (event) => {
+    const editBtn = event.target.closest(".pt-edit-btn");
+    const cancelBtn = event.target.closest(".pt-cancel-btn");
+
+    if (editBtn) {
+      const taskId = editBtn.getAttribute("data-task-id");
+      const card = document.getElementById(`pt-card-${taskId}`);
+      if (!card) return;
+      try {
+        const allTasks = await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/tasks`,
+          null,
+          "加载失败"
+        );
+        const task = allTasks.find((item) => item.id === taskId);
+        if (!task) return;
+        const temp = document.createElement("div");
+        temp.innerHTML = renderTaskEditRow(task);
+        card.replaceWith(temp.firstElementChild);
+        setupTaskEditFormHandlers(projectId, taskId);
+      } catch (err) {
+        window.AppUtils.showMessage("project-message", err.message, "error");
+      }
+    }
+
+    if (cancelBtn) {
+      await loadAndRenderProjectTasks(projectId);
+    }
+  });
+}
+
+function setupTaskEditFormHandlers(projectId, taskId) {
+  const form = document.querySelector(`.pt-edit-form[data-task-id="${taskId}"]`);
+  if (!form) return;
+  form.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const hint = form.querySelector(".pt-save-hint");
+    const submitBtn = form.querySelector("button[type=submit]");
+    const formData = new FormData(form);
+    const NULL_ON_EMPTY = new Set(["dueDate", "executionDate"]);
+    const patch = {};
+    for (const [key, value] of formData.entries()) {
+      patch[key] = (value === "" && NULL_ON_EMPTY.has(key)) ? null : value;
+    }
+    if (submitBtn) submitBtn.disabled = true;
+    if (hint) hint.textContent = "保存中...";
+    try {
+      await window.AppUtils.fetchJson(
+        `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(patch),
+        },
+        "保存失败，请稍后重试"
+      );
+      await loadAndRenderProjectTasks(projectId);
+    } catch (err) {
+      if (hint) hint.textContent = `保存失败：${err.message}`;
+      if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+}
+
 bootstrap();
