@@ -434,10 +434,33 @@ function renderRealProject(project) {
   const status = VALID_STATUSES.includes(project.status) ? project.status : "draft";
   const priority = project.priority || "normal";
   const operationStatus = project.operationStatus || "not_started";
+  const riskItems = [];
+  if (priority === "urgent") riskItems.push("紧急优先级");
+  if (operationStatus === "blocked") riskItems.push("运营阻塞");
+  if (project.internalDeadline) {
+    const deadline = new Date(`${project.internalDeadline}T00:00:00`);
+    const today = new Date();
+    const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    if (!Number.isNaN(deadline.getTime())) {
+      const days = Math.round((deadline.getTime() - todayStart.getTime()) / (24 * 60 * 60 * 1000));
+      if (days < 0) riskItems.push(`内部截止已逾期 ${Math.abs(days)} 天`);
+      else if (days === 0) riskItems.push("内部截止今日到期");
+      else if (days <= 3) riskItems.push(`内部截止还剩 ${days} 天`);
+    }
+  }
+  const nextAction = operationStatus === "blocked"
+    ? "先处理运营阻塞说明"
+    : status === "draft"
+      ? "确认项目状态并补齐运营主档"
+      : status === "confirmed"
+        ? "生成并分配接待 / 执行任务"
+        : status === "running"
+          ? "跟进临近截止任务与供应商确认"
+          : "复核报价快照与汇总信息";
 
   return `
-    <section class="panel project-workspace-header">
-      <div class="project-workspace-main">
+    <section class="panel project-workspace-header project-ops-header">
+      <div class="project-workspace-main project-ops-main">
         <div class="project-workspace-title">
           <p class="section-kicker">项目编号：${esc(project.projectNumber || "—")}</p>
           <h1>${esc(project.projectName || "未命名项目")}</h1>
@@ -449,15 +472,33 @@ function renderRealProject(project) {
           <span class="proj-chip proj-chip-op proj-chip-op-${esc(operationStatus)}">${esc(OP_STATUS_LABELS[operationStatus] || operationStatus)}</span>
         </div>
       </div>
-      <div class="project-workspace-facts">
+      <div class="project-workspace-facts project-ops-facts">
+        <div class="project-fact"><span>目的地</span><strong>${esc(project.destination || "—")}</strong></div>
         <div class="project-fact"><span>日期范围</span><strong>${esc(getProjectDateRange(project))}</strong></div>
         <div class="project-fact"><span>PAX</span><strong>${project.paxCount != null ? esc(String(project.paxCount)) : "—"}</strong></div>
-        <div class="project-fact"><span>目的地</span><strong>${esc(project.destination || "—")}</strong></div>
+        <div class="project-fact"><span>内部截止</span><strong>${esc(project.internalDeadline || "—")}</strong></div>
+      </div>
+      <div class="project-ops-brief ${riskItems.length ? "has-risk" : "is-clear"}">
+        <div>
+          <span>当前判断</span>
+          <strong>${riskItems.length ? esc(riskItems.join(" · ")) : "暂无高亮风险"}</strong>
+        </div>
+        <div>
+          <span>下一步动作</span>
+          <strong>${esc(nextAction)}</strong>
+        </div>
       </div>
       ${renderStatusPanel(project.status, project.id)}
     </section>
 
     ${renderMasterPanel(project)}
+
+    <div id="project-tasks-container">
+      <section class="panel project-tasks-panel">
+        <div class="panel-head project-tasks-head"><h2>接待 / 执行任务</h2></div>
+        <p style="color:#888;font-size:13px;margin:8px 0">加载中…</p>
+      </section>
+    </div>
 
     <div id="execution-items-container">
       <section class="panel">
@@ -466,8 +507,15 @@ function renderRealProject(project) {
       </section>
     </div>
 
-    <section class="panel auxiliary-panel">
-      <details class="collapsible-panel" open>
+    <section class="panel auxiliary-panel project-reference-panel">
+      <details class="collapsible-panel">
+        <summary class="panel-summary"><h2>报价快照 · 明细</h2></summary>
+        ${renderSnapshotGroups(snap.projectGroups, currency)}
+      </details>
+    </section>
+
+    <section class="panel auxiliary-panel project-reference-panel">
+      <details class="collapsible-panel">
         <summary class="panel-summary"><h2>来源报价</h2></summary>
         <div class="detail-grid auxiliary-grid">
           <div class="metric"><span>报价编号</span><strong>${esc(project.sourceQuoteNumber || "—")}</strong></div>
@@ -484,16 +532,9 @@ function renderRealProject(project) {
       </details>
     </section>
 
-    <section class="panel auxiliary-panel">
+    <section class="panel auxiliary-panel project-reference-panel">
       <details class="collapsible-panel">
-        <summary class="panel-summary"><h2>报价快照 · 明细</h2></summary>
-        ${renderSnapshotGroups(snap.projectGroups, currency)}
-      </details>
-    </section>
-
-    <section class="panel auxiliary-panel">
-      <details class="collapsible-panel">
-        <summary class="panel-summary"><h2>汇总</h2></summary>
+        <summary class="panel-summary"><h2>报价汇总</h2></summary>
         <div class="detail-grid auxiliary-grid">
           <div class="metric"><span>成本合计</span><strong>${formatCurrency(project.totalCost, currency)}</strong></div>
           <div class="metric"><span>销售合计</span><strong>${formatCurrency(project.totalSales, currency)}</strong></div>
@@ -1111,12 +1152,11 @@ const TASK_PRIORITY_LABELS = {
 async function loadAndRenderProjectTasks(projectId) {
   let container = document.getElementById("project-tasks-container");
   if (!container) {
-    // 插入到 execution-items-container 之后
     const eiContainer = document.getElementById("execution-items-container");
     if (!eiContainer) return;
     container = document.createElement("div");
     container.id = "project-tasks-container";
-    eiContainer.insertAdjacentElement("afterend", container);
+    eiContainer.insertAdjacentElement("beforebegin", container);
   }
   try {
     const tasks = await window.AppUtils.fetchJson(
@@ -1128,8 +1168,8 @@ async function loadAndRenderProjectTasks(projectId) {
     setupProjectTasksHandlers(projectId);
   } catch (err) {
     container.innerHTML = `
-      <section class="panel">
-        <div class="panel-head"><h2>接待 / 执行任务</h2></div>
+      <section class="panel project-tasks-panel">
+        <div class="panel-head project-tasks-head"><h2>接待 / 执行任务</h2></div>
         <p style="color:#c44;font-size:13px">${esc(err.message)}</p>
       </section>`;
   }
@@ -1184,11 +1224,11 @@ function renderTaskStats(tasks) {
     ["进行中", counts.in_progress, "progress"],
     ["已完成", counts.done, "done"],
     ["已取消", counts.cancelled, "cancelled"],
-    ["负责人未分配", noAssignee, "unassigned"],
-    ["临近 / 逾期", dueRisk, "due"],
+    ["未分配", noAssignee, "unassigned"],
+    ["临近/逾期", dueRisk, "due"],
   ];
   return `
-    <div class="pt-stats-grid" aria-label="接待 / 执行任务统计">
+    <div class="pt-stats-grid pt-stats-compact" aria-label="接待 / 执行任务统计">
       ${stats.map(([label, value, key]) => `
         <div class="pt-stat-card pt-stat-${key}">
           <span>${esc(label)}</span>
@@ -1204,8 +1244,9 @@ function renderTaskCard(task) {
   const priority = getTaskPriorityClassName(task.priority);
   const dueInfo = getProjectTaskDueInfo(task);
   const assignee = String(task.assignee || "").trim();
+  const notes = String(task.notes || "").trim();
   return `
-    <article id="pt-card-${esc(task.id)}" class="project-task-card project-task-${esc(status)} project-task-priority-${esc(priority)}" data-task-id="${esc(task.id)}">
+    <article id="pt-card-${esc(task.id)}" class="project-task-card project-task-compact project-task-${esc(status)} project-task-priority-${esc(priority)}" data-task-id="${esc(task.id)}">
       <div class="project-task-card-head">
         <div class="project-task-title-block">
           <h4>${esc(task.title || "未命名任务")}</h4>
@@ -1217,17 +1258,14 @@ function renderTaskCard(task) {
           <span class="pt-chip pt-due-${esc(dueInfo.tone)}">${esc(dueInfo.text)}</span>
         </div>
       </div>
-      <div class="project-task-facts">
+      <div class="project-task-compact-grid">
+        <div><span>负责人</span><strong class="${assignee ? "" : "empty-value"}">${esc(assignee || "—")}</strong></div>
         <div><span>到位截止</span><strong>${esc(task.dueDate || "—")}</strong></div>
         <div><span>执行日期</span><strong>${esc(task.executionDate || "—")}</strong></div>
         <div><span>地点</span><strong>${esc(task.location || "—")}</strong></div>
-        <div><span>负责人</span><strong class="${assignee ? "" : "empty-value"}">${esc(assignee || "—")}</strong></div>
       </div>
-      <div class="project-task-notes">
-        <span>备注</span>
-        <p>${task.notes ? esc(task.notes) : '<span class="empty-value">—</span>'}</p>
-      </div>
-      <div class="project-task-actions">
+      <div class="project-task-card-foot">
+        <p title="${esc(notes)}"><span>备注</span>${notes ? esc(notes) : '<em>—</em>'}</p>
         <button type="button" class="button-link small-link pt-edit-btn" data-task-id="${esc(task.id)}">编辑任务</button>
       </div>
     </article>
@@ -1312,26 +1350,43 @@ function renderProjectTasksSection(tasks) {
 
   const groupHtml = groupTasksByAssignee(tasks).map(([assignee, groupTasks]) => {
     const unassigned = assignee === "__unassigned__";
+    const openCount = groupTasks.filter(isOpenProjectTask).length;
+    const riskCount = groupTasks.filter(isProjectTaskDueRisk).length;
     return `
       <section class="project-task-group${unassigned ? " project-task-group-unassigned" : ""}">
         <div class="project-task-group-head">
-          <h3>${unassigned ? "未分配负责人" : esc(assignee)}</h3>
-          <span>${groupTasks.length} 个任务</span>
+          <div>
+            <span class="project-task-group-kicker">${unassigned ? "UNASSIGNED" : "ASSIGNEE"}</span>
+            <h3>${unassigned ? "未分配负责人" : esc(assignee)}</h3>
+          </div>
+          <div class="project-task-group-meta">
+            <span>${groupTasks.length} 个任务</span>
+            <span>${openCount} 个未完成</span>
+            ${riskCount ? `<span class="is-risk">${riskCount} 个临近/逾期</span>` : ""}
+          </div>
         </div>
         <div class="project-task-list">${groupTasks.map(renderTaskCard).join("")}</div>
       </section>`;
   }).join("");
 
   return `
-    <section class="panel project-tasks-panel" id="project-tasks-panel">
+    <section class="panel project-tasks-panel project-tasks-workbench" id="project-tasks-panel">
       <div class="panel-head project-tasks-head">
         <div>
           <p class="section-kicker">RECEPTION / EXECUTION TASKS</p>
           <h2>接待 / 执行任务</h2>
+          <p class="panel-subtitle">把执行清单拆成可分配、可跟进、可同步的每日执行任务。</p>
         </div>
         <button type="button" class="button-link small-link" id="generate-tasks-btn">从执行清单同步</button>
       </div>
       ${renderTaskStats(tasks)}
+      <div class="project-task-filter-shell" aria-label="任务筛选预留">
+        <span class="is-active">全部</span>
+        <span>待处理</span>
+        <span>进行中</span>
+        <span>临近/逾期</span>
+        <span>未分配</span>
+      </div>
       <div id="task-groups-container" class="project-task-groups">${groupHtml}</div>
       <span id="generate-tasks-hint" class="project-status-hint" aria-live="polite"></span>
     </section>`;
