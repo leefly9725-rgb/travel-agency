@@ -1497,6 +1497,13 @@ function renderTaskEditRow(task) {
           <label><span>优先级</span><select name="priority">${priorityOptions}</select></label>
           <label class="pt-edit-wide"><span>备注</span><textarea name="notes" rows="3">${esc(task.notes || "")}</textarea></label>
         </div>
+        <div class="pt-sync-row">
+          <label class="pt-sync-label${task.supplierId || task.supplierDisplay ? "" : " pt-sync-label-disabled"}">
+            <input type="checkbox" name="applyToSameSupplier" value="1"${task.supplierId || task.supplierDisplay ? "" : " disabled"} />
+            同步至同供应商其他任务
+            ${!(task.supplierId || task.supplierDisplay) ? '<span class="pt-sync-tip">（此任务无供应商，不适用）</span>' : ""}
+          </label>
+        </div>
         <div class="pt-edit-actions">
           <button type="submit" class="button-primary">保存</button>
           <button type="button" class="button-link small-link pt-cancel-btn">取消</button>
@@ -1641,23 +1648,28 @@ function setupTaskEditFormHandlers(projectId, taskId) {
     const submitBtn = form.querySelector("button[type=submit]");
     const formData = new FormData(form);
     const NULL_ON_EMPTY = new Set(["dueDate", "executionDate"]);
+    const applyToSameSupplier = form.querySelector('input[name="applyToSameSupplier"]')?.checked === true;
     const patch = {};
     for (const [key, value] of formData.entries()) {
+      if (key === "applyToSameSupplier") continue;
       patch[key] = (value === "" && NULL_ON_EMPTY.has(key)) ? null : value;
     }
     if (submitBtn) submitBtn.disabled = true;
     if (hint) hint.textContent = "保存中...";
     try {
-      await window.AppUtils.fetchJson(
+      const result = await window.AppUtils.fetchJson(
         `/api/projects/${encodeURIComponent(projectId)}/tasks/${encodeURIComponent(taskId)}`,
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(patch),
+          body: JSON.stringify({ ...patch, applyToSameSupplier }),
         },
         "保存失败，请稍后重试"
       );
       await loadAndRenderProjectTasks(projectId);
+      if (applyToSameSupplier && result && result.affectedCount > 1) {
+        window.AppUtils.showMessage("project-message", `已保存，共同步 ${result.affectedCount} 个同供应商任务。`, "success");
+      }
     } catch (err) {
       if (hint) hint.textContent = `保存失败：${err.message}`;
       if (submitBtn) submitBtn.disabled = false;

@@ -244,7 +244,14 @@ const UPDATABLE_TASK_FIELDS = new Set([
   'location', 'status', 'priority', 'notes', 'sortOrder',
 ]);
 
-async function updateProjectTask(config, projectId, taskId, patch) {
+// 允许同步到同供应商其他任务的字段（不含 title/description/notes）
+const TASK_SYNC_FIELDS = new Set([
+  'assignee', 'dueDate', 'executionDate', 'location', 'status', 'priority',
+]);
+
+async function updateProjectTask(config, projectId, taskId, patch, options = {}) {
+  const { applyToSameSupplier = false } = options;
+
   if (patch.status !== undefined && !VALID_TASK_STATUSES.has(patch.status)) {
     const err = new Error(`status 不合法：${patch.status}`);
     err.status = 400;
@@ -263,6 +270,7 @@ async function updateProjectTask(config, projectId, taskId, patch) {
   }
 
   const now = new Date().toISOString();
+  let updatedTask;
 
   if (config.enabled) {
     const existing = await supabaseRequest(
@@ -298,29 +306,110 @@ async function updateProjectTask(config, projectId, taskId, patch) {
     );
     const raw = Array.isArray(rows) ? rows[0] : rows;
     if (!raw) throw new Error('更新失败，Supabase 未返回记录。');
-    return normalizeTaskFromSupabase(raw);
+    updatedTask = normalizeTaskFromSupabase(raw);
+  } else {
+    // local JSON
+    const data = loadSeedData();
+    ensureProjectTasksData(data);
+    const idx = data.projectTasks.findIndex(t => t.id === taskId && t.projectId === projectId);
+    if (idx < 0) {
+      const err = new Error('任务不存在。');
+      err.status = 404;
+      throw err;
+    }
+    const updated = { ...data.projectTasks[idx] };
+    for (const field of UPDATABLE_TASK_FIELDS) {
+      if (patch[field] !== undefined) {
+        if (field === 'sortOrder') updated[field] = Number(patch[field]);
+        else updated[field] = patch[field];
+      }
+    }
+    updated.updatedAt = now;
+    data.projectTasks[idx] = updated;
+    saveSeedData(data);
+    updatedTask = normalizeLocalTask(updated);
   }
 
-  // local JSON
-  const data = loadSeedData();
-  ensureProjectTasksData(data);
-  const idx = data.projectTasks.findIndex(t => t.id === taskId && t.projectId === projectId);
-  if (idx < 0) {
-    const err = new Error('任务不存在。');
-    err.status = 404;
-    throw err;
+  if (!applyToSameSupplier) {
+    return updatedTask;
   }
-  const updated = { ...data.projectTasks[idx] };
-  for (const field of UPDATABLE_TASK_FIELDS) {
-    if (patch[field] !== undefined) {
-      if (field === 'sortOrder') updated[field] = Number(patch[field]);
-      else updated[field] = patch[field];
+
+  // ── 批量同步同供应商任务 ────────────────────────────────────────────────────
+  const supplierId = updatedTask.supplierId;
+  const supplierDisplay = updatedTask.supplierDisplay;
+
+  if (!supplierId && !supplierDisplay) {
+    return { item: updatedTask, affectedCount: 1, tasks: [updatedTask] };
+  }
+
+  // 只同步 patch 中属于 TASK_SYNC_FIELDS 的字段
+  const syncPatch = {};
+  for (const field of TASK_SYNC_FIELDS) {
+    if (patch[field] !== undefined) syncPatch[field] = patch[field];
+  }
+
+  const affectedItems = [updatedTask];
+
+  if (config.enabled) {
+    const allRows = await supabaseRequest(
+      config,
+      `project_tasks?project_id=eq.${encodeURIComponent(projectId)}&select=*`
+    );
+    if (Array.isArray(allRows) && Object.keys(syncPatch).length > 0) {
+      const siblings = allRows.filter(r =>
+        r.id !== taskId &&
+        (supplierId ? r.supplier_id === supplierId : r.supplier_display === supplierDisplay)
+      );
+      if (siblings.length > 0) {
+        const syncSnake = { updated_at: now };
+        if (syncPatch.assignee !== undefined)       syncSnake.assignee = syncPatch.assignee;
+        if (syncPatch.dueDate !== undefined)        syncSnake.due_date = syncPatch.dueDate || null;
+        if (syncPatch.executionDate !== undefined)  syncSnake.execution_date = syncPatch.executionDate || null;
+        if (syncPatch.location !== undefined)       syncSnake.location = syncPatch.location;
+        if (syncPatch.status !== undefined)         syncSnake.status = syncPatch.status;
+        if (syncPatch.priority !== undefined)       syncSnake.priority = syncPatch.priority;
+
+        const siblingIds = siblings.map(r => r.id).join(',');
+        const batchRows = await supabaseRequest(
+          config,
+          `project_tasks?id=in.(${siblingIds})`,
+          {
+            method: 'PATCH',
+            headers: { Prefer: 'return=representation' },
+            body: JSON.stringify(syncSnake),
+          }
+        );
+        if (Array.isArray(batchRows)) {
+          batchRows.forEach(r => affectedItems.push(normalizeTaskFromSupabase(r)));
+        }
+      }
+    }
+  } else {
+    if (Object.keys(syncPatch).length > 0) {
+      const data = loadSeedData();
+      ensureProjectTasksData(data);
+      let changed = false;
+      for (let i = 0; i < data.projectTasks.length; i++) {
+        const t = data.projectTasks[i];
+        if (t.id === taskId || t.projectId !== projectId) continue;
+        const match = supplierId
+          ? t.supplierId === supplierId
+          : t.supplierDisplay === supplierDisplay;
+        if (!match) continue;
+        const updated = { ...t };
+        for (const field of TASK_SYNC_FIELDS) {
+          if (syncPatch[field] !== undefined) updated[field] = syncPatch[field];
+        }
+        updated.updatedAt = now;
+        data.projectTasks[i] = updated;
+        affectedItems.push(normalizeLocalTask(updated));
+        changed = true;
+      }
+      if (changed) saveSeedData(data);
     }
   }
-  updated.updatedAt = now;
-  data.projectTasks[idx] = updated;
-  saveSeedData(data);
-  return normalizeLocalTask(updated);
+
+  return { item: updatedTask, affectedCount: affectedItems.length, tasks: affectedItems };
 }
 
 module.exports = {
