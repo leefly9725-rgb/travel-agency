@@ -2308,6 +2308,8 @@ async function handleApi(request, response, url) {
         "id", "projectId", "sourceQuoteItemId", "sourceGroupId", "sourceGroupTitle",
         "supplierId", "supplierCatalogItemId", "supplierDisplay",
         "createdAt", "updatedAt",
+        // B1-05A: baseline cost — read-only after generation
+        "quoteUnitCost", "quoteTotalCost", "supplierLockedAt",
       ]);
       const applyToSameSupplier = !!body.applyToSameSupplier;
       const patch = {};

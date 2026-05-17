@@ -5,6 +5,13 @@ const EXECUTION_STATUS_LABELS = {
   cancelled: "已取消",
 };
 
+const COST_STATUS_LABELS = {
+  not_started: "未开始",
+  estimated: "已估算",
+  confirmed: "已确认",
+  changed: "有变更",
+};
+
 const SUPPLIER_STATUS_LABELS = {
   not_required: "无需供应商",
   not_started: "未开始",
@@ -153,6 +160,17 @@ function renderExecutionStatsBar(items) {
     ["已完成", done, "done", false],
     ["供应商已确认", confirmed, "confirmed", false],
   ];
+
+  // B1-05A cost summary
+  const quoteCostTotal = items.reduce((s, i) => s + (i.quoteTotalCost || 0), 0);
+  const actualCostTotal = items.reduce((s, i) => s + (i.actualTotalCost || 0), 0);
+  const costDiff = actualCostTotal - quoteCostTotal;
+  const lockedCount = items.filter(i => i.supplierLocked).length;
+  const costConfirmedCount = items.filter(i => i.costStatus === "confirmed").length;
+  const hasCostData = items.some(i => i.quoteTotalCost != null || i.actualTotalCost != null);
+  const diffClass = costDiff > 0 ? "cost-over" : costDiff < 0 ? "cost-under" : "cost-even";
+  const diffSign = costDiff > 0 ? "+" : "";
+
   return `
     <div class="ei-stats-grid" aria-label="执行清单统计">
       ${stats.map(([label, value, key, isRisk]) => `
@@ -162,6 +180,29 @@ function renderExecutionStatsBar(items) {
         </div>
       `).join("")}
     </div>
+    ${hasCostData ? `
+    <div class="ei-cost-summary" aria-label="成本摘要">
+      <div class="ei-cost-card">
+        <span>报价成本合计</span>
+        <strong>${formatCurrency(quoteCostTotal, "EUR")}</strong>
+      </div>
+      <div class="ei-cost-card">
+        <span>实际成本合计</span>
+        <strong>${formatCurrency(actualCostTotal, "EUR")}</strong>
+      </div>
+      <div class="ei-cost-card ${diffClass}">
+        <span>成本差异</span>
+        <strong>${diffSign}${formatCurrency(costDiff, "EUR")}</strong>
+      </div>
+      <div class="ei-cost-card">
+        <span>已锁定供应商</span>
+        <strong>${lockedCount} 项</strong>
+      </div>
+      <div class="ei-cost-card">
+        <span>成本已确认</span>
+        <strong>${costConfirmedCount} 项</strong>
+      </div>
+    </div>` : ""}
   `;
 }
 
@@ -770,7 +811,18 @@ function renderExecutionItemsSection(items, projectId) {
     const pendingCount = groupItems.filter(i => i.status === "pending").length;
     const supplierStatus = getDominantSupplierStatus(groupItems);
     const groupLabel = hasSupplier ? esc(supplierName) : `未指定供应商 · ${esc(fallbackTitle)}`;
-    const rows = groupItems.map((item) => `
+    const rows = groupItems.map((item) => {
+      const lockedBadge = item.supplierLocked
+        ? `<span class="ei-locked-badge">已锁定</span>` : "";
+      const costStatusBadge = item.costStatus && item.costStatus !== "not_started"
+        ? `<span class="ei-cost-status-badge ei-cost-status-${esc(item.costStatus)}">${esc(COST_STATUS_LABELS[item.costStatus] || item.costStatus)}</span>` : "";
+      const hasCost = item.actualTotalCost != null || item.quoteTotalCost != null;
+      const costMini = hasCost ? `
+        <div class="ei-cost-mini">
+          ${item.actualTotalCost != null ? `<span class="ei-cost-actual">${formatCurrency(item.actualTotalCost, item.costCurrency || "EUR")}</span>` : ""}
+          ${item.quoteTotalCost != null ? `<span class="ei-cost-quote">报 ${formatCurrency(item.quoteTotalCost, item.costCurrency || "EUR")}</span>` : ""}
+        </div>` : "";
+      return `
       <tr id="ei-row-${esc(item.id)}" data-item-id="${esc(item.id)}">
         <td class="ei-cell">${esc(getExecutionCategoryLabel(item))}</td>
         <td class="ei-cell ei-cell-title" title="${esc(item.notes || "")}">${esc(item.title || "—")}</td>
@@ -787,13 +839,15 @@ function renderExecutionItemsSection(items, projectId) {
           <span class="ei-sup-badge ei-sup-${esc(item.supplierStatus)}">
             ${esc(SUPPLIER_STATUS_LABELS[item.supplierStatus] || item.supplierStatus)}
           </span>
+          ${lockedBadge}${costStatusBadge}${costMini}
         </td>
         <td class="ei-cell ei-cell-actions">
           <button type="button" class="button-link small-link ei-edit-btn" data-item-id="${esc(item.id)}">编辑</button>
           <button type="button" class="button-link small-link danger-link ei-delete-btn" data-item-id="${esc(item.id)}">删除</button>
         </td>
       </tr>
-    `).join("");
+    `;
+    }).join("");
 
     return `
       <div class="ei-group supplier-execution-group${hasSupplier ? "" : " ei-group-no-supplier"}">
@@ -925,6 +979,58 @@ function renderExecutionItemEditRow(item) {
               <label>备注</label>
               <textarea name="notes">${esc(item.notes || "")}</textarea>
             </div>
+            </div>
+          </div>
+          <div class="ei-edit-section ei-cost-section">
+            <h4>供应商锁定 &amp; 实际成本 <span class="ei-cost-section-tag">内部</span></h4>
+            <div class="ei-cost-edit-grid">
+              <div class="ei-edit-field">
+                <label>当前供应商</label>
+                <span class="ei-readonly-value">${esc(item.supplierDisplay || item.supplierId || "—")}</span>
+              </div>
+              <div class="ei-edit-field ei-edit-field-checkbox">
+                <label class="ei-checkbox-label">
+                  <input type="checkbox" name="supplierLocked" value="1"${item.supplierLocked ? " checked" : ""} />
+                  <span>供应商已锁定</span>
+                </label>
+                ${item.supplierLockedAt ? `<span class="ei-locked-at">锁定于 ${esc(item.supplierLockedAt.slice(0, 10))}</span>` : ""}
+              </div>
+              <div class="ei-edit-field">
+                <label>报价成本单价 <span class="ei-readonly-tag">只读</span></label>
+                <span class="ei-readonly-value">${item.quoteUnitCost != null ? formatCurrency(item.quoteUnitCost, item.costCurrency || "EUR") : "—"}</span>
+              </div>
+              <div class="ei-edit-field">
+                <label>报价成本小计 <span class="ei-readonly-tag">只读</span></label>
+                <span class="ei-readonly-value">${item.quoteTotalCost != null ? formatCurrency(item.quoteTotalCost, item.costCurrency || "EUR") : "—"}</span>
+              </div>
+              <div class="ei-edit-field">
+                <label>实际成本单价</label>
+                <input type="number" name="actualUnitCost" min="0" step="0.01" value="${item.actualUnitCost != null ? item.actualUnitCost : ""}" placeholder="留空则不修改" />
+              </div>
+              <div class="ei-edit-field">
+                <label>实际成本小计</label>
+                <input type="number" name="actualTotalCost" min="0" step="0.01" value="${item.actualTotalCost != null ? item.actualTotalCost : ""}" placeholder="留空则按单价×数量推导" />
+              </div>
+              <div class="ei-edit-field">
+                <label>成本币种</label>
+                <select name="costCurrency">
+                  ${["EUR", "CNY", "RSD", "KM", "ALL"].map(c => `<option value="${c}"${(item.costCurrency || "EUR") === c ? " selected" : ""}>${c}</option>`).join("")}
+                </select>
+              </div>
+              <div class="ei-edit-field">
+                <label>成本状态</label>
+                <select name="costStatus">
+                  ${Object.entries(COST_STATUS_LABELS).map(([v, l]) => `<option value="${v}"${(item.costStatus || "not_started") === v ? " selected" : ""}>${l}</option>`).join("")}
+                </select>
+              </div>
+              <div class="ei-edit-field ei-edit-field-wide">
+                <label>供应商锁定备注</label>
+                <textarea name="supplierLockNotes" rows="2">${esc(item.supplierLockNotes || "")}</textarea>
+              </div>
+              <div class="ei-edit-field ei-edit-field-wide">
+                <label>成本备注</label>
+                <textarea name="costNotes" rows="2">${esc(item.costNotes || "")}</textarea>
+              </div>
             </div>
           </div>
           <div class="ei-edit-actions">
@@ -1072,12 +1178,21 @@ function setupEditFormHandlers(projectId, itemId) {
     const submitBtn = form.querySelector("button[type=submit]");
     const formData = new FormData(form);
     const NULL_ON_EMPTY = new Set(["plannedDate", "startDate", "endDate", "quantity"]);
+    const NUMBER_FIELDS = new Set(["actualUnitCost", "actualTotalCost"]);
     const patch = {};
     for (const [k, v] of formData.entries()) {
-      if (k === "applyToSameSupplier") continue;
-      patch[k] = (v === "" && NULL_ON_EMPTY.has(k)) ? null : v;
+      if (k === "applyToSameSupplier" || k === "supplierLocked") continue;
+      if (v === "" && NULL_ON_EMPTY.has(k)) { patch[k] = null; continue; }
+      if (v === "" && NUMBER_FIELDS.has(k)) { patch[k] = null; continue; }
+      patch[k] = v;
     }
     if (patch.quantity !== undefined && patch.quantity !== null) patch.quantity = Number(patch.quantity);
+    if (patch.actualUnitCost !== undefined && patch.actualUnitCost !== null) patch.actualUnitCost = Number(patch.actualUnitCost);
+    if (patch.actualTotalCost !== undefined && patch.actualTotalCost !== null) patch.actualTotalCost = Number(patch.actualTotalCost);
+
+    // checkbox: supplierLocked (unchecked → not in FormData → must send false explicitly)
+    const supplierLockedCb = form.querySelector('input[name="supplierLocked"]');
+    if (supplierLockedCb) patch.supplierLocked = supplierLockedCb.checked;
 
     const syncCheckbox = form.querySelector('input[name="applyToSameSupplier"]');
     if (syncCheckbox && syncCheckbox.checked && !syncCheckbox.disabled) {

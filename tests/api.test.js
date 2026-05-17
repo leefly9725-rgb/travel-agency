@@ -3124,3 +3124,237 @@ test("B1-04A: applyToSameSupplier does not affect tasks from different supplier"
     assert.equal(sup2After.assignee, sup2AssigneeBefore, "SUP-002 task must not be affected by SUP-001 sync");
   });
 });
+
+// ── B1-05A: 执行项供应商锁定 + 实际成本 ───────────────────────────────────────
+
+async function setupProjectWithSupplierItems(port) {
+  seedProjectBasedQuoteWithTwoSupplierItems();
+  const convertRes = await apiFetch(port, `/api/quotes/Q-PB-S/convert-to-project`, { method: "POST" });
+  const { id: projectId } = await convertRes.json();
+  await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+  return projectId;
+}
+
+test("B1-05A: normalize — new cost fields present with defaults", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    assert.ok(items.length > 0, "should have execution items");
+    const item = items[0];
+    assert.ok("quoteUnitCost" in item, "quoteUnitCost should be present");
+    assert.ok("quoteTotalCost" in item, "quoteTotalCost should be present");
+    assert.ok("actualUnitCost" in item, "actualUnitCost should be present");
+    assert.ok("actualTotalCost" in item, "actualTotalCost should be present");
+    assert.ok("costCurrency" in item, "costCurrency should be present");
+    assert.ok("costStatus" in item, "costStatus should be present");
+    assert.ok("supplierLocked" in item, "supplierLocked should be present");
+    assert.ok("supplierLockedAt" in item, "supplierLockedAt should be present");
+    assert.ok("supplierLockNotes" in item, "supplierLockNotes should be present");
+    assert.ok("costNotes" in item, "costNotes should be present");
+    assert.equal(item.costStatus, "not_started", "costStatus default should be not_started");
+    assert.equal(item.supplierLocked, false, "supplierLocked default should be false");
+    assert.equal(item.costCurrency, "EUR", "costCurrency default should be EUR");
+    assert.equal(item.actualUnitCost, null, "actualUnitCost initial should be null");
+    assert.equal(item.actualTotalCost, null, "actualTotalCost initial should be null");
+  });
+});
+
+test("B1-05A: generate from snapshot carries quoteUnitCost / quoteTotalCost", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, `/api/quotes/Q-PB/convert-to-project`, { method: "POST" });
+    assert.equal(convertRes.status, 201);
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    assert.ok(items.length > 0, "should have execution items");
+
+    // quoteSnapshot must not be modified
+    const project = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const snapshotStr = JSON.stringify(project.quoteSnapshot);
+    assert.ok(!snapshotStr.includes('"actualUnitCost"'), "quoteSnapshot must not contain actualUnitCost");
+    assert.ok(!snapshotStr.includes('"supplierLocked"'), "quoteSnapshot must not contain supplierLocked");
+  });
+});
+
+test("B1-05A: PATCH actualUnitCost and costStatus succeeds", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actualUnitCost: 120.5, costStatus: "estimated", costNotes: "预估成本" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    const updated = result.item || result;
+    assert.equal(updated.actualUnitCost, 120.5, "actualUnitCost should be updated");
+    assert.equal(updated.costStatus, "estimated", "costStatus should be updated");
+    assert.equal(updated.costNotes, "预估成本", "costNotes should be updated");
+  });
+});
+
+test("B1-05A: PATCH actualUnitCost negative returns 400", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actualUnitCost: -50 }),
+    });
+    assert.equal(patchRes.status, 400, "negative actualUnitCost should return 400");
+  });
+});
+
+test("B1-05A: PATCH costStatus invalid value returns 400", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ costStatus: "invalid_value" }),
+    });
+    assert.equal(patchRes.status, 400, "invalid costStatus should return 400");
+  });
+});
+
+test("B1-05A: PATCH supplierLocked=true auto-sets supplierLockedAt", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const itemId = items[0].id;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierLocked: true, supplierLockNotes: "合同已签" }),
+    });
+    assert.equal(patchRes.status, 200);
+    const result = await patchRes.json();
+    const updated = result.item || result;
+    assert.equal(updated.supplierLocked, true, "supplierLocked should be true");
+    assert.ok(updated.supplierLockedAt, "supplierLockedAt should be set automatically");
+    assert.equal(updated.supplierLockNotes, "合同已签", "supplierLockNotes should be saved");
+  });
+});
+
+test("B1-05A: PATCH supplierLocked=false clears supplierLockedAt", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const itemId = items[0].id;
+
+    // first lock it
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierLocked: true }),
+    });
+
+    // then unlock
+    const unlockRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierLocked: false }),
+    });
+    assert.equal(unlockRes.status, 200);
+    const result = await unlockRes.json();
+    const updated = result.item || result;
+    assert.equal(updated.supplierLocked, false, "supplierLocked should be false");
+    assert.ok(!updated.supplierLockedAt, "supplierLockedAt should be cleared");
+  });
+});
+
+test("B1-05A: PATCH cannot overwrite quoteUnitCost or quoteTotalCost", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithExecutionItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const item = items[0];
+    const itemId = item.id;
+    const originalQuoteUnit = item.quoteUnitCost;
+    const originalQuoteTotal = item.quoteTotalCost;
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(itemId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quoteUnitCost: 9999, quoteTotalCost: 9999 }),
+    });
+    assert.equal(patchRes.status, 200, "PATCH should succeed but ignore protected fields");
+    const result = await patchRes.json();
+    const updated = result.item || result;
+    assert.equal(updated.quoteUnitCost, originalQuoteUnit, "quoteUnitCost must not be overwritten");
+    assert.equal(updated.quoteTotalCost, originalQuoteTotal, "quoteTotalCost must not be overwritten");
+  });
+});
+
+test("B1-05A: applyToSameSupplier does not sync actualUnitCost or costNotes", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierItems(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const sup1Items = items.filter(i => i.supplierId === "SUP-001");
+    assert.ok(sup1Items.length >= 2, `need at least 2 SUP-001 items, got ${sup1Items.length}`);
+
+    const targetId = sup1Items[0].id;
+    const siblingId = sup1Items[1].id;
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(targetId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        actualUnitCost: 500,
+        costNotes: "私有成本备注",
+        status: "in_progress",
+        applyToSameSupplier: true,
+      }),
+    });
+
+    const afterItems = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const sibling = afterItems.find(i => i.id === siblingId);
+    assert.ok(sibling, "sibling should exist");
+    assert.notEqual(sibling.actualUnitCost, 500, "actualUnitCost must NOT be synced to sibling");
+    assert.notEqual(sibling.costNotes, "私有成本备注", "costNotes must NOT be synced to sibling");
+    assert.equal(sibling.status, "in_progress", "status should be synced (existing behavior)");
+  });
+});
+
+test("B1-05A: client-facing quote API does not expose internal cost fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, `/api/quotes/Q-PB/convert-to-project`, { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    // patch some cost data
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    if (items.length > 0) {
+      await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(items[0].id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualUnitCost: 999, supplierLocked: true, costNotes: "机密" }),
+      });
+    }
+
+    // client-facing project quotation route must not expose cost fields
+    const project = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const sourceQuoteId = project.sourceQuoteId;
+    if (sourceQuoteId) {
+      const quoteRes = await apiFetch(port, `/api/quotes/${encodeURIComponent(sourceQuoteId)}`);
+      if (quoteRes.status === 200) {
+        const quoteBody = JSON.stringify(await quoteRes.json());
+        assert.ok(!quoteBody.includes('"actualUnitCost"'), "quote API must not expose actualUnitCost");
+        assert.ok(!quoteBody.includes('"supplierLocked"'), "quote API must not expose supplierLocked");
+        assert.ok(!quoteBody.includes('"costNotes"'), "quote API must not expose costNotes");
+      }
+    }
+  });
+});

@@ -34,6 +34,17 @@ function normalizeExecutionItemFromSupabase(row) {
     sortOrder: Number(row.sort_order || 0),
     createdAt: row.created_at || '',
     updatedAt: row.updated_at || '',
+    // B1-05A: cost fields
+    quoteUnitCost: row.quote_unit_cost != null ? Number(row.quote_unit_cost) : null,
+    quoteTotalCost: row.quote_total_cost != null ? Number(row.quote_total_cost) : null,
+    actualUnitCost: row.actual_unit_cost != null ? Number(row.actual_unit_cost) : null,
+    actualTotalCost: row.actual_total_cost != null ? Number(row.actual_total_cost) : null,
+    costCurrency: row.cost_currency || 'EUR',
+    costStatus: row.cost_status || 'not_started',
+    supplierLocked: !!row.supplier_locked,
+    supplierLockedAt: row.supplier_locked_at || null,
+    supplierLockNotes: row.supplier_lock_notes || '',
+    costNotes: row.cost_notes || '',
   };
 }
 
@@ -62,6 +73,17 @@ function buildSupabaseExecutionItemPayload(item) {
     supplier_catalog_item_id: item.supplierCatalogItemId || '',
     supplier_display: item.supplierDisplay || '',
     sort_order: Number(item.sortOrder || 0),
+    // B1-05A: cost fields
+    quote_unit_cost: item.quoteUnitCost != null ? Number(item.quoteUnitCost) : null,
+    quote_total_cost: item.quoteTotalCost != null ? Number(item.quoteTotalCost) : null,
+    actual_unit_cost: item.actualUnitCost != null ? Number(item.actualUnitCost) : null,
+    actual_total_cost: item.actualTotalCost != null ? Number(item.actualTotalCost) : null,
+    cost_currency: item.costCurrency || 'EUR',
+    cost_status: item.costStatus || 'not_started',
+    supplier_locked: !!item.supplierLocked,
+    supplier_locked_at: item.supplierLockedAt || null,
+    supplier_lock_notes: item.supplierLockNotes || '',
+    cost_notes: item.costNotes || '',
   };
   const payload = {};
   for (const [k, v] of Object.entries(raw)) {
@@ -97,6 +119,17 @@ function normalizeLocalExecutionItem(item) {
     sortOrder: Number(item.sortOrder || 0),
     createdAt: item.createdAt || '',
     updatedAt: item.updatedAt || '',
+    // B1-05A: cost fields
+    quoteUnitCost: item.quoteUnitCost != null ? Number(item.quoteUnitCost) : null,
+    quoteTotalCost: item.quoteTotalCost != null ? Number(item.quoteTotalCost) : null,
+    actualUnitCost: item.actualUnitCost != null ? Number(item.actualUnitCost) : null,
+    actualTotalCost: item.actualTotalCost != null ? Number(item.actualTotalCost) : null,
+    costCurrency: item.costCurrency || 'EUR',
+    costStatus: item.costStatus || 'not_started',
+    supplierLocked: !!item.supplierLocked,
+    supplierLockedAt: item.supplierLockedAt || null,
+    supplierLockNotes: item.supplierLockNotes || '',
+    costNotes: item.costNotes || '',
   };
 }
 
@@ -177,6 +210,12 @@ function generateItemsFromSnapshot(projectId, quoteSnapshot) {
       const unit = item.unit || '';
       const sortOrder = gi * 1000 + ii;
 
+      const quoteUnitCost = item.costUnitPrice != null ? Number(item.costUnitPrice)
+        : item.cost_unit_price != null ? Number(item.cost_unit_price) : null;
+      const quoteTotalCost = item.costSubtotal != null ? Number(item.costSubtotal)
+        : item.cost_subtotal != null ? Number(item.cost_subtotal) : null;
+      const costCurrency = quoteSnapshot.currency || 'EUR';
+
       items.push({
         id: generateExecutionItemId(),
         projectId,
@@ -203,6 +242,17 @@ function generateItemsFromSnapshot(projectId, quoteSnapshot) {
         sortOrder,
         createdAt: now,
         updatedAt: now,
+        // B1-05A: cost baseline from snapshot (read-only after generation)
+        quoteUnitCost,
+        quoteTotalCost,
+        actualUnitCost: null,
+        actualTotalCost: null,
+        costCurrency,
+        costStatus: 'not_started',
+        supplierLocked: false,
+        supplierLockedAt: null,
+        supplierLockNotes: '',
+        costNotes: '',
       });
     }
   }
@@ -266,10 +316,14 @@ async function generateExecutionItemsFromProject(config, projectId) {
 
 const VALID_STATUSES = new Set(['pending', 'in_progress', 'done', 'cancelled']);
 const VALID_SUPPLIER_STATUSES = new Set(['not_required', 'not_started', 'inquiring', 'quoted', 'selected', 'confirmed']);
+const VALID_COST_STATUSES = new Set(['not_started', 'estimated', 'confirmed', 'changed']);
 const UPDATABLE_FIELDS = new Set([
   'title', 'description', 'quantity', 'unit',
   'plannedDate', 'startDate', 'endDate',
   'location', 'owner', 'status', 'supplierStatus', 'notes', 'sortOrder',
+  // B1-05A: cost fields (quoteUnitCost / quoteTotalCost are NOT here — protected)
+  'actualUnitCost', 'actualTotalCost', 'costCurrency', 'costStatus',
+  'supplierLocked', 'supplierLockNotes', 'costNotes',
 ]);
 
 const SYNC_FIELDS = new Set([
@@ -292,6 +346,37 @@ async function updateExecutionItem(config, projectId, itemId, patch, options = {
     throw err;
   }
 
+  // B1-05A validations
+  if (patch.costStatus !== undefined && !VALID_COST_STATUSES.has(patch.costStatus)) {
+    const err = new Error(`costStatus 不合法：${patch.costStatus}，允许值：${[...VALID_COST_STATUSES].join(', ')}`);
+    err.status = 400;
+    throw err;
+  }
+  if (patch.actualUnitCost !== null && patch.actualUnitCost !== undefined) {
+    const v = Number(patch.actualUnitCost);
+    if (Number.isNaN(v) || v < 0) {
+      const err = new Error('actualUnitCost 必须是 >= 0 的数字');
+      err.status = 400;
+      throw err;
+    }
+    patch.actualUnitCost = v;
+  }
+  if (patch.actualTotalCost !== null && patch.actualTotalCost !== undefined) {
+    const v = Number(patch.actualTotalCost);
+    if (Number.isNaN(v) || v < 0) {
+      const err = new Error('actualTotalCost 必须是 >= 0 的数字');
+      err.status = 400;
+      throw err;
+    }
+    patch.actualTotalCost = v;
+  }
+  if (patch.costCurrency !== undefined && !patch.costCurrency) {
+    patch.costCurrency = 'EUR';
+  }
+  if (patch.supplierLocked !== undefined) {
+    patch.supplierLocked = !!patch.supplierLocked;
+  }
+
   const TEXT_NOT_NULL = ['title', 'description', 'unit', 'location', 'owner', 'notes'];
   for (const f of TEXT_NOT_NULL) {
     if (patch[f] === null) patch[f] = '';
@@ -301,15 +386,17 @@ async function updateExecutionItem(config, projectId, itemId, patch, options = {
   let updatedItem;
 
   if (config.enabled) {
-    const existing = await supabaseRequest(
+    // fetch existing row (full) to check existence and read supplierLocked for auto-timestamp
+    const existingFull = await supabaseRequest(
       config,
-      `project_execution_items?select=id&id=eq.${encodeURIComponent(itemId)}&project_id=eq.${encodeURIComponent(projectId)}`
+      `project_execution_items?select=*&id=eq.${encodeURIComponent(itemId)}&project_id=eq.${encodeURIComponent(projectId)}`
     );
-    if (!Array.isArray(existing) || existing.length === 0) {
+    if (!Array.isArray(existingFull) || existingFull.length === 0) {
       const err = new Error('执行项不存在。');
       err.status = 404;
       throw err;
     }
+    const existingRow = existingFull[0];
 
     const snakePatch = { updated_at: now };
     if (patch.title !== undefined) snakePatch.title = patch.title;
@@ -325,6 +412,25 @@ async function updateExecutionItem(config, projectId, itemId, patch, options = {
     if (patch.supplierStatus !== undefined) snakePatch.supplier_status = patch.supplierStatus;
     if (patch.notes !== undefined) snakePatch.notes = patch.notes;
     if (patch.sortOrder !== undefined) snakePatch.sort_order = Number(patch.sortOrder);
+    // B1-05A: cost fields
+    if (patch.actualUnitCost !== undefined) snakePatch.actual_unit_cost = patch.actualUnitCost != null ? Number(patch.actualUnitCost) : null;
+    if (patch.actualTotalCost !== undefined) snakePatch.actual_total_cost = patch.actualTotalCost != null ? Number(patch.actualTotalCost) : null;
+    if (patch.costCurrency !== undefined) snakePatch.cost_currency = patch.costCurrency || 'EUR';
+    if (patch.costStatus !== undefined) snakePatch.cost_status = patch.costStatus;
+    if (patch.supplierLocked !== undefined) {
+      snakePatch.supplier_locked = !!patch.supplierLocked;
+      const wasLocked = !!existingRow.supplier_locked;
+      if (!wasLocked && !!patch.supplierLocked) snakePatch.supplier_locked_at = now;
+      if (wasLocked && !patch.supplierLocked) snakePatch.supplier_locked_at = null;
+    }
+    if (patch.supplierLockNotes !== undefined) snakePatch.supplier_lock_notes = patch.supplierLockNotes || '';
+    if (patch.costNotes !== undefined) snakePatch.cost_notes = patch.costNotes || '';
+    // auto-derive actualTotalCost from actualUnitCost × quantity if not provided
+    if (patch.actualUnitCost !== undefined && patch.actualUnitCost !== null
+        && patch.actualTotalCost === undefined) {
+      const qty = existingRow.quantity != null ? Number(existingRow.quantity) : null;
+      if (qty != null) snakePatch.actual_total_cost = Number(patch.actualUnitCost) * qty;
+    }
 
     const rows = await supabaseRequest(
       config,
@@ -347,13 +453,29 @@ async function updateExecutionItem(config, projectId, itemId, patch, options = {
       err.status = 404;
       throw err;
     }
-    const updated = { ...data.projectExecutionItems[idx] };
+    const existing = data.projectExecutionItems[idx];
+    const updated = { ...existing };
     for (const field of UPDATABLE_FIELDS) {
       if (patch[field] !== undefined) {
         if (field === 'quantity') updated[field] = patch[field] != null ? Number(patch[field]) : null;
         else if (field === 'sortOrder') updated[field] = Number(patch[field]);
+        else if (field === 'actualUnitCost' || field === 'actualTotalCost') {
+          updated[field] = patch[field] != null ? Number(patch[field]) : null;
+        }
+        else if (field === 'supplierLocked') {
+          const wasLocked = !!existing.supplierLocked;
+          updated.supplierLocked = !!patch.supplierLocked;
+          if (!wasLocked && updated.supplierLocked) updated.supplierLockedAt = now;
+          if (wasLocked && !updated.supplierLocked) updated.supplierLockedAt = null;
+        }
         else updated[field] = patch[field];
       }
+    }
+    // auto-derive actualTotalCost from actualUnitCost × quantity if not provided
+    if (patch.actualUnitCost !== undefined && patch.actualUnitCost !== null
+        && patch.actualTotalCost === undefined) {
+      const qty = existing.quantity != null ? Number(existing.quantity) : null;
+      if (qty != null) updated.actualTotalCost = Number(patch.actualUnitCost) * qty;
     }
     updated.updatedAt = now;
     data.projectExecutionItems[idx] = updated;
