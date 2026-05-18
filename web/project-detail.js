@@ -1435,8 +1435,7 @@ function renderTaskEditRow(task) {
         <div class="pt-sync-row">
           <label class="pt-sync-label${task.supplierId || task.supplierDisplay ? "" : " pt-sync-label-disabled"}">
             <input type="checkbox" name="applyToSameSupplier" value="1"${task.supplierId || task.supplierDisplay ? "" : " disabled"} />
-            同步至同供应商其他任务
-            ${!(task.supplierId || task.supplierDisplay) ? '<span class="pt-sync-tip">（此任务无供应商，不适用）</span>' : ""}
+            <span class="pt-sync-main">同步至同供应商其他任务</span>${!(task.supplierId || task.supplierDisplay) ? '<span class="pt-sync-tip">（此任务无供应商，不适用）</span>' : ""}
           </label>
         </div>
         <div class="pt-edit-actions">

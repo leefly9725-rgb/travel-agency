@@ -4032,10 +4032,15 @@ body.proj-column-resizing * {
 }
 
 .ei-sync-label input[type="checkbox"] {
+  flex: 0 0 14px;
   width: 14px;
   height: 14px;
+  min-width: 14px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 3px;
   accent-color: var(--accent);
-  flex-shrink: 0;
 }
 
 .ei-sync-label input:disabled + span {
@@ -6330,11 +6335,26 @@ details[open] .panel-summary::before {
 .pt-sync-label {
   display: inline-flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
+  max-width: 100%;
   font-size: 12px;
   font-weight: 600;
   color: var(--text);
+  line-height: 1.45;
   cursor: pointer;
+}
+
+.pt-sync-label input[type="checkbox"] {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  min-width: 16px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border-radius: 4px;
+  accent-color: var(--accent);
 }
 
 .pt-sync-label-disabled {
@@ -6342,9 +6362,19 @@ details[open] .panel-summary::before {
   cursor: default;
 }
 
+.pt-sync-label-disabled input[type="checkbox"] {
+  cursor: not-allowed;
+}
+
+.pt-sync-main {
+  white-space: normal;
+}
+
 .pt-sync-tip {
+  display: inline;
   font-weight: 400;
   color: var(--muted);
+  white-space: normal;
 }
 
 @media (max-width: 1100px) {
