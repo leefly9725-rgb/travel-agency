@@ -7687,6 +7687,16 @@ details[open] .panel-summary::before {
   margin-bottom: 10px;
   line-height: 1.5;
 }
+.invoice-currency-info {
+  background: #d1ecf1;
+  border: 1px solid #bee5eb;
+  border-radius: 5px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: #0c5460;
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
 .invoice-orig-amount-display {
   font-size: 12px;
   color: var(--muted);

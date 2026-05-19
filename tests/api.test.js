@@ -4066,9 +4066,15 @@ test("B1-05C: supplierInvoiceTextImports key missing from seed does not crash", 
 
 // ── B1-05C-FIX: 币种混算修复 + 供应商重复行修复 ──────────────────────────────
 
-test("B1-05C-FIX: RSD invoice to EUR project without projectCurrencyAmount returns 422", async () => {
+test("B1-05C-FIX: RSD invoice without manual amount and no exchange rate returns 422", async () => {
   await withServer(async (port) => {
     const projectId = await setupProjectWithSupplierCosts(port);
+
+    // Remove exchange rates from seed to simulate no rate available
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.exchangeRates = [];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
     const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -4079,7 +4085,7 @@ test("B1-05C-FIX: RSD invoice to EUR project without projectCurrencyAmount retur
     assert.equal(createRes.status, 201);
     const { id: importId } = await createRes.json();
 
-    // Apply WITHOUT projectCurrencyAmount — must reject 422
+    // Apply WITHOUT projectCurrencyAmount AND no exchange rate — must reject 422
     const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -4087,10 +4093,9 @@ test("B1-05C-FIX: RSD invoice to EUR project without projectCurrencyAmount retur
         supplierDisplay: "Tech Audio",
         costStatus: "confirmed",
         useSupplierTotal: true,
-        // deliberately omit projectCurrencyAmount
       }),
     });
-    assert.equal(applyRes.status, 422, "missing projectCurrencyAmount for cross-currency should return 422");
+    assert.equal(applyRes.status, 422, "no rate + no manual amount → should return 422");
     const body = await applyRes.json();
     assert.ok(body.error && body.error.length > 0, "error message should be present");
   });
@@ -4281,5 +4286,314 @@ test("B1-05C-FIX: client-facing APIs do not expose invoice raw text or actual co
         assert.ok(!qBody.includes('"supplierInvoiceTextImports"'), "quote API must not expose imports");
       }
     }
+  });
+});
+
+// ── B1-05D: 自动汇率折算 + 成本明细 entries + 成本节省/超支 ──────────────────
+
+// ── Helper: ensure default EUR/RSD rate exists in seed ──
+function ensureExchangeRate() {
+  const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+  if (!Array.isArray(data.exchangeRates)) data.exchangeRates = [];
+  if (!data.exchangeRates.some(r => r.baseCurrency === "EUR" && r.quoteCurrency === "RSD")) {
+    data.exchangeRates.push({
+      id: "ER-EUR-RSD-test",
+      baseCurrency: "EUR",
+      quoteCurrency: "RSD",
+      rate: 117.20,
+      rateDate: "2026-05-19",
+      source: "test_seed",
+      notes: "Test rate",
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+  }
+}
+
+test("B1-05D: GET /api/exchange-rates returns list including EUR/RSD rate", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const res = await apiFetch(port, "/api/exchange-rates");
+    assert.equal(res.status, 200);
+    const rates = await res.json();
+    assert.ok(Array.isArray(rates), "should return array");
+    const eurRsd = rates.find(r => r.baseCurrency === "EUR" && r.quoteCurrency === "RSD");
+    assert.ok(eurRsd, "EUR/RSD rate should exist");
+    assert.ok(Number(eurRsd.rate) > 0, "rate should be positive");
+  });
+});
+
+test("B1-05D: GET /api/exchange-rates/convert — RSD 120000 → EUR ~1023.89", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const res = await apiFetch(port, "/api/exchange-rates/convert?fromCurrency=RSD&toCurrency=EUR&amount=120000");
+    assert.equal(res.status, 200);
+    const result = await res.json();
+    assert.equal(result.conversionMethod, "auto");
+    assert.ok(Math.abs(result.convertedAmount - 1023.89) < 0.02, `Expected ~1023.89 got ${result.convertedAmount}`);
+  });
+});
+
+test("B1-05D: GET /api/exchange-rates/convert — EUR 1000 → RSD ~117200", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const res = await apiFetch(port, "/api/exchange-rates/convert?fromCurrency=EUR&toCurrency=RSD&amount=1000");
+    assert.equal(res.status, 200);
+    const result = await res.json();
+    assert.ok(Math.abs(result.convertedAmount - 117200) < 1, `Expected 117200 got ${result.convertedAmount}`);
+  });
+});
+
+test("B1-05D: GET /api/exchange-rates/convert — EUR→EUR same currency returns 500", async () => {
+  await withServer(async (port) => {
+    const res = await apiFetch(port, "/api/exchange-rates/convert?fromCurrency=EUR&toCurrency=EUR&amount=500");
+    assert.equal(res.status, 200);
+    const result = await res.json();
+    assert.equal(result.convertedAmount, 500);
+    assert.equal(result.conversionMethod, "same_currency");
+  });
+});
+
+test("B1-05D: POST /api/exchange-rates creates a rate record", async () => {
+  await withServer(async (port) => {
+    const res = await apiFetch(port, "/api/exchange-rates", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ baseCurrency: "EUR", quoteCurrency: "RSD", rate: 118.50, rateDate: "2026-05-20", source: "manual" }),
+    });
+    assert.equal(res.status, 201);
+    const rate = await res.json();
+    assert.ok(rate.id, "should have id");
+    assert.equal(rate.baseCurrency, "EUR");
+    assert.equal(Number(rate.rate), 118.50);
+  });
+});
+
+test("B1-05D: RSD invoice auto-converts to EUR without projectCurrencyAmount", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const c1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "AUTO SRB\nRačun: AUTO-001\nDatum: 01.05.2026\nUkupno za uplatu: 120.000,00 RSD" }),
+    })).json();
+    assert.equal(c1.currency, "RSD");
+
+    const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(c1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Auto SRB", costStatus: "confirmed", useSupplierTotal: true }),
+    });
+    assert.equal(applyRes.status, 200);
+    const { importRecord, supplierCost, entry } = await applyRes.json();
+
+    assert.equal(importRecord.currency, "RSD");
+    assert.equal(importRecord.totalWithTax, 120000);
+    assert.equal(supplierCost.costCurrency, "EUR");
+    assert.ok(Math.abs(supplierCost.actualTotalCost - 1023.89) < 0.02, `Expected ~1023.89 got ${supplierCost.actualTotalCost}`);
+    assert.equal(entry.conversionMethod, "auto");
+    assert.equal(entry.originalCurrency, "RSD");
+    assert.equal(entry.originalAmount, 120000);
+    assert.ok(Math.abs(entry.convertedAmount - 1023.89) < 0.02);
+  });
+});
+
+test("B1-05D: supplier-cost-entries accessible via GET API after apply", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const c1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "ENTRIES SRB\nRačun: E-001\nDatum: 01.05.2026\nUkupno za uplatu: 80.000,00 RSD" }),
+    })).json();
+
+    const { supplierCost } = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(c1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Entries SRB", costStatus: "confirmed", useSupplierTotal: true }),
+    })).json();
+
+    const entriesRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-cost-entries?supplierCostId=${encodeURIComponent(supplierCost.id)}`);
+    assert.equal(entriesRes.status, 200);
+    const entries = await entriesRes.json();
+    assert.ok(Array.isArray(entries) && entries.length === 1, "should have one entry");
+    assert.equal(entries[0].originalCurrency, "RSD");
+    assert.equal(entries[0].conversionMethod, "auto");
+  });
+});
+
+test("B1-05D: manual projectCurrencyAmount produces conversionMethod=manual_override", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const c1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "MANUAL SRB\nRačun: M-001\nDatum: 01.05.2026\nUkupno za uplatu: 120.000,00 RSD" }),
+    })).json();
+
+    const { supplierCost, entry } = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(c1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Manual SRB", projectCurrencyAmount: 1020, costStatus: "confirmed", useSupplierTotal: true }),
+    })).json();
+
+    assert.equal(supplierCost.actualTotalCost, 1020, "should use manual 1020, not auto 1023.89");
+    assert.equal(entry.conversionMethod, "manual_override");
+    assert.equal(entry.convertedAmount, 1020);
+  });
+});
+
+test("B1-05D: two invoices for same supplier accumulate, not overwrite", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    const i1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "MULTI\nRačun: M1\nDatum: 01.05.2026\nUkupno za uplatu: 120.000,00 RSD" }),
+    })).json();
+    const { supplierCost: spc1 } = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(i1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Multi Supplier", costStatus: "confirmed", useSupplierTotal: true }),
+    })).json();
+
+    const i2 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "MULTI\nRačun: M2\nDatum: 10.05.2026\nUkupno za uplatu: 80.000,00 RSD" }),
+    })).json();
+    const { supplierCost: spc2 } = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(i2.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Multi Supplier", targetCostRecordId: spc1.id, costStatus: "confirmed", useSupplierTotal: true }),
+    })).json();
+
+    assert.equal(spc2.id, spc1.id, "same SPC record, no duplicate");
+    // 120000/117.20 + 80000/117.20 = 200000/117.20
+    const expectedTotal = Math.round((200000 / 117.20) * 100) / 100;
+    assert.ok(Math.abs(spc2.actualTotalCost - expectedTotal) < 0.05, `Expected ~${expectedTotal} got ${spc2.actualTotalCost}`);
+
+    const entries = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-cost-entries?supplierCostId=${encodeURIComponent(spc1.id)}`)).json();
+    assert.equal(entries.length, 2, "should have 2 entries");
+
+    const costs = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`)).json();
+    const multiRows = costs.filter(c => c.supplierDisplay === "Multi Supplier");
+    assert.equal(multiRows.length, 1, "should have 1 SPC row");
+  });
+});
+
+test("B1-05D: no exchange rate + manual projectCurrencyAmount succeeds (manual_override)", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const seedData = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    seedData.exchangeRates = [];
+    fs.writeFileSync(tempDataFile, JSON.stringify(seedData, null, 2));
+
+    const c1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "NO RATE\nRačun: NR-01\nDatum: 01.05.2026\nUkupno za uplatu: 100.000,00 RSD" }),
+    })).json();
+
+    const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(c1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "No Rate", projectCurrencyAmount: 855, costStatus: "confirmed" }),
+    });
+    assert.equal(applyRes.status, 200);
+    const { supplierCost, entry } = await applyRes.json();
+    assert.equal(supplierCost.actualTotalCost, 855);
+    assert.equal(entry.conversionMethod, "manual_override");
+  });
+});
+
+test("B1-05D: duplicate apply returns 400, no duplicate entry", async () => {
+  await withServer(async (port) => {
+    ensureExchangeRate();
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const c1 = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "DUP\nRačun: D-001\nDatum: 01.05.2026\nUkupno za uplatu: 50.000,00 RSD" }),
+    })).json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(c1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Dup", costStatus: "confirmed" }),
+    });
+
+    const r2 = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(c1.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Dup", costStatus: "confirmed" }),
+    });
+    assert.equal(r2.status, 400, "second apply should return 400");
+  });
+});
+
+test("B1-05D: cost-summary has costSavingOrOverrun — positive = saving", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Cheap", actualTotalCost: 5000, costCurrency: "EUR", costStatus: "confirmed", useSupplierTotal: true }),
+    });
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    assert.ok("costSavingOrOverrun" in summary, "must have costSavingOrOverrun");
+    const expected = Math.round((summary.quotedCostTotal - summary.actualCostTotal) * 100) / 100;
+    assert.ok(Math.abs(summary.costSavingOrOverrun - expected) < 0.01, `costSavingOrOverrun should = quotedCostTotal - actualCostTotal`);
+  });
+});
+
+test("B1-05D: supplierRows have costSavingOrOverrun field", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "SavingRow", actualTotalCost: 1000, costCurrency: "EUR", costStatus: "confirmed", useSupplierTotal: true }),
+    });
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    const row = summary.supplierRows.find(r => r.supplierDisplay === "SavingRow");
+    assert.ok(row, "should find row");
+    assert.ok("costSavingOrOverrun" in row, "supplierRow must have costSavingOrOverrun");
+    assert.ok(Math.abs(row.costSavingOrOverrun - (row.quotedTotalCost - row.appliedActualCost)) < 0.01);
+  });
+});
+
+test("B1-05D: seed missing exchangeRates/supplierProjectCostEntries keys does not crash", async () => {
+  await withServer(async (port) => {
+    const seedData = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    delete seedData.exchangeRates;
+    delete seedData.supplierProjectCostEntries;
+    fs.writeFileSync(tempDataFile, JSON.stringify(seedData, null, 2));
+
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`);
+    assert.equal(res.status, 200, "should not crash");
+  });
+});
+
+test("B1-05D: client-facing APIs do not expose exchange_rates or cost_entries", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const project = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const pBody = JSON.stringify(project);
+    assert.ok(!pBody.includes('"exchangeRates"'), "must not expose exchangeRates");
+    assert.ok(!pBody.includes('"supplierProjectCostEntries"'), "must not expose supplierProjectCostEntries");
+    assert.ok(!pBody.includes('"actualGrossProfit"'), "must not expose actualGrossProfit");
   });
 });

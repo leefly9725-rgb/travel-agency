@@ -29,6 +29,8 @@ const projectExecutionStore = require("./services/projectExecutionStore");
 const projectTaskStore = require("./services/projectTaskStore");
 const supplierProjectCostStore = require("./services/supplierProjectCostStore");
 const supplierInvoiceTextImportStore = require("./services/supplierInvoiceTextImportStore");
+const exchangeRateStore = require("./services/exchangeRateStore");
+const supplierProjectCostEntryStore = require("./services/supplierProjectCostEntryStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
@@ -2432,6 +2434,74 @@ async function handleApi(request, response, url) {
       try {
         const summary = await supplierProjectCostStore.buildProjectCostSummary(supabase, projectId);
         sendJson(response, 200, summary);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // ── B1-05D: 汇率路由 ──────────────────────────────────────────────────────────
+
+  // GET /api/exchange-rates
+  if (request.method === "GET" && url.pathname === "/api/exchange-rates") {
+    const supabase = getSupabaseConfig();
+    const filters = {};
+    if (url.searchParams.get("baseCurrency")) filters.baseCurrency = url.searchParams.get("baseCurrency");
+    if (url.searchParams.get("quoteCurrency")) filters.quoteCurrency = url.searchParams.get("quoteCurrency");
+    try {
+      const rates = await exchangeRateStore.listExchangeRates(supabase, filters);
+      sendJson(response, 200, rates);
+    } catch (err) {
+      sendJson(response, err.status || 500, { error: err.message });
+    }
+    return true;
+  }
+
+  // POST /api/exchange-rates
+  if (request.method === "POST" && url.pathname === "/api/exchange-rates") {
+    const body = parseJsonBody(await readRequestBody(request));
+    const supabase = getSupabaseConfig();
+    try {
+      const rate = await exchangeRateStore.upsertExchangeRate(supabase, body);
+      sendJson(response, 201, rate);
+    } catch (err) {
+      sendJson(response, err.status || 500, { error: err.message });
+    }
+    return true;
+  }
+
+  // GET /api/exchange-rates/convert?fromCurrency=RSD&toCurrency=EUR&amount=120000
+  if (request.method === "GET" && url.pathname === "/api/exchange-rates/convert") {
+    const fromCurrency = url.searchParams.get("fromCurrency") || "";
+    const toCurrency = url.searchParams.get("toCurrency") || "";
+    const amount = parseFloat(url.searchParams.get("amount") || "0");
+    const date = url.searchParams.get("date") || undefined;
+    const supabase = getSupabaseConfig();
+    if (!fromCurrency || !toCurrency || isNaN(amount)) {
+      sendJson(response, 400, { error: "fromCurrency, toCurrency, amount 必填。" });
+      return true;
+    }
+    try {
+      const result = await exchangeRateStore.convertCurrency(supabase, amount, fromCurrency, toCurrency, date);
+      sendJson(response, 200, result);
+    } catch (err) {
+      sendJson(response, err.status || 500, { error: err.message });
+    }
+    return true;
+  }
+
+  // GET /api/projects/:id/supplier-cost-entries
+  if (request.method === "GET") {
+    const sceListMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/supplier-cost-entries$/);
+    if (sceListMatch) {
+      const projectId = decodeURIComponent(sceListMatch[1]);
+      const supabase = getSupabaseConfig();
+      const filters = {};
+      if (url.searchParams.get("supplierCostId")) filters.supplierProjectCostId = url.searchParams.get("supplierCostId");
+      try {
+        const entries = await supplierProjectCostEntryStore.listSupplierProjectCostEntries(supabase, projectId, filters);
+        sendJson(response, 200, entries);
       } catch (err) {
         sendJson(response, err.status || 500, { error: err.message });
       }

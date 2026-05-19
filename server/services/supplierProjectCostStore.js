@@ -538,6 +538,7 @@ async function buildProjectCostSummary(config, projectId) {
       appliedActualCost,
       appliedMode,
       costVariance: roundToTwo(appliedActualCost - quotedTotalCost),
+      costSavingOrOverrun: roundToTwo(quotedTotalCost - appliedActualCost),
       costStatus: costRecord?.costStatus || 'pending',
       useSupplierTotal,
       invoiceNumber: costRecord?.invoiceNumber || '',
@@ -564,6 +565,7 @@ async function buildProjectCostSummary(config, projectId) {
     ? roundToTwo((actualGrossProfit / quotedRevenueTotal) * 100)
     : 0;
   const costVariance = roundToTwo(actualCostTotal - quotedCostTotal);
+  const costSavingOrOverrun = roundToTwo(quotedCostTotal - actualCostTotal);
   const executionActualCostTotal = roundToTwo(
     executionItems.reduce((s, ei) => s + Number(ei.actualTotalCost || 0), 0)
   );
@@ -597,6 +599,7 @@ async function buildProjectCostSummary(config, projectId) {
     actualGrossProfit,
     actualGrossMargin,
     costVariance,
+    costSavingOrOverrun,
     costCompletenessStatus,
     supplierTotalCount,
     supplierConfirmedCount,

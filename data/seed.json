@@ -1240,5 +1240,19 @@
     }
   ],
   "supplierProjectCosts": [],
-  "supplierInvoiceTextImports": []
+  "supplierInvoiceTextImports": [],
+  "exchangeRates": [
+    {
+      "id": "ER-EUR-RSD-seed",
+      "baseCurrency": "EUR",
+      "quoteCurrency": "RSD",
+      "rate": 117.2,
+      "rateDate": "2026-05-19",
+      "source": "manual_seed",
+      "notes": "Initial operational EUR/RSD rate for LDS cost conversion; can be updated later.",
+      "createdAt": "2026-05-19T16:50:55.811524Z",
+      "updatedAt": "2026-05-19T16:50:55.811524Z"
+    }
+  ],
+  "supplierProjectCostEntries": []
 }

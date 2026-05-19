@@ -4,6 +4,8 @@ const { supabaseRequest } = require('../supabaseClient');
 const { loadSeedData, saveSeedData } = require('../dataStore');
 const { upsertSupplierProjectCost, updateSupplierProjectCost } = require('./supplierProjectCostStore');
 const { buildProjectCostSummary } = require('./supplierProjectCostStore');
+const { convertCurrency } = require('./exchangeRateStore');
+const { createSupplierProjectCostEntry, refreshSupplierProjectCostFromEntries } = require('./supplierProjectCostEntryStore');
 
 // ── getProjectCurrency ────────────────────────────────────────────────────────
 async function getProjectCurrency(config, projectId) {
@@ -59,6 +61,7 @@ function normalizeInvoiceTextImportFromSupabase(row) {
     matchReason: row.match_reason || '',
     reviewStatus: row.review_status || 'pending',
     targetSupplierCostId: row.target_supplier_cost_id || '',
+    targetSupplierCostEntryId: row.target_supplier_cost_entry_id || '',
     appliedAt: row.applied_at || null,
     notes: row.notes || '',
     createdAt: row.created_at || '',
@@ -90,6 +93,7 @@ function normalizeLocalInvoiceTextImport(item) {
     matchReason: item.matchReason || '',
     reviewStatus: item.reviewStatus || 'pending',
     targetSupplierCostId: item.targetSupplierCostId || '',
+    targetSupplierCostEntryId: item.targetSupplierCostEntryId || '',
     appliedAt: item.appliedAt || null,
     notes: item.notes || '',
     createdAt: item.createdAt || '',
@@ -121,6 +125,7 @@ function buildSupabaseInvoiceTextImportPayload(item) {
     match_reason: item.matchReason || '',
     review_status: item.reviewStatus || 'pending',
     target_supplier_cost_id: item.targetSupplierCostId || '',
+    target_supplier_cost_entry_id: item.targetSupplierCostEntryId || '',
     applied_at: item.appliedAt || null,
     notes: item.notes || '',
   };
@@ -426,6 +431,7 @@ async function createInvoiceTextImport(config, projectId, payload) {
     matchReason: match.matchReason,
     reviewStatus: 'pending',
     targetSupplierCostId: '',
+    targetSupplierCostEntryId: '',
     appliedAt: null,
     notes: payload.notes || '',
     createdAt: now,
@@ -513,12 +519,12 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
     throw err;
   }
 
-  // 2. Load project currency (supplier_project_costs.actual_total_cost 必须和项目币种一致)
+  // 2. Load project currency
   const projectCurrency = await getProjectCurrency(config, projectId);
   const invoiceCurrency = importRecord.currency || 'RSD';
   const currenciesDiffer = invoiceCurrency !== projectCurrency;
 
-  // 3. Supplier identity (trimmed, normalize)
+  // 3. Supplier identity
   const supplierId = (payload.supplierId || importRecord.suggestedSupplierId || '').trim();
   const supplierDisplay = (payload.supplierDisplay || importRecord.suggestedSupplierDisplay || '').trim();
   const targetCostRecordId = (payload.targetCostRecordId || '').trim();
@@ -529,74 +535,133 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
     throw err;
   }
 
-  // 4. Determine actualTotalCost — MUST be in projectCurrency
-  let actualTotalCost;
-  if (payload.projectCurrencyAmount !== undefined && payload.projectCurrencyAmount !== null && payload.projectCurrencyAmount !== '') {
-    // User explicitly provided a project-currency equivalent amount
-    actualTotalCost = Number(payload.projectCurrencyAmount);
-  } else if (!currenciesDiffer) {
-    // Same currency: use explicit actualTotalCost or fall back to invoice total
-    if (payload.actualTotalCost !== undefined && payload.actualTotalCost !== null && payload.actualTotalCost !== '') {
-      actualTotalCost = Number(payload.actualTotalCost);
-    } else if (importRecord.totalWithTax != null) {
-      actualTotalCost = importRecord.totalWithTax;
-    } else {
-      actualTotalCost = null;
+  // 4. Determine project-currency amount and conversion metadata
+  // Priority: manualConvertedAmount / projectCurrencyAmount (user override) > auto-convert > 422
+  let convertedAmount;
+  let conversionMethod;
+  let exchangeRate = null;
+  let exchangeRateDate = null;
+  let exchangeRateSource = '';
+
+  const manualAmount = payload.projectCurrencyAmount !== undefined && payload.projectCurrencyAmount !== null && payload.projectCurrencyAmount !== ''
+    ? Number(payload.projectCurrencyAmount)
+    : payload.manualConvertedAmount !== undefined && payload.manualConvertedAmount !== null && payload.manualConvertedAmount !== ''
+      ? Number(payload.manualConvertedAmount)
+      : undefined;
+
+  const originalAmount = importRecord.totalWithTax;
+
+  if (manualAmount !== undefined) {
+    // User explicitly overrides the amount
+    if (isNaN(manualAmount) || manualAmount < 0) {
+      const err = new Error('折算金额必须是 >= 0 的数字。');
+      err.status = 400;
+      throw err;
     }
+    convertedAmount = manualAmount;
+    conversionMethod = currenciesDiffer ? 'manual_override' : 'same_currency';
+  } else if (!currenciesDiffer) {
+    // Same currency path: use explicit actualTotalCost or invoice total
+    const amt = payload.actualTotalCost !== undefined && payload.actualTotalCost !== null && payload.actualTotalCost !== ''
+      ? Number(payload.actualTotalCost)
+      : (originalAmount != null ? originalAmount : null);
+    convertedAmount = amt;
+    conversionMethod = 'same_currency';
   } else {
-    // Currencies differ and no projectCurrencyAmount → reject
-    const err = new Error(
-      `发票币种（${invoiceCurrency}）与项目币种（${projectCurrency}）不同，` +
-      `请提供 ${projectCurrency} 折算金额（projectCurrencyAmount）。`
-    );
-    err.status = 422;
-    throw err;
+    // Cross-currency: try auto-conversion via exchange rate
+    try {
+      const result = await convertCurrency(config, originalAmount, invoiceCurrency, projectCurrency);
+      convertedAmount = result.convertedAmount;
+      conversionMethod = result.conversionMethod;
+      exchangeRate = result.exchangeRate;
+      exchangeRateDate = result.exchangeRateDate;
+      exchangeRateSource = result.exchangeRateSource;
+    } catch (convErr) {
+      if (convErr.code === 'NO_EXCHANGE_RATE') {
+        // Propagate 422 to caller
+        throw convErr;
+      }
+      throw convErr;
+    }
   }
 
-  if (actualTotalCost !== null && (isNaN(actualTotalCost) || actualTotalCost < 0)) {
-    const err = new Error('actualTotalCost 必须是 >= 0 的数字');
+  if (convertedAmount !== null && convertedAmount !== undefined && (isNaN(convertedAmount) || convertedAmount < 0)) {
+    const err = new Error('折算金额必须是 >= 0 的数字。');
     err.status = 400;
     throw err;
   }
 
-  // 5. Build cost patch — costCurrency always = projectCurrency
-  const originalInfo = currenciesDiffer
-    ? `（原始发票：${invoiceCurrency} ${importRecord.totalWithTax != null ? importRecord.totalWithTax : '?'}）`
-    : '';
-  const noteStr = (payload.notes && payload.notes.trim())
-    ? payload.notes.trim()
-    : `来自发票文本导入：${importId}${originalInfo}`;
-
+  // 5. Resolve or create the supplier_project_costs summary row
   const now = new Date().toISOString();
   let supplierCost;
 
-  const costFields = {
-    actualTotalCost,
-    costCurrency: projectCurrency,
-    costStatus: payload.costStatus || 'confirmed',
-    useSupplierTotal: payload.useSupplierTotal !== false,
-    invoiceNumber: payload.invoiceNumber !== undefined ? payload.invoiceNumber : importRecord.invoiceNumber,
-    invoiceDate: payload.invoiceDate !== undefined ? payload.invoiceDate : importRecord.invoiceDate,
-    sourceType: 'invoice_text',
-    notes: noteStr,
-  };
+  const rateInfoStr = conversionMethod === 'auto'
+    ? `（汇率：1 ${projectCurrency} = ${exchangeRate} ${invoiceCurrency}，${exchangeRateDate || ''}）`
+    : conversionMethod === 'manual_override'
+      ? `（人工折算，原始发票：${invoiceCurrency} ${originalAmount}）`
+      : '';
+
+  const baseNoteStr = (payload.notes && payload.notes.trim())
+    ? payload.notes.trim()
+    : `来自发票文本导入：${importId}`;
 
   if (targetCostRecordId) {
-    // 5a. Update existing record by costRecordId (avoids duplicate supplier rows)
-    supplierCost = await updateSupplierProjectCost(config, projectId, targetCostRecordId, costFields);
+    // Update by explicit cost record id — entries will refresh the actual_total_cost below
+    // Pass a placeholder actualTotalCost that will be overwritten by refresh
+    supplierCost = await updateSupplierProjectCost(config, projectId, targetCostRecordId, {
+      costStatus: payload.costStatus || 'confirmed',
+      useSupplierTotal: payload.useSupplierTotal !== false,
+      invoiceNumber: payload.invoiceNumber !== undefined ? payload.invoiceNumber : importRecord.invoiceNumber,
+      invoiceDate: payload.invoiceDate !== undefined ? payload.invoiceDate : importRecord.invoiceDate,
+      sourceType: 'invoice_text',
+    });
   } else {
-    // 5b. Upsert by supplier identity
     supplierCost = await upsertSupplierProjectCost(config, projectId, {
       supplierId,
       supplierDisplay,
-      ...costFields,
+      costCurrency: projectCurrency,
+      costStatus: payload.costStatus || 'confirmed',
+      useSupplierTotal: payload.useSupplierTotal !== false,
+      invoiceNumber: payload.invoiceNumber !== undefined ? payload.invoiceNumber : importRecord.invoiceNumber,
+      invoiceDate: payload.invoiceDate !== undefined ? payload.invoiceDate : importRecord.invoiceDate,
+      sourceType: 'invoice_text',
+      notes: baseNoteStr,
     });
   }
 
-  // 6. Update the import record
+  // 6. Create the cost entry (the immutable per-invoice record)
+  const entry = await createSupplierProjectCostEntry(config, projectId, {
+    supplierProjectCostId: supplierCost.id,
+    supplierId: supplierCost.supplierId || supplierId,
+    supplierDisplay: supplierCost.supplierDisplay || supplierDisplay,
+    entryType: 'invoice',
+    sourceType: 'invoice_text',
+    sourceImportId: importId,
+    invoiceNumber: payload.invoiceNumber !== undefined ? payload.invoiceNumber : (importRecord.invoiceNumber || ''),
+    invoiceDate: payload.invoiceDate !== undefined ? payload.invoiceDate : (importRecord.invoiceDate || null),
+    originalCurrency: invoiceCurrency,
+    originalAmount: originalAmount,
+    originalSubtotalAmount: importRecord.subtotalWithoutTax,
+    originalTaxAmount: importRecord.taxAmount,
+    projectCurrency,
+    exchangeRate,
+    exchangeRateDate,
+    exchangeRateSource,
+    convertedAmount,
+    conversionMethod,
+    costStatus: payload.costStatus || 'confirmed',
+    notes: `${baseNoteStr}${rateInfoStr}`,
+  });
+
+  // 7. Aggregate all confirmed entries → update SPC actual_total_cost
+  const refreshed = await refreshSupplierProjectCostFromEntries(config, projectId, supplierCost.id);
+  if (refreshed) supplierCost = refreshed;
+
+  // 8. Update the import record
   const importPatch = {
     reviewStatus: 'applied',
     targetSupplierCostId: supplierCost.id,
+    targetSupplierCostEntryId: entry.id,
     appliedAt: now,
     updatedAt: now,
   };
@@ -611,6 +676,7 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
         body: JSON.stringify({
           review_status: 'applied',
           target_supplier_cost_id: supplierCost.id,
+          target_supplier_cost_entry_id: entry.id,
           applied_at: now,
           updated_at: now,
         }),
@@ -618,7 +684,7 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
     );
     const raw = Array.isArray(rows) ? rows[0] : rows;
     const updatedImport = raw ? normalizeInvoiceTextImportFromSupabase(raw) : { ...importRecord, ...importPatch };
-    return { importRecord: updatedImport, supplierCost };
+    return { importRecord: updatedImport, supplierCost, entry };
   }
 
   const data = loadSeedData();
@@ -627,9 +693,9 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
   if (idx >= 0) {
     data.supplierInvoiceTextImports[idx] = { ...data.supplierInvoiceTextImports[idx], ...importPatch };
     saveSeedData(data);
-    return { importRecord: normalizeLocalInvoiceTextImport(data.supplierInvoiceTextImports[idx]), supplierCost };
+    return { importRecord: normalizeLocalInvoiceTextImport(data.supplierInvoiceTextImports[idx]), supplierCost, entry };
   }
-  return { importRecord: { ...importRecord, ...importPatch }, supplierCost };
+  return { importRecord: { ...importRecord, ...importPatch }, supplierCost, entry };
 }
 
 // ── rejectInvoiceTextImport ───────────────────────────────────────────────────

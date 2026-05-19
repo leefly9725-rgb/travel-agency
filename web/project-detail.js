@@ -164,11 +164,11 @@ function renderExecutionStatsBar(items) {
   // B1-05A cost summary
   const quoteCostTotal = items.reduce((s, i) => s + (i.quoteTotalCost || 0), 0);
   const actualCostTotal = items.reduce((s, i) => s + (i.actualTotalCost || 0), 0);
-  const costDiff = actualCostTotal - quoteCostTotal;
+  const costDiff = quoteCostTotal - actualCostTotal; // positive = saving, negative = overrun
   const lockedCount = items.filter(i => i.supplierLocked).length;
   const costConfirmedCount = items.filter(i => i.costStatus === "confirmed").length;
   const hasCostData = items.some(i => i.quoteTotalCost != null || i.actualTotalCost != null);
-  const diffClass = costDiff > 0 ? "cost-over" : costDiff < 0 ? "cost-under" : "cost-even";
+  const diffClass = costDiff > 0 ? "cost-under" : costDiff < 0 ? "cost-over" : "cost-even";
   const diffSign = costDiff > 0 ? "+" : "";
 
   return `
@@ -191,7 +191,7 @@ function renderExecutionStatsBar(items) {
         <strong>${formatCurrency(actualCostTotal, "EUR")}</strong>
       </div>
       <div class="ei-cost-card ${diffClass}">
-        <span>成本差异</span>
+        <span>成本节省/超支</span>
         <strong>${diffSign}${formatCurrency(costDiff, "EUR")}</strong>
       </div>
       <div class="ei-cost-card">
@@ -1670,9 +1670,18 @@ function varianceClass(v) {
   return "";
 }
 
+// costSavingOrOverrun: positive = saving (green), negative = overrun (red)
+function savingClass(v) {
+  if (v == null) return "";
+  if (v > 0) return "spc-under";
+  if (v < 0) return "spc-over";
+  return "";
+}
+
 function renderProjectCostKpiGrid(summary) {
   const currency = summary.currency || "EUR";
-  const varianceCls = varianceClass(summary.costVariance);
+  const savingValue = summary.costSavingOrOverrun != null ? summary.costSavingOrOverrun : -summary.costVariance;
+  const savingCls = savingClass(savingValue);
   const actualMarginCls = summary.actualGrossMargin < 0 ? "spc-over"
     : summary.actualGrossMargin > 0 ? "spc-under" : "";
 
@@ -1711,8 +1720,8 @@ function renderProjectCostKpiGrid(summary) {
         <span class="pck-value ${esc(actualMarginCls)}">${esc(fmt(summary.actualGrossProfit, currency))} <em>(${esc(String(summary.actualGrossMargin))}%)</em></span>
       </div>
       <div class="pck-item">
-        <span class="pck-label">成本差异</span>
-        <span class="pck-value ${esc(varianceCls)}">${summary.costVariance > 0 ? "+" : ""}${esc(fmt(summary.costVariance, currency))}</span>
+        <span class="pck-label">成本节省/超支</span>
+        <span class="pck-value ${esc(savingCls)}">${savingValue > 0 ? "+" : ""}${esc(fmt(savingValue, currency))}</span>
       </div>
     </div>
     ${estimatedBanner}`;
@@ -1723,7 +1732,8 @@ function renderSupplierCostRow(row, currency) {
   const modeCls = row.appliedMode === "supplier_total" ? "scm-supplier" : "scm-items";
   const statusLabel = SUPPLIER_COST_STATUS_LABELS[row.costStatus] || row.costStatus;
   const statusCls = SUPPLIER_COST_STATUS_CLASS[row.costStatus] || "scs-pending";
-  const varCls = varianceClass(row.costVariance);
+  const rowSavingVal = row.costSavingOrOverrun != null ? row.costSavingOrOverrun : (row.costVariance != null ? -row.costVariance : null);
+  const rowSavingCls = savingClass(rowSavingVal);
 
   return `
     <tr class="supplier-cost-row" data-supplier-key="${esc(row.supplierKey)}" data-cost-record-id="${esc(row.costRecordId || '')}">
@@ -1735,7 +1745,7 @@ function renderSupplierCostRow(row, currency) {
       <td class="sc-col-num">${esc(fmtOrDash(row.executionActualTotalCost, currency))}</td>
       <td class="sc-col-num">${esc(fmtOrDash(row.supplierActualTotalCost, currency))}</td>
       <td class="sc-col-mode"><span class="supplier-cost-mode-badge ${esc(modeCls)}">${esc(modeLabel)}</span></td>
-      <td class="sc-col-num ${esc(varCls)}">${row.costVariance > 0 ? "+" : ""}${esc(fmtOrDash(row.costVariance, currency))}</td>
+      <td class="sc-col-num ${esc(rowSavingCls)}">${rowSavingVal != null && rowSavingVal > 0 ? "+" : ""}${esc(fmtOrDash(rowSavingVal, currency))}</td>
       <td class="sc-col-status"><span class="supplier-cost-status-badge ${esc(statusCls)}">${esc(statusLabel)}</span></td>
       <td class="sc-col-actions">
         <button class="sc-edit-btn btn-xs" data-supplier-key="${esc(row.supplierKey)}">${row.costRecordId ? "编辑" : "录入总成本"}</button>
@@ -1811,7 +1821,7 @@ function renderProjectCostSummary(summary, projectId) {
             <th>执行项实际</th>
             <th>供应商总成本</th>
             <th>采用口径</th>
-            <th>差异</th>
+            <th>节省/超支</th>
             <th>状态</th>
             <th>操作</th>
           </tr>
@@ -1819,9 +1829,9 @@ function renderProjectCostSummary(summary, projectId) {
         <tbody id="sc-table-body">
           ${(summary.supplierRows || []).map(r => renderSupplierCostRow(r, currency)).join("")}
           ${hasUnassigned ? (() => {
-            const uv = (summary.unassigned.executionActualTotalCost || 0) - (summary.unassigned.quotedTotalCost || 0);
+            const uv = (summary.unassigned.quotedTotalCost || 0) - (summary.unassigned.executionActualTotalCost || 0);
             const uvSign = uv > 0 ? "+" : "";
-            const uvCls = varianceClass(uv);
+            const uvCls = savingClass(uv);
             return `
           <tr class="supplier-cost-row supplier-cost-row-unassigned">
             <td class="sc-col-supplier" style="color:var(--muted);font-size:12px">（无供应商执行项）</td>
@@ -2132,24 +2142,32 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
   const confCls = confScore >= 70 ? '' : confScore >= 30 ? 'conf-low' : 'conf-zero';
   const fmtNum = v => v != null ? String(v) : '—';
 
-  // Currency section: if same currency, show editable cost input; if different, show conversion input
-  const currencySection = currenciesDiffer ? `
-      <div class="invoice-currency-warning">
-        ⚠ 发票币种 <strong>${esc(invoiceCurrency)}</strong> 与项目币种 <strong>${esc(projectCurrency)}</strong> 不同。
-        发票原始金额仅供参考，必须在下方填写 <strong>${esc(projectCurrency)}</strong> 折算金额，否则无法写入。
+  // Currency section: auto-convert via /api/exchange-rates/convert, allow manual override
+  let currencySection = '';
+  if (currenciesDiffer) {
+    currencySection = `
+      <div class="invoice-currency-warning" id="ici-rate-banner-${esc(record.id)}">
+        ⏳ 正在查询 ${esc(invoiceCurrency)} → ${esc(projectCurrency)} 汇率…
       </div>
       <div class="invoice-confirm-row">
         <label>发票金额 (${esc(invoiceCurrency)})</label>
-        <span class="invoice-orig-amount-display">${esc(fmtNum(record.totalWithTax))} ${esc(invoiceCurrency)}（参考，不写入）</span>
+        <span class="invoice-orig-amount-display">${esc(fmtNum(record.totalWithTax))} ${esc(invoiceCurrency)}</span>
+      </div>
+      <div id="ici-auto-row-${esc(record.id)}" class="invoice-confirm-row" style="display:none">
+        <label>系统折算 (${esc(projectCurrency)})</label>
+        <span id="ici-auto-amount-${esc(record.id)}" class="invoice-orig-amount-display"></span>
       </div>
       <div class="invoice-confirm-row">
-        <label>折算金额 (${esc(projectCurrency)}) <span style="color:#c44">*</span></label>
-        <input type="number" id="ici-converted-${esc(record.id)}" placeholder="必填，${esc(projectCurrency)} 等值金额" min="0" step="0.01">
-      </div>` : `
+        <label>人工覆盖折算金额 (${esc(projectCurrency)})</label>
+        <input type="number" id="ici-converted-${esc(record.id)}" placeholder="留空=使用系统折算" min="0" step="0.01">
+      </div>`;
+  } else {
+    currencySection = `
       <div class="invoice-confirm-row">
         <label>实际总成本 (${esc(projectCurrency)})</label>
         <input type="number" id="ici-cost-${esc(record.id)}" value="${record.totalWithTax != null ? record.totalWithTax : ''}" min="0" step="0.01" placeholder="含税总额">
       </div>`;
+  }
 
   area.innerHTML = `
     <div class="invoice-parse-result ${failedCls}">
@@ -2253,11 +2271,15 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
     // Build the cost amount fields based on currency match
     let amountFields = {};
     if (currenciesDiffer) {
+      // If user filled manual override, send it; otherwise let backend auto-convert
       const convVal = (document.getElementById(`ici-converted-${record.id}`) || {}).value;
-      if (!convVal || isNaN(Number(convVal)) || Number(convVal) < 0) {
-        msgEl.textContent = `请填写 ${projectCurrency} 折算金额（必填）。`; return;
+      if (convVal && convVal.trim() !== '') {
+        if (isNaN(Number(convVal)) || Number(convVal) < 0) {
+          msgEl.textContent = `折算金额格式不正确。`; return;
+        }
+        amountFields = { projectCurrencyAmount: Number(convVal) };
       }
-      amountFields = { projectCurrencyAmount: Number(convVal) };
+      // else: empty = rely on backend auto-conversion
     } else {
       const costVal = (document.getElementById(`ici-cost-${record.id}`) || {}).value;
       const actualTotalCost = costVal !== '' ? Number(costVal) : null;
@@ -2324,6 +2346,36 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
       rejectBtn.disabled = false;
     }
   });
+
+  // Fetch auto-conversion rate if currencies differ
+  if (currenciesDiffer && record.totalWithTax != null) {
+    const banner = document.getElementById(`ici-rate-banner-${record.id}`);
+    const autoRow = document.getElementById(`ici-auto-row-${record.id}`);
+    const autoAmountEl = document.getElementById(`ici-auto-amount-${record.id}`);
+    window.AppUtils.fetchJson(
+      `/api/exchange-rates/convert?fromCurrency=${encodeURIComponent(invoiceCurrency)}&toCurrency=${encodeURIComponent(projectCurrency)}&amount=${encodeURIComponent(record.totalWithTax)}`,
+      {},
+      null
+    ).then(result => {
+      if (!banner) return;
+      if (result && result.convertedAmount != null) {
+        banner.className = 'invoice-currency-info';
+        banner.innerHTML = `系统折算：<strong>${result.convertedAmount} ${esc(projectCurrency)}</strong>（汇率：1 ${esc(projectCurrency)} = ${result.exchangeRate} ${esc(invoiceCurrency)}，${result.exchangeRateDate || ''}，来源：${result.exchangeRateSource || '—'}）`;
+        if (autoRow) autoRow.style.display = '';
+        if (autoAmountEl) autoAmountEl.textContent = `${result.convertedAmount} ${projectCurrency}（系统自动，可留空折算框）`;
+      } else {
+        banner.className = 'invoice-currency-warning';
+        banner.innerHTML = `⚠ 未找到 ${esc(invoiceCurrency)} → ${esc(projectCurrency)} 汇率。请在下方手动填写 ${esc(projectCurrency)} 折算金额（必填）。`;
+        const convInput = document.getElementById(`ici-converted-${record.id}`);
+        if (convInput) convInput.placeholder = `必填，${projectCurrency} 等值金额`;
+      }
+    }).catch(() => {
+      if (banner) {
+        banner.className = 'invoice-currency-warning';
+        banner.innerHTML = `⚠ 汇率查询失败。请手动填写 ${esc(projectCurrency)} 折算金额。`;
+      }
+    });
+  }
 }
 
 bootstrap();
