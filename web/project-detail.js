@@ -2069,7 +2069,7 @@ function setupInvoiceImportHandlers(projectId, summary) {
     }
     openBtn.textContent = "收起";
     const supplierOptions = (summary && summary.supplierRows || [])
-      .map(r => `<option value="${esc(r.supplierDisplay)}" data-supplier-id="${esc(r.supplierId || '')}">${esc(r.supplierDisplay)}</option>`)
+      .map(r => `<option value="${esc(r.supplierDisplay)}" data-supplier-id="${esc(r.supplierId || '')}" data-cost-record-id="${esc(r.costRecordId || '')}">${esc(r.supplierDisplay)}</option>`)
       .join('');
     panelContainer.innerHTML = `
       <div class="invoice-text-import-panel" id="invoice-import-form-panel">
@@ -2123,11 +2123,33 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
   const area = document.getElementById("invoice-parse-result-area");
   if (!area) return;
 
+  const projectCurrency = (summary && summary.currency) || 'EUR';
+  const invoiceCurrency = record.currency || 'RSD';
+  const currenciesDiffer = invoiceCurrency !== projectCurrency;
+
   const failedCls = record.parseStatus === 'failed' ? 'parse-failed' : '';
   const confScore = record.matchConfidence != null ? Number(record.matchConfidence) : 0;
   const confCls = confScore >= 70 ? '' : confScore >= 30 ? 'conf-low' : 'conf-zero';
-
   const fmtNum = v => v != null ? String(v) : '—';
+
+  // Currency section: if same currency, show editable cost input; if different, show conversion input
+  const currencySection = currenciesDiffer ? `
+      <div class="invoice-currency-warning">
+        ⚠ 发票币种 <strong>${esc(invoiceCurrency)}</strong> 与项目币种 <strong>${esc(projectCurrency)}</strong> 不同。
+        发票原始金额仅供参考，必须在下方填写 <strong>${esc(projectCurrency)}</strong> 折算金额，否则无法写入。
+      </div>
+      <div class="invoice-confirm-row">
+        <label>发票金额 (${esc(invoiceCurrency)})</label>
+        <span class="invoice-orig-amount-display">${esc(fmtNum(record.totalWithTax))} ${esc(invoiceCurrency)}（参考，不写入）</span>
+      </div>
+      <div class="invoice-confirm-row">
+        <label>折算金额 (${esc(projectCurrency)}) <span style="color:#c44">*</span></label>
+        <input type="number" id="ici-converted-${esc(record.id)}" placeholder="必填，${esc(projectCurrency)} 等值金额" min="0" step="0.01">
+      </div>` : `
+      <div class="invoice-confirm-row">
+        <label>实际总成本 (${esc(projectCurrency)})</label>
+        <input type="number" id="ici-cost-${esc(record.id)}" value="${record.totalWithTax != null ? record.totalWithTax : ''}" min="0" step="0.01" placeholder="含税总额">
+      </div>`;
 
   area.innerHTML = `
     <div class="invoice-parse-result ${failedCls}">
@@ -2138,7 +2160,7 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
         <dt>PIB</dt><dd>${esc(record.parsedSupplierPib || '—')}</dd>
         <dt>发票号</dt><dd>${esc(record.invoiceNumber || '—')}</dd>
         <dt>发票日期</dt><dd>${esc(record.invoiceDate || '—')}</dd>
-        <dt>币种</dt><dd>${esc(record.currency || '—')}</dd>
+        <dt>发票币种</dt><dd>${esc(record.currency || '—')}</dd>
         <dt>不含税金额</dt><dd>${esc(fmtNum(record.subtotalWithoutTax))}</dd>
         <dt>PDV 税额</dt><dd>${esc(fmtNum(record.taxAmount))}</dd>
         <dt>含税总额</dt><dd><strong>${esc(fmtNum(record.totalWithTax))}</strong> ${esc(record.currency || '')}</dd>
@@ -2149,6 +2171,8 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
       </dl>
       <div class="invoice-confirm-form" id="invoice-confirm-form-${esc(record.id)}">
         <h4>人工确认</h4>
+        <input type="hidden" id="ici-supplier-id-${esc(record.id)}" value="${esc(record.suggestedSupplierId || '')}">
+        <input type="hidden" id="ici-cost-record-id-${esc(record.id)}" value="">
         <div class="invoice-confirm-row">
           <label>目标供应商</label>
           <select id="ici-supplier-${esc(record.id)}">
@@ -2160,17 +2184,7 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
           <label>供应商名称</label>
           <input type="text" id="ici-supplier-display-${esc(record.id)}" value="${esc(record.suggestedSupplierDisplay || record.parsedSupplierName || '')}" placeholder="供应商显示名">
         </div>
-        <div class="invoice-confirm-row">
-          <label>实际总成本</label>
-          <input type="number" id="ici-cost-${esc(record.id)}" value="${record.totalWithTax != null ? record.totalWithTax : ''}" min="0" step="0.01" placeholder="含税总额">
-        </div>
-        <div class="invoice-confirm-row">
-          <label>币种</label>
-          <select id="ici-currency-${esc(record.id)}">
-            <option value="RSD" ${record.currency === 'RSD' ? 'selected' : ''}>RSD</option>
-            <option value="EUR" ${record.currency === 'EUR' ? 'selected' : ''}>EUR</option>
-          </select>
-        </div>
+        ${currencySection}
         <div class="invoice-confirm-row">
           <label>成本状态</label>
           <select id="ici-status-${esc(record.id)}">
@@ -2199,18 +2213,29 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
       </div>
     </div>`;
 
-  // Sync select → display input
+  // Sync select → display input + hidden supplier/costRecord IDs
   const sel = document.getElementById(`ici-supplier-${record.id}`);
   const dispInput = document.getElementById(`ici-supplier-display-${record.id}`);
-  if (sel && dispInput) {
+  const supplierIdInput = document.getElementById(`ici-supplier-id-${record.id}`);
+  const costRecordIdInput = document.getElementById(`ici-cost-record-id-${record.id}`);
+
+  if (sel) {
     // Pre-select suggested
     if (record.suggestedSupplierDisplay) {
       for (const opt of sel.options) {
-        if (opt.value === record.suggestedSupplierDisplay) { sel.value = record.suggestedSupplierDisplay; break; }
+        if (opt.value === record.suggestedSupplierDisplay) {
+          sel.value = record.suggestedSupplierDisplay;
+          if (supplierIdInput) supplierIdInput.value = opt.getAttribute('data-supplier-id') || '';
+          if (costRecordIdInput) costRecordIdInput.value = opt.getAttribute('data-cost-record-id') || '';
+          break;
+        }
       }
     }
     sel.addEventListener("change", () => {
-      if (sel.value) dispInput.value = sel.value;
+      const opt = sel.options[sel.selectedIndex];
+      if (sel.value && dispInput) dispInput.value = sel.value;
+      if (supplierIdInput) supplierIdInput.value = opt ? (opt.getAttribute('data-supplier-id') || '') : '';
+      if (costRecordIdInput) costRecordIdInput.value = opt ? (opt.getAttribute('data-cost-record-id') || '') : '';
     });
   }
 
@@ -2221,11 +2246,27 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
   applyBtn && applyBtn.addEventListener("click", async () => {
     const supplierDisplay = (document.getElementById(`ici-supplier-display-${record.id}`) || {}).value || '';
     if (!supplierDisplay.trim()) { msgEl.textContent = "请填写供应商名称。"; return; }
-    const costVal = (document.getElementById(`ici-cost-${record.id}`) || {}).value;
-    const actualTotalCost = costVal !== '' ? Number(costVal) : null;
-    if (actualTotalCost !== null && (isNaN(actualTotalCost) || actualTotalCost < 0)) {
-      msgEl.textContent = "实际总成本必须 >= 0。"; return;
+
+    const supplierId = (document.getElementById(`ici-supplier-id-${record.id}`) || {}).value || '';
+    const targetCostRecordId = (document.getElementById(`ici-cost-record-id-${record.id}`) || {}).value || '';
+
+    // Build the cost amount fields based on currency match
+    let amountFields = {};
+    if (currenciesDiffer) {
+      const convVal = (document.getElementById(`ici-converted-${record.id}`) || {}).value;
+      if (!convVal || isNaN(Number(convVal)) || Number(convVal) < 0) {
+        msgEl.textContent = `请填写 ${projectCurrency} 折算金额（必填）。`; return;
+      }
+      amountFields = { projectCurrencyAmount: Number(convVal) };
+    } else {
+      const costVal = (document.getElementById(`ici-cost-${record.id}`) || {}).value;
+      const actualTotalCost = costVal !== '' ? Number(costVal) : null;
+      if (actualTotalCost !== null && (isNaN(actualTotalCost) || actualTotalCost < 0)) {
+        msgEl.textContent = "实际总成本必须 >= 0。"; return;
+      }
+      amountFields = { actualTotalCost };
     }
+
     applyBtn.disabled = true;
     msgEl.textContent = "写入中...";
     try {
@@ -2236,8 +2277,9 @@ function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             supplierDisplay,
-            actualTotalCost,
-            costCurrency: (document.getElementById(`ici-currency-${record.id}`) || {}).value || record.currency || 'RSD',
+            supplierId,
+            ...(targetCostRecordId ? { targetCostRecordId } : {}),
+            ...amountFields,
             costStatus: (document.getElementById(`ici-status-${record.id}`) || {}).value || 'confirmed',
             invoiceNumber: (document.getElementById(`ici-invnum-${record.id}`) || {}).value || '',
             invoiceDate: (document.getElementById(`ici-invdate-${record.id}`) || {}).value || null,

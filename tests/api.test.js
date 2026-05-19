@@ -3897,29 +3897,28 @@ test("B1-05C: POST invoice-text-imports with valid text creates record", async (
 });
 
 // C. apply import
-test("B1-05C: apply import writes supplier_project_cost with sourceType=invoice_text", async () => {
+test("B1-05C: apply EUR invoice to EUR project writes supplier_project_cost with sourceType=invoice_text", async () => {
   await withServer(async (port) => {
     const projectId = await setupProjectWithSupplierCosts(port);
 
-    // Create the import record
+    // Use EUR invoice to match project currency (EUR project)
     const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        rawText: "GLOBAL EVENTS\nPIB: 999888777\nFaktura: F-2026-88\nDatum: 01.03.2026\nUkupno za uplatu: 85.000,00 RSD",
+        rawText: "GLOBAL EVENTS\nPIB: 999888777\nFaktura: F-2026-88\nDatum: 01.03.2026\nUkupno za uplatu: 850,00 EUR",
       }),
     });
     assert.equal(createRes.status, 201);
     const importRecord = await createRes.json();
     const importId = importRecord.id;
 
-    // Apply the import
+    // EUR invoice → EUR project: no projectCurrencyAmount needed
     const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         supplierDisplay: "Global Events",
-        costCurrency: "RSD",
         costStatus: "confirmed",
         useSupplierTotal: true,
       }),
@@ -3937,7 +3936,8 @@ test("B1-05C: apply import writes supplier_project_cost with sourceType=invoice_
     // Check supplier cost
     const sc = result.supplierCost;
     assert.equal(sc.sourceType, "invoice_text", "sourceType must be invoice_text");
-    assert.equal(sc.actualTotalCost, 85000, "actualTotalCost should use parsed total");
+    assert.equal(sc.actualTotalCost, 850, "actualTotalCost should use parsed EUR total");
+    assert.equal(sc.costCurrency, "EUR", "costCurrency must be project currency EUR");
     assert.equal(sc.invoiceNumber, "F-2026-88", "invoiceNumber from import");
     assert.equal(sc.invoiceDate, "2026-03-01", "invoiceDate from import");
     assert.ok(sc.id, "supplierCost should have id");
@@ -3978,17 +3978,16 @@ test("B1-05C: reject import sets reviewStatus=rejected, does not write supplier 
 });
 
 // E. cost-summary update after apply
-test("B1-05C: apply import → cost-summary actualCostTotal updates", async () => {
+test("B1-05C: apply EUR invoice → cost-summary actualCostTotal updates", async () => {
   await withServer(async (port) => {
     const projectId = await setupProjectWithSupplierCosts(port);
 
-    const summaryBefore = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
-
+    // EUR invoice → EUR project (project currency = EUR)
     const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        rawText: "VENUE PLUS\nFaktura: VP-200\nDatum: 05.05.2026\nUkupno za uplatu: 200.000,00 RSD",
+        rawText: "VENUE PLUS\nFaktura: VP-200\nDatum: 05.05.2026\nUkupno za uplatu: 1.700,00 EUR",
       }),
     });
     const { id: importId } = await createRes.json();
@@ -3998,7 +3997,6 @@ test("B1-05C: apply import → cost-summary actualCostTotal updates", async () =
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         supplierDisplay: "Venue Plus",
-        costCurrency: "RSD",
         costStatus: "confirmed",
         useSupplierTotal: true,
       }),
@@ -4008,7 +4006,8 @@ test("B1-05C: apply import → cost-summary actualCostTotal updates", async () =
     assert.ok(summaryAfter.supplierRows.length >= 1, "should have supplier rows after apply");
     const vpRow = summaryAfter.supplierRows.find(r => r.supplierDisplay === "Venue Plus");
     assert.ok(vpRow, "should find Venue Plus row in summary");
-    assert.equal(vpRow.supplierActualTotalCost, 200000, "Venue Plus actual total should be 200000");
+    assert.equal(vpRow.supplierActualTotalCost, 1700, "Venue Plus actual total should be 1700 EUR");
+    assert.equal(vpRow.costCurrency, "EUR", "costCurrency should be EUR (project currency)");
   });
 });
 
@@ -4062,5 +4061,225 @@ test("B1-05C: supplierInvoiceTextImports key missing from seed does not crash", 
     const list = await res.json();
     assert.ok(Array.isArray(list), "should return array");
     assert.equal(list.length, 0, "should return empty array");
+  });
+});
+
+// ── B1-05C-FIX: 币种混算修复 + 供应商重复行修复 ──────────────────────────────
+
+test("B1-05C-FIX: RSD invoice to EUR project without projectCurrencyAmount returns 422", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "TECH AUDIO\nRačun: R-FIX-001\nDatum: 01.05.2026\nUkupno za uplatu: 120.000,00 RSD",
+      }),
+    });
+    assert.equal(createRes.status, 201);
+    const { id: importId } = await createRes.json();
+
+    // Apply WITHOUT projectCurrencyAmount — must reject 422
+    const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "Tech Audio",
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+        // deliberately omit projectCurrencyAmount
+      }),
+    });
+    assert.equal(applyRes.status, 422, "missing projectCurrencyAmount for cross-currency should return 422");
+    const body = await applyRes.json();
+    assert.ok(body.error && body.error.length > 0, "error message should be present");
+  });
+});
+
+test("B1-05C-FIX: RSD invoice with projectCurrencyAmount saves EUR in supplier_project_costs", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "TECH AUDIO SRB\nRačun: R-FIX-002\nDatum: 02.05.2026\nUkupno za uplatu: 120.000,00 RSD",
+      }),
+    });
+    const importRec = await createRes.json();
+    assert.equal(importRec.currency, "RSD", "invoice currency should be RSD");
+    assert.equal(importRec.totalWithTax, 120000, "original invoice total should be 120000 RSD");
+
+    // Apply WITH projectCurrencyAmount (EUR equivalent)
+    const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importRec.id)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "Tech Audio SRB",
+        projectCurrencyAmount: 1020,  // EUR equivalent provided by user
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+      }),
+    });
+    assert.equal(applyRes.status, 200, "apply with projectCurrencyAmount should succeed");
+    const { importRecord, supplierCost } = await applyRes.json();
+
+    // supplier_project_costs must store EUR amount, not RSD
+    assert.equal(supplierCost.costCurrency, "EUR", "costCurrency must be EUR (project currency)");
+    assert.equal(supplierCost.actualTotalCost, 1020, "actualTotalCost must be 1020 EUR, NOT 120000 RSD");
+    assert.equal(supplierCost.sourceType, "invoice_text");
+
+    // Import history still preserves original RSD amount
+    assert.equal(importRecord.currency, "RSD", "import record must still show RSD currency");
+    assert.equal(importRecord.totalWithTax, 120000, "import record must still show 120000 RSD");
+    assert.equal(importRecord.reviewStatus, "applied");
+  });
+});
+
+test("B1-05C-FIX: cost-summary uses EUR projectCurrencyAmount, not raw RSD value", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "AV RENTAL\nRačun: AV-001\nDatum: 10.05.2026\nUkupno za uplatu: 240.000,00 RSD",
+      }),
+    });
+    const { id: importId } = await createRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "AV Rental",
+        projectCurrencyAmount: 2000,  // user says 240000 RSD = 2000 EUR
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+      }),
+    });
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    const avRow = summary.supplierRows.find(r => r.supplierDisplay === "AV Rental");
+    assert.ok(avRow, "AV Rental row should appear in cost summary");
+    assert.equal(avRow.supplierActualTotalCost, 2000, "should be 2000 EUR, not 240000 RSD");
+    assert.equal(avRow.costCurrency, "EUR");
+  });
+});
+
+test("B1-05C-FIX: invoice import history preserves original RSD currency and amount after apply", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "DECOR PLUS\nRačun: DP-001\nDatum: 15.04.2026\nUkupno za uplatu: 80.000,00 RSD",
+      }),
+    });
+    const { id: importId } = await createRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "Decor Plus", projectCurrencyAmount: 680, costStatus: "confirmed" }),
+    });
+
+    // Verify list still has original RSD info
+    const imports = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`)).json();
+    const rec = imports.find(r => r.id === importId);
+    assert.ok(rec, "import record should still be in history");
+    assert.equal(rec.currency, "RSD", "original invoice currency must be preserved");
+    assert.equal(rec.totalWithTax, 80000, "original invoice amount must be preserved");
+    assert.equal(rec.reviewStatus, "applied", "reviewStatus should be applied");
+  });
+});
+
+test("B1-05C-FIX: apply with targetCostRecordId updates existing record, no duplicate", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    // Pre-create a supplier cost record (simulating existing record from execution items)
+    const costPostRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "Congress Rental",
+        actualTotalCost: 500,
+        costCurrency: "EUR",
+        costStatus: "pending",
+        useSupplierTotal: true,
+      }),
+    });
+    assert.equal(costPostRes.status, 201);
+    const existingCost = await costPostRes.json();
+    const targetCostRecordId = existingCost.id;
+
+    // Create EUR invoice import for same supplier
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "Congress Rental l.t.d.\nFaktura: CR-INV-005\nDatum: 20.04.2026\nUkupno za uplatu: 1.200,00 EUR",
+      }),
+    });
+    const { id: importId } = await createRes.json();
+
+    // Apply with targetCostRecordId → should UPDATE existing record
+    const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "Congress Rental",
+        targetCostRecordId,
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+      }),
+    });
+    assert.equal(applyRes.status, 200);
+    const { supplierCost } = await applyRes.json();
+
+    // The returned cost must be the SAME record (same id)
+    assert.equal(supplierCost.id, targetCostRecordId, "should update the existing record, not create new one");
+    assert.equal(supplierCost.actualTotalCost, 1200, "actualTotalCost should be updated to 1200");
+    assert.equal(supplierCost.costStatus, "confirmed");
+
+    // Verify no duplicate created
+    const costs = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`)).json();
+    const congressRows = costs.filter(c => c.supplierDisplay === "Congress Rental" || c.id === targetCostRecordId);
+    assert.equal(congressRows.length, 1, "should have exactly 1 record for Congress Rental, no duplicate");
+  });
+});
+
+test("B1-05C-FIX: client-facing APIs do not expose invoice raw text or actual cost fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "SECRET COSTS\nFaktura: SC-001\nDatum: 01.01.2026\nUkupno: 999.999,00 EUR",
+      }),
+    });
+
+    const project = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const pBody = JSON.stringify(project);
+    assert.ok(!pBody.includes('"supplierInvoiceTextImports"'), "project API must not expose supplierInvoiceTextImports");
+    assert.ok(!pBody.includes('"rawText"'), "project API must not expose rawText");
+    assert.ok(!pBody.includes('"actualGrossProfit"'), "project API must not expose actualGrossProfit");
+    assert.ok(!pBody.includes('SECRET COSTS'), "project API must not expose raw invoice text content");
+
+    if (project.sourceQuoteId) {
+      const quoteRes = await apiFetch(port, `/api/quotes/${encodeURIComponent(project.sourceQuoteId)}`);
+      if (quoteRes.status === 200) {
+        const qBody = JSON.stringify(await quoteRes.json());
+        assert.ok(!qBody.includes('"rawText"'), "quote API must not expose rawText");
+        assert.ok(!qBody.includes('"actualGrossProfit"'), "quote API must not expose actualGrossProfit");
+        assert.ok(!qBody.includes('"supplierInvoiceTextImports"'), "quote API must not expose imports");
+      }
+    }
   });
 });

@@ -2,8 +2,27 @@
 
 const { supabaseRequest } = require('../supabaseClient');
 const { loadSeedData, saveSeedData } = require('../dataStore');
-const { upsertSupplierProjectCost } = require('./supplierProjectCostStore');
+const { upsertSupplierProjectCost, updateSupplierProjectCost } = require('./supplierProjectCostStore');
 const { buildProjectCostSummary } = require('./supplierProjectCostStore');
+
+// ── getProjectCurrency ────────────────────────────────────────────────────────
+async function getProjectCurrency(config, projectId) {
+  if (config.enabled) {
+    try {
+      const rows = await supabaseRequest(
+        config,
+        `projects?id=eq.${encodeURIComponent(projectId)}&select=currency`
+      );
+      if (Array.isArray(rows) && rows.length > 0 && rows[0].currency) {
+        return rows[0].currency;
+      }
+    } catch (_) {}
+    return 'EUR';
+  }
+  const data = loadSeedData();
+  const raw = (data.projects || []).find(p => p.id === projectId);
+  return (raw && raw.currency) || 'EUR';
+}
 
 const VALID_PARSE_STATUSES = new Set(['parsed', 'failed']);
 const VALID_REVIEW_STATUSES = new Set(['pending', 'applied', 'rejected']);
@@ -463,7 +482,7 @@ async function listInvoiceTextImports(config, projectId) {
 
 // ── applyInvoiceTextImport ────────────────────────────────────────────────────
 async function applyInvoiceTextImport(config, projectId, importId, payload) {
-  // Load the import record
+  // 1. Load the import record
   let importRecord = null;
   if (config.enabled) {
     const rows = await supabaseRequest(
@@ -494,24 +513,44 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
     throw err;
   }
 
-  const supplierId = payload.supplierId || importRecord.suggestedSupplierId || '';
-  const supplierDisplay = payload.supplierDisplay || importRecord.suggestedSupplierDisplay || '';
-  if (!supplierId && !supplierDisplay) {
+  // 2. Load project currency (supplier_project_costs.actual_total_cost 必须和项目币种一致)
+  const projectCurrency = await getProjectCurrency(config, projectId);
+  const invoiceCurrency = importRecord.currency || 'RSD';
+  const currenciesDiffer = invoiceCurrency !== projectCurrency;
+
+  // 3. Supplier identity (trimmed, normalize)
+  const supplierId = (payload.supplierId || importRecord.suggestedSupplierId || '').trim();
+  const supplierDisplay = (payload.supplierDisplay || importRecord.suggestedSupplierDisplay || '').trim();
+  const targetCostRecordId = (payload.targetCostRecordId || '').trim();
+
+  if (!targetCostRecordId && !supplierId && !supplierDisplay) {
     const err = new Error('supplierId 和 supplierDisplay 至少需要填写一个。');
     err.status = 400;
     throw err;
   }
 
-  // Determine actual total cost
+  // 4. Determine actualTotalCost — MUST be in projectCurrency
   let actualTotalCost;
-  if (payload.actualTotalCost !== undefined && payload.actualTotalCost !== null && payload.actualTotalCost !== '') {
-    actualTotalCost = Number(payload.actualTotalCost);
-  } else if (payload.useSupplierTotal && importRecord.totalWithTax != null) {
-    actualTotalCost = importRecord.totalWithTax;
-  } else if (importRecord.totalWithTax != null) {
-    actualTotalCost = importRecord.totalWithTax;
+  if (payload.projectCurrencyAmount !== undefined && payload.projectCurrencyAmount !== null && payload.projectCurrencyAmount !== '') {
+    // User explicitly provided a project-currency equivalent amount
+    actualTotalCost = Number(payload.projectCurrencyAmount);
+  } else if (!currenciesDiffer) {
+    // Same currency: use explicit actualTotalCost or fall back to invoice total
+    if (payload.actualTotalCost !== undefined && payload.actualTotalCost !== null && payload.actualTotalCost !== '') {
+      actualTotalCost = Number(payload.actualTotalCost);
+    } else if (importRecord.totalWithTax != null) {
+      actualTotalCost = importRecord.totalWithTax;
+    } else {
+      actualTotalCost = null;
+    }
   } else {
-    actualTotalCost = null;
+    // Currencies differ and no projectCurrencyAmount → reject
+    const err = new Error(
+      `发票币种（${invoiceCurrency}）与项目币种（${projectCurrency}）不同，` +
+      `请提供 ${projectCurrency} 折算金额（projectCurrencyAmount）。`
+    );
+    err.status = 422;
+    throw err;
   }
 
   if (actualTotalCost !== null && (isNaN(actualTotalCost) || actualTotalCost < 0)) {
@@ -520,23 +559,41 @@ async function applyInvoiceTextImport(config, projectId, importId, payload) {
     throw err;
   }
 
-  const costPayload = {
-    supplierId,
-    supplierDisplay,
+  // 5. Build cost patch — costCurrency always = projectCurrency
+  const originalInfo = currenciesDiffer
+    ? `（原始发票：${invoiceCurrency} ${importRecord.totalWithTax != null ? importRecord.totalWithTax : '?'}）`
+    : '';
+  const noteStr = (payload.notes && payload.notes.trim())
+    ? payload.notes.trim()
+    : `来自发票文本导入：${importId}${originalInfo}`;
+
+  const now = new Date().toISOString();
+  let supplierCost;
+
+  const costFields = {
     actualTotalCost,
-    costCurrency: payload.costCurrency || importRecord.currency || 'RSD',
+    costCurrency: projectCurrency,
     costStatus: payload.costStatus || 'confirmed',
     useSupplierTotal: payload.useSupplierTotal !== false,
     invoiceNumber: payload.invoiceNumber !== undefined ? payload.invoiceNumber : importRecord.invoiceNumber,
     invoiceDate: payload.invoiceDate !== undefined ? payload.invoiceDate : importRecord.invoiceDate,
     sourceType: 'invoice_text',
-    notes: payload.notes || `来自发票文本导入：${importId}`,
+    notes: noteStr,
   };
 
-  const supplierCost = await upsertSupplierProjectCost(config, projectId, costPayload);
+  if (targetCostRecordId) {
+    // 5a. Update existing record by costRecordId (avoids duplicate supplier rows)
+    supplierCost = await updateSupplierProjectCost(config, projectId, targetCostRecordId, costFields);
+  } else {
+    // 5b. Upsert by supplier identity
+    supplierCost = await upsertSupplierProjectCost(config, projectId, {
+      supplierId,
+      supplierDisplay,
+      ...costFields,
+    });
+  }
 
-  // Update the import record
-  const now = new Date().toISOString();
+  // 6. Update the import record
   const importPatch = {
     reviewStatus: 'applied',
     targetSupplierCostId: supplierCost.id,
@@ -631,6 +688,7 @@ module.exports = {
   parseSupplierInvoiceText,
   matchInvoiceToProjectSupplier,
   normalizeMoneyString,
+  getProjectCurrency,
   createInvoiceTextImport,
   listInvoiceTextImports,
   applyInvoiceTextImport,
