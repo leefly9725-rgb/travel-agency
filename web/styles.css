@@ -7321,20 +7321,34 @@ details[open] .panel-summary::before {
 /* ── B1-05B: 供应商成本汇总 ─────────────────────────────────────────────── */
 .project-cost-summary-panel { }
 
-.project-cost-kpi-grid {
+.project-cost-kpi-board {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding: 12px 0 16px;
+}
+.pck-group-card {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt, #f8f9fa);
+  padding: 12px 14px;
+}
+.pck-group-title {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.pck-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
 }
 .pck-item {
   display: flex;
   flex-direction: column;
   gap: 4px;
-}
-.pck-item.pck-divider {
-  border-left: 2px solid var(--border);
-  padding-left: 12px;
+  min-width: 0;
 }
 .pck-label {
   font-size: 11px;
@@ -7345,6 +7359,10 @@ details[open] .panel-summary::before {
   font-size: 15px;
   font-weight: 700;
   color: var(--text);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  white-space: nowrap;
 }
 .pck-value em {
   font-style: normal;
@@ -7363,6 +7381,23 @@ details[open] .panel-summary::before {
   width: 100%;
   border-collapse: collapse;
   font-size: 13px;
+  table-layout: fixed;
+  min-width: 880px;
+}
+.supplier-cost-table th:nth-child(1) { width: 26%; }
+.supplier-cost-table th:nth-child(2),
+.supplier-cost-table th:nth-child(3),
+.supplier-cost-table th:nth-child(4) { width: 14%; }
+.supplier-cost-table th:nth-child(5) { width: 11%; }
+.supplier-cost-table th:nth-child(6) { width: 12%; }
+.supplier-cost-table th:nth-child(7) { width: 9%; }
+.supplier-cost-table th:nth-child(2),
+.supplier-cost-table th:nth-child(3),
+.supplier-cost-table th:nth-child(4) {
+  text-align: right;
+}
+.supplier-cost-table th:nth-child(7) {
+  text-align: right;
 }
 .supplier-cost-table th {
   text-align: left;
@@ -7376,28 +7411,52 @@ details[open] .panel-summary::before {
 .supplier-cost-row td {
   padding: 8px;
   border-bottom: 1px solid var(--border);
-  vertical-align: top;
+  vertical-align: middle;
 }
 .supplier-cost-row-unassigned td {
   padding: 6px 8px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
 }
-.sc-col-num  { text-align: right; white-space: nowrap; }
+.sc-col-num  {
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
 .sc-col-mode { white-space: nowrap; }
-.sc-col-actions { white-space: nowrap; }
-.sc-invoice-num {
+.sc-col-actions {
+  text-align: right;
+  white-space: nowrap;
+}
+.sc-col-actions .btn-xs {
+  margin-left: 4px;
+}
+.sc-detail-muted,
+.sc-unassigned-label {
   font-size: 11px;
   color: var(--muted);
 }
-.sc-col-supplier strong { font-size: 13px; }
+.sc-col-supplier strong {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+  margin-bottom: 5px;
+}
+.sc-col-status,
+.sc-col-detail {
+  white-space: nowrap;
+}
 
 .supplier-cost-mode-badge {
   display: inline-block;
-  padding: 2px 8px;
+  max-width: 100%;
+  padding: 2px 7px;
   border-radius: 20px;
   font-size: 11px;
   font-weight: 600;
+  line-height: 1.35;
+  white-space: normal;
 }
 .scm-supplier {
   background: #e8f4f0;
@@ -7406,6 +7465,10 @@ details[open] .panel-summary::before {
 .scm-items {
   background: #eef2fb;
   color: #3a5ccc;
+}
+.scm-entry-mode {
+  background: #f3eadb;
+  color: #6b5638;
 }
 
 .supplier-cost-status-badge {
@@ -7419,6 +7482,64 @@ details[open] .panel-summary::before {
 .scs-estimated { background: #cfe2ff; color: #0a4b9c; }
 .scs-confirmed { background: #d1e7dd; color: #0a5c36; }
 .scs-disputed  { background: #f8d7da; color: #842029; }
+
+.sc-detail-toggle-btn {
+  min-width: 72px;
+}
+
+.supplier-cost-detail-row > td {
+  padding: 0 8px 10px;
+  border-bottom: 1px solid var(--border);
+  background: #fbf7ef;
+}
+
+.supplier-cost-entry-shell {
+  margin: 0 0 2px 0;
+  padding: 10px;
+  border: 1px solid #eadfcd;
+  border-radius: 8px;
+  background: #fffaf2;
+  overflow-x: auto;
+}
+
+.supplier-cost-entry-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 12px;
+}
+.supplier-cost-entry-table th {
+  padding: 4px 6px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 1px solid #eadfcd;
+  white-space: nowrap;
+}
+.supplier-cost-entry-table th:nth-child(3),
+.supplier-cost-entry-table th:nth-child(4),
+.supplier-cost-entry-table th:nth-child(5) {
+  text-align: right;
+}
+.supplier-cost-entry-table td {
+  padding: 6px;
+  border-bottom: 1px solid #f0e7d8;
+  vertical-align: middle;
+}
+.supplier-cost-entry-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+.supplier-cost-detail-loading,
+.supplier-cost-detail-empty {
+  padding: 10px;
+  color: var(--muted);
+  font-size: 12px;
+  background: #fffaf2;
+  border: 1px solid #eadfcd;
+  border-radius: 8px;
+}
 
 .sc-empty {
   color: var(--muted);
@@ -7635,10 +7756,15 @@ details[open] .panel-summary::before {
   border-top: 1px solid var(--border);
   padding-top: 12px;
 }
+.invoice-import-history.compact {
+  margin-top: 10px;
+  padding-top: 8px;
+  opacity: 0.9;
+}
 .invoice-import-history h4 {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   color: var(--muted);
 }
 .invoice-import-history-empty {
@@ -7647,20 +7773,21 @@ details[open] .panel-summary::before {
 }
 .invoice-history-table {
   width: 100%;
-  font-size: 12px;
+  font-size: 11px;
   border-collapse: collapse;
 }
 .invoice-history-table th {
   text-align: left;
   font-weight: 500;
   color: var(--muted);
-  padding: 4px 6px;
+  padding: 3px 6px;
   border-bottom: 1px solid var(--border);
 }
 .invoice-history-table td {
-  padding: 5px 6px;
+  padding: 4px 6px;
   border-bottom: 1px solid var(--border);
   vertical-align: middle;
+  line-height: 1.35;
 }
 .invoice-import-status-badge {
   font-size: 11px;
@@ -7672,6 +7799,18 @@ details[open] .panel-summary::before {
 .iisb-pending  { background: #fff3cd; color: #856404; }
 .iisb-applied  { background: #d1f5e0; color: #1a7a3c; }
 .iisb-rejected { background: #e9ecef; color: #6c757d; }
+
+@media (max-width: 900px) {
+  .project-cost-kpi-board {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .pck-metric-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
 .invoice-parse-error-msg {
   color: #c44;
   font-size: 12px;

@@ -1663,6 +1663,17 @@ function fmtOrDash(amount, currency) {
   return fmt(amount, currency);
 }
 
+function formatAmountSuffix(amount, currency) {
+  if (amount == null) return "—";
+  const value = Number(amount || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+  return `${value} ${currency || "EUR"}`;
+}
+
+function formatExchangeRate(rate) {
+  if (rate == null || rate === "") return "—";
+  return Number(rate).toFixed(2);
+}
+
 function varianceClass(v) {
   if (v == null) return "";
   if (v > 0) return "spc-over";
@@ -1697,64 +1708,120 @@ function renderProjectCostKpiGrid(summary) {
   const estimatedBanner = summary.actualProfitIsEstimated ? `
     <div class="sc-estimated-banner">⚠ 成本未完整 · 暂估利润 ${esc(estimatedBannerText)}</div>` : "";
 
+  const quoteMetrics = [
+    ["报价收入", esc(fmt(summary.quotedRevenueTotal, currency)), ""],
+    ["报价成本", esc(fmt(summary.quotedCostTotal, currency)), ""],
+    ["报价毛利", `${esc(fmt(summary.quotedGrossProfit, currency))} <em>(${esc(String(summary.quotedGrossMargin))}%)</em>`, ""],
+  ];
+  const actualMetrics = [
+    ["实际成本", esc(fmt(summary.actualCostTotal, currency)), ""],
+    [summary.actualProfitIsEstimated ? "暂估毛利" : "实际毛利", `${esc(fmt(summary.actualGrossProfit, currency))} <em>(${esc(String(summary.actualGrossMargin))}%)</em>`, actualMarginCls],
+    ["成本节省/超支", `${savingValue > 0 ? "+" : ""}${esc(fmt(savingValue, currency))}`, savingCls],
+  ];
+  const renderMetric = ([label, value, cls]) => `
+      <div class="pck-item">
+        <span class="pck-label">${esc(label)}</span>
+        <span class="pck-value ${esc(cls)}">${value}</span>
+      </div>`;
+
   return `
-    <div class="project-cost-kpi-grid">
-      <div class="pck-item">
-        <span class="pck-label">报价收入</span>
-        <span class="pck-value">${esc(fmt(summary.quotedRevenueTotal, currency))}</span>
+    <div class="project-cost-kpi-board">
+      <div class="pck-group-card">
+        <h3 class="pck-group-title">报价基线</h3>
+        <div class="pck-metric-grid">${quoteMetrics.map(renderMetric).join("")}</div>
       </div>
-      <div class="pck-item">
-        <span class="pck-label">报价成本</span>
-        <span class="pck-value">${esc(fmt(summary.quotedCostTotal, currency))}</span>
-      </div>
-      <div class="pck-item">
-        <span class="pck-label">报价毛利</span>
-        <span class="pck-value">${esc(fmt(summary.quotedGrossProfit, currency))} <em>(${esc(String(summary.quotedGrossMargin))}%)</em></span>
-      </div>
-      <div class="pck-item pck-divider">
-        <span class="pck-label">项目实际成本</span>
-        <span class="pck-value">${esc(fmt(summary.actualCostTotal, currency))}</span>
-      </div>
-      <div class="pck-item">
-        <span class="pck-label">${summary.actualProfitIsEstimated ? "暂估毛利" : "实际毛利"}</span>
-        <span class="pck-value ${esc(actualMarginCls)}">${esc(fmt(summary.actualGrossProfit, currency))} <em>(${esc(String(summary.actualGrossMargin))}%)</em></span>
-      </div>
-      <div class="pck-item">
-        <span class="pck-label">成本节省/超支</span>
-        <span class="pck-value ${esc(savingCls)}">${savingValue > 0 ? "+" : ""}${esc(fmt(savingValue, currency))}</span>
+      <div class="pck-group-card">
+        <h3 class="pck-group-title">实际成本表现</h3>
+        <div class="pck-metric-grid">${actualMetrics.map(renderMetric).join("")}</div>
       </div>
     </div>
     ${estimatedBanner}`;
 }
 
 function renderSupplierCostRow(row, currency) {
-  const modeLabel = row.appliedMode === "supplier_total" ? "供应商总成本" : "执行项汇总";
+  const modeLabel = row.appliedMode === "supplier_total" ? "供应商总成本 · 发票明细汇总" : "执行项汇总";
   const modeCls = row.appliedMode === "supplier_total" ? "scm-supplier" : "scm-items";
   const statusLabel = SUPPLIER_COST_STATUS_LABELS[row.costStatus] || row.costStatus;
   const statusCls = SUPPLIER_COST_STATUS_CLASS[row.costStatus] || "scs-pending";
   const rowSavingVal = row.costSavingOrOverrun != null ? row.costSavingOrOverrun : (row.costVariance != null ? -row.costVariance : null);
   const rowSavingCls = savingClass(rowSavingVal);
+  const appliedActualCost = row.appliedActualCost != null
+    ? row.appliedActualCost
+    : (row.appliedMode === "supplier_total" ? row.supplierActualTotalCost : row.executionActualTotalCost);
+  const safeSupplierKey = row.supplierKey.replace(/[^a-z0-9]/gi, '_');
+  const detailButton = row.costRecordId
+    ? `<button class="sc-detail-toggle-btn btn-xs" data-cost-id="${esc(row.costRecordId)}" data-currency="${esc(currency)}" aria-expanded="false">查看明细</button>`
+    : `<span class="sc-detail-muted">暂无总成本记录</span>`;
 
   return `
     <tr class="supplier-cost-row" data-supplier-key="${esc(row.supplierKey)}" data-cost-record-id="${esc(row.costRecordId || '')}">
       <td class="sc-col-supplier">
         <strong>${esc(row.supplierDisplay || row.supplierId || "（未命名）")}</strong>
-        ${row.invoiceNumber ? `<br><span class="sc-invoice-num">发票：${esc(row.invoiceNumber)}</span>` : ""}
+        <span class="supplier-cost-mode-badge ${esc(modeCls)}">${esc(modeLabel)}</span>
       </td>
       <td class="sc-col-num">${esc(fmtOrDash(row.quotedTotalCost, currency))}</td>
-      <td class="sc-col-num">${esc(fmtOrDash(row.executionActualTotalCost, currency))}</td>
-      <td class="sc-col-num">${esc(fmtOrDash(row.supplierActualTotalCost, currency))}</td>
-      <td class="sc-col-mode"><span class="supplier-cost-mode-badge ${esc(modeCls)}">${esc(modeLabel)}</span></td>
+      <td class="sc-col-num">${esc(fmtOrDash(appliedActualCost, currency))}</td>
       <td class="sc-col-num ${esc(rowSavingCls)}">${rowSavingVal != null && rowSavingVal > 0 ? "+" : ""}${esc(fmtOrDash(rowSavingVal, currency))}</td>
       <td class="sc-col-status"><span class="supplier-cost-status-badge ${esc(statusCls)}">${esc(statusLabel)}</span></td>
+      <td class="sc-col-detail">${detailButton}</td>
       <td class="sc-col-actions">
         <button class="sc-edit-btn btn-xs" data-supplier-key="${esc(row.supplierKey)}">${row.costRecordId ? "编辑" : "录入总成本"}</button>
         ${row.costRecordId ? `<button class="sc-del-btn btn-xs btn-danger-xs" data-cost-id="${esc(row.costRecordId)}">删除</button>` : ""}
       </td>
     </tr>
-    <tr class="supplier-cost-edit-row" id="sc-edit-row-${esc(row.supplierKey.replace(/[^a-z0-9]/gi, '_'))}" style="display:none">
-      <td colspan="8" style="padding:0"></td>
+    <tr class="supplier-cost-detail-row" id="sc-detail-row-${esc(row.costRecordId || safeSupplierKey)}" style="display:none">
+      <td colspan="7"></td>
+    </tr>
+    <tr class="supplier-cost-edit-row" id="sc-edit-row-${esc(safeSupplierKey)}" style="display:none">
+      <td colspan="7" style="padding:0"></td>
     </tr>`;
+}
+
+function renderSupplierCostEntryStatus(status) {
+  const label = SUPPLIER_COST_STATUS_LABELS[status] || status || "—";
+  const cls = SUPPLIER_COST_STATUS_CLASS[status] || "scs-pending";
+  return `<span class="supplier-cost-status-badge ${esc(cls)}">${esc(label)}</span>`;
+}
+
+function getConversionMethodLabel(method) {
+  return {
+    same_currency: "同币种",
+    auto: "自动折算",
+    manual_override: "人工覆盖",
+  }[method] || method || "—";
+}
+
+function renderSupplierCostEntries(entries, currency) {
+  if (!entries || entries.length === 0) {
+    return `<div class="supplier-cost-detail-empty">暂无发票明细，可能是旧手工总成本记录。</div>`;
+  }
+  const rows = entries.map(entry => `
+    <tr>
+      <td>${esc(entry.invoiceNumber || "—")}</td>
+      <td>${esc(entry.invoiceDate || "—")}</td>
+      <td class="sc-col-num">${esc(formatAmountSuffix(entry.originalAmount, entry.originalCurrency))}</td>
+      <td class="sc-col-num">${esc(fmtOrDash(entry.convertedAmount, entry.projectCurrency || currency))}</td>
+      <td class="sc-col-num">${esc(formatExchangeRate(entry.exchangeRate))}</td>
+      <td><span class="supplier-cost-mode-badge scm-entry-mode">${esc(getConversionMethodLabel(entry.conversionMethod))}</span></td>
+      <td>${renderSupplierCostEntryStatus(entry.costStatus)}</td>
+    </tr>`).join("");
+  return `
+    <div class="supplier-cost-entry-shell">
+      <table class="supplier-cost-entry-table">
+        <thead>
+          <tr>
+            <th>发票号</th>
+            <th>日期</th>
+            <th>原始金额</th>
+            <th>折算金额</th>
+            <th>汇率</th>
+            <th>换算方式</th>
+            <th>状态</th>
+          </tr>
+        </thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
 }
 
 function renderSupplierCostEditForm(row, currency, supplierKey) {
@@ -1818,11 +1885,10 @@ function renderProjectCostSummary(summary, projectId) {
           <tr>
             <th>供应商</th>
             <th>报价成本</th>
-            <th>执行项实际</th>
-            <th>供应商总成本</th>
-            <th>采用口径</th>
+            <th>已确认/实际成本</th>
             <th>节省/超支</th>
             <th>状态</th>
+            <th>成本明细</th>
             <th>操作</th>
           </tr>
         </thead>
@@ -1834,12 +1900,11 @@ function renderProjectCostSummary(summary, projectId) {
             const uvCls = savingClass(uv);
             return `
           <tr class="supplier-cost-row supplier-cost-row-unassigned">
-            <td class="sc-col-supplier" style="color:var(--muted);font-size:12px">（无供应商执行项）</td>
+            <td class="sc-col-supplier sc-unassigned-label">（无供应商执行项）</td>
             <td class="sc-col-num">${esc(fmtOrDash(summary.unassigned.quotedTotalCost, currency))}</td>
             <td class="sc-col-num">${esc(fmt(summary.unassigned.executionActualTotalCost, currency))}</td>
-            <td class="sc-col-num">—</td>
-            <td class="sc-col-mode"><span class="supplier-cost-mode-badge scm-items">执行项汇总</span></td>
             <td class="sc-col-num ${esc(uvCls)}">${uvSign}${esc(fmt(uv, currency))}</td>
+            <td></td>
             <td></td>
             <td></td>
           </tr>`;
@@ -1902,6 +1967,7 @@ function setupSupplierCostHandlers(projectId) {
     const editBtn = event.target.closest(".sc-edit-btn");
     const cancelBtn = event.target.closest(".sc-cancel-btn");
     const delBtn = event.target.closest(".sc-del-btn");
+    const detailBtn = event.target.closest(".sc-detail-toggle-btn");
 
     if (editBtn) {
       const supplierKey = editBtn.getAttribute("data-supplier-key");
@@ -1910,7 +1976,8 @@ function setupSupplierCostHandlers(projectId) {
       if (!editRow) return;
 
       // Load current summary row data
-      const dataRow = editRow.previousElementSibling;
+      const dataRow = Array.from(container.querySelectorAll(".supplier-cost-row"))
+        .find(row => row.getAttribute("data-supplier-key") === supplierKey);
       const costRecordId = dataRow ? dataRow.getAttribute("data-cost-record-id") : "";
 
       // Build row data from summary (re-fetch or read from DOM)
@@ -1930,6 +1997,41 @@ function setupSupplierCostHandlers(projectId) {
       editRow.style.display = "";
       editRow.querySelector("td").innerHTML = renderSupplierCostEditForm(rowData, summary.currency, supplierKey);
       setupCostEditFormHandlers(projectId, supplierKey, rowData);
+    }
+
+    if (detailBtn) {
+      const costId = detailBtn.getAttribute("data-cost-id");
+      if (!costId) return;
+      const detailRow = document.getElementById(`sc-detail-row-${costId}`);
+      if (!detailRow) return;
+
+      const isOpen = detailRow.style.display !== "none";
+      if (isOpen) {
+        detailRow.style.display = "none";
+        detailBtn.setAttribute("aria-expanded", "false");
+        detailBtn.textContent = "查看明细";
+        return;
+      }
+
+      detailRow.style.display = "";
+      detailBtn.setAttribute("aria-expanded", "true");
+      detailBtn.textContent = "收起明细";
+      const cell = detailRow.querySelector("td");
+      if (!cell) return;
+      if (!detailRow.getAttribute("data-loaded")) {
+        cell.innerHTML = `<div class="supplier-cost-detail-loading">明细加载中...</div>`;
+        try {
+          const entries = await window.AppUtils.fetchJson(
+            `/api/projects/${encodeURIComponent(projectId)}/supplier-cost-entries?supplierCostId=${encodeURIComponent(costId)}`,
+            null,
+            "明细加载失败"
+          );
+          cell.innerHTML = renderSupplierCostEntries(entries, detailBtn.getAttribute("data-currency") || "EUR");
+          detailRow.setAttribute("data-loaded", "true");
+        } catch (err) {
+          cell.innerHTML = `<div class="supplier-cost-detail-empty">明细加载失败：${esc(err.message)}</div>`;
+        }
+      }
     }
 
     if (cancelBtn) {
@@ -2025,8 +2127,8 @@ function renderInvoiceImportStatusBadge(status) {
 
 function renderInvoiceImportHistory(imports) {
   if (!imports || imports.length === 0) {
-    return `<div class="invoice-import-history">
-      <h4>发票导入历史</h4>
+    return `<div class="invoice-import-history compact">
+      <h4>最近导入记录</h4>
       <p class="invoice-import-history-empty">暂无导入记录。</p>
     </div>`;
   }
@@ -2038,8 +2140,8 @@ function renderInvoiceImportHistory(imports) {
       <td>${r.totalWithTax != null ? esc(String(r.totalWithTax)) + ' ' + esc(r.currency || '') : '—'}</td>
       <td>${renderInvoiceImportStatusBadge(r.reviewStatus)}</td>
     </tr>`).join('');
-  return `<div class="invoice-import-history">
-    <h4>发票导入历史（最近 ${imports.length} 条）</h4>
+  return `<div class="invoice-import-history compact">
+    <h4>最近导入记录（${imports.length} 条）</h4>
     <table class="invoice-history-table">
       <thead><tr><th>日期</th><th>供应商</th><th>发票号</th><th>金额</th><th>状态</th></tr></thead>
       <tbody>${rows}</tbody>
