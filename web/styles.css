@@ -7196,11 +7196,15 @@ details[open] .panel-summary::before {
 
 /* cost mini display in table cell */
 .ei-cost-mini {
-  display: flex;
+  display: inline-flex;
   flex-direction: column;
   gap: 1px;
-  margin-top: 3px;
+  margin-top: 4px;
   font-size: 11px;
+  background: rgba(0,0,0,0.04);
+  border: 1px solid var(--line, #e4e4e4);
+  border-radius: 5px;
+  padding: 2px 6px;
 }
 .ei-cost-actual {
   font-weight: 700;
@@ -7422,6 +7426,20 @@ details[open] .panel-summary::before {
   padding: 12px 0;
 }
 
+.sc-estimated-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 4px;
+  padding: 7px 12px;
+  background: #fff8e1;
+  border: 1px solid #ffe08a;
+  border-radius: 8px;
+  font-size: 13px;
+  color: #7d5a00;
+  font-weight: 500;
+}
+
 .supplier-cost-edit-form {
   padding: 16px;
   background: var(--bg-alt, #f8f9fa);
@@ -7474,6 +7492,8 @@ details[open] .panel-summary::before {
   color: var(--text);
   cursor: pointer;
   font-weight: 500;
+  width: auto;
+  flex-shrink: 0;
 }
 .btn-xs:hover { background: var(--bg-alt, #f0f0f0); }
 .btn-primary-xs {
@@ -7485,6 +7505,8 @@ details[open] .panel-summary::before {
   color: #fff;
   cursor: pointer;
   font-weight: 600;
+  width: auto;
+  flex-shrink: 0;
 }
 .btn-primary-xs:hover { opacity: 0.88; }
 .btn-danger-xs {
@@ -7492,3 +7514,5 @@ details[open] .panel-summary::before {
   border-color: #f5c6cb;
 }
 .btn-danger-xs:hover { background: #fde8ea; }
+.project-cost-summary-panel .panel-head h2 { white-space: nowrap; }
+.sc-edit-actions button { width: auto; }

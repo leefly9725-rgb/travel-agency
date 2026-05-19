@@ -1676,6 +1676,18 @@ function renderProjectCostKpiGrid(summary) {
   const actualMarginCls = summary.actualGrossMargin < 0 ? "spc-over"
     : summary.actualGrossMargin > 0 ? "spc-under" : "";
 
+  let estimatedBannerText = "";
+  if (summary.actualProfitIsEstimated) {
+    if (summary.missingCostSupplierCount > 0) {
+      estimatedBannerText = `（${summary.missingCostSupplierCount} 个供应商未录入成本）`;
+    } else if (summary.supplierPendingCount > 0) {
+      estimatedBannerText = `（${summary.supplierPendingCount} 个供应商成本未确认）`;
+    }
+  }
+
+  const estimatedBanner = summary.actualProfitIsEstimated ? `
+    <div class="sc-estimated-banner">⚠ 成本未完整 · 暂估利润 ${esc(estimatedBannerText)}</div>` : "";
+
   return `
     <div class="project-cost-kpi-grid">
       <div class="pck-item">
@@ -1695,14 +1707,15 @@ function renderProjectCostKpiGrid(summary) {
         <span class="pck-value">${esc(fmt(summary.actualCostTotal, currency))}</span>
       </div>
       <div class="pck-item">
-        <span class="pck-label">实际毛利</span>
+        <span class="pck-label">${summary.actualProfitIsEstimated ? "暂估毛利" : "实际毛利"}</span>
         <span class="pck-value ${esc(actualMarginCls)}">${esc(fmt(summary.actualGrossProfit, currency))} <em>(${esc(String(summary.actualGrossMargin))}%)</em></span>
       </div>
       <div class="pck-item">
         <span class="pck-label">成本差异</span>
         <span class="pck-value ${esc(varianceCls)}">${summary.costVariance > 0 ? "+" : ""}${esc(fmt(summary.costVariance, currency))}</span>
       </div>
-    </div>`;
+    </div>
+    ${estimatedBanner}`;
 }
 
 function renderSupplierCostRow(row, currency) {
@@ -1805,14 +1818,22 @@ function renderProjectCostSummary(summary, projectId) {
         </thead>
         <tbody id="sc-table-body">
           ${(summary.supplierRows || []).map(r => renderSupplierCostRow(r, currency)).join("")}
-          ${hasUnassigned ? `
+          ${hasUnassigned ? (() => {
+            const uv = (summary.unassigned.executionActualTotalCost || 0) - (summary.unassigned.quotedTotalCost || 0);
+            const uvSign = uv > 0 ? "+" : "";
+            const uvCls = varianceClass(uv);
+            return `
           <tr class="supplier-cost-row supplier-cost-row-unassigned">
-            <td colspan="3" style="color:var(--muted);font-size:12px">（无供应商执行项）</td>
+            <td class="sc-col-supplier" style="color:var(--muted);font-size:12px">（无供应商执行项）</td>
+            <td class="sc-col-num">${esc(fmtOrDash(summary.unassigned.quotedTotalCost, currency))}</td>
+            <td class="sc-col-num">${esc(fmt(summary.unassigned.executionActualTotalCost, currency))}</td>
             <td class="sc-col-num">—</td>
             <td class="sc-col-mode"><span class="supplier-cost-mode-badge scm-items">执行项汇总</span></td>
-            <td class="sc-col-num">${esc(fmt(summary.unassigned.executionActualTotalCost, currency))}</td>
-            <td colspan="2"></td>
-          </tr>` : ""}
+            <td class="sc-col-num ${esc(uvCls)}">${uvSign}${esc(fmt(uv, currency))}</td>
+            <td></td>
+            <td></td>
+          </tr>`;
+          })() : ""}
         </tbody>
       </table>
     </div>` : `<p class="sc-empty">暂无执行项，生成执行项后可在此查看成本汇总。</p>`;

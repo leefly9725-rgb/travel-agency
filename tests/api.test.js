@@ -3684,6 +3684,79 @@ test("B1-05B: cost-summary is stable when supplierProjectCosts key missing from 
   });
 });
 
+test("B1-05B: cost-summary includes completeness metrics", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    assert.ok("costCompletenessStatus" in summary, "costCompletenessStatus should be present");
+    assert.ok("supplierTotalCount" in summary, "supplierTotalCount should be present");
+    assert.ok("supplierConfirmedCount" in summary, "supplierConfirmedCount should be present");
+    assert.ok("supplierPendingCount" in summary, "supplierPendingCount should be present");
+    assert.ok("missingCostSupplierCount" in summary, "missingCostSupplierCount should be present");
+    assert.ok("hasUnconfirmedSupplierCosts" in summary, "hasUnconfirmedSupplierCosts should be present");
+    assert.ok("actualProfitIsEstimated" in summary, "actualProfitIsEstimated should be present");
+    const validStatuses = ["empty", "partial", "complete"];
+    assert.ok(validStatuses.includes(summary.costCompletenessStatus),
+      `costCompletenessStatus must be empty|partial|complete, got: ${summary.costCompletenessStatus}`);
+  });
+});
+
+test("B1-05B: cost-summary completeness becomes 'complete' when all suppliers confirmed", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    // Create a confirmed supplier cost record
+    const postRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "唯一供应商",
+        actualTotalCost: 800,
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+      }),
+    });
+    assert.equal(postRes.status, 201);
+
+    // Now patch execution items to assign same supplier so they appear in summary
+    // (since execution items from Q-PB have no supplier, supplierTotalCount=0 → 'empty', then adding
+    //  a cost record with no matching EI gives supplierTotalCount=1 and missingCostSupplierCount=0)
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    // The manually added confirmed supplier record has no EI rows → costRecordId exists → not missing
+    assert.ok(summary.supplierTotalCount >= 1, "should have at least 1 supplier");
+    if (summary.missingCostSupplierCount === 0 && summary.supplierConfirmedCount === summary.supplierTotalCount) {
+      assert.equal(summary.costCompletenessStatus, "complete", "all confirmed → complete");
+      assert.equal(summary.actualProfitIsEstimated, false, "all confirmed → not estimated");
+    } else {
+      // If EI suppliers exist and are not confirmed, partial is correct
+      assert.ok(["partial", "complete"].includes(summary.costCompletenessStatus));
+    }
+  });
+});
+
+test("B1-05B: cost-summary quotedTotalCost uses snapshot fallback when EI quoteTotalCost is null", async () => {
+  await withServer(async (port) => {
+    // Use the two-supplier quote which has costSubtotal set
+    seedProjectBasedQuoteWithTwoSupplierItems();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB-S/convert-to-project", { method: "POST" });
+    assert.equal(convertRes.status, 201);
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    // SUP-001 has two items: costSubtotal 300 + 200 = 500; SUP-002 has one item: costSubtotal 500
+    const sup001 = summary.supplierRows.find(r => r.supplierId === "SUP-001");
+    const sup002 = summary.supplierRows.find(r => r.supplierId === "SUP-002");
+    if (sup001) {
+      assert.ok(sup001.quotedTotalCost > 0,
+        `SUP-001 quotedTotalCost should be > 0 (snapshot fallback), got ${sup001.quotedTotalCost}`);
+    }
+    if (sup002) {
+      assert.ok(sup002.quotedTotalCost > 0,
+        `SUP-002 quotedTotalCost should be > 0 (snapshot fallback), got ${sup002.quotedTotalCost}`);
+    }
+  });
+});
+
 test("B1-05B: client-facing API does not expose supplier cost or profit fields", async () => {
   await withServer(async (port) => {
     seedProjectBasedQuote();

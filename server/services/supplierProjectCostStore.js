@@ -367,6 +367,33 @@ async function deleteSupplierProjectCost(config, projectId, costId) {
   saveSeedData(data);
 }
 
+// Returns Map<supplierKey, quotedCost> from quoteSnapshot projectGroups items.
+// Used as fallback when execution items have null quoteTotalCost (snapshot items lacked costSubtotal).
+function buildQuotedSupplierCostMapFromSnapshot(quoteSnapshot) {
+  const map = new Map();
+  const groups = Array.isArray(quoteSnapshot?.projectGroups) ? quoteSnapshot.projectGroups : [];
+  for (const group of groups) {
+    const items = Array.isArray(group?.items) ? group.items : [];
+    for (const item of items) {
+      const supplierId = String(item.supplierId || item.supplier_id || '').trim();
+      const supplierDisplay = String(
+        item.supplierDisplay || item.supplier_display ||
+        item.supplierName || item.supplier_name || item.supplier || ''
+      ).trim();
+      const key = supplierId ? `id:${supplierId}` : supplierDisplay ? `display:${supplierDisplay}` : null;
+      if (!key) continue;
+      const cs = item.costSubtotal != null ? Number(item.costSubtotal)
+        : item.cost_subtotal != null ? Number(item.cost_subtotal) : null;
+      const cu = Number(item.costUnitPrice || item.cost_unit_price || 0);
+      const qty = Number(item.quantity || 0);
+      const cost = cs != null ? cs : (qty * cu);
+      if (!map.has(key)) map.set(key, 0);
+      map.set(key, map.get(key) + cost);
+    }
+  }
+  return map;
+}
+
 // ── buildProjectCostSummary ───────────────────────────────────────────────────
 // "供应商总成本优先"规则：
 //   对每个有 supplier_project_costs 且 useSupplierTotal=true 且 actualTotalCost 有值的供应商，
@@ -445,6 +472,9 @@ async function buildProjectCostSummary(config, projectId) {
     ...[...supplierExecMap.keys()].filter(k => k !== '__unassigned__'),
   ]);
 
+  // Snapshot-derived quoted cost map: fallback when execution items lack quoteTotalCost.
+  const snapshotQuotedMap = buildQuotedSupplierCostMapFromSnapshot(project.quoteSnapshot || {});
+
   // 8. Build supplierRows + compute actualCostTotal
   const supplierRows = [];
   let actualCostTotal = 0;
@@ -464,9 +494,13 @@ async function buildProjectCostSummary(config, projectId) {
       supplierDisplay = eiItems[0].supplierDisplay || '';
     }
 
-    const quotedTotalCost = costRecord?.quotedTotalCost != null
+    let quotedTotalCost = costRecord?.quotedTotalCost != null
       ? Number(costRecord.quotedTotalCost)
       : eiItems.reduce((s, ei) => s + Number(ei.quoteTotalCost || 0), 0);
+    // Snapshot fallback: execution items may have null quoteTotalCost when snapshot items lacked costSubtotal.
+    if (quotedTotalCost === 0 && snapshotQuotedMap.has(supplierKey)) {
+      quotedTotalCost = snapshotQuotedMap.get(supplierKey);
+    }
 
     const executionActualTotalCost = eiItems.reduce(
       (s, ei) => s + Number(ei.actualTotalCost || 0), 0
@@ -539,6 +573,17 @@ async function buildProjectCostSummary(config, projectId) {
       .reduce((s, r) => s + r.appliedActualCost, 0)
   );
 
+  // 11. Cost completeness metrics
+  const supplierTotalCount = allSupplierKeys.size;
+  const supplierConfirmedCount = supplierRows.filter(r => r.costStatus === 'confirmed').length;
+  const missingCostSupplierCount = supplierRows.filter(r => !r.costRecordId).length;
+  const supplierPendingCount = supplierRows.filter(r => r.costStatus !== 'confirmed').length;
+  const hasUnconfirmedSupplierCosts = supplierPendingCount > 0;
+  const actualProfitIsEstimated = supplierTotalCount === 0 || missingCostSupplierCount > 0 || hasUnconfirmedSupplierCosts;
+  const costCompletenessStatus = supplierTotalCount === 0 ? 'empty'
+    : (missingCostSupplierCount === 0 && supplierConfirmedCount === supplierTotalCount) ? 'complete'
+    : 'partial';
+
   return {
     projectId,
     currency: project.currency || 'EUR',
@@ -552,6 +597,13 @@ async function buildProjectCostSummary(config, projectId) {
     actualGrossProfit,
     actualGrossMargin,
     costVariance,
+    costCompletenessStatus,
+    supplierTotalCount,
+    supplierConfirmedCount,
+    supplierPendingCount,
+    missingCostSupplierCount,
+    hasUnconfirmedSupplierCosts,
+    actualProfitIsEstimated,
     supplierRows,
     unassigned: {
       quotedTotalCost: roundToTwo(unassignedQuotedTotalCost),
