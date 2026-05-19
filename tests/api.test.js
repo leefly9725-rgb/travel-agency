@@ -3790,3 +3790,277 @@ test("B1-05B: client-facing API does not expose supplier cost or profit fields",
     assert.ok(!projectBody.includes('"actualGrossProfit"'), "project record must not include actualGrossProfit");
   });
 });
+
+// ── B1-05C: 供应商发票文本导入 ──────────────────────────────────────────────
+
+const { parseSupplierInvoiceText, normalizeMoneyString } = require("../server/services/supplierInvoiceTextImportStore");
+
+// A. parseSupplierInvoiceText 规则解析
+test("B1-05C: normalizeMoneyString — Serbian format 120.000,00", () => {
+  assert.equal(normalizeMoneyString("120.000,00"), 120000);
+  assert.equal(normalizeMoneyString("5.000"), 5000);
+  assert.equal(normalizeMoneyString("5,000"), 5000);
+  assert.equal(normalizeMoneyString("120,000.00"), 120000);
+  assert.equal(normalizeMoneyString("5000.00"), 5000);
+  assert.equal(normalizeMoneyString("500"), 500);
+});
+
+test("B1-05C: parseSupplierInvoiceText — Serbian invoice full parse", () => {
+  const text = `AUDIO PRO D.O.O.
+PIB: 103456789
+Račun broj: INV-2026-0042
+Datum: 18.05.2026
+Podstawica (bez PDV): 100.000,00 RSD
+PDV: 20.000,00 RSD
+Ukupno za uplatu: 120.000,00 RSD`;
+
+  const result = parseSupplierInvoiceText(text);
+  assert.equal(result.parsedSupplierName, "AUDIO PRO D.O.O.", "should extract supplier name");
+  assert.equal(result.parsedSupplierPib, "103456789", "should extract PIB");
+  assert.equal(result.invoiceNumber, "INV-2026-0042", "should extract invoice number");
+  assert.equal(result.invoiceDate, "2026-05-18", "should parse date 18.05.2026");
+  assert.equal(result.currency, "RSD", "should detect RSD currency");
+  assert.equal(result.totalWithTax, 120000, "should parse total 120.000,00");
+  assert.equal(result.parseStatus, "parsed", "parseStatus should be parsed");
+  assert.equal(result.parseError, "", "parseError should be empty");
+});
+
+test("B1-05C: parseSupplierInvoiceText — extracts PIB in various formats", () => {
+  const text = `Firma XYZ\nP.I.B.: 987654321\nFaktura br. F-001\nUkupno: 5.000,00`;
+  const r = parseSupplierInvoiceText(text);
+  assert.equal(r.parsedSupplierPib, "987654321");
+  assert.equal(r.invoiceNumber, "F-001");
+  assert.equal(r.totalWithTax, 5000);
+});
+
+test("B1-05C: parseSupplierInvoiceText — ISO date format", () => {
+  const text = `Supplier\nInvoice No: SRV-2026-01\nDate: 2026-05-18\nTotal: 1.500,00 RSD`;
+  const r = parseSupplierInvoiceText(text);
+  assert.equal(r.invoiceDate, "2026-05-18");
+  assert.equal(r.invoiceNumber, "SRV-2026-01");
+  assert.equal(r.totalWithTax, 1500);
+});
+
+test("B1-05C: parseSupplierInvoiceText — EUR currency detection", () => {
+  const text = `Prevod ABC\nBroj računa: R-2026-005\nDatum: 15/03/2026\nUkupno za uplatu: 2.500,00 EUR`;
+  const r = parseSupplierInvoiceText(text);
+  assert.equal(r.currency, "EUR");
+  assert.equal(r.totalWithTax, 2500);
+  assert.equal(r.invoiceDate, "2026-03-15");
+});
+
+test("B1-05C: parseSupplierInvoiceText — failed parse when no total", () => {
+  const text = `Neka firma\nRačun: R-001\nDatum: 01.01.2026\nBez iznosa ovde`;
+  const r = parseSupplierInvoiceText(text);
+  assert.equal(r.parseStatus, "failed");
+  assert.ok(r.parseError.length > 0, "parseError should be set");
+  assert.equal(r.totalWithTax, null);
+});
+
+// B. POST /api/projects/:id/invoice-text-imports
+test("B1-05C: POST invoice-text-imports with empty rawText returns 400", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawText: "" }),
+    });
+    assert.equal(res.status, 400, "empty rawText should return 400");
+  });
+});
+
+test("B1-05C: POST invoice-text-imports with valid text creates record", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "TECH SOUND\nPIB: 111222333\nRačun: INV-001\nDatum: 18.05.2026\nUkupno za uplatu: 120.000,00 RSD",
+      }),
+    });
+    assert.equal(res.status, 201, "should return 201");
+    const record = await res.json();
+    assert.ok(record.id, "should have id");
+    assert.equal(record.projectId, projectId);
+    assert.equal(record.parsedSupplierName, "TECH SOUND");
+    assert.equal(record.parsedSupplierPib, "111222333");
+    assert.equal(record.invoiceNumber, "INV-001");
+    assert.equal(record.invoiceDate, "2026-05-18");
+    assert.equal(record.totalWithTax, 120000);
+    assert.equal(record.currency, "RSD");
+    assert.equal(record.reviewStatus, "pending");
+    assert.ok("matchConfidence" in record, "should have matchConfidence field");
+    assert.ok("suggestedSupplierDisplay" in record, "should have suggestedSupplierDisplay field");
+  });
+});
+
+// C. apply import
+test("B1-05C: apply import writes supplier_project_cost with sourceType=invoice_text", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    // Create the import record
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "GLOBAL EVENTS\nPIB: 999888777\nFaktura: F-2026-88\nDatum: 01.03.2026\nUkupno za uplatu: 85.000,00 RSD",
+      }),
+    });
+    assert.equal(createRes.status, 201);
+    const importRecord = await createRes.json();
+    const importId = importRecord.id;
+
+    // Apply the import
+    const applyRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "Global Events",
+        costCurrency: "RSD",
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+      }),
+    });
+    assert.equal(applyRes.status, 200, "apply should return 200");
+    const result = await applyRes.json();
+    assert.ok(result.importRecord, "should have importRecord");
+    assert.ok(result.supplierCost, "should have supplierCost");
+
+    // Check import record updated
+    assert.equal(result.importRecord.reviewStatus, "applied", "reviewStatus should be applied");
+    assert.ok(result.importRecord.targetSupplierCostId, "targetSupplierCostId should be set");
+    assert.ok(result.importRecord.appliedAt, "appliedAt should be set");
+
+    // Check supplier cost
+    const sc = result.supplierCost;
+    assert.equal(sc.sourceType, "invoice_text", "sourceType must be invoice_text");
+    assert.equal(sc.actualTotalCost, 85000, "actualTotalCost should use parsed total");
+    assert.equal(sc.invoiceNumber, "F-2026-88", "invoiceNumber from import");
+    assert.equal(sc.invoiceDate, "2026-03-01", "invoiceDate from import");
+    assert.ok(sc.id, "supplierCost should have id");
+    assert.equal(sc.costStatus, "confirmed");
+  });
+});
+
+// D. reject import
+test("B1-05C: reject import sets reviewStatus=rejected, does not write supplier cost", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "TEST FIRMA\nRačun: TF-001\nDatum: 10.04.2026\nUkupno: 50.000,00 RSD",
+      }),
+    });
+    const importRecord = await createRes.json();
+    const importId = importRecord.id;
+
+    const rejectRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/reject`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: "金额不符" }),
+    });
+    assert.equal(rejectRes.status, 200, "reject should return 200");
+    const rejected = await rejectRes.json();
+    assert.equal(rejected.reviewStatus, "rejected", "reviewStatus should be rejected");
+
+    // Verify supplier costs NOT created
+    const costsRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`);
+    const costs = await costsRes.json();
+    const hasTF = costs.some(c => c.invoiceNumber === "TF-001");
+    assert.equal(hasTF, false, "reject must NOT create a supplier cost record");
+  });
+});
+
+// E. cost-summary update after apply
+test("B1-05C: apply import → cost-summary actualCostTotal updates", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    const summaryBefore = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+
+    const createRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "VENUE PLUS\nFaktura: VP-200\nDatum: 05.05.2026\nUkupno za uplatu: 200.000,00 RSD",
+      }),
+    });
+    const { id: importId } = await createRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(importId)}/apply`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "Venue Plus",
+        costCurrency: "RSD",
+        costStatus: "confirmed",
+        useSupplierTotal: true,
+      }),
+    });
+
+    const summaryAfter = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    assert.ok(summaryAfter.supplierRows.length >= 1, "should have supplier rows after apply");
+    const vpRow = summaryAfter.supplierRows.find(r => r.supplierDisplay === "Venue Plus");
+    assert.ok(vpRow, "should find Venue Plus row in summary");
+    assert.equal(vpRow.supplierActualTotalCost, 200000, "Venue Plus actual total should be 200000");
+  });
+});
+
+// F. 客户输出安全
+test("B1-05C: client-facing APIs do not expose invoice import data", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        rawText: "SECRET SUPPLIER\nFaktura: SEC-001\nDatum: 01.01.2026\nUkupno: 999.999,00 RSD",
+      }),
+    });
+
+    const project = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const projectBody = JSON.stringify(project);
+    assert.ok(!projectBody.includes('"supplierInvoiceTextImports"'), "project record must not include supplierInvoiceTextImports");
+    assert.ok(!projectBody.includes('"rawText"'), "project record must not include rawText");
+    assert.ok(!projectBody.includes('SECRET SUPPLIER'), "project record must not contain raw supplier name from invoice");
+
+    const sourceQuoteId = project.sourceQuoteId;
+    if (sourceQuoteId) {
+      const quoteRes = await apiFetch(port, `/api/quotes/${encodeURIComponent(sourceQuoteId)}`);
+      if (quoteRes.status === 200) {
+        const quoteBody = JSON.stringify(await quoteRes.json());
+        assert.ok(!quoteBody.includes('"supplierInvoiceTextImports"'), "quote API must not expose supplierInvoiceTextImports");
+        assert.ok(!quoteBody.includes('"rawText"'), "quote API must not expose rawText");
+        assert.ok(!quoteBody.includes('"actualGrossProfit"'), "quote API must not expose actualGrossProfit");
+      }
+    }
+  });
+});
+
+// G. 兼容旧数据
+test("B1-05C: supplierInvoiceTextImports key missing from seed does not crash", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    delete data.supplierInvoiceTextImports;
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`);
+    assert.equal(res.status, 200, "should not crash when supplierInvoiceTextImports key is missing");
+    const list = await res.json();
+    assert.ok(Array.isArray(list), "should return array");
+    assert.equal(list.length, 0, "should return empty array");
+  });
+});

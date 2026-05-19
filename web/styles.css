@@ -7516,3 +7516,164 @@ details[open] .panel-summary::before {
 .btn-danger-xs:hover { background: #fde8ea; }
 .project-cost-summary-panel .panel-head h2 { white-space: nowrap; }
 .sc-edit-actions button { width: auto; }
+
+/* ── B1-05C: 发票文本导入 ── */
+.invoice-text-import-panel {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg-alt, #f8f9fa);
+}
+.invoice-text-import-panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+.invoice-import-desc {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+.invoice-import-textarea {
+  width: 100%;
+  min-height: 120px;
+  font-size: 12px;
+  font-family: monospace;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px;
+  resize: vertical;
+  box-sizing: border-box;
+  background: var(--bg);
+  color: var(--text);
+}
+.invoice-import-textarea:focus { outline: 2px solid var(--accent, #3a5ccc); }
+.invoice-import-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.invoice-parse-result {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  font-size: 13px;
+}
+.invoice-parse-result.parse-failed {
+  border-color: #f5c6cb;
+  background: #fff5f5;
+}
+.invoice-parse-result h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+}
+.invoice-parse-grid {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  column-gap: 12px;
+  row-gap: 4px;
+  font-size: 12px;
+  margin-bottom: 10px;
+}
+.invoice-parse-grid dt { color: var(--muted); white-space: nowrap; }
+.invoice-parse-grid dd { margin: 0; font-weight: 500; }
+.invoice-match-confidence {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  background: #e8f0fe;
+  color: #3a5ccc;
+  display: inline-block;
+  margin-left: 4px;
+}
+.invoice-match-confidence.conf-low { background: #fff3cd; color: #856404; }
+.invoice-match-confidence.conf-zero { background: #f8d7da; color: #842029; }
+.invoice-confirm-form {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid #d0e4ff;
+  border-radius: 7px;
+  background: #f0f7ff;
+  font-size: 13px;
+}
+.invoice-confirm-form h4 { font-size: 13px; font-weight: 600; margin: 0 0 10px 0; }
+.invoice-confirm-row {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  align-items: center;
+  gap: 6px 10px;
+  margin-bottom: 7px;
+}
+.invoice-confirm-row label { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.invoice-confirm-row input,
+.invoice-confirm-row select,
+.invoice-confirm-row textarea {
+  font-size: 12px;
+  padding: 4px 7px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--bg);
+  color: var(--text);
+  width: 100%;
+  box-sizing: border-box;
+}
+.invoice-confirm-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+/* Import History */
+.invoice-import-history {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.invoice-import-history h4 {
+  font-size: 13px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--muted);
+}
+.invoice-import-history-empty {
+  font-size: 12px;
+  color: var(--muted);
+}
+.invoice-history-table {
+  width: 100%;
+  font-size: 12px;
+  border-collapse: collapse;
+}
+.invoice-history-table th {
+  text-align: left;
+  font-weight: 500;
+  color: var(--muted);
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+}
+.invoice-history-table td {
+  padding: 5px 6px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.invoice-import-status-badge {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  font-weight: 500;
+  display: inline-block;
+}
+.iisb-pending  { background: #fff3cd; color: #856404; }
+.iisb-applied  { background: #d1f5e0; color: #1a7a3c; }
+.iisb-rejected { background: #e9ecef; color: #6c757d; }
+.invoice-parse-error-msg {
+  color: #c44;
+  font-size: 12px;
+  margin-top: 4px;
+}

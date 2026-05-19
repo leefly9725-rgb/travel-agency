@@ -1842,11 +1842,16 @@ function renderProjectCostSummary(summary, projectId) {
     <section class="panel project-cost-summary-panel" id="project-cost-summary-panel">
       <div class="panel-head">
         <h2>供应商成本汇总</h2>
-        <button class="btn-xs sc-refresh-btn" data-project-id="${esc(projectId)}">刷新</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+          <button class="btn-xs invoice-import-open-btn" data-project-id="${esc(projectId)}">导入发票文本</button>
+          <button class="btn-xs sc-refresh-btn" data-project-id="${esc(projectId)}">刷新</button>
+        </div>
       </div>
       ${renderProjectCostKpiGrid(summary)}
       ${tableHtml}
       <span id="sc-message" aria-live="polite" style="font-size:12px;color:var(--muted)"></span>
+      <div id="invoice-import-panel-container"></div>
+      <div id="invoice-import-history-container"></div>
     </section>`;
 }
 
@@ -1861,6 +1866,8 @@ async function loadAndRenderProjectCostSummary(projectId) {
     );
     container.innerHTML = renderProjectCostSummary(summary, projectId);
     setupSupplierCostHandlers(projectId);
+    setupInvoiceImportHandlers(projectId, summary);
+    await loadInvoiceImportHistory(projectId);
   } catch (err) {
     container.innerHTML = `
       <section class="panel project-cost-summary-panel" id="project-cost-summary-panel">
@@ -1994,6 +2001,285 @@ function setupCostEditFormHandlers(projectId, supplierKey, rowData) {
     } catch (err) {
       if (hint) hint.textContent = `保存失败：${err.message}`;
       if (submitBtn) submitBtn.disabled = false;
+    }
+  });
+}
+
+// ── B1-05C: 发票文本导入 UI ────────────────────────────────────────────────────
+
+function renderInvoiceImportStatusBadge(status) {
+  const map = { pending: ["iisb-pending", "待审核"], applied: ["iisb-applied", "已写入"], rejected: ["iisb-rejected", "已驳回"] };
+  const [cls, label] = map[status] || ["iisb-pending", status];
+  return `<span class="invoice-import-status-badge ${esc(cls)}">${esc(label)}</span>`;
+}
+
+function renderInvoiceImportHistory(imports) {
+  if (!imports || imports.length === 0) {
+    return `<div class="invoice-import-history">
+      <h4>发票导入历史</h4>
+      <p class="invoice-import-history-empty">暂无导入记录。</p>
+    </div>`;
+  }
+  const rows = imports.map(r => `
+    <tr>
+      <td>${esc((r.createdAt || '').slice(0, 10))}</td>
+      <td>${esc(r.parsedSupplierName || r.supplierDisplay || '—')}</td>
+      <td>${esc(r.invoiceNumber || '—')}</td>
+      <td>${r.totalWithTax != null ? esc(String(r.totalWithTax)) + ' ' + esc(r.currency || '') : '—'}</td>
+      <td>${renderInvoiceImportStatusBadge(r.reviewStatus)}</td>
+    </tr>`).join('');
+  return `<div class="invoice-import-history">
+    <h4>发票导入历史（最近 ${imports.length} 条）</h4>
+    <table class="invoice-history-table">
+      <thead><tr><th>日期</th><th>供应商</th><th>发票号</th><th>金额</th><th>状态</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+  </div>`;
+}
+
+async function loadInvoiceImportHistory(projectId) {
+  const container = document.getElementById("invoice-import-history-container");
+  if (!container) return;
+  try {
+    const imports = await window.AppUtils.fetchJson(
+      `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`,
+      null,
+      "加载导入历史失败"
+    );
+    container.innerHTML = renderInvoiceImportHistory(imports);
+  } catch (_) {
+    container.innerHTML = '';
+  }
+}
+
+function setupInvoiceImportHandlers(projectId, summary) {
+  const panel = document.getElementById("project-cost-summary-panel");
+  if (!panel) return;
+
+  const openBtn = panel.querySelector(".invoice-import-open-btn");
+  if (!openBtn) return;
+
+  openBtn.addEventListener("click", () => {
+    const panelContainer = document.getElementById("invoice-import-panel-container");
+    if (!panelContainer) return;
+    if (panelContainer.innerHTML.trim()) {
+      panelContainer.innerHTML = '';
+      openBtn.textContent = "导入发票文本";
+      return;
+    }
+    openBtn.textContent = "收起";
+    const supplierOptions = (summary && summary.supplierRows || [])
+      .map(r => `<option value="${esc(r.supplierDisplay)}" data-supplier-id="${esc(r.supplierId || '')}">${esc(r.supplierDisplay)}</option>`)
+      .join('');
+    panelContainer.innerHTML = `
+      <div class="invoice-text-import-panel" id="invoice-import-form-panel">
+        <h3>导入发票文本</h3>
+        <p class="invoice-import-desc">粘贴供应商发票 / 收据文字，系统会尝试识别供应商、发票号、日期和含税总额。</p>
+        <textarea class="invoice-import-textarea" id="invoice-raw-text" placeholder="在此粘贴发票原文…"></textarea>
+        <div class="invoice-import-actions">
+          <button class="btn-primary-xs" id="invoice-parse-btn">解析</button>
+          <button class="btn-xs" id="invoice-cancel-btn">取消</button>
+          <span id="invoice-parse-msg" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+        <div id="invoice-parse-result-area"></div>
+      </div>`;
+
+    document.getElementById("invoice-cancel-btn").addEventListener("click", () => {
+      panelContainer.innerHTML = '';
+      openBtn.textContent = "导入发票文本";
+    });
+
+    document.getElementById("invoice-parse-btn").addEventListener("click", async () => {
+      const rawText = (document.getElementById("invoice-raw-text") || {}).value || '';
+      if (!rawText.trim()) {
+        document.getElementById("invoice-parse-msg").textContent = "请先粘贴发票文字。";
+        return;
+      }
+      const parseBtn = document.getElementById("invoice-parse-btn");
+      const msg = document.getElementById("invoice-parse-msg");
+      parseBtn.disabled = true;
+      msg.textContent = "解析中...";
+      try {
+        const record = await window.AppUtils.fetchJson(
+          `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ rawText }),
+          },
+          "解析失败"
+        );
+        msg.textContent = '';
+        renderInvoiceParseResult(record, projectId, summary, supplierOptions);
+      } catch (err) {
+        msg.textContent = `解析失败：${err.message}`;
+        parseBtn.disabled = false;
+      }
+    });
+  });
+}
+
+function renderInvoiceParseResult(record, projectId, summary, supplierOptions) {
+  const area = document.getElementById("invoice-parse-result-area");
+  if (!area) return;
+
+  const failedCls = record.parseStatus === 'failed' ? 'parse-failed' : '';
+  const confScore = record.matchConfidence != null ? Number(record.matchConfidence) : 0;
+  const confCls = confScore >= 70 ? '' : confScore >= 30 ? 'conf-low' : 'conf-zero';
+
+  const fmtNum = v => v != null ? String(v) : '—';
+
+  area.innerHTML = `
+    <div class="invoice-parse-result ${failedCls}">
+      <h4>解析结果 ${record.parseStatus === 'failed' ? '<span style="color:#c44;font-size:12px">（未识别总金额，请手动填写）</span>' : ''}</h4>
+      ${record.parseError ? `<p class="invoice-parse-error-msg">⚠ ${esc(record.parseError)}</p>` : ''}
+      <dl class="invoice-parse-grid">
+        <dt>识别供应商</dt><dd>${esc(record.parsedSupplierName || '—')}</dd>
+        <dt>PIB</dt><dd>${esc(record.parsedSupplierPib || '—')}</dd>
+        <dt>发票号</dt><dd>${esc(record.invoiceNumber || '—')}</dd>
+        <dt>发票日期</dt><dd>${esc(record.invoiceDate || '—')}</dd>
+        <dt>币种</dt><dd>${esc(record.currency || '—')}</dd>
+        <dt>不含税金额</dt><dd>${esc(fmtNum(record.subtotalWithoutTax))}</dd>
+        <dt>PDV 税额</dt><dd>${esc(fmtNum(record.taxAmount))}</dd>
+        <dt>含税总额</dt><dd><strong>${esc(fmtNum(record.totalWithTax))}</strong> ${esc(record.currency || '')}</dd>
+        <dt>匹配建议</dt><dd>${esc(record.suggestedSupplierDisplay || '—')}
+          <span class="invoice-match-confidence ${esc(confCls)}">${esc(String(confScore))}%</span>
+        </dd>
+        <dt>匹配原因</dt><dd>${esc(record.matchReason || '—')}</dd>
+      </dl>
+      <div class="invoice-confirm-form" id="invoice-confirm-form-${esc(record.id)}">
+        <h4>人工确认</h4>
+        <div class="invoice-confirm-row">
+          <label>目标供应商</label>
+          <select id="ici-supplier-${esc(record.id)}">
+            <option value="">—— 请选择或直接输入 ——</option>
+            ${supplierOptions}
+          </select>
+        </div>
+        <div class="invoice-confirm-row">
+          <label>供应商名称</label>
+          <input type="text" id="ici-supplier-display-${esc(record.id)}" value="${esc(record.suggestedSupplierDisplay || record.parsedSupplierName || '')}" placeholder="供应商显示名">
+        </div>
+        <div class="invoice-confirm-row">
+          <label>实际总成本</label>
+          <input type="number" id="ici-cost-${esc(record.id)}" value="${record.totalWithTax != null ? record.totalWithTax : ''}" min="0" step="0.01" placeholder="含税总额">
+        </div>
+        <div class="invoice-confirm-row">
+          <label>币种</label>
+          <select id="ici-currency-${esc(record.id)}">
+            <option value="RSD" ${record.currency === 'RSD' ? 'selected' : ''}>RSD</option>
+            <option value="EUR" ${record.currency === 'EUR' ? 'selected' : ''}>EUR</option>
+          </select>
+        </div>
+        <div class="invoice-confirm-row">
+          <label>成本状态</label>
+          <select id="ici-status-${esc(record.id)}">
+            <option value="confirmed">confirmed（已确认）</option>
+            <option value="estimated">estimated（暂估）</option>
+            <option value="pending">pending（待确认）</option>
+          </select>
+        </div>
+        <div class="invoice-confirm-row">
+          <label>发票号</label>
+          <input type="text" id="ici-invnum-${esc(record.id)}" value="${esc(record.invoiceNumber || '')}" placeholder="发票号">
+        </div>
+        <div class="invoice-confirm-row">
+          <label>发票日期</label>
+          <input type="date" id="ici-invdate-${esc(record.id)}" value="${esc(record.invoiceDate || '')}">
+        </div>
+        <div class="invoice-confirm-row">
+          <label>备注</label>
+          <input type="text" id="ici-notes-${esc(record.id)}" placeholder="可选备注">
+        </div>
+        <div class="invoice-confirm-actions">
+          <button class="btn-primary-xs" id="ici-apply-btn-${esc(record.id)}">写入供应商总成本</button>
+          <button class="btn-xs btn-danger-xs" id="ici-reject-btn-${esc(record.id)}">标记不用 / 驳回</button>
+          <span id="ici-msg-${esc(record.id)}" style="font-size:12px;color:var(--muted)"></span>
+        </div>
+      </div>
+    </div>`;
+
+  // Sync select → display input
+  const sel = document.getElementById(`ici-supplier-${record.id}`);
+  const dispInput = document.getElementById(`ici-supplier-display-${record.id}`);
+  if (sel && dispInput) {
+    // Pre-select suggested
+    if (record.suggestedSupplierDisplay) {
+      for (const opt of sel.options) {
+        if (opt.value === record.suggestedSupplierDisplay) { sel.value = record.suggestedSupplierDisplay; break; }
+      }
+    }
+    sel.addEventListener("change", () => {
+      if (sel.value) dispInput.value = sel.value;
+    });
+  }
+
+  const applyBtn = document.getElementById(`ici-apply-btn-${record.id}`);
+  const rejectBtn = document.getElementById(`ici-reject-btn-${record.id}`);
+  const msgEl = document.getElementById(`ici-msg-${record.id}`);
+
+  applyBtn && applyBtn.addEventListener("click", async () => {
+    const supplierDisplay = (document.getElementById(`ici-supplier-display-${record.id}`) || {}).value || '';
+    if (!supplierDisplay.trim()) { msgEl.textContent = "请填写供应商名称。"; return; }
+    const costVal = (document.getElementById(`ici-cost-${record.id}`) || {}).value;
+    const actualTotalCost = costVal !== '' ? Number(costVal) : null;
+    if (actualTotalCost !== null && (isNaN(actualTotalCost) || actualTotalCost < 0)) {
+      msgEl.textContent = "实际总成本必须 >= 0。"; return;
+    }
+    applyBtn.disabled = true;
+    msgEl.textContent = "写入中...";
+    try {
+      await window.AppUtils.fetchJson(
+        `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(record.id)}/apply`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            supplierDisplay,
+            actualTotalCost,
+            costCurrency: (document.getElementById(`ici-currency-${record.id}`) || {}).value || record.currency || 'RSD',
+            costStatus: (document.getElementById(`ici-status-${record.id}`) || {}).value || 'confirmed',
+            invoiceNumber: (document.getElementById(`ici-invnum-${record.id}`) || {}).value || '',
+            invoiceDate: (document.getElementById(`ici-invdate-${record.id}`) || {}).value || null,
+            notes: (document.getElementById(`ici-notes-${record.id}`) || {}).value || '',
+            useSupplierTotal: true,
+          }),
+        },
+        "写入失败"
+      );
+      msgEl.textContent = "✓ 已写入供应商总成本";
+      msgEl.style.color = "#1a7a3c";
+      await loadAndRenderProjectCostSummary(projectId);
+    } catch (err) {
+      msgEl.textContent = `写入失败：${err.message}`;
+      applyBtn.disabled = false;
+    }
+  });
+
+  rejectBtn && rejectBtn.addEventListener("click", async () => {
+    const reason = window.prompt("驳回原因（可留空）") || '';
+    rejectBtn.disabled = true;
+    msgEl.textContent = "处理中...";
+    try {
+      await window.AppUtils.fetchJson(
+        `/api/projects/${encodeURIComponent(projectId)}/invoice-text-imports/${encodeURIComponent(record.id)}/reject`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ reason }),
+        },
+        "驳回失败"
+      );
+      msgEl.textContent = "已驳回";
+      msgEl.style.color = "#6c757d";
+      await loadInvoiceImportHistory(projectId);
+      const panelContainer = document.getElementById("invoice-import-panel-container");
+      if (panelContainer) panelContainer.innerHTML = '';
+      const openBtn = document.querySelector(".invoice-import-open-btn");
+      if (openBtn) openBtn.textContent = "导入发票文本";
+    } catch (err) {
+      msgEl.textContent = `驳回失败：${err.message}`;
+      rejectBtn.disabled = false;
     }
   });
 }

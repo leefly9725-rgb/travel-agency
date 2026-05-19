@@ -28,6 +28,7 @@ const projectStore = require("./services/projectStore");
 const projectExecutionStore = require("./services/projectExecutionStore");
 const projectTaskStore = require("./services/projectTaskStore");
 const supplierProjectCostStore = require("./services/supplierProjectCostStore");
+const supplierInvoiceTextImportStore = require("./services/supplierInvoiceTextImportStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
@@ -2431,6 +2432,77 @@ async function handleApi(request, response, url) {
       try {
         const summary = await supplierProjectCostStore.buildProjectCostSummary(supabase, projectId);
         sendJson(response, 200, summary);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // ── B1-05C: 发票文本导入路由（必须在通用 GET/PATCH /api/projects/:id 之前）──
+
+  // GET /api/projects/:id/invoice-text-imports
+  if (request.method === "GET") {
+    const itiListMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/invoice-text-imports$/);
+    if (itiListMatch) {
+      const projectId = decodeURIComponent(itiListMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const imports = await supplierInvoiceTextImportStore.listInvoiceTextImports(supabase, projectId);
+        sendJson(response, 200, imports);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // POST /api/projects/:id/invoice-text-imports
+  if (request.method === "POST") {
+    const itiPostMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/invoice-text-imports$/);
+    if (itiPostMatch) {
+      const projectId = decodeURIComponent(itiPostMatch[1]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await supplierInvoiceTextImportStore.createInvoiceTextImport(supabase, projectId, body);
+        sendJson(response, 201, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // POST /api/projects/:id/invoice-text-imports/:importId/apply
+  if (request.method === "POST") {
+    const itiApplyMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/invoice-text-imports\/([^/]+)\/apply$/);
+    if (itiApplyMatch) {
+      const projectId = decodeURIComponent(itiApplyMatch[1]);
+      const importId = decodeURIComponent(itiApplyMatch[2]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await supplierInvoiceTextImportStore.applyInvoiceTextImport(supabase, projectId, importId, body);
+        sendJson(response, 200, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // POST /api/projects/:id/invoice-text-imports/:importId/reject
+  if (request.method === "POST") {
+    const itiRejectMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/invoice-text-imports\/([^/]+)\/reject$/);
+    if (itiRejectMatch) {
+      const projectId = decodeURIComponent(itiRejectMatch[1]);
+      const importId = decodeURIComponent(itiRejectMatch[2]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await supplierInvoiceTextImportStore.rejectInvoiceTextImport(supabase, projectId, importId, body.reason || '');
+        sendJson(response, 200, result);
       } catch (err) {
         sendJson(response, err.status || 500, { error: err.message });
       }
