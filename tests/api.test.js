@@ -3358,3 +3358,362 @@ test("B1-05A: client-facing quote API does not expose internal cost fields", asy
     }
   });
 });
+
+// ── B1-05B: 供应商项目总成本 + 项目实际利润汇总 ──────────────────────────────
+
+async function setupProjectWithSupplierCosts(port) {
+  seedProjectBasedQuote();
+  const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+  const { id: projectId } = await convertRes.json();
+  await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+  return projectId;
+}
+
+test("B1-05B: GET /api/projects/:id/supplier-costs returns empty array initially", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`);
+    assert.equal(res.status, 200);
+    const costs = await res.json();
+    assert.ok(Array.isArray(costs), "should return array");
+    assert.equal(costs.length, 0, "no supplier costs initially");
+  });
+});
+
+test("B1-05B: POST /api/projects/:id/supplier-costs creates a supplier cost record", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierId: "SUP-001",
+        supplierDisplay: "大华演艺",
+        actualTotalCost: 1200,
+        costCurrency: "EUR",
+        useSupplierTotal: true,
+        costStatus: "confirmed",
+        invoiceNumber: "INV-001",
+        notes: "含搭建费",
+      }),
+    });
+    assert.equal(res.status, 201, "should return 201");
+    const cost = await res.json();
+    assert.equal(cost.projectId, projectId, "projectId matches");
+    assert.equal(cost.supplierId, "SUP-001");
+    assert.equal(cost.supplierDisplay, "大华演艺");
+    assert.equal(cost.actualTotalCost, 1200);
+    assert.equal(cost.costStatus, "confirmed");
+    assert.equal(cost.useSupplierTotal, true);
+    assert.equal(cost.invoiceNumber, "INV-001");
+    assert.ok(cost.id, "should have id");
+    assert.ok(cost.createdAt, "should have createdAt");
+  });
+});
+
+test("B1-05B: POST again with same supplierId+supplierDisplay upserts (no duplicate)", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierId: "SUP-002", supplierDisplay: "乘风物流", actualTotalCost: 800, costStatus: "estimated" }),
+    });
+    // second POST same identity → upsert
+    const res2 = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierId: "SUP-002", supplierDisplay: "乘风物流", actualTotalCost: 900, costStatus: "confirmed" }),
+    });
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`);
+    const costs = await listRes.json();
+    const forSup002 = costs.filter(c => c.supplierId === "SUP-002");
+    assert.equal(forSup002.length, 1, "should have exactly 1 record (upserted)");
+    assert.equal(forSup002[0].actualTotalCost, 900, "should reflect updated value");
+  });
+});
+
+test("B1-05B: PATCH /api/projects/:id/supplier-costs/:costId updates fields", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const postRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "测试供应商", actualTotalCost: 500, costStatus: "pending" }),
+    });
+    const { id: costId } = await postRes.json();
+
+    const patchRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs/${encodeURIComponent(costId)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actualTotalCost: 650, costStatus: "confirmed", useSupplierTotal: false }),
+    });
+    assert.equal(patchRes.status, 200);
+    const updated = await patchRes.json();
+    assert.equal(updated.actualTotalCost, 650);
+    assert.equal(updated.costStatus, "confirmed");
+    assert.equal(updated.useSupplierTotal, false);
+  });
+});
+
+test("B1-05B: DELETE /api/projects/:id/supplier-costs/:costId removes the record", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const postRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "待删供应商", actualTotalCost: 300, costStatus: "pending" }),
+    });
+    const { id: costId } = await postRes.json();
+
+    const delRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs/${encodeURIComponent(costId)}`, {
+      method: "DELETE",
+    });
+    assert.equal(delRes.status, 200);
+
+    const listRes = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`);
+    const costs = await listRes.json();
+    assert.ok(!costs.some(c => c.id === costId), "deleted record should not appear");
+  });
+});
+
+test("B1-05B: POST returns 400 when actualTotalCost is negative", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "供应商A", actualTotalCost: -100, costStatus: "pending" }),
+    });
+    assert.equal(res.status, 400, "negative actualTotalCost should return 400");
+  });
+});
+
+test("B1-05B: POST returns 400 when costStatus is invalid", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "供应商B", actualTotalCost: 100, costStatus: "invalid_status" }),
+    });
+    assert.equal(res.status, 400, "invalid costStatus should return 400");
+  });
+});
+
+test("B1-05B: POST returns 400 when sourceType is invalid", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "供应商C", actualTotalCost: 100, sourceType: "fax_machine" }),
+    });
+    assert.equal(res.status, 400, "invalid sourceType should return 400");
+  });
+});
+
+test("B1-05B: POST returns 400 when both supplierId and supplierDisplay are empty", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierId: "", supplierDisplay: "", actualTotalCost: 100 }),
+    });
+    assert.equal(res.status, 400, "both empty supplier identifiers should return 400");
+  });
+});
+
+test("B1-05B: GET /api/projects/:id/cost-summary returns summary without supplier costs", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`);
+    assert.equal(res.status, 200);
+    const summary = await res.json();
+
+    assert.equal(summary.projectId, projectId, "projectId matches");
+    assert.ok(typeof summary.quotedRevenueTotal === "number", "quotedRevenueTotal should be a number");
+    assert.ok(typeof summary.actualCostTotal === "number", "actualCostTotal should be a number");
+    assert.ok(typeof summary.actualGrossProfit === "number", "actualGrossProfit should be a number");
+    assert.ok(typeof summary.actualGrossMargin === "number", "actualGrossMargin should be a number");
+    assert.ok(typeof summary.costVariance === "number", "costVariance should be a number");
+    assert.ok(Array.isArray(summary.supplierRows), "supplierRows should be array");
+    assert.ok(summary.unassigned !== undefined, "unassigned should exist");
+  });
+});
+
+test("B1-05B: cost-summary with no supplier costs uses execution items actual cost", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    // Set actual costs on execution items
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    const totalActual = 0;
+    if (items.length > 0) {
+      await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(items[0].id)}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ actualTotalCost: 350 }),
+      });
+    }
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    // All actual cost should come from execution items
+    assert.ok(summary.supplierRows.every(r => r.appliedMode === "execution_items"),
+      "without supplier costs, all rows should use execution_items mode");
+  });
+});
+
+test("B1-05B: cost-summary uses supplier_total when useSupplierTotal=true and actualTotalCost is set", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+
+    // Get execution items to know the supplier
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    if (items.length === 0) return; // nothing to test
+
+    // Patch an execution item to have a known actual cost
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(items[0].id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actualTotalCost: 200, supplierDisplay: "测试供应商X" }),
+    });
+
+    // Create supplier cost record with useSupplierTotal=true
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "测试供应商X",
+        actualTotalCost: 999,
+        useSupplierTotal: true,
+        costStatus: "confirmed",
+      }),
+    });
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    const row = summary.supplierRows.find(r => r.supplierDisplay === "测试供应商X");
+    if (row) {
+      assert.equal(row.appliedMode, "supplier_total", "should use supplier_total mode");
+      assert.equal(row.appliedActualCost, 999, "applied cost should be supplier total");
+    }
+  });
+});
+
+test("B1-05B: cost-summary uses execution_items when useSupplierTotal=false", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const items = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items`)).json();
+    if (items.length === 0) return;
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/${encodeURIComponent(items[0].id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ actualTotalCost: 150, supplierDisplay: "供应商Y" }),
+    });
+
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        supplierDisplay: "供应商Y",
+        actualTotalCost: 999,
+        useSupplierTotal: false,
+        costStatus: "pending",
+      }),
+    });
+
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    const row = summary.supplierRows.find(r => r.supplierDisplay === "供应商Y");
+    if (row) {
+      assert.equal(row.appliedMode, "execution_items", "useSupplierTotal=false should use execution_items");
+    }
+  });
+});
+
+test("B1-05B: cost-summary costVariance = actualCostTotal - quotedCostTotal", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    const expectedVariance = Math.round((summary.actualCostTotal - summary.quotedCostTotal) * 100) / 100;
+    assert.ok(Math.abs(summary.costVariance - expectedVariance) < 0.01,
+      `costVariance(${summary.costVariance}) should equal actualCostTotal - quotedCostTotal(${expectedVariance})`);
+  });
+});
+
+test("B1-05B: cost-summary actualGrossProfit = quotedRevenueTotal - actualCostTotal", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    const expected = Math.round((summary.quotedRevenueTotal - summary.actualCostTotal) * 100) / 100;
+    assert.ok(Math.abs(summary.actualGrossProfit - expected) < 0.01,
+      `actualGrossProfit should equal quotedRevenueTotal - actualCostTotal`);
+  });
+});
+
+test("B1-05B: cost-summary actualGrossMargin is correct percentage", async () => {
+  await withServer(async (port) => {
+    const projectId = await setupProjectWithSupplierCosts(port);
+    const summary = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`)).json();
+    if (summary.quotedRevenueTotal > 0) {
+      const expectedMargin = Math.round((summary.actualGrossProfit / summary.quotedRevenueTotal) * 10000) / 100;
+      assert.ok(Math.abs(summary.actualGrossMargin - expectedMargin) < 0.1,
+        `actualGrossMargin(${summary.actualGrossMargin}) should be correct`);
+    }
+  });
+});
+
+test("B1-05B: cost-summary is stable when supplierProjectCosts key missing from seed", async () => {
+  await withServer(async (port) => {
+    // Remove supplierProjectCosts key from seed to test backward compat
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    delete data.supplierProjectCosts;
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/execution-items/generate`, { method: "POST" });
+
+    const res = await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/cost-summary`);
+    assert.equal(res.status, 200, "should not crash when supplierProjectCosts key is missing");
+    const summary = await res.json();
+    assert.ok(typeof summary.actualCostTotal === "number", "actualCostTotal should be a number");
+  });
+});
+
+test("B1-05B: client-facing API does not expose supplier cost or profit fields", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const convertRes = await apiFetch(port, "/api/quotes/Q-PB/convert-to-project", { method: "POST" });
+    const { id: projectId } = await convertRes.json();
+
+    // Add a supplier cost record
+    await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}/supplier-costs`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ supplierDisplay: "内部成本供应商", actualTotalCost: 5000, costStatus: "confirmed" }),
+    });
+
+    // Standard quote API should not leak these
+    const project = await (await apiFetch(port, `/api/projects/${encodeURIComponent(projectId)}`)).json();
+    const sourceQuoteId = project.sourceQuoteId;
+    if (sourceQuoteId) {
+      const quoteRes = await apiFetch(port, `/api/quotes/${encodeURIComponent(sourceQuoteId)}`);
+      if (quoteRes.status === 200) {
+        const quoteBody = JSON.stringify(await quoteRes.json());
+        assert.ok(!quoteBody.includes('"supplierProjectCosts"'), "quote API must not expose supplierProjectCosts");
+        assert.ok(!quoteBody.includes('"actualGrossProfit"'), "quote API must not expose actualGrossProfit");
+        assert.ok(!quoteBody.includes('"actualGrossMargin"'), "quote API must not expose actualGrossMargin");
+        assert.ok(!quoteBody.includes('"actualTotalCost"'), "quote API must not expose actualTotalCost in quote");
+      }
+    }
+
+    // /api/projects/:id does not include supplier costs list
+    const projectBody = JSON.stringify(project);
+    assert.ok(!projectBody.includes('"supplierProjectCosts"'), "project record must not include supplierProjectCosts array");
+    assert.ok(!projectBody.includes('"actualGrossProfit"'), "project record must not include actualGrossProfit");
+  });
+});

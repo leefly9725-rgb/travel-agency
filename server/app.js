@@ -27,6 +27,7 @@ const { createQuoteStore } = require("./services/quoteStore");
 const projectStore = require("./services/projectStore");
 const projectExecutionStore = require("./services/projectExecutionStore");
 const projectTaskStore = require("./services/projectTaskStore");
+const supplierProjectCostStore = require("./services/supplierProjectCostStore");
 const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
@@ -2339,6 +2340,97 @@ async function handleApi(request, response, url) {
       try {
         await projectExecutionStore.deleteExecutionItem(supabase, projectId, itemId);
         sendJson(response, 200, { ok: true });
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // ── B1-05B: 供应商项目成本路由 ────────────────────────────────────────────────
+
+  // GET /api/projects/:id/supplier-costs
+  if (request.method === "GET") {
+    const scListMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/supplier-costs$/);
+    if (scListMatch) {
+      const projectId = decodeURIComponent(scListMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const costs = await supplierProjectCostStore.listSupplierProjectCosts(supabase, projectId);
+        sendJson(response, 200, costs);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // POST /api/projects/:id/supplier-costs
+  if (request.method === "POST") {
+    const scPostMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/supplier-costs$/);
+    if (scPostMatch) {
+      const projectId = decodeURIComponent(scPostMatch[1]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await supplierProjectCostStore.upsertSupplierProjectCost(supabase, projectId, { ...body });
+        sendJson(response, 201, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // PATCH /api/projects/:id/supplier-costs/:costId
+  if (request.method === "PATCH") {
+    const scPatchMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/supplier-costs\/([^/]+)$/);
+    if (scPatchMatch) {
+      const projectId = decodeURIComponent(scPatchMatch[1]);
+      const costId = decodeURIComponent(scPatchMatch[2]);
+      const body = parseJsonBody(await readRequestBody(request));
+      const PROTECTED_SC = new Set(['id', 'projectId', 'createdAt', 'updatedAt']);
+      const patch = {};
+      for (const [k, v] of Object.entries(body)) {
+        if (!PROTECTED_SC.has(k)) patch[k] = v;
+      }
+      const supabase = getSupabaseConfig();
+      try {
+        const result = await supplierProjectCostStore.updateSupplierProjectCost(supabase, projectId, costId, patch);
+        sendJson(response, 200, result);
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // DELETE /api/projects/:id/supplier-costs/:costId
+  if (request.method === "DELETE") {
+    const scDelMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/supplier-costs\/([^/]+)$/);
+    if (scDelMatch) {
+      const projectId = decodeURIComponent(scDelMatch[1]);
+      const costId = decodeURIComponent(scDelMatch[2]);
+      const supabase = getSupabaseConfig();
+      try {
+        await supplierProjectCostStore.deleteSupplierProjectCost(supabase, projectId, costId);
+        sendJson(response, 200, { ok: true });
+      } catch (err) {
+        sendJson(response, err.status || 500, { error: err.message });
+      }
+      return true;
+    }
+  }
+
+  // GET /api/projects/:id/cost-summary
+  if (request.method === "GET") {
+    const csSummaryMatch = url.pathname.match(/^\/api\/projects\/([^/]+)\/cost-summary$/);
+    if (csSummaryMatch) {
+      const projectId = decodeURIComponent(csSummaryMatch[1]);
+      const supabase = getSupabaseConfig();
+      try {
+        const summary = await supplierProjectCostStore.buildProjectCostSummary(supabase, projectId);
+        sendJson(response, 200, summary);
       } catch (err) {
         sendJson(response, err.status || 500, { error: err.message });
       }
