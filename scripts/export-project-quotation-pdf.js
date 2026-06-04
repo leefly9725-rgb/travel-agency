@@ -197,7 +197,11 @@ async function exportProjectQuotationPdf(options = {}) {
       format: 'A4',
       scale: pdfScale,
       printBackground: true,
-      preferCSSPageSize: false,
+      // preferCSSPageSize: true — use @page { size: A4; margin: 0 } from CSS so the
+      // PDF engine respects the same A4/margin contract as the browser print path.
+      // This eliminates any scale mismatch between the CSS-composed A4 pages and the
+      // Playwright-generated PDF paper size.
+      preferCSSPageSize: true,
       margin: pdfMargins,
     });
     await browser.close();
