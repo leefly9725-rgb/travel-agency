@@ -2925,7 +2925,7 @@ async function handleApi(request, response, url) {
       const result = await exportProjectQuotationPdf({
         quoteId,
         serverUrl: baseUrl,
-        lang: url.searchParams.get("lang") || "zh",
+        lang: url.searchParams.get("lang") || "zh-en",
         mode: url.searchParams.get("mode") || "professional",
         grouping: url.searchParams.get("grouping") || "grouped",
         overview: url.searchParams.get("overview") === "0" ? "0" : "1",

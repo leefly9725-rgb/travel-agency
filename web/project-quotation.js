@@ -885,10 +885,10 @@ function buildComposerPlan(vm) {
   if (state.showOverview) {
     sections.push({
       id: 'overview',
-      mode: 'fixed',
+      mode: 'flow',
       pageClassName: 'qp-overview-page',
       bodyClassName: 'qp-standard-body',
-      blocks: [built.overview],
+      blocks: built.overviewBlocks || [built.overview],
       footer,
     });
   }

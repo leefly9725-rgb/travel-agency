@@ -96,7 +96,7 @@ async function exportProjectQuotationPdf(options = {}) {
   const quoteId = options.quoteId || 'Q-1773570112434';
   const port = Number(options.port || 3310);
   const outPath = options.outPath ? path.resolve(root, options.outPath) : null;
-  const lang = options.lang || 'zh';
+  const lang = options.lang || 'zh-en';
   const mode = options.mode || 'professional';
   const grouping = options.grouping || 'grouped';
   const overview = options.overview === '0' ? '0' : (options.overview === 0 ? '0' : '1');

@@ -272,6 +272,100 @@
     `;
   }
 
+  function renderOverviewChrome(vm, runtime) {
+    const { company, utils } = getRuntime(runtime);
+    const { esc } = utils;
+    return `
+      <div style="flex-shrink:0;background:#1B2A4A;padding:14px 32px;display:flex;align-items:center;justify-content:space-between;margin-bottom:0;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <img src="/assets/logo.png" style="height:22px;width:auto;display:block;flex-shrink:0;">
+          <div>${renderBrandTitle(company, '12px', '0')}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:#7B8FAD;">${esc(vm.projectName)}${vm.clientName ? ' · ' + esc(vm.clientName) : ''}</div>
+          <div style="font-size:9px;color:#C9A84C;letter-spacing:1px;margin-top:2px;text-transform:uppercase;">SERVICE OVERVIEW</div>
+        </div>
+      </div>
+    `;
+  }
+
+  function renderOverviewIntroBlock(vm, runtime) {
+    const { utils } = getRuntime(runtime);
+    const { esc, biTitle } = utils;
+    if (!vm.notes || !vm.notes.trim()) return renderOverviewChrome(vm, runtime);
+    return `
+      ${renderOverviewChrome(vm, runtime)}
+      <div class="qp-overview-layout">
+        <article class="qp-narrative-card">
+          <div class="qp-card-title">
+            <h3>${biTitle('项目说明', 'Project Description', 'Opis projekta')}</h3>
+          </div>
+          <p>${esc(vm.notes)}</p>
+        </article>
+      </div>
+    `;
+  }
+
+  function renderOverviewModuleRowHtml(group, runtime, currency) {
+    const { groupLabels, utils } = getRuntime(runtime);
+    const { getText, money } = utils;
+    const labels = groupLabels[group.projectType] || groupLabels.travel;
+    const titleObj = { zh: group.projectTitle || labels.zh, en: labels.en, sr: labels.sr };
+    return `
+      <tr>
+        <td style="padding:14px 14px">${getText(titleObj)}</td>
+        <td style="padding:14px 14px;text-align:center;color:var(--qp-ink-muted)">${group.items.length}</td>
+        <td class="qp-money" style="padding:14px 14px">${money(group.groupSalesTotal, currency)}</td>
+      </tr>
+    `;
+  }
+
+  function renderOverviewTotalRowHtml(vm, runtime) {
+    const { utils } = getRuntime(runtime);
+    const { biTitle, money } = utils;
+    const totalItems = vm.groups.reduce((sum, g) => sum + g.items.length, 0);
+    return `
+      <tr style="border-top:2px solid var(--qp-line-strong)">
+        <td style="font-weight:600;padding:14px 14px">${biTitle('合计', 'Total', 'Ukupno')}</td>
+        <td style="text-align:center;font-weight:600;padding:14px 14px">${totalItems}</td>
+        <td class="qp-money" style="font-weight:700;font-size:16px;padding:14px 14px">${money(vm.totalSales, vm.currency)}</td>
+      </tr>
+    `;
+  }
+
+  function renderOverviewSummarySegment(vm, runtime, rowsHtml, isFirst, isLast) {
+    const { state, utils } = getRuntime(runtime);
+    const { esc, biTitle, tableHead } = utils;
+    const chapterNote = state.lang === 'zh-sr'
+      ? 'Detalji po stavkama i jediničnim cenama nalaze se na sledećim stranicama.'
+      : state.lang === 'zh-en'
+      ? 'Full itemized details and unit pricing are provided on the following pages.'
+      : '各服务模块的完整明细项目与单价信息详见后续页面。';
+    const title = isFirst
+      ? biTitle('服务模块与报价摘要', 'Service Modules & Pricing', 'Moduli i cene')
+      : `${biTitle('服务模块与报价摘要', 'Service Modules & Pricing', 'Moduli i cene')}<span class="qp-continuation">（续）</span>`;
+    return `
+      <div class="qp-overview-layout">
+        <article class="qp-scope-card">
+          <div class="qp-card-title">
+            <h3>${title}</h3>
+          </div>
+          <table class="qp-table">
+            <thead>
+              <tr>
+                ${tableHead('服务模块', 'Service Module', 'Modul usluge')}
+                <th style="text-align:center">${tableHead('项目数', 'Items', 'Stavke').replace(/^<th[^>]*>/, '').replace(/<\/th>$/, '')}</th>
+                ${tableHead('金额', 'Amount', 'Iznos', 'qp-money')}
+              </tr>
+            </thead>
+            <tbody>${rowsHtml.join('')}</tbody>
+          </table>
+        </article>
+        ${isLast ? `<div class="qp-chapter-note qp-overview-note"><p>${esc(chapterNote)}</p></div>` : ''}
+      </div>
+    `;
+  }
+
   function renderDetailHeader(vm, runtime) {
     const { company, utils } = getRuntime(runtime);
     const { esc } = utils;
@@ -636,6 +730,18 @@
     `;
   }
 
+  function createTermsPairBlock(id, leftHtml, rightHtml, options) {
+    const config = options || {};
+    const singleClass = rightHtml ? '' : ' qp-terms-single';
+    return createBlock(id, 'terms-pair', {
+      html: `<div class="qp-terms-pair${singleClass}">${leftHtml || ''}${rightHtml || ''}</div>`,
+      className: 'qp-terms-span-full qp-block-terms-pair',
+      keepWithNext: config.keepWithNext,
+      measureMode: 'natural',
+      minHeight: 0,
+    });
+  }
+
   function renderSignatureBlock(runtime) {
     const { state, company, utils } = getRuntime(runtime);
     const { biTitle } = utils;
@@ -681,6 +787,34 @@
       minHeight: 0,
       meta: { pageClassName: 'qp-overview-page', bodyClassName: 'qp-standard-body' },
     });
+  }
+
+  function buildOverviewBlocks(vm, runtime) {
+    const rowsHtml = (vm.groups || []).map((group) => renderOverviewModuleRowHtml(group, runtime, vm.currency));
+    rowsHtml.push(renderOverviewTotalRowHtml(vm, runtime));
+    return [
+      createBlock('overview-intro', 'overview-intro', {
+        html: renderOverviewIntroBlock(vm, runtime),
+        className: 'qp-block-overview-intro',
+        keepWithNext: true,
+        measureMode: 'natural',
+        minHeight: 0,
+      }),
+      {
+        id: 'overview-summary',
+        type: 'quote-group-rowset',
+        html: '',
+        className: 'qp-block-overview-summary',
+        keepWithNext: false,
+        measureMode: 'rowset',
+        minHeight: 0,
+        meta: {},
+        rowsHtml,
+        renderSegment: function (rows, isFirst, isLast) {
+          return renderOverviewSummarySegment(vm, runtime, rows, isFirst, isLast);
+        },
+      },
+    ];
   }
 
   function buildDetailHeaderBlock(vm, runtime) {
@@ -880,20 +1014,21 @@
         }),
       ];
 
-      enabledBlocks.forEach((block, i) => {
-  const isLast = i === enabledBlocks.length - 1;
-  const cardHtml = renderSnapshotBlockHtml(block, runtime);
-  if (!cardHtml) return;
-  result.push(createBlock(`terms-${block.key}`, 'terms-card', {
-    html: cardHtml,
-    className: 'qp-block-terms-card',
-    // 非最后一张卡片：keepWithNext=true 防止分页
-    // 最后一张卡片：有签字页时 keepWithNext=true 绑定签字页
-    keepWithNext: isLast ? Boolean(signatureHtml) : true,
-    measureMode: 'natural',
-    minHeight: 0,
-  }));
-});
+      const cards = enabledBlocks
+        .map((block) => ({
+          key: block.key || 'custom',
+          html: renderSnapshotBlockHtml(block, runtime),
+        }))
+        .filter((card) => card.html);
+
+      for (let i = 0; i < cards.length; i += 2) {
+        const left = cards[i];
+        const right = cards[i + 1];
+        const isLastPair = i + 2 >= cards.length;
+        result.push(createTermsPairBlock(`terms-pair-${left.key}`, left.html, right && right.html, {
+          keepWithNext: isLastPair ? Boolean(signatureHtml) : false,
+        }));
+      }
 
       if (signatureHtml) {
         result.push(createBlock('terms-signature', 'terms-signature', {
@@ -911,6 +1046,10 @@
     const included = staticTerms.included.map((item) => `<li>${getText(item)}</li>`).join('');
     const excluded = staticTerms.excluded.map((item) => `<li>${getText(item)}</li>`).join('');
     const notes = staticTerms.notes.map((item) => `<li>${getText(item)}</li>`).join('');
+    const includedHtml = renderTermsCard(runtime, biTitle('费用包含', 'Included', 'Ukljuceno'), `<ul>${included}</ul>`);
+    const excludedHtml = renderTermsCard(runtime, biTitle('费用不含', 'Excluded', 'Nije ukljuceno'), `<ul>${excluded}</ul>`);
+    const notesHtml = renderTermsCard(runtime, biTitle('特别说明', 'Notes', 'Napomene'), `<ul>${notes}</ul>`);
+    const paymentHtml = renderTermsCard(runtime, biTitle('付款方式与节点', 'Payment Terms', 'Uslovi placanja'), `<p>${getText(staticTerms.payment)}</p>`);
 
     const blocks = [
       createBlock('terms-header', 'terms-header', {
@@ -920,32 +1059,9 @@
         measureMode: 'natural',
         minHeight: 0,
       }),
-      createBlock('terms-included', 'terms-card', {
-        html: renderTermsCard(runtime, biTitle('费用包含', 'Included', 'Ukljuceno'), `<ul>${included}</ul>`),
-        className: 'qp-block-terms-card',
-        measureMode: 'natural',
-        minHeight: 0,
-      }),
-      createBlock('terms-excluded', 'terms-card', {
-        html: renderTermsCard(runtime, biTitle('费用不含', 'Excluded', 'Nije ukljuceno'), `<ul>${excluded}</ul>`),
-        className: 'qp-block-terms-card',
-        keepWithNext: true,
-        measureMode: 'natural',
-        minHeight: 0,
-      }),
-      createBlock('terms-notes', 'terms-card', {
-        html: renderTermsCard(runtime, biTitle('特别说明', 'Notes', 'Napomene'), `<ul>${notes}</ul>`),
-        className: 'qp-block-terms-card',
-        keepWithNext: true,
-        measureMode: 'natural',
-        minHeight: 0,
-      }),
-      createBlock('terms-payment', 'terms-card', {
-        html: renderTermsCard(runtime, biTitle('付款方式与节点', 'Payment Terms', 'Uslovi placanja'), `<p>${getText(staticTerms.payment)}</p>`),
-        className: 'qp-block-terms-card',
+      createTermsPairBlock('terms-scope-pair', includedHtml, excludedHtml),
+      createTermsPairBlock('terms-payment-pair', notesHtml, paymentHtml, {
         keepWithNext: Boolean(signatureHtml),
-        measureMode: 'natural',
-        minHeight: 0,
       }),
     ];
 
@@ -975,6 +1091,7 @@
     return {
       cover: buildCoverBlock(vm, runtime),
       overview: buildOverviewBlock(vm, runtime),
+      overviewBlocks: buildOverviewBlocks(vm, runtime),
       detailHeader: buildDetailHeaderBlock(vm, runtime),
       quoteGroups,
       finalQuotation: quoteGroups.length > 0 ? buildFinalQuotationBlock(vm, runtime) : null,
@@ -987,6 +1104,7 @@
     normalizeBlock,
     buildCoverBlock,
     buildOverviewBlock,
+    buildOverviewBlocks,
     buildDetailHeaderBlock,
     buildQuoteGroupBlocks,
     buildFinalQuotationBlock,
