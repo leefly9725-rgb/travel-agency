@@ -3359,6 +3359,39 @@ test("B1-05A: client-facing quote API does not expose internal cost fields", asy
   });
 });
 
+test("project quotation page serves versioned exporter scripts without reusable cache", async () => {
+  await withServer(async (port) => {
+    const res = await apiFetch(port, "/project-quotation.html");
+    assert.equal(res.status, 200);
+    assert.match(res.headers.get("cache-control") || "", /no-store/);
+    const html = await res.text();
+    assert.match(html, /project-quotation-blocks\.js\?v=/);
+    assert.match(html, /project-quotation-composer\.js\?v=/);
+    assert.match(html, /project-quotation\.js\?v=/);
+
+    const jsRes = await apiFetch(port, "/project-quotation-composer.js");
+    assert.equal(jsRes.status, 200);
+    assert.match(jsRes.headers.get("cache-control") || "", /no-store/);
+  });
+});
+
+test("GET /api/project-quotation/export-docx returns editable DOCX for project quote", async () => {
+  await withServer(async (port) => {
+    seedProjectBasedQuote();
+    const res = await apiFetch(port, "/api/project-quotation/export-docx?id=Q-PB&lang=zh-en");
+    assert.equal(res.status, 200);
+    assert.equal(
+      res.headers.get("content-type"),
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+    assert.match(res.headers.get("content-disposition") || "", /project-quotation-QT-PB\.docx/);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    assert.ok(buffer.length > 1000, "docx buffer should not be empty");
+    assert.equal(buffer.subarray(0, 2).toString("utf8"), "PK");
+    assert.ok(buffer.includes(Buffer.from("word/document.xml")), "docx should contain document.xml");
+  });
+});
+
 // ── B1-05B: 供应商项目总成本 + 项目实际利润汇总 ──────────────────────────────
 
 async function setupProjectWithSupplierCosts(port) {

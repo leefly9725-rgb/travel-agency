@@ -88,7 +88,8 @@
     })];
   }
 
-  function composeFlowPages(section) {
+  function composeFlowPages(section, options) {
+    const config = options || {};
     const bodyEl = createMeasureBody(section.pageClassName, section.bodyClassName);
 
     // Capture the fixed page body height BEFORE setting height:auto.
@@ -140,12 +141,10 @@
         return;
       }
 
-      // Rowset probing uses a slightly stricter tolerance than regular blocks.
-      // Effective tolerance = PAGE_TOLERANCE - ROWSET_MARGIN = -12 - 8 = -20px.
-      // Reduced from 32 to 8: the previous 32px margin caused premature page flushes
-      // that left large whitespace at page bottoms when adjacent small groups could
-      // have packed together on the same page.
-      var ROWSET_MARGIN = 8;
+      // Rowset probing is deliberately stricter than regular blocks. The extra
+      // reserve prevents print-mode font rounding from pushing the last row into
+      // the footer area after the screen-composed pages are exported to PDF.
+      var ROWSET_MARGIN = Number(section.rowsetMargin ?? config.rowsetMargin ?? 48);
       function fitsRowset(probeBlocks) {
         setBodyHtml(bodyEl, probeBlocks);
         // Use pageBodyHeight (captured before height:auto) as the reference.
@@ -290,7 +289,6 @@
   }
 
   function compose(documentPlan, options) {
-    void options;
     const pages = [];
 
     (documentPlan.sections || []).forEach((section) => {
@@ -298,7 +296,7 @@
       if (section.mode === 'fixed') {
         pages.push(...composeFixedPage(section));
       } else {
-        pages.push(...composeFlowPages(section));
+        pages.push(...composeFlowPages(section, options));
       }
     });
 
