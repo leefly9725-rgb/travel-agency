@@ -1,4 +1,4 @@
-# LongDingsheng Ops V1
+# LDS Ops V1
 
 A lightweight full-stack starter for the internal operations system of LongDingsheng International Travel in Serbia.
 
