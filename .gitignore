@@ -3,3 +3,28 @@ coverage/
 .env
 .env.local
 npm-debug.log*
+
+# macOS metadata
+.DS_Store
+
+# Local Codex / browser state
+/.codex/
+/.codex-server.pid
+/.chrome-headless-print/
+/.edge-cover-v2/
+/.edge-dom/
+/.edge-headless-print/
+/.edge-pdf-shot/
+/.edge-pdf-shot2/
+/.edge-preview/
+/.edge-preview-shot/
+/.edge-preview-shot2/
+/.playwright-edge-profile/
+/.playwright-mcp/
+/.tmp-chrome-profile/
+
+# Local acceptance artifacts and scratch files
+/artifacts-*
+/.tmp-*
+/tmp-*
+/项目型报价单模板-*.rtf
