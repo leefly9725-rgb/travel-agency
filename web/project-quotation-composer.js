@@ -6,9 +6,9 @@
  */
 
 (function () {
-  // Negative tolerance: content must fit with 8px to spare.
-  // This prevents border-case overflow when print-mode fonts render slightly larger.
-  const PAGE_TOLERANCE = -8;
+  // Negative tolerance: content must fit with 12px to spare.
+  // Print-mode fonts can render 4-12px taller than screen-mode due to DPI differences.
+  const PAGE_TOLERANCE = -12;
 
   function createPage(options) {
     const config = options || {};
@@ -88,19 +88,17 @@
     })];
   }
 
-  function composeFlowPages(section) {
+  function composeFlowPages(section, options) {
+    const config = options || {};
     const bodyEl = createMeasureBody(section.pageClassName, section.bodyClassName);
 
     // Capture the fixed page body height BEFORE setting height:auto.
-    // With height:100% (CSS default) and overflow:visible, bodyEl.clientHeight equals
-    // the available body area. Once we switch to height:auto, clientHeight tracks content
-    // and is no longer a reliable reference — so we store it first.
     const pageBodyHeight = bodyEl.clientHeight;
-
-    // Switch to height:auto so scrollHeight reflects actual rendered content height.
-    // Without this, overflow:visible causes scrollHeight === clientHeight always,
-    // making overflow detection completely broken.
     bodyEl.style.height = 'auto';
+
+    _log('section=' + section.id, 'pageBodyHeight=' + pageBodyHeight,
+      'leadBlocks=' + (section.leadBlocks || []).length,
+      'sourceBlocks=' + (section.blocks || []).length);
 
     const leadBlocks = section.leadBlocks || [];
     const sourceBlocks = section.blocks || [];
@@ -110,6 +108,10 @@
 
     function flushCurrentPage() {
       if (currentBlocks.length <= leadBlocks.length) return;
+      _log('flushPage pageIndex=' + pages.length,
+        'usedHeight=' + bodyEl.scrollHeight,
+        'remaining=' + Math.max(0, pageBodyHeight - bodyEl.scrollHeight),
+        'blocksOnPage=' + (currentBlocks.length - leadBlocks.length));
       pages.push(createPage({
         id: section.id,
         className: section.pageClassName,
@@ -139,13 +141,10 @@
         return;
       }
 
-      // Rowset probing uses a stricter tolerance than regular blocks.
-      // Print-mode PDF rendering (higher DPI font metrics, Chromium PDF engine) can
-      // produce content that is 10–30px taller than screen-mode DOM measurement.
-      // ROWSET_MARGIN provides the extra headroom so placed rows are never cut off
-      // by overflow:hidden on .qp-page in print mode.
-      // Effective tolerance = PAGE_TOLERANCE - ROWSET_MARGIN = -8 - 32 = -40px.
-      var ROWSET_MARGIN = 32;
+      // Rowset probing is deliberately stricter than regular blocks. The extra
+      // reserve prevents print-mode font rounding from pushing the last row into
+      // the footer area after the screen-composed pages are exported to PDF.
+      var ROWSET_MARGIN = Number(section.rowsetMargin ?? config.rowsetMargin ?? 48);
       function fitsRowset(probeBlocks) {
         setBodyHtml(bodyEl, probeBlocks);
         // Use pageBodyHeight (captured before height:auto) as the reference.
@@ -189,18 +188,21 @@
         // rowIndex is NOT advanced and isFirst is NOT changed (Rule 3).
         if (fittingCount === 0) {
           if (placedCount > 0) {
-            // Current page has other content — flush and retry on a fresh page.
+            _log('rowset=' + rowsetBlock.id, 'fittingCount=0 → flush+retry',
+              'placedCount=' + placedCount, 'remainingRows=' + remainingRows.length);
             flushCurrentPage();
             continue;
           }
-          // Fresh page still can't fit one row — force-place it to avoid infinite loop.
+          _log('rowset=' + rowsetBlock.id, 'fittingCount=0 on fresh page → force fittingCount=1');
           fittingCount = 1;
         }
 
-        // Commit: place fittingCount rows. rowsToPlace always has >= 1 element here.
         var rowsToPlace = remainingRows.slice(0, fittingCount);
         remainingRows = remainingRows.slice(fittingCount);
         var isLastSegment = remainingRows.length === 0;
+        _log('rowset=' + rowsetBlock.id, 'placing fittingCount=' + fittingCount,
+          'isFirst=' + isFirst, 'isLastSegment=' + isLastSegment,
+          'remainingRows=' + remainingRows.length);
 
         // Rule 4: subtotal (isLastSegment=true) only on the final segment of this group.
         var segHtml = rowsetBlock.renderSegment(rowsToPlace, isFirst, isLastSegment);
@@ -278,8 +280,15 @@
     }));
   }
 
+  // Debug logging: enabled by ?debugPagination=1 in the URL.
+  // All messages are prefixed [PQ-PAGINATION] for easy console filtering.
+  const _debugPagination = (typeof location !== 'undefined') &&
+    new URLSearchParams(location.search).get('debugPagination') === '1';
+  function _log() {
+    if (_debugPagination) console.log('[PQ-PAGINATION]', ...arguments);
+  }
+
   function compose(documentPlan, options) {
-    void options;
     const pages = [];
 
     (documentPlan.sections || []).forEach((section) => {
@@ -287,7 +296,7 @@
       if (section.mode === 'fixed') {
         pages.push(...composeFixedPage(section));
       } else {
-        pages.push(...composeFlowPages(section));
+        pages.push(...composeFlowPages(section, options));
       }
     });
 

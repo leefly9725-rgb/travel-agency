@@ -2,6 +2,8 @@
 
 > 本文件是 Claude Code 协作的最高优先级约束文档。补充项目根目录 CLAUDE.md 中的通用规则。
 
+> **Agent routing:** See `.claude/AGENT_ROUTER.md` for task-category routing rules, agent assignment, sequential execution order, and the LDS-OPS-v1 production safety checklist.
+
 ---
 
 ## 技术栈速查（高频参考）

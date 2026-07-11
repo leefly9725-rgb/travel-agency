@@ -40,6 +40,11 @@ const { validateSnapshot, applyTranslationResult, renderValidityBlock, renderPay
 const { translateContent } = require("./services/claudeTranslateService");
 const { resolveAuthContext, requirePermission, requireRoutePermission, filterSupplierCatalogFields } = require("./services/authMiddleware");
 const { exportProjectQuotationPdf } = require("../scripts/export-project-quotation-pdf");
+const {
+  DOCX_CONTENT_TYPE,
+  buildProjectQuotationDocx,
+  projectQuotationDocxFileName,
+} = require("./services/projectQuotationDocxService");
 
 const publicDir = path.join(process.cwd(), "web");
 const supportedLanguages = ["zh-CN", "en", "sr"];
@@ -100,6 +105,8 @@ function sendFile(response, filePath) {
   }
 
   const ext = path.extname(filePath).toLowerCase();
+  const baseName = path.basename(filePath);
+  const noStoreStatic = baseName === "project-quotation.html" || /^project-quotation.*[.]js$/.test(baseName);
   const contentTypeMap = {
     ".html": "text/html; charset=utf-8",
     ".css": "text/css; charset=utf-8",
@@ -120,13 +127,19 @@ function sendFile(response, filePath) {
         html = html.replace("<body>", envScript + "\n<body>");
       }
     }
-    response.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    response.writeHead(200, {
+      "Content-Type": "text/html; charset=utf-8",
+      ...(noStoreStatic ? { "Cache-Control": "no-store" } : {}),
+    });
     response.end(html);
     return;
   }
 
   // 其他静态资源：保持原有流式返回
-  response.writeHead(200, { "Content-Type": contentTypeMap[ext] || "text/plain; charset=utf-8" });
+  response.writeHead(200, {
+    "Content-Type": contentTypeMap[ext] || "text/plain; charset=utf-8",
+    ...(noStoreStatic ? { "Cache-Control": "no-store" } : {}),
+  });
   fs.createReadStream(filePath).pipe(response);
 }
 
@@ -2925,7 +2938,7 @@ async function handleApi(request, response, url) {
       const result = await exportProjectQuotationPdf({
         quoteId,
         serverUrl: baseUrl,
-        lang: url.searchParams.get("lang") || "zh",
+        lang: url.searchParams.get("lang") || "zh-en",
         mode: url.searchParams.get("mode") || "professional",
         grouping: url.searchParams.get("grouping") || "grouped",
         overview: url.searchParams.get("overview") === "0" ? "0" : "1",
@@ -2954,6 +2967,40 @@ async function handleApi(request, response, url) {
     } catch (error) {
       console.error("[api/project-quotation/export-pdf] error:", error && (error.stack || error.message || error));
       sendJson(response, 500, { error: "PDF export failed.", detail: ((error && error.message) || "").slice(0, 500) });
+      return true;
+    }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/project-quotation/export-docx") {
+    requirePermission(authCtx, "project_quote.view");
+    const quoteId = String(url.searchParams.get("id") || "").trim();
+    if (!quoteId) {
+      sendJson(response, 400, { error: "Missing quote ID." });
+      return true;
+    }
+
+    try {
+      const { quote } = await quoteStore.getQuoteById(quoteId);
+      const enriched = enrichQuote(quote);
+      if (enriched.pricingMode !== "project_based") {
+        sendJson(response, 400, { error: "Only project-based quotations can be exported as DOCX." });
+        return true;
+      }
+      const buffer = buildProjectQuotationDocx(enriched, {
+        lang: url.searchParams.get("lang") || "zh-en",
+      });
+      const fileName = projectQuotationDocxFileName(enriched);
+      response.writeHead(200, {
+        "Content-Type": DOCX_CONTENT_TYPE,
+        "Content-Length": buffer.length,
+        "Content-Disposition": "attachment; filename=\"" + fileName + "\"",
+        "Cache-Control": "no-store",
+      });
+      response.end(buffer);
+      return true;
+    } catch (error) {
+      console.error("[api/project-quotation/export-docx] error:", error && (error.stack || error.message || error));
+      sendJson(response, 500, { error: "DOCX export failed.", detail: ((error && error.message) || "").slice(0, 500) });
       return true;
     }
   }

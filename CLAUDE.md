@@ -2,6 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Agent Routing
+
+**Before starting any task, consult `.claude/AGENT_ROUTER.md`.**
+It defines which agents to use for each task category, the required execution sequence (sequential, never parallel), and the LDS-OPS-v1 production safety rules that apply to every coding session.
+
 ## Commands
 
 ```bash

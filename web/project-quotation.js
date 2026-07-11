@@ -191,9 +191,11 @@ const groupingSelect = document.getElementById('preview-grouping');
 const overviewCheck = document.getElementById('preview-overview');
 const signCheck = document.getElementById('preview-sign');
 const taxSelect = document.getElementById('preview-tax-mode');
+const docxButton = document.getElementById('btn-export-docx');
 window.__QP_READY__ = false;
 window.__QP_TOTAL_PAGES__ = 0;
 window.__QP_PAGES_STABLE__ = false;
+window.__QP_PAGE_OVERFLOW_DIAGNOSTICS__ = [];
 
 function money(value, currency) {
   return new Intl.NumberFormat('en-US', {
@@ -885,10 +887,10 @@ function buildComposerPlan(vm) {
   if (state.showOverview) {
     sections.push({
       id: 'overview',
-      mode: 'fixed',
+      mode: 'flow',
       pageClassName: 'qp-overview-page',
       bodyClassName: 'qp-standard-body',
-      blocks: [built.overview],
+      blocks: built.overviewBlocks || [built.overview],
       footer,
     });
   }
@@ -942,23 +944,93 @@ async function renderComposer(vm) {
   // Wait for fonts before measuring so block heights are accurate.
   await ensureFontsReady();
 
-  const result = composerApi.composePreviewPages(buildComposerPlan(vm));
-  const rendered = composerApi.renderPages(result);
-  previewRoot.innerHTML = rendered.html;
+  let rendered = null;
+  const margins = [48, 96, 144];
+  for (let attempt = 0; attempt < margins.length; attempt += 1) {
+    const result = composerApi.composePreviewPages(buildComposerPlan(vm), { rowsetMargin: margins[attempt] });
+    rendered = composerApi.renderPages(result);
+    previewRoot.innerHTML = rendered.html;
 
-  // Wait for fonts again now that actual page content is rendered.
-  await ensureFontsReady();
+    // Wait for fonts again now that actual page content is rendered.
+    await ensureFontsReady();
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 
-  window.__QP_TOTAL_PAGES__ = rendered.totalPages;
+    const diagnostics = getPageOverflowDiagnostics();
+    window.__QP_PAGE_OVERFLOW_DIAGNOSTICS__ = diagnostics;
+    if (diagnostics.length === 0 || attempt === margins.length - 1) break;
+  }
 
-  // Double rAF: let the browser complete layout before signalling ready.
-  await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  window.__QP_TOTAL_PAGES__ = rendered ? rendered.totalPages : 0;
   window.__QP_READY__ = true;
 
   // One more rAF: stability confirmation for export to wait on.
   requestAnimationFrame(() => {
     window.__QP_PAGES_STABLE__ = true;
   });
+}
+
+function getPageOverflowDiagnostics() {
+  if (!previewRoot) return [];
+  return Array.from(previewRoot.children)
+    .filter((page) => page.classList && page.classList.contains('qp-page'))
+    .map((page, index) => {
+      const body = page.querySelector('.qp-page-body');
+      if (!body) return null;
+      const bodyRect = body.getBoundingClientRect();
+      const blocks = Array.from(body.children);
+      const maxChildBottom = blocks.reduce((bottom, block) => {
+        const rect = block.getBoundingClientRect();
+        return Math.max(bottom, rect.bottom);
+      }, bodyRect.top);
+      const scrollOverflow = body.scrollHeight - body.clientHeight;
+      const visualOverflow = maxChildBottom - bodyRect.bottom;
+      const overflow = Math.max(scrollOverflow, visualOverflow);
+      return overflow > 1
+        ? { page: index + 1, overflow: Math.round(overflow), scrollOverflow: Math.round(scrollOverflow), visualOverflow: Math.round(visualOverflow) }
+        : null;
+    })
+    .filter(Boolean);
+}
+
+async function downloadDocx() {
+  if (!quoteId || !docxButton) return;
+  const originalText = docxButton.textContent;
+  docxButton.disabled = true;
+  docxButton.textContent = '正在导出...';
+  try {
+    const query = new URLSearchParams({
+      id: quoteId,
+      lang: state.lang,
+      mode: state.mode,
+      grouping: state.grouping,
+      overview: state.showOverview ? '1' : '0',
+      sign: state.showSign ? '1' : '0',
+    });
+    const headers = {};
+    const token = window.AuthStore?.getToken() || localStorage.getItem('app_token');
+    if (token) headers.Authorization = `Bearer ${token}`;
+    const res = await fetch(`/api/project-quotation/export-docx?${query.toString()}`, { headers });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `导出失败 (${res.status})`);
+    }
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const disposition = res.headers.get('content-disposition') || '';
+    const match = disposition.match(/filename="([^"]+)"/);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = match ? match[1] : `project-quotation-${quoteId}.docx`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+  } catch (error) {
+    alert(`Word 导出失败：${error.message || '未知错误'}`);
+  } finally {
+    docxButton.disabled = false;
+    docxButton.textContent = originalText;
+  }
 }
 
 async function render(vm) {
@@ -1013,6 +1085,10 @@ function bindControls(vm) {
       state.taxMode = taxSelect.value;
       render(vm);
     });
+  }
+
+  if (docxButton) {
+    docxButton.addEventListener('click', downloadDocx);
   }
 }
 
@@ -1092,5 +1168,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-
-

@@ -96,7 +96,7 @@ async function exportProjectQuotationPdf(options = {}) {
   const quoteId = options.quoteId || 'Q-1773570112434';
   const port = Number(options.port || 3310);
   const outPath = options.outPath ? path.resolve(root, options.outPath) : null;
-  const lang = options.lang || 'zh';
+  const lang = options.lang || 'zh-en';
   const mode = options.mode || 'professional';
   const grouping = options.grouping || 'grouped';
   const overview = options.overview === '0' ? '0' : (options.overview === 0 ? '0' : '1');
@@ -197,7 +197,11 @@ async function exportProjectQuotationPdf(options = {}) {
       format: 'A4',
       scale: pdfScale,
       printBackground: true,
-      preferCSSPageSize: false,
+      // preferCSSPageSize: true — use @page { size: A4; margin: 0 } from CSS so the
+      // PDF engine respects the same A4/margin contract as the browser print path.
+      // This eliminates any scale mismatch between the CSS-composed A4 pages and the
+      // Playwright-generated PDF paper size.
+      preferCSSPageSize: true,
       margin: pdfMargins,
     });
     await browser.close();

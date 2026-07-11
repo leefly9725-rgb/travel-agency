@@ -1116,6 +1116,10 @@
       gap: 10px;
     }
 
+    .qp-terms-pair.qp-terms-single {
+      grid-template-columns: 1fr;
+    }
+
     .qp-page-footer {
       position: absolute;
       bottom: var(--qp-page-footer-bottom);
@@ -1341,12 +1345,23 @@
         width: var(--qp-page-width) !important;
         height: var(--qp-page-height) !important;
         overflow: hidden !important;
-        margin: 0 auto !important;
+        margin: 0 !important;
         border: 0 !important;
         border-radius: 0 !important;
         box-shadow: none !important;
+        /* break-after forces a page boundary after each composer A4 block */
         break-after: page !important;
         page-break-after: always !important;
+        /* break-inside: avoid prevents Chrome from cutting through this element
+           and doing a secondary pagination that would clip content via overflow:hidden */
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+      }
+
+      /* Non-first pages also get an explicit break-before to anchor them */
+      .qp-document > .qp-page:not(:first-child) {
+        break-before: page !important;
+        page-break-before: always !important;
       }
 
       .qp-document > .qp-page:last-of-type {
@@ -1511,6 +1526,10 @@
         <label>&nbsp;</label>
         <button class="qp-print-btn" onclick="window.print()">打印 / PDF</button>
       </div>
+      <div class="qp-control" style="min-width:auto;flex:0 0 auto">
+        <label>&nbsp;</label>
+        <button class="qp-print-btn qp-docx-btn" id="btn-export-docx" type="button">导出 Word</button>
+      </div>
     </section>
 
     <div id="qp-loading" class="qp-state-msg">正在加载报价数据…</div>
@@ -1520,9 +1539,9 @@
   </div>
 
   <script src="/app-utils.js"></script>
-  <script src="/project-quotation-blocks.js"></script>
-  <script src="/project-quotation-composer.js"></script>
-  <script src="/project-quotation.js"></script>
+  <script src="/project-quotation-blocks.js?v=20260711-2"></script>
+  <script src="/project-quotation-composer.js?v=20260711-2"></script>
+  <script src="/project-quotation.js?v=20260711-2"></script>
 </body>
 </html>
 
