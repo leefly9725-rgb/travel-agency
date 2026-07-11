@@ -1,6 +1,6 @@
 # LDS Ops V1
 
-A lightweight full-stack starter for the internal operations system of LongDingsheng International Travel in Serbia.
+A lightweight full-stack starter for the internal operations system of LDS International Travel in Serbia.
 
 ## Current V1 functions
 - Quote management
