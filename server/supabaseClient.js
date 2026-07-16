@@ -26,7 +26,23 @@ async function supabaseRequest(config, pathname, options = {}) {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(`Supabase 请求失败：${response.status} ${text}`);
+    let payload = null;
+    try {
+      payload = text ? JSON.parse(text) : null;
+    } catch (_error) {
+      payload = null;
+    }
+    const remoteMessage = payload && typeof payload.message === "string"
+      ? payload.message
+      : `HTTP ${response.status}`;
+    const error = new Error(`Supabase 请求失败：${remoteMessage}`);
+    error.name = "SupabaseRequestError";
+    error.status = response.status;
+    error.code = payload && typeof payload.code === "string" ? payload.code : null;
+    error.details = payload ? payload.details ?? null : null;
+    error.hint = payload ? payload.hint ?? null : null;
+    error.isSupabaseError = true;
+    throw error;
   }
 
   if (response.status === 204) {
@@ -42,5 +58,4 @@ async function supabaseRequest(config, pathname, options = {}) {
 }
 
 module.exports = { getRemoteKey, buildHeaders, supabaseRequest };
-
 

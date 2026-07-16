@@ -2,6 +2,7 @@ const { getSupabaseConfig } = require("../supabaseConfig");
 const { supabaseRequest } = require("../supabaseClient");
 
 const REMOTE_COMPAT_KEY = "__remoteQuoteCompat";
+const QUOTE_WRITES_FROZEN_MESSAGE = "报价功能正在进行维护，当前无法保存。你的输入内容尚未写入生产数据库，请稍后重试。";
 let remoteSchemaPromise = null;
 
 function sortByPosition(arr) {
@@ -477,8 +478,43 @@ async function deleteRemoteQuote(config, id) {
   return true; // null / 204 = success
 }
 
-function createQuoteStore({ data, saveData }) {
-  const config = getSupabaseConfig();
+function quoteStoreError(code, message, cause, statusCode) {
+  const error = new Error(message);
+  error.code = code;
+  error.statusCode = statusCode;
+  error.cause = cause;
+  error.expose = true;
+  return error;
+}
+
+function classifyQuoteWriteError(error) {
+  const remoteCode = String(error?.code || "").toUpperCase();
+  const remoteStatus = Number(error?.status || 0);
+
+  if (remoteCode === "55000") {
+    return quoteStoreError("QUOTE_WRITES_FROZEN", QUOTE_WRITES_FROZEN_MESSAGE, error, 423);
+  }
+  if (remoteCode === "42501" || remoteStatus === 401 || remoteStatus === 403 || /^PGRST30[1-3]$/.test(remoteCode)) {
+    return quoteStoreError("QUOTE_WRITE_FORBIDDEN", "当前账号无权保存此报价，数据未写入生产数据库。", error, remoteStatus === 401 ? 401 : 403);
+  }
+  if (remoteCode === "23505") {
+    return quoteStoreError("QUOTE_NUMBER_CONFLICT", "报价编号冲突，数据未保存，请刷新后重试。", error, 409);
+  }
+  if (/^22/.test(remoteCode) || /^(23502|23503|23514)$/.test(remoteCode)) {
+    return quoteStoreError("QUOTE_DATA_INVALID", "报价数据未通过校验，未写入生产数据库。", error, 422);
+  }
+  if (/^PGRST00[0-3]$/.test(remoteCode) || remoteStatus >= 500 || error instanceof TypeError) {
+    return quoteStoreError("QUOTE_REMOTE_UNAVAILABLE", "生产数据库暂时不可用，报价未保存，请稍后重试。", error, 503);
+  }
+  if ((remoteStatus >= 400 && remoteStatus < 500) || /^[A-Z0-9]{5}$/.test(remoteCode)) {
+    const statusCode = remoteStatus >= 400 && remoteStatus < 500 ? remoteStatus : 422;
+    return quoteStoreError("QUOTE_WRITE_REJECTED", "生产数据库拒绝了此次报价写入，数据未保存。", error, statusCode);
+  }
+  return quoteStoreError("QUOTE_REMOTE_SAVE_FAILED", "报价未写入生产数据库，请稍后重试。", error, 502);
+}
+
+function createQuoteStore({ data, saveData, supabaseConfig }) {
+  const config = supabaseConfig || getSupabaseConfig();
 
   function listLocalQuotes() {
     return Array.isArray(data.quotes) ? data.quotes : [];
@@ -550,8 +586,8 @@ function createQuoteStore({ data, saveData }) {
         await saveRemoteQuote(config, quote);
         return { quote, source: "supabase" };
       } catch (error) {
-        console.warn("报价保存出错，回退到本地 JSON。", error.message);
-        return { quote: saveLocalQuote(quote), source: "local_json", fallbackReason: error.message };
+        console.warn("报价远程保存失败，未写入本地 JSON。", error.code || error.name || "UNKNOWN");
+        throw classifyQuoteWriteError(error);
       }
     },
 
@@ -561,7 +597,13 @@ function createQuoteStore({ data, saveData }) {
       }
       // When Supabase is configured, errors from deleteRemoteQuote must propagate.
       // remoteDeleted=false means Supabase returned [] (row not found or RLS blocked).
-      const remoteDeleted = await deleteRemoteQuote(config, id);
+      let remoteDeleted;
+      try {
+        remoteDeleted = await deleteRemoteQuote(config, id);
+      } catch (error) {
+        console.warn("报价远程删除失败，未修改本地 JSON。", error.code || error.name || "UNKNOWN");
+        throw classifyQuoteWriteError(error);
+      }
       const localDeleted = deleteLocalQuote(id);
       if (!remoteDeleted && !localDeleted) {
         return { deleted: false, source: "not_found" };
@@ -576,4 +618,4 @@ function createQuoteStore({ data, saveData }) {
   };
 }
 
-module.exports = { createQuoteStore };
+module.exports = { createQuoteStore, classifyQuoteWriteError };

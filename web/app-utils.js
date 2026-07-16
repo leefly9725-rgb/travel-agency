@@ -45,6 +45,7 @@
       }
       const err = new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
       err.status = response.status;
+      err.code = payload.code || "";
       throw err;
     }
     return payload;

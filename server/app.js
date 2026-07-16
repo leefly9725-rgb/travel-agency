@@ -4099,10 +4099,20 @@ async function handleRequest(request, response) {
     const filePath = path.join(publicDir, safePath);
     sendFile(response, filePath);
   } catch (error) {
-    const statusCode = error.statusCode === 401 || error.statusCode === 403 ? error.statusCode : 500;
+    const isAuthError = error.statusCode === 401 || error.statusCode === 403;
+    const isPublicError = error.expose === true
+      && Number.isInteger(error.statusCode)
+      && error.statusCode >= 400
+      && error.statusCode <= 599;
+    const statusCode = isPublicError || isAuthError ? error.statusCode : 500;
+    const message = statusCode === 500 && !isPublicError
+      ? "服务器处理失败，请稍后重试。"
+      : error.message;
     sendJson(response, statusCode, {
-      error: statusCode === 500 ? "服务器处理失败，请稍后重试。" : error.message,
-      message: error.message,
+      ok: false,
+      error: message,
+      code: isPublicError ? error.code : undefined,
+      message,
     });
   }
 }
