@@ -467,15 +467,11 @@ async function deleteRemoteQuote(config, id) {
   // return=representation causes PostgREST to return the deleted rows as a JSON array.
   // An empty array means nothing was deleted (row not found or silently blocked by RLS),
   // which is the root cause of the "deleted quote reappears after refresh" bug.
-  // null (204 No Content) is treated as success for forward-compatibility.
   const result = await supabaseRequest(config, `quotes?id=eq.${encodeURIComponent(id)}`, {
     method: "DELETE",
     headers: { Prefer: "return=representation" },
   });
-  if (Array.isArray(result)) {
-    return result.length > 0; // [] = nothing deleted; [{...}] = deleted
-  }
-  return true; // null / 204 = success
+  return Array.isArray(result) && result.length > 0;
 }
 
 function quoteStoreError(code, message, cause, statusCode) {
@@ -604,15 +600,13 @@ function createQuoteStore({ data, saveData, supabaseConfig }) {
         console.warn("报价远程删除失败，未修改本地 JSON。", error.code || error.name || "UNKNOWN");
         throw classifyQuoteWriteError(error);
       }
-      const localDeleted = deleteLocalQuote(id);
-      if (!remoteDeleted && !localDeleted) {
+      if (!remoteDeleted) {
         return { deleted: false, source: "not_found" };
       }
+      const localDeleted = deleteLocalQuote(id);
       return {
         deleted: true,
-        source: remoteDeleted && localDeleted ? "supabase+local_fallback_cleanup"
-              : remoteDeleted ? "supabase"
-              : "local_only_cleanup",
+        source: localDeleted ? "supabase+local_fallback_cleanup" : "supabase",
       };
     },
   };

@@ -173,6 +173,69 @@ test("successful Supabase save path remains unchanged", async () => {
   }
 });
 
+test("zero-row Supabase delete does not mutate local JSON or report success", async () => {
+  let localSaveCalls = 0;
+  const localQuote = { ...quoteFixture };
+  const data = { quotes: [localQuote] };
+  const store = createQuoteStore({
+    data,
+    saveData: () => { localSaveCalls += 1; },
+    supabaseConfig: remoteConfig,
+  });
+  const originalFetch = global.fetch;
+  global.fetch = async () => jsonResponse(200, []);
+  try {
+    const result = await store.deleteQuote(localQuote.id);
+    assert.deepEqual(result, { deleted: false, source: "not_found" });
+    assert.deepEqual(data.quotes, [localQuote]);
+    assert.equal(localSaveCalls, 0);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("empty Supabase delete response does not count as remote deletion evidence", async () => {
+  let localSaveCalls = 0;
+  const localQuote = { ...quoteFixture };
+  const data = { quotes: [localQuote] };
+  const store = createQuoteStore({
+    data,
+    saveData: () => { localSaveCalls += 1; },
+    supabaseConfig: remoteConfig,
+  });
+  const originalFetch = global.fetch;
+  global.fetch = async () => new Response(null, { status: 204 });
+  try {
+    const result = await store.deleteQuote(localQuote.id);
+    assert.deepEqual(result, { deleted: false, source: "not_found" });
+    assert.deepEqual(data.quotes, [localQuote]);
+    assert.equal(localSaveCalls, 0);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
+test("confirmed Supabase delete cleans the matching local fallback copy", async () => {
+  let localSaveCalls = 0;
+  const localQuote = { ...quoteFixture };
+  const data = { quotes: [localQuote] };
+  const store = createQuoteStore({
+    data,
+    saveData: () => { localSaveCalls += 1; },
+    supabaseConfig: remoteConfig,
+  });
+  const originalFetch = global.fetch;
+  global.fetch = async () => jsonResponse(200, [{ id: localQuote.id }]);
+  try {
+    const result = await store.deleteQuote(localQuote.id);
+    assert.deepEqual(result, { deleted: true, source: "supabase+local_fallback_cleanup" });
+    assert.deepEqual(data.quotes, []);
+    assert.equal(localSaveCalls, 1);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});
+
 test("frontend fetch helper rejects frozen writes with machine code and maintenance copy", async () => {
   const source = fs.readFileSync(path.join(process.cwd(), "web", "app-utils.js"), "utf8");
   const context = {
@@ -201,6 +264,31 @@ test("frontend fetch helper rejects frozen writes with machine code and maintena
       return true;
     },
   );
+});
+
+test("frontend fetch helper rejects 401 after clearing the session and redirecting", async () => {
+  const source = fs.readFileSync(path.join(process.cwd(), "web", "app-utils.js"), "utf8");
+  let cleared = false;
+  const context = {
+    fetch: async () => jsonResponse(401, { message: "登录已失效。" }),
+    localStorage: { removeItem() {} },
+    sessionStorage: { setItem() {}, getItem() { return null; }, removeItem() {} },
+    document: { getElementById() { return null; } },
+    window: {
+      location: { hostname: "production.example", href: "" },
+      AuthStore: { getToken() { return "expired-token"; }, clearSession() { cleared = true; } },
+    },
+    URL,
+  };
+  context.window.window = context.window;
+  vm.runInNewContext(source, context);
+
+  await assert.rejects(
+    () => context.window.AppUtils.fetchJson("/api/quotes", { method: "POST" }, "报价保存失败。"),
+    (error) => error.status === 401 && error.code === "AUTH_REQUIRED",
+  );
+  assert.equal(cleared, true);
+  assert.equal(context.window.location.href, "/login.html");
 });
 
 test("quote API returns 423 with QUOTE_WRITES_FROZEN while GET remains available", async () => {
@@ -244,10 +332,21 @@ test("quote API returns 423 with QUOTE_WRITES_FROZEN while GET remains available
       if (target.includes("quote_item_types?") || target.includes("project_group_types?")) {
         return jsonResponse(200, []);
       }
+      if (target.includes("rpc/review_quote")) {
+        return new Response(null, { status: 204 });
+      }
+      if (target.includes("rpc/submit_quote_for_review") || target.includes("rpc/reopen_quote")) {
+        return jsonResponse(500, {
+          code: "55000",
+          message: "报价维护中，暂时禁止新建、编辑或删除，请稍后再试。",
+          details: null,
+          hint: null,
+        });
+      }
       if (target.includes("quotes?select=")) {
         return jsonResponse(200, [remoteQuoteRow]);
       }
-      if (target.includes("/rest/v1/quotes") && ["POST", "DELETE"].includes(options.method)) {
+      if (target.includes("/rest/v1/quotes") && ["POST", "PATCH", "DELETE"].includes(options.method)) {
         return jsonResponse(500, {
           code: "55000",
           message: "报价维护中，暂时禁止新建、编辑或删除，请稍后再试。",
@@ -298,6 +397,32 @@ test("quote API returns 423 with QUOTE_WRITES_FROZEN while GET remains available
     });
     assert.equal(deleteResponse.status, 423);
     assert.equal((await deleteResponse.json()).code, "QUOTE_WRITES_FROZEN");
+
+    const workflowCases = [
+      ["submit", {}],
+      ["approve", {}],
+      ["reject", { reason: "Needs changes" }],
+      ["review", { action: "approve" }],
+      ["reopen", {}],
+      ["clone", {}],
+    ];
+    for (const [action, body] of workflowCases) {
+      const workflowResponse = await originalFetch(`${baseUrl}/api/quotes/Q-HOTFIX-REMOTE/${action}`, {
+        method: "POST",
+        headers: { ...authHeaders, "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      assert.equal(workflowResponse.status, 423, `${action} must expose the quote freeze`);
+      assert.equal((await workflowResponse.json()).code, "QUOTE_WRITES_FROZEN");
+    }
+
+    const patchResponse = await originalFetch(`${baseUrl}/api/quotes/Q-HOTFIX-REMOTE`, {
+      method: "PATCH",
+      headers: { ...authHeaders, "Content-Type": "application/json" },
+      body: JSON.stringify({ execution_status: "executing" }),
+    });
+    assert.equal(patchResponse.status, 423);
+    assert.equal((await patchResponse.json()).code, "QUOTE_WRITES_FROZEN");
 
     const persisted = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
     assert.deepEqual(persisted.quotes, [], "frozen API writes must not create local JSON records");

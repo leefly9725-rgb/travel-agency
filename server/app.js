@@ -23,7 +23,7 @@ const {
 } = require("./services/exchangeRateService");
 const { defaultQuoteTemplates } = require("./services/templateService");
 const { createTemplateStore } = require("./services/templateStore");
-const { createQuoteStore } = require("./services/quoteStore");
+const { createQuoteStore, classifyQuoteWriteError } = require("./services/quoteStore");
 const projectStore = require("./services/projectStore");
 const projectExecutionStore = require("./services/projectExecutionStore");
 const projectTaskStore = require("./services/projectTaskStore");
@@ -1933,7 +1933,10 @@ async function handleApi(request, response, url) {
             headers: { Prefer: "return=minimal" },
             body: JSON.stringify({ execution_status: "executing" }),
           });
-        } catch (_) { /* non-fatal */ }
+        } catch (error) {
+          if (String(error?.code || "").toUpperCase() === "55000") throw error;
+          // execution_status sync is best-effort for non-freeze failures
+        }
       }
       sendJson(response, 200, { ok: true });
       return true;
@@ -4099,19 +4102,23 @@ async function handleRequest(request, response) {
     const filePath = path.join(publicDir, safePath);
     sendFile(response, filePath);
   } catch (error) {
-    const isAuthError = error.statusCode === 401 || error.statusCode === 403;
-    const isPublicError = error.expose === true
-      && Number.isInteger(error.statusCode)
-      && error.statusCode >= 400
-      && error.statusCode <= 599;
-    const statusCode = isPublicError || isAuthError ? error.statusCode : 500;
+    const isQuoteWrite = request.method !== "GET" && /^\/api\/quotes(?:\/|$)/.test(normalizedPath);
+    const publicError = isQuoteWrite && error?.isSupabaseError
+      ? classifyQuoteWriteError(error)
+      : error;
+    const isAuthError = publicError.statusCode === 401 || publicError.statusCode === 403;
+    const isPublicError = publicError.expose === true
+      && Number.isInteger(publicError.statusCode)
+      && publicError.statusCode >= 400
+      && publicError.statusCode <= 599;
+    const statusCode = isPublicError || isAuthError ? publicError.statusCode : 500;
     const message = statusCode === 500 && !isPublicError
       ? "服务器处理失败，请稍后重试。"
-      : error.message;
+      : publicError.message;
     sendJson(response, statusCode, {
       ok: false,
       error: message,
-      code: isPublicError ? error.code : undefined,
+      code: isPublicError ? publicError.code : undefined,
       message,
     });
   }

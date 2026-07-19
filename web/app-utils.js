@@ -38,14 +38,13 @@
       throw new Error(fallbackMessage || "服务器响应格式错误，请稍后重试。");
     }
     if (!response.ok) {
+      const err = new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
+      err.status = response.status;
+      err.code = payload.code || (response.status === 401 ? "AUTH_REQUIRED" : "");
       if (response.status === 401) {
         window.AuthStore ? window.AuthStore.clearSession() : localStorage.removeItem('app_token');
         window.location.href = '/login.html';
-        return;
       }
-      const err = new Error(payload.message || payload.error || fallbackMessage || "请求失败，请稍后重试。");
-      err.status = response.status;
-      err.code = payload.code || "";
       throw err;
     }
     return payload;
