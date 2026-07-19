@@ -35,6 +35,15 @@ const { createReceptionStore } = require("./services/receptionStore");
 const { createDocumentStore } = require("./services/documentStore");
 const { createSupplierStore } = require("./services/supplierStore");
 const { createProjectQuoteStore } = require("./services/projectQuoteStore");
+const { createAdvertisingQuoteStore } = require("./services/advertisingQuoteStore");
+const { calculateAdvertisingQuotation } = require("./services/advertisingQuotationCalculator");
+const { buildAdjustmentLogs } = require("./services/advertisingAdjustmentService");
+const { isSensitiveAdvertisingKey, sanitizeAdvertisingPayload } = require("./services/advertisingSecurity");
+const {
+  DOCX_CONTENT_TYPE: ADVERTISING_DOCX_CONTENT_TYPE,
+  buildAdvertisingQuotationDocx,
+  advertisingQuotationFileName,
+} = require("./services/advertisingQuotationExportService");
 const { getTermsSnapshot, saveTermsSnapshot } = require("./services/termsStore");
 const { validateSnapshot, applyTranslationResult, renderValidityBlock, renderPaymentBlock } = require("./services/termsService");
 const { translateContent } = require("./services/claudeTranslateService");
@@ -96,6 +105,18 @@ async function fetchValidProjectGroupTypes(supabase) {
 function sendJson(response, statusCode, payload) {
   response.writeHead(statusCode, { "Content-Type": "application/json; charset=utf-8" });
   response.end(JSON.stringify(payload, null, 2));
+}
+
+function attachmentContentDisposition(fileName) {
+  const value = String(fileName || "download");
+  const asciiName =
+    value
+      .normalize("NFKD")
+      .replace(/[^\x20-\x7E]+/g, "-")
+      .replace(/[\\";]+/g, "-")
+      .replace(/-+/g, "-")
+      .slice(0, 120) || "download";
+  return `attachment; filename="${asciiName}"; filename*=UTF-8''${encodeURIComponent(value)}`;
 }
 
 function sendFile(response, filePath) {
@@ -1465,12 +1486,181 @@ async function handleApi(request, response, url) {
   const templateStore = createTemplateStore({ data, saveData: saveSeedData });
   const supplierStore = createSupplierStore({ data, saveData: saveSeedData });
   const projectQuoteStore = createProjectQuoteStore({ data, saveData: saveSeedData });
+  const advertisingStore = createAdvertisingQuoteStore({
+    data,
+    saveData: saveSeedData,
+    supabaseConfig: getSupabaseConfig(),
+  });
   const templateResult = await templateStore.listTemplates();
   const templates = templateResult.templates;
 
   // ── 统一认证 & 路由权限拦截 ──────────────────────────────────────────────
   const authCtx = await resolveAuthContext(request, getSupabaseConfig());
   requireRoutePermission(authCtx, request.method, url.pathname);
+
+  const advertisingCanViewCosts =
+    authCtx.permissions.has("*") ||
+    authCtx.permissions.has("advertising_quote.cost_view");
+  const advertisingCanManageAll =
+    authCtx.permissions.has("*") ||
+    authCtx.permissions.has("advertising_quote.audit_view");
+  const assertAdvertisingOwnership = (quote) => {
+    if (
+      !advertisingCanManageAll &&
+      (!quote.ownerId || quote.ownerId !== authCtx.userId)
+    ) {
+      const error = new Error("无权访问此广告报价。");
+      error.statusCode = 403;
+      throw error;
+    }
+    return quote;
+  };
+  const sanitizeAdvertising = (value) =>
+    sanitizeAdvertisingPayload(value, advertisingCanViewCosts);
+  const sanitizeAdvertisingLogs = (value) => {
+    const rows = Array.isArray(value) ? value : [];
+    if (advertisingCanViewCosts) return rows;
+    return sanitizeAdvertising(
+      rows.filter(
+        (row) =>
+          !isSensitiveAdvertisingKey(row.field_name || row.fieldName || "")
+      )
+    );
+  };
+  const assertAdvertisingRequiredFields = (payload) => {
+    if (
+      !String(payload?.clientName || "").trim() ||
+      !String(payload?.projectName || "").trim()
+    ) {
+      const error = new Error("请填写客户和项目名称。");
+      error.statusCode = 400;
+      error.code = "ADVERTISING_REQUIRED_FIELD_MISSING";
+      throw error;
+    }
+  };
+  const buildAdvertisingServerSnapshot = (payload, catalog, existing = null) => {
+    const entityId = String(payload?.entityId || existing?.entityId || "lds");
+    const entity = (catalog.entities || []).find(
+      (candidate) =>
+        String(candidate.id) === entityId && candidate.isActive !== false
+    );
+    if (!entity) {
+      const error = new Error("报价主体不存在或已停用。");
+      error.statusCode = 400;
+      error.code = "ADVERTISING_ENTITY_UNAVAILABLE";
+      throw error;
+    }
+    return {
+      ...payload,
+      entityId,
+      entitySnapshot: structuredClone(entity),
+      termsSnapshot: structuredClone(existing?.termsSnapshot || {}),
+    };
+  };
+  const sendAdvertisingError = (
+    error,
+    fallbackCode = "ADVERTISING_API_ERROR",
+    fallbackStatus = 400
+  ) => {
+    const databaseCode = String(error?.code || "");
+    if (databaseCode === "23505") {
+      return sendJson(response, 409, {
+        error: "广告报价编号冲突，请重试。",
+        code: "ADVERTISING_QUOTE_CONFLICT",
+      });
+    }
+    if (
+      databaseCode.startsWith("PGRST") ||
+      /^\d{5}$/.test(databaseCode) ||
+      Number(error?.status) >= 500
+    ) {
+      return sendJson(response, 503, {
+        error: "广告报价服务暂时不可用，请稍后重试。",
+        code: "ADVERTISING_SERVICE_UNAVAILABLE",
+      });
+    }
+    const status = Number(error?.statusCode || fallbackStatus);
+    const safeStatus = [400, 401, 403, 404, 409, 422, 501].includes(status)
+      ? status
+      : 500;
+    const safeCode = /^[A-Z][A-Z0-9_]{2,80}$/.test(databaseCode)
+      ? databaseCode
+      : fallbackCode;
+    return sendJson(response, safeStatus, {
+      error:
+        safeStatus < 500
+          ? String(error?.message || "广告报价请求无效。")
+          : "广告报价服务发生内部错误。",
+      code: safeCode,
+    });
+  };
+
+  {
+    const catalogMatch = url.pathname.match(
+      /^\/api\/advertising\/(materials|processes|rules|services|entities)$/
+    );
+    if (request.method === "GET" && catalogMatch) {
+      const catalog = await advertisingStore.catalog();
+      sendJson(
+        response,
+        200,
+        sanitizeAdvertising(catalog[catalogMatch[1]] || [])
+      );
+      return true;
+    }
+  }
+
+  if (request.method === "GET" && url.pathname === "/api/advertising/catalog") {
+    sendJson(response, 200, sanitizeAdvertising(await advertisingStore.catalog())); return true;
+  }
+  if (request.method === "GET" && url.pathname === "/api/advertising/quotes") {
+    const filters = Object.fromEntries(url.searchParams); if (!advertisingCanManageAll) filters.ownerId = authCtx.userId;
+    sendJson(response, 200, sanitizeAdvertising(await advertisingStore.listQuotes(filters))); return true;
+  }
+  if (request.method === "GET" && url.pathname === "/api/advertising/adjustment-logs") {
+    requirePermission(authCtx, "advertising_quote.audit_view"); sendJson(response, 200, sanitizeAdvertisingLogs(await advertisingStore.listAdjustmentLogs())); return true;
+  }
+  if (request.method === "POST" && url.pathname === "/api/advertising/quotes/calculate") {
+    try { const body = parseJsonBody(await readRequestBody(request)); sendJson(response, 200, sanitizeAdvertising(calculateAdvertisingQuotation(body, await advertisingStore.catalog(), { userId: authCtx.userId }))); }
+    catch (error) { sendAdvertisingError(error, "ADVERTISING_CALCULATION_ERROR"); } return true;
+  }
+  if (request.method === "POST" && url.pathname === "/api/advertising/quotes") {
+    try { const body = parseJsonBody(await readRequestBody(request)); assertAdvertisingRequiredFields(body); const catalog = await advertisingStore.catalog(); const safeBody = buildAdvertisingServerSnapshot(body, catalog); const calculationSnapshot = calculateAdvertisingQuotation(safeBody, catalog, { userId: authCtx.userId }); const saved = await advertisingStore.saveQuote({ ...safeBody, id: undefined, quoteNumber: undefined, ownerId: authCtx.userId, calculationSnapshot, createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(saved)); }
+    catch (error) { sendAdvertisingError(error, "ADVERTISING_SAVE_ERROR"); } return true;
+  }
+  {
+    const exportMatch = url.pathname.match(/^\/api\/advertising\/quotes\/([^/]+)\/export\/docx$/);
+    if (exportMatch && request.method === "POST") { requirePermission(authCtx,"advertising_quote.export"); try { const quote=assertAdvertisingOwnership(await advertisingStore.getQuote(decodeURIComponent(exportMatch[1]))); const internal=url.searchParams.get('internal')==='1';if(internal)requirePermission(authCtx,'advertising_quote.cost_view');const buffer=buildAdvertisingQuotationDocx(quote,{lang:url.searchParams.get('lang')||quote.language||'zh-en',internal}); response.writeHead(200,{"Content-Type":ADVERTISING_DOCX_CONTENT_TYPE,"Content-Length":buffer.length,"Content-Disposition":attachmentContentDisposition(advertisingQuotationFileName(quote)),"Cache-Control":"no-store"});response.end(buffer); } catch(error){sendAdvertisingError(error,'ADVERTISING_DOCX_EXPORT_ERROR',500);} return true; }
+  }
+  {
+    const match = url.pathname.match(/^\/api\/advertising\/quotes\/([^/]+)(?:\/(duplicate|calculate))?$/);
+    if (match) {
+      const id = decodeURIComponent(match[1]); const action = match[2];
+      try {
+        if (request.method === "GET" && !action) { sendJson(response, 200, sanitizeAdvertising(assertAdvertisingOwnership(await advertisingStore.getQuote(id)))); return true; }
+        if (request.method === "POST" && action === "duplicate") { const source = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const catalog = await advertisingStore.catalog(); const duplicateBody = buildAdvertisingServerSnapshot({ ...source, id: undefined, quoteNumber: undefined, status: "draft", projectName: `${source.projectName || "广告报价"} - 副本` }, catalog, source); const calculationSnapshot = calculateAdvertisingQuotation(duplicateBody, catalog, { userId: authCtx.userId }); const duplicate = await advertisingStore.saveQuote({ ...duplicateBody, ownerId: authCtx.userId, calculationSnapshot, createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(duplicate)); return true; }
+        if (request.method === "DELETE" && !action) { assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const deleted = await advertisingStore.deleteQuote(id); sendJson(response, deleted ? 200 : 404, deleted ? { deleted: true } : { error: "广告报价不存在。" }); return true; }
+        if ((request.method === "PUT" && !action) || (request.method === "POST" && action === "calculate")) {
+          const body = parseJsonBody(await readRequestBody(request)); if (!action) assertAdvertisingRequiredFields(body); const catalog = await advertisingStore.catalog(); const existing = action ? null : assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const safeBody = action ? body : buildAdvertisingServerSnapshot(body, catalog, existing); const calculationSnapshot = calculateAdvertisingQuotation(safeBody, catalog, { userId: authCtx.userId });
+          if (action === "calculate") { sendJson(response, 200, sanitizeAdvertising(calculationSnapshot)); return true; }
+          const adjustmentLogs = buildAdjustmentLogs(existing, safeBody, authCtx.userId, safeBody.adjustmentReason);
+          sendJson(response, 200, sanitizeAdvertising(await advertisingStore.saveQuote({ ...safeBody, id, ownerId: existing.ownerId || authCtx.userId, adjustmentLogs, calculationSnapshot, updatedBy: authCtx.userId }))); return true;
+        }
+      } catch (error) { sendAdvertisingError(error); return true; }
+    }
+  }
+  {
+    const match = url.pathname.match(/^\/api\/advertising\/quotes\/([^/]+)\/adjustment-logs$/);
+    if (match && request.method === "GET") { requirePermission(authCtx, "advertising_quote.audit_view"); sendJson(response, 200, sanitizeAdvertisingLogs(await advertisingStore.listAdjustmentLogs(decodeURIComponent(match[1])))); return true; }
+  }
+  {
+    const match = url.pathname.match(/^\/api\/advertising\/(materials|processes|rules|services|entities)(?:\/([^/]+))?$/);
+    if (match && request.method !== "GET") {
+      requirePermission(authCtx, "advertising_catalog.manage");
+      const body = parseJsonBody(await readRequestBody(request)); const saved = await advertisingStore.updateCatalog(match[1], body, match[2] && decodeURIComponent(match[2]), authCtx.userId); sendJson(response, match[2] ? 200 : 201, sanitizeAdvertising(saved)); return true;
+    }
+  }
+
 
   if (request.method === "GET" && url.pathname === "/api/health") {
     sendJson(response, 200, { ok: true, timestamp: new Date().toISOString() });

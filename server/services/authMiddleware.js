@@ -52,6 +52,17 @@ function isPublicPath(pathname) {
 // 格式：[method, pathname_pattern, permission_code]
 // pathname_pattern 支持字符串精确匹配或正则
 const ROUTE_PERMISSION_MAP = [
+  ['GET',    /^\/api\/advertising\/(catalog|materials|processes|rules|services|entities)$/, 'advertising_quote.view'],
+  ['GET',    /^\/api\/advertising\/quotes(\/.*)?$/, 'advertising_quote.view'],
+  ['GET',    /^\/api\/advertising\/(adjustment-logs|quotes\/[^/]+\/adjustment-logs)$/, 'advertising_quote.audit_view'],
+  ['POST',   /^\/api\/advertising\/quotes\/calculate$/, 'advertising_quote.view'],
+  ['POST',   /^\/api\/advertising\/quotes$/, 'advertising_quote.create'],
+  ['POST',   /^\/api\/advertising\/quotes\/[^/]+\/(calculate|duplicate)$/, 'advertising_quote.edit'],
+  ['POST',   /^\/api\/advertising\/quotes\/[^/]+\/export\/docx$/, 'advertising_quote.export'],
+  ['PUT',    /^\/api\/advertising\/quotes\/[^/]+$/, 'advertising_quote.edit'],
+  ['DELETE', /^\/api\/advertising\/quotes\/[^/]+$/, 'advertising_quote.delete'],
+  ['POST',   /^\/api\/advertising\/(materials|processes|rules|services|entities)$/, 'advertising_catalog.manage'],
+  ['PUT',    /^\/api\/advertising\/(materials|processes|rules|services|entities)\/[^/]+$/, 'advertising_catalog.manage'],
   // dashboard
   ['GET',    /^\/api\/dashboard$/,                     'dashboard.view'],
 

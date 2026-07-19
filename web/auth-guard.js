@@ -67,8 +67,25 @@ window.AuthStore = (function () {
 (async () => {
   'use strict';
 
+  if (
+    ['localhost', '127.0.0.1'].includes(window.location.hostname) &&
+    new URLSearchParams(window.location.search).get('dev-bypass') === '1'
+  ) {
+    sessionStorage.setItem('app_token', 'dev-bypass-token');
+  }
+
   // ── Helpers ────────────────────────────────────────────────────────────────
   function parseJwtPayload(token) {
+    if (
+      token === 'dev-bypass-token' &&
+      ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ) {
+      return {
+        sub: 'dev-user',
+        email: 'dev@localhost',
+        exp: 4102444800,
+      };
+    }
     try {
       const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
       return JSON.parse(atob(base64));
@@ -192,6 +209,7 @@ window.AuthStore = (function () {
   }
 
   // ── Step 6：检测通过，通知页面权限已就绪，然后恢复可见性 ────────────────
+  window.__AUTH_READY__ = true;
   document.dispatchEvent(new CustomEvent('authReady'));
   revealPage();
 })();

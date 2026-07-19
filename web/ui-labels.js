@@ -125,6 +125,13 @@
     confirmed: "status-confirmed",
     cancelled: "status-cancelled",
   },
+  advertising: {
+    moduleName: "广告制作报价",
+    moduleNameEn: "Advertising Production Quotation",
+    normalMode: "普通产品报价",
+    projectMode: "项目组合报价",
+    priceLibrary: "广告价格库",
+  },
   supplierItemCategoryIcons: {
     av_equipment: "🔊",
     stage_structure: "🏗️",
@@ -147,5 +154,4 @@
     }).join("");
   },
 };
-
 

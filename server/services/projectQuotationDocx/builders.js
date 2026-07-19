@@ -11,12 +11,13 @@ function logoDrawing() {
 }
 
 function buildCover(vm) {
+  const logoCell = vm.company.logoConfigured === false ? X.p("未配置 Logo / LOGO NOT CONFIGURED", { color: T.colors.soft, size: 13 }) : logoDrawing();
   const top = X.table([
-    X.row([logoDrawing(), vm.company.en, `${vm.company.address}\n${vm.company.contact}`], [2800, 3600, 4372], { noBorder: true, cells: [{ raw: true, padX: 0, padY: 0 }, { bold: true, color: T.colors.navy, size: 16 }, { align: "right", color: T.colors.soft, size: 14 }] }),
+    X.row([logoCell, vm.company.en, `${vm.company.address}\n${vm.company.contact}`], [2800, 3600, 4372], { noBorder: true, cells: [{ raw: true, padX: 0, padY: 0 }, { bold: true, color: T.colors.navy, size: 16 }, { align: "right", color: T.colors.soft, size: 14 }] }),
   ], [2800, 3600, 4372], { noBorder: true });
   const title = [
     X.p("客户报价单", { size: T.sizes.coverTitle, bold: true, color: T.colors.navy, before: 520, after: 80, keepLines: true }),
-    X.p("CUSTOMER QUOTATION", { size: T.sizes.coverSubtitle, bold: true, color: T.colors.gold, after: 340 }),
+    X.p(vm.internal ? "内部核算版 / INTERNAL USE ONLY" : "CUSTOMER QUOTATION", { size: T.sizes.coverSubtitle, bold: true, color: T.colors.gold, after: 340 }),
     X.p(vm.projectName, { size: T.sizes.projectTitle, bold: true, color: T.colors.navy, after: 120, keepLines: true }),
     vm.location || vm.dateRange ? X.p([vm.location, vm.dateRange].filter(Boolean).join("  |  "), { color: T.colors.soft, size: 18, after: 280 }) : "",
   ].join("");

@@ -4630,3 +4630,149 @@ test("B1-05D: client-facing APIs do not expose exchange_rates or cost_entries", 
     assert.ok(!pBody.includes('"actualGrossProfit"'), "must not expose actualGrossProfit");
   });
 });
+
+test("advertising quotation pages and navigation entry are served", async () => {
+  await withServer(async (port) => {
+    for (const page of [
+      "/advertising-quotes.html",
+      "/advertising-quote.html",
+      "/advertising-price-library.html",
+    ]) {
+      const response = await publicFetch(port, page);
+      assert.equal(response.status, 200, page);
+    }
+    const shell = await (await publicFetch(port, "/app-shell.js")).text();
+    assert.match(shell, /advertising-quotes\.html/);
+    assert.match(shell, /广告制作报价|\\u5e7f\\u544a/);
+    const editor = await (await publicFetch(port, "/advertising-quote.js")).text();
+    assert.match(editor, /window\.print/);
+    assert.match(editor, /reportValidity/);
+  });
+});
+
+test("advertising quotation API calculates, saves, reopens and lists quotes", async () => {
+  await withServer(async (port) => {
+    const catalogResponse = await apiFetch(port, "/api/advertising/catalog");
+    assert.equal(catalogResponse.status, 200);
+    const catalog = await catalogResponse.json();
+    assert.ok(catalog.materials.some((item) => item.id === "pvc-3"));
+    assert.ok(catalog.processes.some((item) => item.id === "uv"));
+    for (const resource of ["materials", "processes", "rules", "services", "entities"]) {
+      const response = await apiFetch(port, `/api/advertising/${resource}`);
+      assert.equal(response.status, 200, resource);
+      assert.equal(Array.isArray(await response.json()), true, resource);
+    }
+
+    const payload = {
+      entityId: "ema",
+      clientName: "广告客户",
+      projectName: "Storefront Sign",
+      mode: "standard",
+      currency: "EUR",
+      vatMode: "exclusive",
+      vatRate: 20,
+      minimumProcessingFee: 35,
+      minimumOrderAmount: 75,
+      entitySnapshot: {
+        code: "FAKE",
+        nameEn: "Forged Company",
+      },
+      termsSnapshot: {
+        paymentAccount: "attacker",
+      },
+      items: [
+        {
+          id: "ADI-API-1",
+          name: "PVC Sign",
+          materialId: "pvc-3",
+          width: 1200,
+          height: 800,
+          sizeUnit: "mm",
+          quantity: 1,
+          sides: 1,
+          processes: [{ id: "ADP-API-1", processId: "uv" }],
+        },
+      ],
+    };
+
+    const calculationResponse = await apiFetch(
+      port,
+      "/api/advertising/quotes/calculate",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      }
+    );
+    assert.equal(calculationResponse.status, 200);
+    const calculation = await calculationResponse.json();
+    assert.ok(calculation.totalIncludingVat > 0);
+
+    const createResponse = await apiFetch(port, "/api/advertising/quotes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    assert.equal(createResponse.status, 201);
+    const created = await createResponse.json();
+    assert.match(created.quoteNumber, /^EMA-ADV-\d{4}-\d{4}$/);
+    assert.equal(created.entitySnapshot.code, "EMA");
+    assert.equal(created.entitySnapshot.nameEn, "EMA Media");
+    assert.deepEqual(created.termsSnapshot, {});
+
+    const detailResponse = await apiFetch(
+      port,
+      `/api/advertising/quotes/${encodeURIComponent(created.id)}`
+    );
+    assert.equal(detailResponse.status, 200);
+    const detail = await detailResponse.json();
+    assert.equal(detail.projectName, "Storefront Sign");
+
+    const listResponse = await apiFetch(port, "/api/advertising/quotes");
+    assert.equal(listResponse.status, 200);
+    const rows = await listResponse.json();
+    assert.ok(rows.some((row) => row.id === created.id));
+
+    const exportResponse = await apiFetch(
+      port,
+      `/api/advertising/quotes/${encodeURIComponent(created.id)}/export/docx`,
+      { method: "POST" }
+    );
+    assert.equal(exportResponse.status, 200);
+    assert.match(
+      exportResponse.headers.get("content-disposition") || "",
+      /filename\*=UTF-8''/
+    );
+    assert.equal(
+      exportResponse.headers.get("content-type"),
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    );
+  });
+});
+
+test("advertising API denies anonymous access", async () => {
+  await withServer(async (port) => {
+    const response = await publicFetch(port, "/api/advertising/catalog");
+    assert.equal(response.status, 401);
+  });
+});
+
+test("advertising save rejects empty client and project before allocating a quote", async () => {
+  await withServer(async (port) => {
+    const response = await apiFetch(port, "/api/advertising/quotes", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        entityId: "lds",
+        clientName: " ",
+        projectName: "",
+        items: [],
+      }),
+    });
+    assert.equal(response.status, 400);
+    const payload = await response.json();
+    assert.equal(payload.code, "ADVERTISING_REQUIRED_FIELD_MISSING");
+    const saved = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    assert.equal(saved.advertisingQuotes?.length || 0, 0);
+  });
+});

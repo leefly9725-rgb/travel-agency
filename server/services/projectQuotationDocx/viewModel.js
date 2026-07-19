@@ -6,6 +6,7 @@ const COMPANY = Object.freeze({
   legal: "LDS International Travel d.o.o Beograd",
   address: "Second Floor, TRG PRIJATELJSTVA SRBIJE KINE 4, BEOGRAD",
   contact: "shen.summer@yahoo.com",
+  logoConfigured: true,
 });
 
 const GROUP_LABELS = {
@@ -62,7 +63,7 @@ function buildViewModel(quote, options = {}) {
   }).filter((group) => group.items.length > 0);
   const total = num(quote.totalSales ?? quote.totalPrice ?? quote.grandTotal) || groups.reduce((sum, group) => sum + group.amount, 0);
   return {
-    lang, company: COMPANY, currency, groups, total, totalText: money(total, currency),
+    lang, company: quote.company || COMPANY, currency, groups, total, totalText: money(total, currency), internal: Boolean(quote.internal),
     quoteNumber: String(quote.quoteNumber || quote.id || ""), projectName: String(quote.projectName || quote.title || quote.quoteNumber || ""),
     location: String(quote.projectLocation || quote.location || ""), clientName: String(quote.clientName || ""), clientContact: String(quote.clientContact || quote.contactName || ""),
     quoteDate: String(quote.quoteDate || quote.createdAt || "").slice(0, 10), validUntil: String(quote.validUntil || "").slice(0, 10),
