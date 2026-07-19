@@ -1,1 +1,53 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>广告价格库</title><link rel="stylesheet" href="/styles.css"><script src="/auth-guard.js"></script><link rel="stylesheet" href="/app-shell.css"></head><body style="visibility:hidden"><main class="page-shell"><header class="topbar"><a class="topbar-link" href="/advertising-quotes.html">← 广告报价</a></header><section class="panel"><div class="panel-head"><div><p class="section-kicker">管理员</p><h1>广告价格库</h1></div><div class="advertising-tabs" role="tablist"><button data-tab="materials">材料</button><button data-tab="processes">工艺</button><button data-tab="rules">关联规则</button><button data-tab="services">服务费用</button></div></div><div id="adv-library-message" class="message-box hidden"></div><div id="adv-library-table"></div></section></main><dialog id="adv-library-dialog"><form method="dialog" id="adv-library-form"><h2>编辑价格项</h2><input name="id" type="hidden"><div id="adv-library-fields" class="advertising-grid"></div><label class="advertising-reason">修改原因<textarea name="adjustmentReason" required></textarea></label><div class="topbar-actions"><button value="cancel">取消</button><button id="adv-library-save" value="default">保存</button></div></form></dialog><script src="/ui-labels.js"></script><script src="/advertising-price-library.js"></script><script src="/app-shell.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>广告价格库</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/auth-guard.js"></script>
+  <link rel="stylesheet" href="/app-shell.css">
+  <link rel="stylesheet" href="/advertising-ui.css">
+</head>
+<body class="adv-app-page" style="visibility:hidden">
+  <main class="page-shell adv-workspace adv-library-page">
+    <header class="topbar"><a class="topbar-link" href="/advertising-quotes.html">← 广告报价</a></header>
+    <section class="adv-surface adv-library-surface">
+      <div class="adv-library-heading">
+        <div>
+          <span class="adv-section-kicker">Pricing governance</span>
+          <h2>价格与生产规则</h2>
+          <p>统一管理材料、加工工艺、适配规则与服务费用。</p>
+        </div>
+        <div class="advertising-tabs" role="tablist" aria-label="价格库分类">
+          <button id="adv-tab-materials" data-tab="materials" role="tab" aria-controls="adv-library-table">材料</button>
+          <button id="adv-tab-processes" data-tab="processes" role="tab" aria-controls="adv-library-table">工艺</button>
+          <button id="adv-tab-rules" data-tab="rules" role="tab" aria-controls="adv-library-table">关联规则</button>
+          <button id="adv-tab-services" data-tab="services" role="tab" aria-controls="adv-library-table">服务费用</button>
+        </div>
+      </div>
+      <div id="adv-library-message" class="message-box hidden" role="alert"></div>
+      <div id="adv-library-table" class="adv-library-content" role="tabpanel" aria-live="polite"><div class="adv-library-loading">正在加载价格库…</div></div>
+    </section>
+  </main>
+
+  <dialog id="adv-library-dialog" aria-labelledby="adv-library-dialog-title">
+    <form method="dialog" id="adv-library-form">
+      <div class="adv-dialog-heading">
+        <div><span class="adv-section-kicker">Catalog editor</span><h2 id="adv-library-dialog-title">编辑价格项</h2></div>
+        <button class="adv-dialog-close" value="cancel" aria-label="关闭">×</button>
+      </div>
+      <input name="id" type="hidden">
+      <div id="adv-library-fields" class="advertising-grid adv-dialog-grid"></div>
+      <label class="advertising-reason">修改原因<textarea name="adjustmentReason" required placeholder="说明本次价格或规则调整的原因"></textarea></label>
+      <div class="adv-dialog-actions">
+        <button class="adv-button adv-button-secondary" value="cancel">取消</button>
+        <button id="adv-library-save" class="adv-button adv-button-primary" value="default">保存变更</button>
+      </div>
+    </form>
+  </dialog>
+  <script src="/ui-labels.js"></script>
+  <script src="/advertising-price-library.js"></script>
+  <script src="/app-shell.js"></script>
+</body>
+</html>

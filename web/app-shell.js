@@ -45,8 +45,7 @@
       items: [
         { key: 'standard-quotes', icon: ICONS.standardQuotes, label: '\u6807\u51c6\u62a5\u4ef7', note: '\u65e5\u5e38\u5546\u52a1\u62a5\u4ef7', href: '/standard-quotes.html', permission: 'standard_quote.view' },
         { key: 'project-quotes', icon: ICONS.projectQuotes, label: '\u9879\u76ee\u578b\u62a5\u4ef7', note: '\u4f1a\u8bae\u4e0e\u6d3b\u52a8\u9879\u76ee', href: '/project-quotes.html', permission: 'project_quote.view' },
-        { key: 'advertising-quotes', icon: ICONS.projectQuotes, label: '\u5e7f\u544a\u5236\u4f5c\u62a5\u4ef7', note: '\u6750\u6599\u3001\u52a0\u5de5\u4e0e\u65bd\u5de5', href: '/advertising-quotes.html', permission: 'advertising_quote.view' },
-        { key: 'advertising-price-library', icon: ICONS.templates, label: '\u5e7f\u544a\u4ef7\u683c\u5e93', note: '\u6750\u6599\u3001\u5de5\u827a\u4e0e\u670d\u52a1\u89c4\u5219', href: '/advertising-price-library.html', permission: 'advertising_catalog.manage' },
+        { key: 'advertising-quotes', icon: ICONS.projectQuotes, label: '\u5e7f\u544a\u5236\u4f5c\u62a5\u4ef7', note: '\u6750\u6599\u3001\u52a0\u5de5\u4e0e\u65bd\u5de5', href: '/advertising-quotes.html', match: ['/advertising-quotes.html', '/advertising-quote.html'], permission: 'advertising_quote.view' },
         { key: 'templates', icon: ICONS.templates, label: '\u62a5\u4ef7\u6a21\u677f', note: '\u62a5\u4ef7\u6a21\u677f\u4e0e\u590d\u7528', href: '/templates.html', permission: 'standard_quote.view' }
       ]
     },
@@ -64,6 +63,7 @@
       label: '\u8d44\u6e90\u4e2d\u5fc3',
       items: [
         { key: 'suppliers', icon: ICONS.suppliers, label: '\u4f9b\u5e94\u5546\u4e0e\u4ef7\u683c\u5e93', note: '\u4f9b\u5e94\u5546\u4ef7\u683c\u5e93\u7ba1\u7406', href: '/suppliers.html', permission: 'supplier.view' },
+        { key: 'advertising-price-library', icon: ICONS.templates, label: '\u5e7f\u544a\u4ef7\u683c\u5e93', note: '\u6750\u6599\u3001\u5de5\u827a\u4e0e\u670d\u52a1\u89c4\u5219', href: '/advertising-price-library.html', permission: 'advertising_catalog.manage' },
         { key: 'basic-info', icon: ICONS.basicInfo, label: '\u57fa\u7840\u6570\u636e', note: '\u7c7b\u578b\u4e0e\u5206\u7c7b\u4e3b\u6570\u636e', href: '/basic-info.html', permission: 'project_type.view' }
       ]
     },
@@ -82,7 +82,7 @@
     '/project-quotes.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u9879\u76ee\u578b\u62a5\u4ef7', subtitle: '\u9762\u5411\u4f1a\u8bae\u3001\u5c55\u4f1a\u4e0e\u6d3b\u52a8\u7c7b\u590d\u6742\u62a5\u4ef7\u3002' },
     '/advertising-quotes.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u5e7f\u544a\u5236\u4f5c\u62a5\u4ef7', subtitle: '\u5e7f\u544a\u6750\u6599\u3001\u52a0\u5de5\u3001\u914d\u9001\u4e0e\u65bd\u5de5\u62a5\u4ef7\u3002' },
     '/advertising-quote.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u7f16\u8f91\u5e7f\u544a\u5236\u4f5c\u62a5\u4ef7', subtitle: '\u670d\u52a1\u7aef\u7edf\u4e00\u8ba1\u7b97\u5e76\u4fdd\u5b58\u4ef7\u683c\u5feb\u7167\u3002' },
-    '/advertising-price-library.html': { eyebrow: '\u4e3b\u6570\u636e', title: '\u5e7f\u544a\u4ef7\u683c\u5e93', subtitle: '\u7ba1\u7406\u6750\u6599\u3001\u5de5\u827a\u3001\u5173\u8054\u89c4\u5219\u548c\u670d\u52a1\u8d39\u7528\u3002' },
+    '/advertising-price-library.html': { eyebrow: '\u8d44\u6e90\u4e2d\u5fc3', title: '\u5e7f\u544a\u4ef7\u683c\u5e93', subtitle: '\u7ba1\u7406\u6750\u6599\u3001\u5de5\u827a\u3001\u5173\u8054\u89c4\u5219\u548c\u670d\u52a1\u8d39\u7528\u3002' },
     '/templates.html': { eyebrow: '\u62a5\u4ef7\u4e2d\u5fc3', title: '\u62a5\u4ef7\u6a21\u677f', subtitle: '\u6c89\u6dc0\u9ad8\u9891\u62a5\u4ef7\u6a21\u677f\uff0c\u63d0\u9ad8\u590d\u7528\u6548\u7387\u3002' },
     '/projects.html': { eyebrow: '\u9879\u76ee\u6267\u884c', title: '\u9879\u76ee\u7ba1\u7406', subtitle: '\u4ece\u62a5\u4ef7\u5411\u9879\u76ee\u6863\u6848\u4e0e\u6267\u884c\u7ebf\u7d22\u8fc7\u6e21\u3002' },
     '/receptions.html': { eyebrow: '\u9879\u76ee\u6267\u884c', title: '\u63a5\u5f85\u7ba1\u7406', subtitle: '\u805a\u7126\u6267\u884c\u4efb\u52a1\u3001\u4eba\u5458\u5b89\u6392\u4e0e\u63a5\u5f85\u95ed\u73af\u3002' },

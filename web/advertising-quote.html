@@ -1,10 +1,104 @@
 <!doctype html>
-<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>广告制作报价</title><link rel="stylesheet" href="/styles.css"><script src="/auth-guard.js"></script><link rel="stylesheet" href="/app-shell.css"></head>
-<body style="visibility:hidden"><main class="page-shell"><header class="topbar"><a class="topbar-link" href="/advertising-quotes.html">← 广告报价</a><div class="topbar-actions"><button id="adv-export-docx" type="button">客户版 Word</button><button id="adv-export-pdf" type="button">客户版 PDF</button><button id="adv-export-internal-docx" class="hidden" type="button">内部核算版 Word</button><button id="adv-export-internal-pdf" class="hidden" type="button">内部核算版 PDF</button><button id="adv-save" type="button">保存报价</button></div></header>
-<form id="adv-form" class="advertising-editor">
-<section class="panel"><h2>基本信息</h2><div class="advertising-grid"><label>报价主体<select name="entityId"></select></label><label>客户<input name="clientName" required></label><label>项目名称<input name="projectName" required></label><label>报价模式<select name="mode"><option value="standard">普通产品报价</option><option value="project">项目组合报价</option></select></label><label>语言<select name="language"><option value="zh-en">中英双语</option><option value="zh">中文</option><option value="zh-sr">中塞双语</option></select></label><label>VAT模式<select name="vatMode"><option value="exclusive">未税</option><option value="inclusive">含税</option><option value="not_applicable">不适用VAT</option></select></label></div></section>
-<section id="adv-groups-panel" class="panel hidden"><div class="panel-head"><h2>项目分组</h2><button id="adv-add-group" type="button">新增分组</button></div><div id="adv-groups"></div></section>
-<section class="panel"><div class="panel-head"><h2>产品</h2><button id="adv-add-item" type="button">添加产品</button></div><div id="adv-items"></div></section>
-<details class="panel"><summary>配送、安装与特殊施工</summary><div class="advertising-grid"><label><input name="deliveryEnabled" type="checkbox"> 需要配送</label><label>配送次数<input name="deliveryQuantity" type="number" min="0" value="1"></label><label>配送单价<input name="deliveryPrice" type="number" min="0" step="0.01" value="150"></label><label>安装售价<input name="installationPrice" type="number" min="0" step="0.01" value="0"></label><label>最低加工费<input name="minimumProcessingFee" type="number" min="0" step="0.01" value="35"></label><label>最低订单金额<input name="minimumOrderAmount" type="number" min="0" step="0.01" value="75"></label><label>折扣比例(%)<input name="discountPercent" type="number" min="0" max="100" step="0.01" value="0"></label><label>固定优惠<input name="fixedDiscount" type="number" min="0" step="0.01" value="0"></label><label>整单调整<input name="adjustment" type="number" step="0.01" value="0"></label><label>调价原因<textarea name="adjustmentReason"></textarea></label></div></details>
-<aside class="panel advertising-summary"><h2>金额汇总</h2><p>未税总额 <strong id="adv-subtotal">0.00 EUR</strong></p><p>VAT <strong id="adv-vat">0.00 EUR</strong></p><p>含税总额 <strong id="adv-total">0.00 EUR</strong></p></aside>
-</form></main><script src="/ui-labels.js"></script><script src="/advertising-quote.js"></script><script src="/app-shell.js"></script></body></html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>编辑广告制作报价</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/auth-guard.js"></script>
+  <link rel="stylesheet" href="/app-shell.css">
+  <link rel="stylesheet" href="/advertising-ui.css">
+</head>
+<body class="adv-app-page" style="visibility:hidden">
+  <main class="page-shell adv-workspace adv-editor-page">
+    <header class="topbar adv-editor-toolbar">
+      <a class="topbar-link" href="/advertising-quotes.html">← 广告报价</a>
+      <div class="adv-toolbar-note">
+        <span class="adv-status-dot" aria-hidden="true"></span>
+        <span>服务端统一计价 · 价格快照留存</span>
+      </div>
+      <div class="topbar-actions adv-editor-actions">
+        <details class="adv-export-menu">
+          <summary>导出报价</summary>
+          <div class="adv-export-popover">
+            <button id="adv-export-docx" type="button">客户版 Word</button>
+            <button id="adv-export-pdf" type="button">客户版 PDF</button>
+            <button id="adv-export-internal-docx" class="hidden" type="button">内部核算版 Word</button>
+            <button id="adv-export-internal-pdf" class="hidden" type="button">内部核算版 PDF</button>
+          </div>
+        </details>
+        <button id="adv-save" class="adv-save-button" type="button">保存报价</button>
+      </div>
+    </header>
+
+    <form id="adv-form" class="advertising-editor">
+      <div class="adv-editor-layout">
+        <div class="adv-editor-main">
+          <section class="adv-surface adv-form-section">
+            <div class="adv-section-heading">
+              <div><span class="adv-section-index">01</span><h2>基本信息</h2></div>
+              <p>确认报价主体、客户和计价规则。</p>
+            </div>
+            <div class="advertising-grid adv-basic-grid">
+              <label>报价主体<select name="entityId"></select></label>
+              <label>客户<input name="clientName" required placeholder="请输入客户名称"></label>
+              <label>项目名称<input name="projectName" required placeholder="请输入项目名称"></label>
+              <label>报价模式<select name="mode"><option value="standard">普通产品报价</option><option value="project">项目组合报价</option></select></label>
+              <label>语言<select name="language"><option value="zh-en">中英双语</option><option value="zh">中文</option><option value="zh-sr">中塞双语</option></select></label>
+              <label>VAT 模式<select name="vatMode"><option value="exclusive">未税</option><option value="inclusive">含税</option><option value="not_applicable">不适用 VAT</option></select></label>
+            </div>
+          </section>
+
+          <section id="adv-groups-panel" class="adv-surface adv-form-section hidden">
+            <div class="adv-section-heading adv-section-heading-actions">
+              <div><span class="adv-section-index">02</span><h2>项目分组</h2></div>
+              <button id="adv-add-group" class="adv-button adv-button-secondary" type="button">新增分组</button>
+            </div>
+            <div id="adv-groups" class="adv-group-list"></div>
+          </section>
+
+          <section class="adv-surface adv-form-section">
+            <div class="adv-section-heading adv-section-heading-actions">
+              <div><span class="adv-section-index">03</span><h2>产品与加工</h2></div>
+              <button id="adv-add-item" class="adv-button adv-button-secondary" type="button">添加产品</button>
+            </div>
+            <p class="adv-section-help">为每个产品选择材料、尺寸与加工工艺，金额将自动计算。</p>
+            <div id="adv-items" class="adv-item-list"></div>
+          </section>
+
+          <details class="adv-surface adv-advanced-section">
+            <summary>
+              <span><strong>配送、安装与商务调整</strong><small>最低费用、优惠、VAT 和特殊施工</small></span>
+              <span class="adv-summary-action">展开设置</span>
+            </summary>
+            <div class="advertising-grid adv-advanced-grid">
+              <label class="adv-check-field"><input name="deliveryEnabled" type="checkbox"> <span>需要配送</span></label>
+              <label>配送次数<input name="deliveryQuantity" type="number" min="0" value="1"></label>
+              <label>配送单价<input name="deliveryPrice" type="number" min="0" step="0.01" value="150"></label>
+              <label>安装售价<input name="installationPrice" type="number" min="0" step="0.01" value="0"></label>
+              <label>最低加工费<input name="minimumProcessingFee" type="number" min="0" step="0.01" value="35"></label>
+              <label>最低订单金额<input name="minimumOrderAmount" type="number" min="0" step="0.01" value="75"></label>
+              <label>折扣比例 (%)<input name="discountPercent" type="number" min="0" max="100" step="0.01" value="0"></label>
+              <label>固定优惠<input name="fixedDiscount" type="number" min="0" step="0.01" value="0"></label>
+              <label>整单调整<input name="adjustment" type="number" step="0.01" value="0"></label>
+              <label class="adv-reason-field">调价原因<textarea name="adjustmentReason" placeholder="整单调价时必填"></textarea></label>
+            </div>
+          </details>
+        </div>
+
+        <aside class="adv-surface advertising-summary" aria-label="金额汇总">
+          <span class="adv-section-kicker">Live total</span>
+          <h2>金额汇总</h2>
+          <p><span>未税总额</span><strong id="adv-subtotal">0.00 EUR</strong></p>
+          <p><span>VAT</span><strong id="adv-vat">0.00 EUR</strong></p>
+          <div class="adv-grand-total"><span>含税总额</span><strong id="adv-total">0.00 EUR</strong></div>
+          <small id="adv-calc-status" aria-live="polite">金额会随材料、工艺和数量实时更新。</small>
+        </aside>
+      </div>
+    </form>
+  </main>
+  <script src="/ui-labels.js"></script>
+  <script src="/advertising-quote.js"></script>
+  <script src="/app-shell.js"></script>
+</body>
+</html>

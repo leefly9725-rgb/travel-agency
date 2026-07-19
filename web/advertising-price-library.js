@@ -1,9 +1,115 @@
 (() => {
-  const headers=()=>({Authorization:`Bearer ${window.AuthStore?.getToken()||''}`,'Content-Type':'application/json'}), table=document.querySelector('#adv-library-table'), dialog=document.querySelector('#adv-library-dialog'), form=document.querySelector('#adv-library-form'), fields=document.querySelector('#adv-library-fields'); let catalog, tab='materials';
-  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-  const definitions={materials:[['nameZh','材料名称'],['nameEn','英文名称'],['specification','规格'],['thicknessMm','厚度(mm)','number'],['unit','单位'],['costPrice','成本价','number'],['suggestedSalePrice','建议售价','number'],['defaultMarkupRate','加价率(%)','number'],['minimumSalePrice','最低售价','number'],['supplierName','供应商'],['notes','备注']],processes:[['nameZh','工艺名称'],['nameEn','英文名称'],['unit','计价单位'],['costPrice','成本价','number'],['suggestedSalePrice','建议售价','number'],['defaultMarkupRate','加价率(%)','number'],['defaultMinimumFee','最低加工费','number'],['supportsDoubleSide','支持双面','checkbox'],['isActive','启用','checkbox'],['notes','备注']],services:[['nameZh','服务名称'],['nameEn','英文名称'],['category','类别'],['unit','单位'],['costPrice','成本价','number'],['suggestedSalePrice','建议售价','number'],['isActive','启用','checkbox']],rules:[['materialId','材料'],['processId','工艺'],['costPriceOverride','成本覆盖','number'],['suggestedSalePriceOverride','售价覆盖','number'],['defaultMinimumFeeOverride','最低费覆盖','number'],['isActive','允许','checkbox'] ]};
-  const render=()=>{const cols=definitions[tab];table.innerHTML=`<table class="quote-items-table"><thead><tr>${cols.slice(0,5).map(x=>`<th>${esc(x[1])}</th>`).join('')}<th>操作</th></tr></thead><tbody>${(catalog[tab]||[]).map(row=>`<tr>${cols.slice(0,5).map(([k])=>`<td>${esc(row[k])}</td>`).join('')}<td><button type="button" data-id="${esc(row.id)}">编辑</button></td></tr>`).join('')}</tbody></table><button type="button" id="adv-library-add">新增</button>`;table.querySelectorAll('[data-id]').forEach(b=>b.onclick=()=>open(catalog[tab].find(x=>x.id===b.dataset.id)));document.querySelector('#adv-library-add').onclick=()=>open({isActive:true})};
-  const open=row=>{form.elements.id.value=row.id||'';fields.innerHTML=definitions[tab].map(([key,label,type='text'])=>`<label>${esc(label)}<input name="${esc(key)}" type="${esc(type)}" ${type==='checkbox'?(row[key]!==false?'checked':''):`value="${esc(row[key])}"`} ${['nameZh'].includes(key)?'required':''}></label>`).join('');form.elements.adjustmentReason.value='';dialog.showModal()};
-  const load=()=>{if(!window.can('advertising_catalog.manage')){location.href='/error.html?reason=no_permission';return}fetch('/api/advertising/catalog',{headers:headers()}).then(r=>{if(r.status===403)throw new Error('无管理员权限');return r.json()}).then(x=>{catalog=x;render()}).catch(e=>{document.querySelector('#adv-library-message').classList.remove('hidden');document.querySelector('#adv-library-message').textContent=e.message})};if(window.__AUTH_READY__)load();else document.addEventListener('authReady',load,{once:true});
-  document.querySelectorAll('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;render()});document.querySelector('#adv-library-save').onclick=async e=>{e.preventDefault();if(!form.reportValidity())return;const id=form.elements.id.value,payload={adjustmentReason:form.elements.adjustmentReason.value};for(const [key,,type] of definitions[tab]){const input=form.elements[key];payload[key]=type==='checkbox'?input.checked:type==='number'?(input.value===''?null:Number(input.value)):input.value}const r=await fetch(`/api/advertising/${tab}${id?`/${encodeURIComponent(id)}`:''}`,{method:id?'PUT':'POST',headers:headers(),body:JSON.stringify(payload)}),x=await r.json();if(!r.ok){alert(x.error);return}dialog.close();catalog=await fetch('/api/advertising/catalog',{headers:headers()}).then(y=>y.json());render()};
+  const headers = () => ({ Authorization: `Bearer ${window.AuthStore?.getToken() || ''}`, 'Content-Type': 'application/json' });
+  const table = document.querySelector('#adv-library-table');
+  const dialog = document.querySelector('#adv-library-dialog');
+  const form = document.querySelector('#adv-library-form');
+  const fields = document.querySelector('#adv-library-fields');
+  let catalog;
+  let tab = 'materials';
+
+  const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+  const definitions = {
+    materials: [['nameZh', '材料名称'], ['nameEn', '英文名称'], ['specification', '规格'], ['thicknessMm', '厚度 (mm)', 'number'], ['unit', '单位'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['defaultMarkupRate', '加价率 (%)', 'number'], ['minimumSalePrice', '最低售价', 'number'], ['supplierName', '供应商'], ['notes', '备注']],
+    processes: [['nameZh', '工艺名称'], ['nameEn', '英文名称'], ['unit', '计价单位'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['defaultMarkupRate', '加价率 (%)', 'number'], ['defaultMinimumFee', '最低加工费', 'number'], ['supportsDoubleSide', '支持双面', 'checkbox'], ['isActive', '启用', 'checkbox'], ['notes', '备注']],
+    services: [['nameZh', '服务名称'], ['nameEn', '英文名称'], ['category', '类别'], ['unit', '单位'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['isActive', '启用', 'checkbox']],
+    rules: [['materialId', '材料', 'material-select'], ['processId', '工艺', 'process-select'], ['costPriceOverride', '成本覆盖', 'number'], ['suggestedSalePriceOverride', '售价覆盖', 'number'], ['defaultMinimumFeeOverride', '最低费覆盖', 'number'], ['isActive', '允许', 'checkbox']]
+  };
+  const tabLabels = { materials: '材料', processes: '工艺', rules: '关联规则', services: '服务费用' };
+  const columns = {
+    materials: [['nameZh', '材料'], ['specification', '规格'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['minimumSalePrice', '最低售价']],
+    processes: [['nameZh', '工艺'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['defaultMinimumFee', '最低费'], ['isActive', '状态']],
+    rules: [['materialId', '材料'], ['processId', '工艺'], ['suggestedSalePriceOverride', '售价覆盖'], ['defaultMinimumFeeOverride', '最低费覆盖'], ['isActive', '状态']],
+    services: [['nameZh', '服务'], ['category', '类别'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['isActive', '状态']]
+  };
+
+  const recordName = (type, id) => catalog[type]?.find(item => item.id === id)?.nameZh || '未找到对应项';
+  const cellValue = (row, key) => {
+    if (key === 'materialId') return recordName('materials', row[key]);
+    if (key === 'processId') return recordName('processes', row[key]);
+    if (typeof row[key] === 'boolean') return row[key] ? '启用' : '停用';
+    return row[key] ?? '—';
+  };
+
+  function updateTabs() {
+    const buttons = [...document.querySelectorAll('[data-tab]')];
+    buttons.forEach(button => {
+      const active = button.dataset.tab === tab;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-selected', String(active));
+      button.tabIndex = active ? 0 : -1;
+    });
+  }
+
+  function render() {
+    updateTabs();
+    const displayColumns = columns[tab];
+    const rows = catalog[tab] || [];
+    const body = rows.length
+      ? `<div class="adv-table-scroll"><table class="adv-library-table"><thead><tr>${displayColumns.map(([, label]) => `<th>${esc(label)}</th>`).join('')}<th><span class="sr-only">操作</span></th></tr></thead><tbody>${rows.map(row => `<tr>${displayColumns.map(([key]) => `<td>${esc(cellValue(row, key))}</td>`).join('')}<td><button class="adv-table-action" type="button" data-id="${esc(row.id)}">编辑</button></td></tr>`).join('')}</tbody></table></div>`
+      : `<div class="adv-library-empty"><strong>暂无${esc(tabLabels[tab])}记录</strong><p>点击右上角按钮创建第一条记录。</p></div>`;
+    table.innerHTML = `<div class="adv-library-toolbar"><div><strong>${tabLabels[tab]}</strong><span>${rows.length} 条记录</span></div><button class="adv-button adv-button-primary" type="button" id="adv-library-add">新增${tabLabels[tab]}</button></div>${body}`;
+    table.querySelectorAll('[data-id]').forEach(button => { button.onclick = () => open(rows.find(item => item.id === button.dataset.id)); });
+    document.querySelector('#adv-library-add').onclick = () => open({ isActive: true });
+  }
+
+  const selectOptions = (type, selected) => (catalog[type] || []).map(item => `<option value="${esc(item.id)}" ${item.id === selected ? 'selected' : ''}>${esc(item.nameZh)}${item.specification ? ` · ${esc(item.specification)}` : ''}</option>`).join('');
+
+  function fieldMarkup(row, [key, label, type = 'text']) {
+    if (type === 'material-select') return `<label>${esc(label)}<select name="${esc(key)}" required>${selectOptions('materials', row[key])}</select></label>`;
+    if (type === 'process-select') return `<label>${esc(label)}<select name="${esc(key)}" required>${selectOptions('processes', row[key])}</select></label>`;
+    if (type === 'checkbox') return `<label class="adv-toggle-field"><input name="${esc(key)}" type="checkbox" ${row[key] !== false ? 'checked' : ''}><span><strong>${esc(label)}</strong><small>点击切换当前状态</small></span></label>`;
+    return `<label>${esc(label)}<input name="${esc(key)}" type="${esc(type)}" value="${esc(row[key])}" ${key === 'nameZh' ? 'required' : ''}></label>`;
+  }
+
+  function open(row) {
+    form.elements.id.value = row.id || '';
+    fields.innerHTML = definitions[tab].map(definition => fieldMarkup(row, definition)).join('');
+    form.elements.adjustmentReason.value = '';
+    dialog.showModal();
+  }
+
+  async function load() {
+    if (!window.can('advertising_catalog.manage')) { location.href = '/error.html?reason=no_permission'; return; }
+    try {
+      const response = await fetch('/api/advertising/catalog', { headers: headers() });
+      if (response.status === 403) throw new Error('无管理员权限');
+      catalog = await response.json();
+      render();
+    } catch (error) {
+      const message = document.querySelector('#adv-library-message');
+      message.classList.remove('hidden');
+      message.textContent = error.message;
+    }
+  }
+
+  if (window.__AUTH_READY__) load(); else document.addEventListener('authReady', load, { once: true });
+
+  const tabs = [...document.querySelectorAll('[data-tab]')];
+  tabs.forEach((button, index) => {
+    button.onclick = () => { tab = button.dataset.tab; render(); };
+    button.onkeydown = event => {
+      if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+      event.preventDefault();
+      const nextIndex = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (index + (event.key === 'ArrowRight' ? 1 : -1) + tabs.length) % tabs.length;
+      tabs[nextIndex].focus();
+      tabs[nextIndex].click();
+    };
+  });
+
+  document.querySelector('#adv-library-save').onclick = async event => {
+    event.preventDefault();
+    if (!form.reportValidity()) return;
+    const id = form.elements.id.value;
+    const payload = { adjustmentReason: form.elements.adjustmentReason.value };
+    for (const [key, , type] of definitions[tab]) {
+      const input = form.elements[key];
+      payload[key] = type === 'checkbox' ? input.checked : type === 'number' ? (input.value === '' ? null : Number(input.value)) : input.value;
+    }
+    const response = await fetch(`/api/advertising/${tab}${id ? `/${encodeURIComponent(id)}` : ''}`, { method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(payload) });
+    const result = await response.json();
+    if (!response.ok) { alert(result.error); return; }
+    dialog.close();
+    catalog = await fetch('/api/advertising/catalog', { headers: headers() }).then(item => item.json());
+    render();
+  };
 })();

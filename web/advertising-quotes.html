@@ -1,1 +1,42 @@
-<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>广告制作报价</title><link rel="stylesheet" href="/styles.css"><script src="/auth-guard.js"></script><link rel="stylesheet" href="/app-shell.css"></head><body style="visibility:hidden"><main class="page-shell"><header class="topbar"><a class="topbar-link" href="/">← 首页</a><div class="topbar-actions"><a class="button-link" href="/advertising-quote.html?mode=standard">新建普通产品报价</a><a class="button-link secondary" href="/advertising-quote.html?mode=project">新建项目组合报价</a></div></header><section class="panel"><div class="panel-head"><div><p class="section-kicker">Advertising Production Quotation</p><h1>广告报价列表</h1></div><input id="adv-search" type="search" placeholder="编号 / 客户 / 项目"></div><div id="adv-message" class="message-box hidden"></div><div id="adv-list" class="stack"></div></section></main><script src="/ui-labels.js"></script><script src="/advertising-quotes.js"></script><script src="/app-shell.js"></script></body></html>
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>广告制作报价</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/auth-guard.js"></script>
+  <link rel="stylesheet" href="/app-shell.css">
+  <link rel="stylesheet" href="/advertising-ui.css">
+</head>
+<body class="adv-app-page" style="visibility:hidden">
+  <main class="page-shell adv-workspace adv-list-page">
+    <header class="topbar adv-page-actions">
+      <a class="topbar-link" href="/">← 首页</a>
+      <div class="topbar-actions">
+        <a class="adv-button adv-button-secondary" href="/advertising-quote.html?mode=project">新建项目组合报价</a>
+        <a class="adv-button adv-button-primary" href="/advertising-quote.html?mode=standard">新建普通产品报价</a>
+      </div>
+    </header>
+
+    <section class="adv-surface adv-list-surface" aria-labelledby="adv-list-title">
+      <div class="adv-list-toolbar">
+        <div>
+          <span class="adv-section-kicker">Quotation workspace</span>
+          <h2 id="adv-list-title">全部广告报价</h2>
+          <p>统一查看、检索和继续编辑广告制作报价。</p>
+        </div>
+        <label class="adv-search-field" for="adv-search">
+          <span>搜索报价</span>
+          <input id="adv-search" type="search" placeholder="输入编号、客户或项目名称">
+        </label>
+      </div>
+      <div id="adv-message" class="message-box hidden" role="alert"></div>
+      <div id="adv-list" class="adv-quote-list" aria-live="polite"></div>
+    </section>
+  </main>
+  <script src="/ui-labels.js"></script>
+  <script src="/advertising-quotes.js"></script>
+  <script src="/app-shell.js"></script>
+</body>
+</html>
