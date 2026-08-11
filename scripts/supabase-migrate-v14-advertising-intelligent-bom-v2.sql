@@ -194,7 +194,7 @@ begin
       errcode = '22023',
       message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
   end if;
-  if jsonb_object_length(new.fx_snapshot) <> 5
+  if (select count(*) from jsonb_object_keys(new.fx_snapshot)) <> 5
      or coalesce(new.fx_snapshot->>'baseCurrency','') <> 'EUR'
      or coalesce(new.fx_snapshot->>'quoteCurrency','') <> new.currency
      or coalesce(new.fx_snapshot->>'quoteCurrency','') not in ('EUR','RSD')
@@ -303,7 +303,7 @@ begin
   if coalesce(jsonb_typeof(p_fx_snapshot),'') <> 'object' then
     raise exception using errcode = '22023', message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
   end if;
-  if jsonb_object_length(p_fx_snapshot) <> 5
+  if (select count(*) from jsonb_object_keys(p_fx_snapshot)) <> 5
      or coalesce(p_fx_snapshot->>'baseCurrency','') <> 'EUR'
      or coalesce(p_fx_snapshot->>'quoteCurrency','') <> v_currency
      or coalesce(p_fx_snapshot->>'quoteCurrency','') not in ('EUR','RSD')

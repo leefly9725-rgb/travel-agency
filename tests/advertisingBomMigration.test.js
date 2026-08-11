@@ -129,7 +129,7 @@ test("V2 quote RPC validates ownership, line evidence, and immutable FX before r
 
   assert.match(body, /ADVERTISING_FX_SNAPSHOT_INVALID/i);
   assert.match(body, /ADVERTISING_FX_SNAPSHOT_IMMUTABLE/i);
-  assert.match(body, /jsonb_object_length\(p_fx_snapshot\) <> 5/i);
+  assert.match(body, /\(select count\(\*\) from jsonb_object_keys\(p_fx_snapshot\)\) <> 5/i);
   assert.match(body, /owner_id[^;]+v_owner|v_owner[^;]+owner_id/i);
   assert.match(body, /quoteId/i);
   assert.match(body, /quoteItemId/i);
@@ -172,13 +172,28 @@ test("table trigger allows only the first valid FX snapshot and rejects later ch
   assert.match(body, /new\.fx_snapshot is not distinct from old\.fx_snapshot/i);
   assert.match(body, /coalesce\(old\.fx_snapshot,'\{\}'::jsonb\) <> '\{\}'::jsonb/i);
   assert.match(body, /ADVERTISING_FX_SNAPSHOT_IMMUTABLE/i);
-  assert.match(body, /jsonb_object_length\(new\.fx_snapshot\) <> 5/i);
+  assert.match(body, /\(select count\(\*\) from jsonb_object_keys\(new\.fx_snapshot\)\) <> 5/i);
   assert.match(body, /new\.fx_snapshot->>'baseCurrency'[^;]+EUR/i);
   assert.match(body, /new\.fx_snapshot->>'quoteCurrency'[^;]+new\.currency/i);
   assert.match(body, /new\.fx_snapshot->>'rate'[^;]+numeric <= 0/i);
   assert.match(body, /new\.fx_snapshot->>'rateDate'[^;]+date/i);
   assert.match(body, /trim\(new\.fx_snapshot->>'source'\)/i);
   assert.doesNotMatch(sql, /disable trigger/i);
+});
+
+test("PostgreSQL 17 exact-five-key checks use jsonb_object_keys after type validation", () => {
+  const sql = normalizedSql();
+  const rpc = functionBody(sql, "save_advertising_quote_v2");
+  const trigger = functionBody(sql, "prevent_advertising_quote_fx_snapshot_mutation", "private");
+
+  assert.doesNotMatch(sql, /jsonb_object_length/i);
+  for (const [body, value] of [[rpc, "p_fx_snapshot"], [trigger, "new.fx_snapshot"]]) {
+    const typeCheck = body.indexOf(`jsonb_typeof(${value})`);
+    const keyCount = body.indexOf(`select count(*) from jsonb_object_keys(${value})`);
+    assert.notEqual(typeCheck, -1, `missing object type check for ${value}`);
+    assert.notEqual(keyCount, -1, `missing PostgreSQL 17 key count for ${value}`);
+    assert.ok(typeCheck < keyCount, `object type check must precede key expansion for ${value}`);
+  }
 });
 
 test("V2 catalog RPC locks version allocation and only inserts price history", () => {
