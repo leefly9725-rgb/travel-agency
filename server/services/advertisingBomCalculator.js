@@ -102,7 +102,7 @@ function convertAreaToSquareMeters(width, height, unit = "mm") {
 }
 
 function requiredBoardQuantity(value) {
-  if (value === undefined || value === null || value === "") return 1;
+  if (value === undefined) return 1;
   const quantity = Number(value);
   if (!Number.isFinite(quantity) || quantity <= 0) {
     throw bomError("展板数量必须大于 0。", "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED");

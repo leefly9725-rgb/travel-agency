@@ -123,6 +123,22 @@ test("rejects zero and negative PVC board quantities instead of defaulting them"
   });
 });
 
+test("defaults a missing PVC board quantity to one", () => {
+  const itemWithoutQuantity = { ...input().items[0] };
+  delete itemWithoutQuantity.quantity;
+  const result = calculateAdvertisingBomQuotation(input({ items: [itemWithoutQuantity] }), catalog, { fxSnapshot });
+  assert.equal(result.bomLines.find(line => line.lineType === "material").quantity, 1);
+});
+
+test("rejects explicit empty, null, and non-numeric PVC board quantities", () => {
+  ["", " ", null, "two", NaN, Infinity].forEach((quantity) => {
+    assert.throws(
+      () => calculateAdvertisingBomQuotation(input({ items: [{ ...input().items[0], quantity }] }), catalog, { fxSnapshot }),
+      error => error.code === "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED" && error.statusCode === 422
+    );
+  });
+});
+
 test("rejects malformed FX snapshot dates and blank sources", () => {
   assert.throws(
     () => convertBomMoney(10, "EUR", "RSD", { ...fxSnapshot, rateDate: "2026-13-01" }),
