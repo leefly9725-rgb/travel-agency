@@ -22,6 +22,12 @@ function assertBomCurrency(currency) {
   throw bomError("BOM 仅支持 EUR 或 RSD 币种。", "ADVERTISING_FX_SNAPSHOT_INVALID");
 }
 
+function isIsoDate(value) {
+  if (typeof value !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
 function validateFxSnapshot(fxSnapshot) {
   const snapshot = fxSnapshot || {};
   if (
@@ -29,8 +35,9 @@ function validateFxSnapshot(fxSnapshot) {
     snapshot.quoteCurrency !== "RSD" ||
     !Number.isFinite(Number(snapshot.rate)) ||
     Number(snapshot.rate) <= 0 ||
-    !snapshot.rateDate ||
-    !snapshot.source
+    !isIsoDate(snapshot.rateDate) ||
+    typeof snapshot.source !== "string" ||
+    !snapshot.source.trim()
   ) {
     throw bomError("汇率快照无效。", "ADVERTISING_FX_SNAPSHOT_INVALID");
   }
@@ -67,7 +74,12 @@ function selectEffectivePriceVersion(priceVersions, catalogType, catalogId, effe
       right.effectiveFrom.localeCompare(left.effectiveFrom) ||
       Number(right.versionNumber || 0) - Number(left.versionNumber || 0)
     ));
-  if (!candidates.length) {
+  if (
+    !candidates.length ||
+    candidates[0].id === undefined ||
+    candidates[0].id === null ||
+    !String(candidates[0].id).trim()
+  ) {
     throw bomError("找不到生效的价格版本。", "ADVERTISING_PRICE_VERSION_UNAVAILABLE");
   }
   return copySnapshot(candidates[0]);
@@ -87,6 +99,15 @@ function convertAreaToSquareMeters(width, height, unit = "mm") {
     throw bomError("展板尺寸必须为有效的正数。", "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED");
   }
   return round(w * factor * h * factor, 4);
+}
+
+function requiredBoardQuantity(value) {
+  if (value === undefined || value === null || value === "") return 1;
+  const quantity = Number(value);
+  if (!Number.isFinite(quantity) || quantity <= 0) {
+    throw bomError("展板数量必须大于 0。", "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED");
+  }
+  return quantity;
 }
 
 function supplierSnapshot(catalogItem, priceVersion) {
@@ -149,7 +170,7 @@ function buildPvcUvBoardBomLines({ item, catalog, quoteCurrency, effectiveOn, fx
   ));
   if (!rule) throw bomError("PVC 材料不支持 UV 工艺。", "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED");
 
-  const materialArea = round(convertAreaToSquareMeters(item.width, item.height, item.sizeUnit || "mm") * (positive(item.quantity, 1) || 1), 4);
+  const materialArea = round(convertAreaToSquareMeters(item.width, item.height, item.sizeUnit || "mm") * requiredBoardQuantity(item.quantity), 4);
   const processArea = round(materialArea * (Number(item.sides) === 2 && process.supportsDoubleSide ? 2 : 1), 4);
   const lines = [];
   const addCatalogLine = (lineType, catalogType, catalogItem, quantity) => {

@@ -103,3 +103,33 @@ test("rejects a second item or unsupported template instead of guessing", () => 
   assert.throws(() => calculateAdvertisingBomQuotation(input({ items: [input().items[0], input().items[0]] }), catalog, { fxSnapshot }), error => error.code === "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED");
   assert.throws(() => calculateAdvertisingBomQuotation(input({ items: [{ ...input().items[0], bomTemplateCode: "acrylic_letters" }] }), catalog, { fxSnapshot }), error => error.code === "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED");
 });
+
+test("rejects an effective price version without a stable ID", () => {
+  const idlessVersions = catalog.priceVersions.map((version) => (
+    version.id === "PV-M-2" ? { ...version, id: "" } : version
+  ));
+  assert.throws(
+    () => selectEffectivePriceVersion(idlessVersions, "materials", "pvc-3", "2026-08-11"),
+    error => error.code === "ADVERTISING_PRICE_VERSION_UNAVAILABLE" && error.statusCode === 422
+  );
+});
+
+test("rejects zero and negative PVC board quantities instead of defaulting them", () => {
+  [0, -1].forEach((quantity) => {
+    assert.throws(
+      () => calculateAdvertisingBomQuotation(input({ items: [{ ...input().items[0], quantity }] }), catalog, { fxSnapshot }),
+      error => error.code === "ADVERTISING_BOM_TEMPLATE_UNSUPPORTED" && error.statusCode === 422
+    );
+  });
+});
+
+test("rejects malformed FX snapshot dates and blank sources", () => {
+  assert.throws(
+    () => convertBomMoney(10, "EUR", "RSD", { ...fxSnapshot, rateDate: "2026-13-01" }),
+    error => error.code === "ADVERTISING_FX_SNAPSHOT_INVALID" && error.statusCode === 422
+  );
+  assert.throws(
+    () => convertBomMoney(10, "EUR", "RSD", { ...fxSnapshot, source: "   " }),
+    error => error.code === "ADVERTISING_FX_SNAPSHOT_INVALID" && error.statusCode === 422
+  );
+});
