@@ -18,8 +18,8 @@ function normalizedSql() {
   return fs.readFileSync(sqlPath, "utf8").replace(/\s+/g, " ").trim();
 }
 
-function functionBody(sql, functionName) {
-  const marker = `create or replace function public.${functionName}`;
+function functionBody(sql, functionName, schema = "public") {
+  const marker = `create or replace function ${schema}.${functionName}`;
   const start = sql.toLowerCase().indexOf(marker);
   assert.notEqual(start, -1, `missing ${functionName}`);
   const end = sql.indexOf("$$;", start);
@@ -129,6 +129,7 @@ test("V2 quote RPC validates ownership, line evidence, and immutable FX before r
 
   assert.match(body, /ADVERTISING_FX_SNAPSHOT_INVALID/i);
   assert.match(body, /ADVERTISING_FX_SNAPSHOT_IMMUTABLE/i);
+  assert.match(body, /jsonb_object_length\(p_fx_snapshot\) <> 5/i);
   assert.match(body, /owner_id[^;]+v_owner|v_owner[^;]+owner_id/i);
   assert.match(body, /quoteId/i);
   assert.match(body, /quoteItemId/i);
@@ -140,6 +141,44 @@ test("V2 quote RPC validates ownership, line evidence, and immutable FX before r
   assert.match(body, /from public\.advertising_quote_bom_lines[^;]+quote_id <> v_id/i);
   assert.match(body, /delete from public\.advertising_quote_bom_lines where quote_id=v_id/i);
   assert.match(body, /insert into public\.advertising_quote_bom_lines/i);
+});
+
+test("V2 quote RPC serializes a quote ID before reading ownership or saved FX", () => {
+  const body = functionBody(normalizedSql(), "save_advertising_quote_v2");
+  const lock = body.indexOf("perform pg_advisory_xact_lock(hashtextextended('advertising_quote:' || v_id,0))");
+  const firstQuoteRead = body.indexOf("from public.advertising_quotes");
+
+  assert.notEqual(lock, -1, "missing quote-scoped transaction advisory lock");
+  assert.notEqual(firstQuoteRead, -1, "missing quote ownership/FX read");
+  assert.ok(lock < firstQuoteRead, "quote lock must precede the first quote read");
+});
+
+test("V2 quote RPC checks immutable unit prices and effective version selection", () => {
+  const body = functionBody(normalizedSql(), "save_advertising_quote_v2");
+
+  assert.match(body, /\(v_line->>'costUnitPriceSource'\)::numeric <> v_version\.cost_unit_price/i);
+  assert.match(body, /\(v_line->>'saleUnitPriceSource'\)::numeric <> v_version\.sale_unit_price/i);
+  assert.match(body, /v_version\.effective_from > v_quote_date/i);
+  assert.match(body, /newer\.effective_from <= v_quote_date/i);
+  assert.match(body, /\(newer\.effective_from,newer\.version_number\) > \(v_version\.effective_from,v_version\.version_number\)/i);
+});
+
+test("table trigger allows only the first valid FX snapshot and rejects later changes", () => {
+  const sql = normalizedSql();
+  const body = functionBody(sql, "prevent_advertising_quote_fx_snapshot_mutation", "private");
+
+  assert.match(sql, /create trigger advertising_quotes_fx_snapshot_immutable before update of fx_snapshot on public\.advertising_quotes/i);
+  assert.match(sql, /execute function private\.prevent_advertising_quote_fx_snapshot_mutation\(\)/i);
+  assert.match(body, /new\.fx_snapshot is not distinct from old\.fx_snapshot/i);
+  assert.match(body, /coalesce\(old\.fx_snapshot,'\{\}'::jsonb\) <> '\{\}'::jsonb/i);
+  assert.match(body, /ADVERTISING_FX_SNAPSHOT_IMMUTABLE/i);
+  assert.match(body, /jsonb_object_length\(new\.fx_snapshot\) <> 5/i);
+  assert.match(body, /new\.fx_snapshot->>'baseCurrency'[^;]+EUR/i);
+  assert.match(body, /new\.fx_snapshot->>'quoteCurrency'[^;]+new\.currency/i);
+  assert.match(body, /new\.fx_snapshot->>'rate'[^;]+numeric <= 0/i);
+  assert.match(body, /new\.fx_snapshot->>'rateDate'[^;]+date/i);
+  assert.match(body, /trim\(new\.fx_snapshot->>'source'\)/i);
+  assert.doesNotMatch(sql, /disable trigger/i);
 });
 
 test("V2 catalog RPC locks version allocation and only inserts price history", () => {

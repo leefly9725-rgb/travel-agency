@@ -168,6 +168,73 @@ create trigger advertising_price_versions_immutable
 before update or delete on public.advertising_price_versions
 for each row execute function private.prevent_advertising_price_version_mutation();
 
+create or replace function private.prevent_advertising_quote_fx_snapshot_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path=''
+as $$
+declare
+  v_rate_date date;
+begin
+  if new.fx_snapshot is not distinct from old.fx_snapshot then
+    return new;
+  end if;
+  if coalesce(old.fx_snapshot,'{}'::jsonb) <> '{}'::jsonb then
+    raise exception using
+      errcode = '55000',
+      message = 'ADVERTISING_FX_SNAPSHOT_IMMUTABLE';
+  end if;
+  if coalesce(new.fx_snapshot,'{}'::jsonb) = '{}'::jsonb then
+    return new;
+  end if;
+  if new.pricing_engine <> 'bom_v2'
+     or coalesce(jsonb_typeof(new.fx_snapshot),'') <> 'object' then
+    raise exception using
+      errcode = '22023',
+      message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
+  end if;
+  if jsonb_object_length(new.fx_snapshot) <> 5
+     or coalesce(new.fx_snapshot->>'baseCurrency','') <> 'EUR'
+     or coalesce(new.fx_snapshot->>'quoteCurrency','') <> new.currency
+     or coalesce(new.fx_snapshot->>'quoteCurrency','') not in ('EUR','RSD')
+     or coalesce(trim(new.fx_snapshot->>'source'),'') = ''
+     or coalesce(new.fx_snapshot->>'rate','') !~ '^[0-9]+([.][0-9]+)?$'
+     or coalesce(new.fx_snapshot->>'rateDate','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
+    raise exception using
+      errcode = '22023',
+      message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
+  end if;
+  if (new.fx_snapshot->>'rate')::numeric <= 0 then
+    raise exception using
+      errcode = '22023',
+      message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
+  end if;
+  begin
+    v_rate_date := (new.fx_snapshot->>'rateDate')::date;
+  exception when others then
+    raise exception using
+      errcode = '22023',
+      message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
+  end;
+  if to_char(v_rate_date,'YYYY-MM-DD') <> new.fx_snapshot->>'rateDate' then
+    raise exception using
+      errcode = '22023',
+      message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
+  end if;
+  return new;
+end
+$$;
+
+revoke execute on function private.prevent_advertising_quote_fx_snapshot_mutation()
+  from public, anon, authenticated;
+
+drop trigger if exists advertising_quotes_fx_snapshot_immutable
+  on public.advertising_quotes;
+create trigger advertising_quotes_fx_snapshot_immutable
+before update of fx_snapshot on public.advertising_quotes
+for each row execute function private.prevent_advertising_quote_fx_snapshot_mutation();
+
 create or replace function public.save_advertising_quote_v2(
   p_quote jsonb,
   p_bom_lines jsonb,
@@ -191,6 +258,7 @@ declare
   v_year integer := extract(year from now())::integer;
   v_sequence bigint;
   v_rate_date date;
+  v_quote_date date;
   v_item jsonb;
   v_line jsonb;
   v_item_id text;
@@ -198,6 +266,8 @@ declare
   v_version public.advertising_price_versions%rowtype;
   v_row public.advertising_quotes;
 begin
+  perform pg_advisory_xact_lock(hashtextextended('advertising_quote:' || v_id,0));
+
   begin
     v_owner := (p_quote->>'ownerId')::uuid;
   exception when others then
@@ -218,8 +288,22 @@ begin
      or coalesce(jsonb_typeof(p_bom_lines),'') <> 'array' then
     raise exception using errcode = '22023', message = 'ADVERTISING_BOM_PAYLOAD_INVALID';
   end if;
+  if coalesce(p_quote->>'quoteDate','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
+    raise exception using errcode = '22023', message = 'ADVERTISING_BOM_QUOTE_DATE_INVALID';
+  end if;
+  begin
+    v_quote_date := (p_quote->>'quoteDate')::date;
+  exception when others then
+    raise exception using errcode = '22023', message = 'ADVERTISING_BOM_QUOTE_DATE_INVALID';
+  end;
+  if to_char(v_quote_date,'YYYY-MM-DD') <> p_quote->>'quoteDate' then
+    raise exception using errcode = '22023', message = 'ADVERTISING_BOM_QUOTE_DATE_INVALID';
+  end if;
 
-  if coalesce(jsonb_typeof(p_fx_snapshot),'') <> 'object'
+  if coalesce(jsonb_typeof(p_fx_snapshot),'') <> 'object' then
+    raise exception using errcode = '22023', message = 'ADVERTISING_FX_SNAPSHOT_INVALID';
+  end if;
+  if jsonb_object_length(p_fx_snapshot) <> 5
      or coalesce(p_fx_snapshot->>'baseCurrency','') <> 'EUR'
      or coalesce(p_fx_snapshot->>'quoteCurrency','') <> v_currency
      or coalesce(p_fx_snapshot->>'quoteCurrency','') not in ('EUR','RSD')
@@ -337,6 +421,19 @@ begin
         and currency = v_line->>'sourceCurrency';
       if not found then
         raise exception using errcode = '22023', message = 'ADVERTISING_BOM_PRICE_REFERENCE_INVALID';
+      end if;
+      if (v_line->>'costUnitPriceSource')::numeric <> v_version.cost_unit_price
+         or (v_line->>'saleUnitPriceSource')::numeric <> v_version.sale_unit_price
+         or v_version.effective_from > v_quote_date
+         or exists (
+           select 1
+           from public.advertising_price_versions newer
+           where newer.catalog_type = v_version.catalog_type
+             and newer.catalog_id = v_version.catalog_id
+             and newer.effective_from <= v_quote_date
+             and (newer.effective_from,newer.version_number) > (v_version.effective_from,v_version.version_number)
+         ) then
+        raise exception using errcode = '22023', message = 'ADVERTISING_BOM_PRICE_EVIDENCE_INVALID';
       end if;
     end if;
   end loop;
