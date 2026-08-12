@@ -30,6 +30,32 @@ const serviceSeeds = [
   { id: "rush", nameZh: "加急费", nameEn: "Rush fee", category: "urgent", unit: "fixed", costPrice: 0, suggestedSalePrice: 0, isActive: true },
 ];
 
+function priceVersionFromCatalog(catalogType, item) {
+  return {
+    id: `APV-${crypto.createHash("md5").update(`${catalogType}:${item.id}:1`).digest("hex")}`,
+    catalogType,
+    catalogId: item.id,
+    versionNumber: 1,
+    currency: item.currency || "EUR",
+    costUnitPrice: Number(item.costPrice || 0),
+    saleUnitPrice: Number(item.suggestedSalePrice || 0),
+    minimumSaleUnitPrice: item.minimumSalePrice == null ? null : Number(item.minimumSalePrice),
+    minimumCharge: Number(item.defaultMinimumFee || 0),
+    effectiveFrom: item.effectiveFrom || "2026-01-01",
+    changeReason: "V1 catalog baseline",
+    supplierSnapshot: item.supplierName ? { supplierName: item.supplierName } : {},
+    createdBy: item.updatedBy || "00000000-0000-0000-0000-000000000000",
+  };
+}
+
+function buildInitialPriceVersions(data) {
+  return [
+    ...data.advertisingMaterials.map((item) => priceVersionFromCatalog("materials", item)),
+    ...data.advertisingProcesses.map((item) => priceVersionFromCatalog("processes", item)),
+    ...data.advertisingServiceCatalog.map((item) => priceVersionFromCatalog("services", item)),
+  ];
+}
+
 function ensureAdvertisingData(data) {
   if (!Array.isArray(data.advertisingMaterials) || !data.advertisingMaterials.length) data.advertisingMaterials = materialSeeds.map((x) => ({ ...x }));
   if (!Array.isArray(data.advertisingProcesses) || !data.advertisingProcesses.length) data.advertisingProcesses = processSeeds.map((x) => ({ ...x }));
@@ -38,45 +64,365 @@ function ensureAdvertisingData(data) {
   if (!Array.isArray(data.advertisingQuotes)) data.advertisingQuotes = [];
   if (!Array.isArray(data.advertisingEntities) || !data.advertisingEntities.length) data.advertisingEntities = entitySeeds.map((x) => ({ ...x }));
   if (!Array.isArray(data.advertisingQuoteAdjustmentLogs)) data.advertisingQuoteAdjustmentLogs = [];
+  if (!Array.isArray(data.advertisingPriceVersions)) data.advertisingPriceVersions = buildInitialPriceVersions(data);
+  if (!Array.isArray(data.advertisingQuoteBomLines)) data.advertisingQuoteBomLines = [];
   return data;
 }
 
-function remoteCatalogRow(row) { return { ...(row.data || {}), id: row.id, isActive: row.is_active !== false, updatedAt: row.updated_at || row.data?.updatedAt }; }
-function remoteQuoteRow(row) { return { ...(row.data || {}), id: row.id, quoteNumber: row.quote_number, entityId: row.entity_id, status: row.status, mode: row.mode, clientName: row.client_name, projectName: row.project_name, currency: row.currency, ownerId: row.owner_id, calculationSnapshot: row.calculation_snapshot || {}, entitySnapshot: row.entity_snapshot || {}, termsSnapshot: row.terms_snapshot || {}, createdAt: row.created_at, updatedAt: row.updated_at }; }
+function remoteCatalogRow(row) {
+  return { ...(row.data || {}), id: row.id, isActive: row.is_active !== false, updatedAt: row.updated_at || row.data?.updatedAt };
+}
+
+function priceVersionRow(row) {
+  return {
+    id: row.id,
+    catalogType: row.catalogType || row.catalog_type,
+    catalogId: row.catalogId || row.catalog_id,
+    versionNumber: Number(row.versionNumber ?? row.version_number),
+    currency: row.currency,
+    costUnitPrice: Number(row.costUnitPrice ?? row.cost_unit_price),
+    saleUnitPrice: Number(row.saleUnitPrice ?? row.sale_unit_price),
+    minimumSaleUnitPrice: row.minimumSaleUnitPrice ?? row.minimum_sale_unit_price ?? null,
+    minimumCharge: Number(row.minimumCharge ?? row.minimum_charge ?? 0),
+    effectiveFrom: row.effectiveFrom || row.effective_from,
+    changeReason: row.changeReason || row.change_reason,
+    supplierSnapshot: row.supplierSnapshot || row.supplier_snapshot || {},
+    createdBy: row.createdBy || row.created_by,
+    createdAt: row.createdAt || row.created_at,
+  };
+}
+
+function bomLineRow(row) {
+  return {
+    id: row.id,
+    quoteId: row.quoteId || row.quote_id,
+    quoteItemId: row.quoteItemId ?? row.quote_item_id ?? null,
+    position: Number(row.position || 0),
+    lineType: row.lineType || row.line_type,
+    catalogType: row.catalogType ?? row.catalog_type ?? null,
+    catalogId: row.catalogId ?? row.catalog_id ?? null,
+    priceVersionId: row.priceVersionId ?? row.price_version_id ?? null,
+    descriptionSnapshot: row.descriptionSnapshot ?? row.description_snapshot,
+    unitSnapshot: row.unitSnapshot ?? row.unit_snapshot,
+    quantity: row.quantity == null ? undefined : Number(row.quantity),
+    sourceCurrency: row.sourceCurrency || row.source_currency,
+    quoteCurrency: row.quoteCurrency || row.quote_currency,
+    costUnitPriceSource: row.costUnitPriceSource == null && row.cost_unit_price_source == null ? undefined : Number(row.costUnitPriceSource ?? row.cost_unit_price_source),
+    saleUnitPriceSource: row.saleUnitPriceSource == null && row.sale_unit_price_source == null ? undefined : Number(row.saleUnitPriceSource ?? row.sale_unit_price_source),
+    costAmount: row.costAmount == null && row.cost_amount == null ? undefined : Number(row.costAmount ?? row.cost_amount),
+    saleAmount: row.saleAmount == null && row.sale_amount == null ? undefined : Number(row.saleAmount ?? row.sale_amount),
+    customerVisible: row.customerVisible ?? row.customer_visible ?? true,
+    supplierSnapshot: row.supplierSnapshot || row.supplier_snapshot || {},
+    internalNotes: row.internalNotes ?? row.internal_notes ?? "",
+  };
+}
+
+function remoteQuoteRow(row, bomLines = undefined) {
+  return {
+    ...(row.data || {}),
+    id: row.id,
+    quoteNumber: row.quote_number,
+    entityId: row.entity_id,
+    status: row.status,
+    mode: row.mode,
+    clientName: row.client_name,
+    projectName: row.project_name,
+    currency: row.currency,
+    ownerId: row.owner_id,
+    calculationSnapshot: row.calculation_snapshot || {},
+    entitySnapshot: row.entity_snapshot || {},
+    termsSnapshot: row.terms_snapshot || {},
+    pricingEngine: row.pricing_engine || row.data?.pricingEngine,
+    fxSnapshot: row.fx_snapshot || row.data?.fxSnapshot,
+    ...(bomLines === undefined ? {} : { bomLines }),
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function sortPriceVersions(rows) {
+  return rows.sort((a, b) => String(b.effectiveFrom).localeCompare(String(a.effectiveFrom)) || b.versionNumber - a.versionNumber);
+}
+
+function overlayPriceVersion(item, version) {
+  if (!version) return { ...item };
+  return {
+    ...item,
+    costPrice: version.costUnitPrice,
+    suggestedSalePrice: version.saleUnitPrice,
+    minimumSalePrice: version.minimumSaleUnitPrice,
+    defaultMinimumFee: version.minimumCharge,
+    currency: version.currency,
+    effectiveFrom: version.effectiveFrom,
+    activePriceVersion: version,
+  };
+}
+
+function isValidDate(value) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value || ""))) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
+}
+
+function priceVersionError(message, code) {
+  return Object.assign(new Error(message), { statusCode: 400, code });
+}
+
+function validatePriceVersion(payload) {
+  if (!String(payload.adjustmentReason || "").trim()) throw priceVersionError("修改价格必须填写原因。", "ADJUSTMENT_REASON_REQUIRED");
+  const values = [payload.costPrice, payload.suggestedSalePrice, payload.minimumSalePrice, payload.defaultMinimumFee].filter((value) => value != null);
+  if (!["EUR", "RSD"].includes(payload.currency) || !isValidDate(payload.effectiveFrom) || values.some((value) => !Number.isFinite(Number(value)) || Number(value) < 0)) {
+    throw priceVersionError("价格版本数据无效。", "ADVERTISING_PRICE_VERSION_INVALID");
+  }
+  if (!Number.isFinite(Number(payload.costPrice)) || !Number.isFinite(Number(payload.suggestedSalePrice))) {
+    throw priceVersionError("价格版本数据无效。", "ADVERTISING_PRICE_VERSION_INVALID");
+  }
+}
 
 function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
   ensureAdvertisingData(data);
   const persist = () => saveData(data);
   const remote = Boolean(supabaseConfig.enabled);
+
   async function getRemoteCatalog() {
-    const [materials, processes, rules, services, entities] = await Promise.all([
+    const [materials, processes, rules, services, entities, priceVersions] = await Promise.all([
       supabaseRequest(supabaseConfig, "advertising_materials?select=*&order=updated_at.desc"),
       supabaseRequest(supabaseConfig, "advertising_processes?select=*&order=updated_at.desc"),
       supabaseRequest(supabaseConfig, "advertising_material_process_rules?select=*&order=id"),
       supabaseRequest(supabaseConfig, "advertising_service_catalog?select=*&order=updated_at.desc"),
       supabaseRequest(supabaseConfig, "quotation_entities_or_letterheads?select=*&order=code"),
+      supabaseRequest(supabaseConfig, "advertising_price_versions?select=*&order=effective_from.desc,version_number.desc"),
     ]);
-    return { materials: (materials || []).map(remoteCatalogRow), processes: (processes || []).map(remoteCatalogRow), rules: (rules || []).map((row) => ({ ...remoteCatalogRow(row), materialId: row.material_id, processId: row.process_id })), services: (services || []).map(remoteCatalogRow), entities: (entities || []).map((row) => ({ ...remoteCatalogRow(row), code: row.code })) };
+    const versions = (priceVersions || []).map(priceVersionRow);
+    const overlay = (kind, rows) => (rows || []).map(remoteCatalogRow).map((item) => overlayPriceVersion(item, sortPriceVersions(versions.filter((version) => version.catalogType === kind && version.catalogId === item.id))[0]));
+    return {
+      materials: overlay("materials", materials),
+      processes: overlay("processes", processes),
+      rules: (rules || []).map((row) => ({ ...remoteCatalogRow(row), materialId: row.material_id, processId: row.process_id })),
+      services: overlay("services", services),
+      entities: (entities || []).map((row) => ({ ...remoteCatalogRow(row), code: row.code })),
+    };
   }
-  return {
-    async catalog() { return remote ? getRemoteCatalog() : { materials: data.advertisingMaterials, processes: data.advertisingProcesses, rules: data.advertisingMaterialProcessRules, services: data.advertisingServiceCatalog, entities: data.advertisingEntities }; },
-    async listQuotes(filters = {}) { if (remote) { const clauses=["select=*","order=updated_at.desc"];if(filters.ownerId)clauses.push(`owner_id=eq.${encodeURIComponent(filters.ownerId)}`);if(filters.entityId)clauses.push(`entity_id=eq.${encodeURIComponent(filters.entityId)}`);if(filters.status)clauses.push(`status=eq.${encodeURIComponent(filters.status)}`);if(filters.mode)clauses.push(`mode=eq.${encodeURIComponent(filters.mode)}`);const rows = await supabaseRequest(supabaseConfig, `advertising_quotes?${clauses.join('&')}`); return (rows || []).map(remoteQuoteRow); } return data.advertisingQuotes.filter(q=>!filters.ownerId||q.ownerId===filters.ownerId).map(({ calculationSnapshot, ...quote }) => ({ ...quote, totals: calculationSnapshot ? { subtotalExcludingVat: calculationSnapshot.subtotalExcludingVat, totalIncludingVat: calculationSnapshot.totalIncludingVat, grossProfit: calculationSnapshot.grossProfit, grossMargin: calculationSnapshot.grossMargin } : {} })); },
-    async getQuote(id) { if (remote) { const rows = await supabaseRequest(supabaseConfig, `advertising_quotes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`); if (!rows?.length) throw Object.assign(new Error("广告报价不存在。"), { statusCode: 404 }); return remoteQuoteRow(rows[0]); } const quote = data.advertisingQuotes.find((entry) => entry.id === id); if (!quote) throw Object.assign(new Error("广告报价不存在。"), { statusCode: 404 }); return structuredClone(quote); },
-    async saveQuote(payload) {
-      if (remote) { const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_quote", { method: "POST", body: JSON.stringify({ p_quote: payload }) }); return remoteQuoteRow(Array.isArray(result) ? result[0] : result); }
-      const now = new Date().toISOString(); const existing = payload.id ? data.advertisingQuotes.find((q) => q.id === payload.id) : null;
-      const entity = data.advertisingEntities.find((x) => x.id === (payload.entityId || existing?.entityId || "lds"));
-      if (!entity) throw Object.assign(new Error("报价主体不存在。"), { statusCode: 400 });
-      const year = new Date().getFullYear(); const prefix = `${entity.quotePrefix}-${year}-`;
-      const highest = data.advertisingQuotes.reduce((max, quote) => { const number = String(quote.quoteNumber || ""); if (!number.startsWith(prefix)) return max; const suffix = Number(number.slice(prefix.length)); return Number.isInteger(suffix) ? Math.max(max, suffix) : max; }, 0); const next = String(highest + 1).padStart(4, "0");
-      const quote = { ...existing, ...payload, id: existing?.id || `ADV-${crypto.randomUUID()}`, quoteNumber: existing?.quoteNumber || `${prefix}${next}`, entityId: entity.id, entitySnapshot: existing?.entitySnapshot || structuredClone(entity), status: payload.status || existing?.status || "draft", quoteDate: payload.quoteDate || existing?.quoteDate || now.slice(0, 10), validUntil: payload.validUntil || existing?.validUntil || new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10), createdAt: existing?.createdAt || now, updatedAt: now };
-      const index = data.advertisingQuotes.findIndex((q) => q.id === quote.id); if (index >= 0) data.advertisingQuotes[index] = quote; else data.advertisingQuotes.push(quote); for (const log of payload.adjustmentLogs || []) data.advertisingQuoteAdjustmentLogs.push({ ...log, id: crypto.randomUUID(), quoteId: quote.id, createdAt: now }); persist(); return structuredClone(quote);
+
+  const store = {
+    async catalog() {
+      if (remote) return getRemoteCatalog();
+      const overlay = (kind, rows) => rows.map((item) => overlayPriceVersion(item, sortPriceVersions(data.advertisingPriceVersions.filter((version) => version.catalogType === kind && version.catalogId === item.id).map(priceVersionRow))[0]));
+      return {
+        materials: overlay("materials", data.advertisingMaterials),
+        processes: overlay("processes", data.advertisingProcesses),
+        rules: data.advertisingMaterialProcessRules,
+        services: overlay("services", data.advertisingServiceCatalog),
+        entities: data.advertisingEntities,
+      };
     },
-    async duplicate(id) { const source = await this.getQuote(id); delete source.id; delete source.quoteNumber; source.status = "draft"; source.projectName = `${source.projectName || "广告报价"} - 副本`; return this.saveQuote(source); },
-    async deleteQuote(id) { if (remote) { const deleted = await supabaseRequest(supabaseConfig, `advertising_quotes?id=eq.${encodeURIComponent(id)}&select=id`, { method: "DELETE", headers: { Prefer: "return=representation" } }); return Array.isArray(deleted) && deleted.length > 0; } const index = data.advertisingQuotes.findIndex((q) => q.id === id); if (index < 0) return false; data.advertisingQuotes.splice(index, 1); persist(); return true; },
-    async updateCatalog(kind, payload, id, userId) { const map = { materials: ["advertisingMaterials", "advertising_materials"], processes: ["advertisingProcesses", "advertising_processes"], rules: ["advertisingMaterialProcessRules", "advertising_material_process_rules"], services: ["advertisingServiceCatalog", "advertising_service_catalog"], entities: ["advertisingEntities", "quotation_entities_or_letterheads"] }; const pair = map[kind]; if (!pair) throw Object.assign(new Error("价格库类型无效。"), { statusCode: 400 }); const item = { ...payload, id: id || payload.id || crypto.randomUUID(), updatedAt: new Date().toISOString(), updatedBy: userId || null }; const old = (await this.catalog())[kind]?.find((x) => x.id === item.id); const priceFields = ["costPrice","suggestedSalePrice","minimumSalePrice","defaultMinimumFee"]; const changedFields = old ? priceFields.filter((field) => payload[field] !== undefined && Number(payload[field]) !== Number(old[field])) : []; if (changedFields.length && !String(payload.adjustmentReason || "").trim()) throw Object.assign(new Error("修改价格必须填写原因。"), { statusCode: 400, code: "ADJUSTMENT_REASON_REQUIRED" }); if (remote) { const logs = changedFields.map((field) => ({ fieldName: field, oldValue: old[field], newValue: item[field], reason: payload.adjustmentReason })); const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_catalog_entry", { method: "POST", body: JSON.stringify({ p_kind: kind, p_item: item, p_logs: logs, p_user_id: userId }) }); return remoteCatalogRow(Array.isArray(result) ? result[0] : result); } const key = pair[0]; const index = data[key].findIndex((x) => x.id === item.id); if (index >= 0) data[key][index] = { ...data[key][index], ...item }; else data[key].push(item); for (const field of changedFields) data.advertisingQuoteAdjustmentLogs.push({ id: crypto.randomUUID(), catalogType: kind, catalogId: item.id, fieldName: field, oldValue: old[field], newValue: item[field], reason: payload.adjustmentReason, userId, createdAt: new Date().toISOString() }); persist(); return structuredClone(index >= 0 ? data[key][index] : item); },
-    async listAdjustmentLogs(quoteId) { if (remote) { const suffix = quoteId ? `?select=*&quote_id=eq.${encodeURIComponent(quoteId)}&order=created_at.desc` : "?select=*&order=created_at.desc"; return (await supabaseRequest(supabaseConfig, `advertising_quote_adjustment_logs${suffix}`)) || []; } return data.advertisingQuoteAdjustmentLogs.filter((log) => !quoteId || log.quoteId === quoteId).sort((a,b) => String(b.createdAt).localeCompare(String(a.createdAt))); },
+
+    async listQuotes(filters = {}) {
+      if (remote) {
+        const clauses = ["select=*", "order=updated_at.desc"];
+        if (filters.ownerId) clauses.push(`owner_id=eq.${encodeURIComponent(filters.ownerId)}`);
+        if (filters.entityId) clauses.push(`entity_id=eq.${encodeURIComponent(filters.entityId)}`);
+        if (filters.status) clauses.push(`status=eq.${encodeURIComponent(filters.status)}`);
+        if (filters.mode) clauses.push(`mode=eq.${encodeURIComponent(filters.mode)}`);
+        const rows = await supabaseRequest(supabaseConfig, `advertising_quotes?${clauses.join("&")}`);
+        return (rows || []).map((row) => remoteQuoteRow(row));
+      }
+      return data.advertisingQuotes.filter((quote) => !filters.ownerId || quote.ownerId === filters.ownerId).map(({ calculationSnapshot, ...quote }) => ({
+        ...quote,
+        totals: calculationSnapshot ? {
+          subtotalExcludingVat: calculationSnapshot.subtotalExcludingVat,
+          totalIncludingVat: calculationSnapshot.totalIncludingVat,
+          grossProfit: calculationSnapshot.grossProfit,
+          grossMargin: calculationSnapshot.grossMargin,
+        } : {},
+      }));
+    },
+
+    async getQuote(id) {
+      if (remote) {
+        const rows = await supabaseRequest(supabaseConfig, `advertising_quotes?select=*&id=eq.${encodeURIComponent(id)}&limit=1`);
+        if (!rows?.length) throw Object.assign(new Error("广告报价不存在。"), { statusCode: 404 });
+        const row = rows[0];
+        if ((row.pricing_engine || row.data?.pricingEngine) !== "bom_v2") return remoteQuoteRow(row);
+        const bomRows = await supabaseRequest(supabaseConfig, `advertising_quote_bom_lines?select=*&quote_id=eq.${encodeURIComponent(id)}&order=position`);
+        return remoteQuoteRow(row, (bomRows || []).map(bomLineRow));
+      }
+      const quote = data.advertisingQuotes.find((entry) => entry.id === id);
+      if (!quote) throw Object.assign(new Error("广告报价不存在。"), { statusCode: 404 });
+      if (quote.pricingEngine !== "bom_v2") return structuredClone(quote);
+      return structuredClone({ ...quote, bomLines: data.advertisingQuoteBomLines.filter((line) => line.quoteId === id).map(bomLineRow) });
+    },
+
+    async saveQuote(payload) {
+      if (remote && payload.pricingEngine === "bom_v2") {
+        const { bomLines = [], fxSnapshot = {}, ...quotePayload } = payload;
+        const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_quote_v2", {
+          method: "POST",
+          body: JSON.stringify({ p_quote: quotePayload, p_bom_lines: bomLines, p_fx_snapshot: fxSnapshot }),
+        });
+        return remoteQuoteRow(Array.isArray(result) ? result[0] : result, bomLines.map(bomLineRow));
+      }
+      if (remote) {
+        const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_quote", { method: "POST", body: JSON.stringify({ p_quote: payload }) });
+        return remoteQuoteRow(Array.isArray(result) ? result[0] : result);
+      }
+
+      const now = new Date().toISOString();
+      const existing = payload.id ? data.advertisingQuotes.find((quote) => quote.id === payload.id) : null;
+      const entity = data.advertisingEntities.find((entry) => entry.id === (payload.entityId || existing?.entityId || "lds"));
+      if (!entity) throw Object.assign(new Error("报价主体不存在。"), { statusCode: 400 });
+      const year = new Date().getFullYear();
+      const prefix = `${entity.quotePrefix}-${year}-`;
+      const highest = data.advertisingQuotes.reduce((max, quote) => {
+        const number = String(quote.quoteNumber || "");
+        if (!number.startsWith(prefix)) return max;
+        const suffix = Number(number.slice(prefix.length));
+        return Number.isInteger(suffix) ? Math.max(max, suffix) : max;
+      }, 0);
+      const next = String(highest + 1).padStart(4, "0");
+      const { bomLines, ...quotePayload } = payload;
+      const quote = {
+        ...existing,
+        ...quotePayload,
+        ...(payload.pricingEngine === "bom_v2" && existing?.fxSnapshot && Object.keys(existing.fxSnapshot).length ? { fxSnapshot: existing.fxSnapshot } : {}),
+        id: existing?.id || `ADV-${crypto.randomUUID()}`,
+        quoteNumber: existing?.quoteNumber || `${prefix}${next}`,
+        entityId: entity.id,
+        entitySnapshot: existing?.entitySnapshot || structuredClone(entity),
+        status: payload.status || existing?.status || "draft",
+        quoteDate: payload.quoteDate || existing?.quoteDate || now.slice(0, 10),
+        validUntil: payload.validUntil || existing?.validUntil || new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
+        createdAt: existing?.createdAt || now,
+        updatedAt: now,
+      };
+      const index = data.advertisingQuotes.findIndex((entry) => entry.id === quote.id);
+      if (index >= 0) data.advertisingQuotes[index] = quote;
+      else data.advertisingQuotes.push(quote);
+      if (payload.pricingEngine === "bom_v2") {
+        data.advertisingQuoteBomLines = data.advertisingQuoteBomLines.filter((line) => line.quoteId !== quote.id);
+        data.advertisingQuoteBomLines.push(...(bomLines || []).map((line) => ({ ...line, quoteId: quote.id })));
+      }
+      for (const log of payload.adjustmentLogs || []) data.advertisingQuoteAdjustmentLogs.push({ ...log, id: crypto.randomUUID(), quoteId: quote.id, createdAt: now });
+      persist();
+      return this.getQuote(quote.id);
+    },
+
+    async duplicate(id) {
+      const source = await this.getQuote(id);
+      delete source.id;
+      delete source.quoteNumber;
+      source.status = "draft";
+      source.projectName = `${source.projectName || "广告报价"} - 副本`;
+      return this.saveQuote(source);
+    },
+
+    async deleteQuote(id) {
+      if (remote) {
+        const deleted = await supabaseRequest(supabaseConfig, `advertising_quotes?id=eq.${encodeURIComponent(id)}&select=id`, { method: "DELETE", headers: { Prefer: "return=representation" } });
+        return Array.isArray(deleted) && deleted.length > 0;
+      }
+      const index = data.advertisingQuotes.findIndex((quote) => quote.id === id);
+      if (index < 0) return false;
+      data.advertisingQuotes.splice(index, 1);
+      data.advertisingQuoteBomLines = data.advertisingQuoteBomLines.filter((line) => line.quoteId !== id);
+      persist();
+      return true;
+    },
+
+    async listPriceVersions({ catalogType, catalogId } = {}) {
+      if (remote) {
+        const clauses = ["select=*", "order=effective_from.desc,version_number.desc"];
+        if (catalogType) clauses.push(`catalog_type=eq.${encodeURIComponent(catalogType)}`);
+        if (catalogId) clauses.push(`catalog_id=eq.${encodeURIComponent(catalogId)}`);
+        const rows = await supabaseRequest(supabaseConfig, `advertising_price_versions?${clauses.join("&")}`);
+        return (rows || []).map(priceVersionRow);
+      }
+      return structuredClone(sortPriceVersions(data.advertisingPriceVersions.map(priceVersionRow).filter((version) => (!catalogType || version.catalogType === catalogType) && (!catalogId || version.catalogId === catalogId))));
+    },
+
+    async saveCatalogPriceVersion(kind, payload, id, userId) {
+      if (!["materials", "processes", "services"].includes(kind)) throw priceVersionError("价格库类型无效。", "ADVERTISING_CATALOG_KIND_INVALID");
+      validatePriceVersion(payload);
+      const catalogId = id || payload.id || crypto.randomUUID();
+      const { activePriceVersion: _activePriceVersion, ...catalogPayload } = payload;
+      const item = { ...catalogPayload, id: catalogId };
+      const priceVersion = {
+        currency: payload.currency,
+        costUnitPrice: Number(payload.costPrice),
+        saleUnitPrice: Number(payload.suggestedSalePrice),
+        minimumSaleUnitPrice: payload.minimumSalePrice == null ? null : Number(payload.minimumSalePrice),
+        minimumCharge: Number(payload.defaultMinimumFee || 0),
+        effectiveFrom: payload.effectiveFrom,
+        changeReason: String(payload.adjustmentReason).trim(),
+        supplierSnapshot: payload.supplierSnapshot || (payload.supplierName ? { supplierName: payload.supplierName } : {}),
+      };
+      if (remote) {
+        const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_catalog_entry_v2", {
+          method: "POST",
+          body: JSON.stringify({ p_kind: kind, p_item: item, p_price_version: priceVersion, p_user_id: userId }),
+        });
+        const row = Array.isArray(result) ? result[0] : result;
+        const version = priceVersionRow(row.priceVersion || row.price_version);
+        return overlayPriceVersion(remoteCatalogRow(row.item), version);
+      }
+
+      const map = { materials: "advertisingMaterials", processes: "advertisingProcesses", services: "advertisingServiceCatalog" };
+      const key = map[kind];
+      const existingIndex = data[key].findIndex((entry) => entry.id === catalogId);
+      const metadata = { ...item, updatedAt: new Date().toISOString(), updatedBy: userId || null };
+      for (const field of ["costPrice", "suggestedSalePrice", "minimumSalePrice", "defaultMinimumFee", "currency", "effectiveFrom", "adjustmentReason", "supplierSnapshot", "activePriceVersion"]) delete metadata[field];
+      if (existingIndex >= 0) data[key][existingIndex] = { ...data[key][existingIndex], ...metadata };
+      else data[key].push(metadata);
+      const versions = data.advertisingPriceVersions.filter((version) => version.catalogType === kind && version.catalogId === catalogId);
+      const version = {
+        id: `APV-${crypto.randomUUID()}`,
+        catalogType: kind,
+        catalogId,
+        versionNumber: versions.reduce((max, entry) => Math.max(max, Number(entry.versionNumber) || 0), 0) + 1,
+        ...priceVersion,
+        createdBy: userId || null,
+        createdAt: new Date().toISOString(),
+      };
+      data.advertisingPriceVersions.push(version);
+      persist();
+      return structuredClone(overlayPriceVersion(data[key].find((entry) => entry.id === catalogId), version));
+    },
+
+    async updateCatalog(kind, payload, id, userId) {
+      const map = { materials: ["advertisingMaterials", "advertising_materials"], processes: ["advertisingProcesses", "advertising_processes"], rules: ["advertisingMaterialProcessRules", "advertising_material_process_rules"], services: ["advertisingServiceCatalog", "advertising_service_catalog"], entities: ["advertisingEntities", "quotation_entities_or_letterheads"] };
+      const pair = map[kind];
+      if (!pair) throw Object.assign(new Error("价格库类型无效。"), { statusCode: 400 });
+      const item = { ...payload, id: id || payload.id || crypto.randomUUID(), updatedAt: new Date().toISOString(), updatedBy: userId || null };
+      const old = (await this.catalog())[kind]?.find((entry) => entry.id === item.id);
+      const priceFields = ["costPrice", "suggestedSalePrice", "minimumSalePrice", "defaultMinimumFee"];
+      const changedFields = old ? priceFields.filter((field) => payload[field] !== undefined && Number(payload[field]) !== Number(old[field])) : [];
+      if (changedFields.length && !String(payload.adjustmentReason || "").trim()) throw Object.assign(new Error("修改价格必须填写原因。"), { statusCode: 400, code: "ADJUSTMENT_REASON_REQUIRED" });
+      if (changedFields.length && ["materials", "processes", "services"].includes(kind) && (payload.effectiveFrom !== undefined || payload.currency !== undefined)) {
+        return this.saveCatalogPriceVersion(kind, { ...old, ...payload }, item.id, userId);
+      }
+      if (remote) {
+        const logs = changedFields.map((field) => ({ fieldName: field, oldValue: old[field], newValue: item[field], reason: payload.adjustmentReason }));
+        const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_catalog_entry", { method: "POST", body: JSON.stringify({ p_kind: kind, p_item: item, p_logs: logs, p_user_id: userId }) });
+        return remoteCatalogRow(Array.isArray(result) ? result[0] : result);
+      }
+      const key = pair[0];
+      const index = data[key].findIndex((entry) => entry.id === item.id);
+      if (index >= 0) data[key][index] = { ...data[key][index], ...item };
+      else data[key].push(item);
+      for (const field of changedFields) data.advertisingQuoteAdjustmentLogs.push({ id: crypto.randomUUID(), catalogType: kind, catalogId: item.id, fieldName: field, oldValue: old[field], newValue: item[field], reason: payload.adjustmentReason, userId, createdAt: new Date().toISOString() });
+      persist();
+      return structuredClone(index >= 0 ? data[key][index] : item);
+    },
+
+    async listAdjustmentLogs(quoteId) {
+      if (remote) {
+        const suffix = quoteId ? `?select=*&quote_id=eq.${encodeURIComponent(quoteId)}&order=created_at.desc` : "?select=*&order=created_at.desc";
+        return (await supabaseRequest(supabaseConfig, `advertising_quote_adjustment_logs${suffix}`)) || [];
+      }
+      return data.advertisingQuoteAdjustmentLogs.filter((log) => !quoteId || log.quoteId === quoteId).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+    },
   };
+  return store;
 }
 
 module.exports = { createAdvertisingQuoteStore, ensureAdvertisingData, materialSeeds, processSeeds, ruleSeeds, entitySeeds, serviceSeeds };
