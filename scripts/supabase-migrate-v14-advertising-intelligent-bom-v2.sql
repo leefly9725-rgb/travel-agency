@@ -196,8 +196,7 @@ begin
   end if;
   if (select count(*) from jsonb_object_keys(new.fx_snapshot)) <> 5
      or coalesce(new.fx_snapshot->>'baseCurrency','') <> 'EUR'
-     or coalesce(new.fx_snapshot->>'quoteCurrency','') <> new.currency
-     or coalesce(new.fx_snapshot->>'quoteCurrency','') not in ('EUR','RSD')
+     or coalesce(new.fx_snapshot->>'quoteCurrency','') <> 'RSD'
      or coalesce(trim(new.fx_snapshot->>'source'),'') = ''
      or coalesce(new.fx_snapshot->>'rate','') !~ '^[0-9]+([.][0-9]+)?$'
      or coalesce(new.fx_snapshot->>'rateDate','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then
@@ -305,8 +304,7 @@ begin
   end if;
   if (select count(*) from jsonb_object_keys(p_fx_snapshot)) <> 5
      or coalesce(p_fx_snapshot->>'baseCurrency','') <> 'EUR'
-     or coalesce(p_fx_snapshot->>'quoteCurrency','') <> v_currency
-     or coalesce(p_fx_snapshot->>'quoteCurrency','') not in ('EUR','RSD')
+     or coalesce(p_fx_snapshot->>'quoteCurrency','') <> 'RSD'
      or coalesce(trim(p_fx_snapshot->>'source'),'') = ''
      or coalesce(p_fx_snapshot->>'rate','') !~ '^[0-9]+([.][0-9]+)?$'
      or coalesce(p_fx_snapshot->>'rateDate','') !~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}$' then

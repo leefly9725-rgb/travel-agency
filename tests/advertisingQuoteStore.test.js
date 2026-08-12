@@ -192,7 +192,7 @@ test("calculator output is normalized into the strict V2 RPC ownership contract"
     assert.match(rpcBody.p_quote.quoteDate, /^\d{4}-\d{2}-\d{2}$/);
     assert.ok(["EUR", "RSD"].includes(rpcBody.p_quote.currency));
     assert.equal(rpcBody.p_fx_snapshot.baseCurrency, "EUR");
-    assert.equal(rpcBody.p_fx_snapshot.quoteCurrency, rpcBody.p_quote.currency);
+    assert.equal(rpcBody.p_fx_snapshot.quoteCurrency, "RSD");
     assert.equal(Object.keys(rpcBody.p_fx_snapshot).length, 5);
     assert.ok([...itemIds].every((id) => /^ADI-/.test(id)));
     assert.ok(rpcBody.p_quote.items.every((item) => item.quoteId === quoteId));
@@ -252,6 +252,38 @@ test("calculator output is normalized into the strict V2 RPC ownership contract"
   const local = await localStore.saveQuote({ ...rpcBody.p_quote, bomLines: rpcBody.p_bom_lines, fxSnapshot });
   assert.deepEqual(local.items, saved.items);
   assert.deepEqual(local.bomLines, saved.bomLines);
+});
+
+test("strict remote V2 contract accepts EUR and RSD quotes with the same EUR/RSD snapshot pair", async (t) => {
+  const originalFetch = global.fetch;
+  const bodies = [];
+  global.fetch = async (url, options = {}) => {
+    if (!String(url).includes("/rpc/save_advertising_quote_v2")) return new Response("[]", { status: 200 });
+    const body = JSON.parse(options.body);
+    bodies.push(body);
+    assert.equal(body.p_fx_snapshot.baseCurrency, "EUR");
+    assert.equal(body.p_fx_snapshot.quoteCurrency, "RSD");
+    assert.ok(["EUR", "RSD"].includes(body.p_quote.currency));
+    assert.ok(body.p_bom_lines.every((line) => line.quoteCurrency === body.p_quote.currency));
+    return new Response(JSON.stringify({ id: body.p_quote.id, quote_number: "LDS-ADV-2026-0002", pricing_engine: "bom_v2", fx_snapshot: body.p_fx_snapshot, data: body.p_quote }), { status: 200 });
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => assert.fail("must not write local"), supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
+  const catalog = {
+    materials: [{ id: "pvc-3", nameZh: "PVC", unit: "sqm", isActive: true }],
+    processes: [{ id: "uv", nameZh: "UV", unit: "sqm", supportsDoubleSide: true, isActive: true }],
+    services: [], rules: [{ materialId: "pvc-3", processId: "uv", isActive: true }],
+    priceVersions: [
+      { id: "PV-M", catalogType: "materials", catalogId: "pvc-3", versionNumber: 1, currency: "EUR", costUnitPrice: 9, saleUnitPrice: 14, effectiveFrom: "2026-01-01" },
+      { id: "PV-P", catalogType: "processes", catalogId: "uv", versionNumber: 1, currency: "EUR", costUnitPrice: 10, saleUnitPrice: 20, effectiveFrom: "2026-01-01" },
+    ],
+  };
+  const fxSnapshot = { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.2, rateDate: "2026-08-01", source: "test" };
+  for (const currency of ["EUR", "RSD"]) {
+    const calculated = calculateAdvertisingBomQuotation({ pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency, clientName: "Client", projectName: "Project", items: [{ bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }] }, catalog, { fxSnapshot });
+    await store.saveQuote({ pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency, clientName: "Client", projectName: "Project", items: calculated.items, bomLines: calculated.bomLines, fxSnapshot });
+  }
+  assert.deepEqual(bodies.map((body) => body.p_quote.currency), ["EUR", "RSD"]);
 });
 
 test("remote legacy V1 quotes omit V2 discriminator and snapshot fields", async (t) => {

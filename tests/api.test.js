@@ -4655,6 +4655,8 @@ test("advertising quotation API calculates, saves, reopens and lists quotes", as
     const catalogResponse = await apiFetch(port, "/api/advertising/catalog");
     assert.equal(catalogResponse.status, 200);
     const catalog = await catalogResponse.json();
+    assert.equal(Object.prototype.hasOwnProperty.call(catalog, "priceVersions"), false);
+    assert.ok(catalog.materials.some((item) => item.activePriceVersion));
     assert.ok(catalog.materials.some((item) => item.id === "pvc-3"));
     assert.ok(catalog.processes.some((item) => item.id === "uv"));
     for (const resource of ["materials", "processes", "rules", "services", "entities"]) {
@@ -4791,7 +4793,8 @@ test("advertising V2 API owns FX and price evidence, freezes updates, and refres
       priceVersionId: "CLIENT-TOP-PV",
       supplierSnapshot: { name: "client-top" },
       internalNotes: "client secret",
-      items: [{ id: "CLIENT-ITEM", name: "PVC UV Board", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1, costAmount: 1, priceVersionId: "CLIENT-PV", supplierSnapshot: { name: "client" } }],
+      groups: [{ id: "G1", nameZh: "广告制作", supplierSnapshot: { name: "nested group attacker" }, nested: { priceVersionId: "NESTED-PV" } }],
+      items: [{ id: "CLIENT-ITEM", name: "PVC UV Board", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1, groupId: "G1", notes: { text: "forged", supplierSnapshot: { name: "nested note attacker" } }, costAmount: 1, priceVersionId: "CLIENT-PV", supplierSnapshot: { name: "client" } }],
     };
 
     const calculatedResponse = await apiFetch(port, "/api/advertising/quotes/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
@@ -4800,6 +4803,12 @@ test("advertising V2 API owns FX and price evidence, freezes updates, and refres
     assert.equal(calculated.pricingEngine, "bom_v2");
     assert.equal(calculated.fxSnapshot.rate, 117.3);
     assert.ok(calculated.bomLines.every(line => line.id !== "CLIENT-BOM" && line.priceVersionId !== "CLIENT-PV"));
+
+    const eurResponse = await apiFetch(port, "/api/advertising/quotes/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, currency: "EUR", groups: [], items: [{ ...payload.items[0], notes: "safe" }] }) });
+    assert.equal(eurResponse.status, 200);
+    const eurCalculated = await eurResponse.json();
+    assert.deepEqual(eurCalculated.fxSnapshot, { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.3, rateDate: "2026-08-11", source: "first" });
+    assert.ok(eurCalculated.bomLines.every(line => line.quoteCurrency === "EUR"));
 
     const createResponse = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
     assert.equal(createResponse.status, 201);
@@ -4814,6 +4823,9 @@ test("advertising V2 API owns FX and price evidence, freezes updates, and refres
     for (const key of ["costAmount", "costUnitPriceSource", "sourceSaleUnitPrice", "saleUnitPrice", "minimumCharge", "priceVersionId", "supplierSnapshot", "internalNotes"]) {
       assert.equal(Object.prototype.hasOwnProperty.call(rawCreated, key), false, `client-owned ${key} must not persist`);
     }
+    assert.deepEqual(rawCreated.groups, [{ id: "G1", nameZh: "广告制作" }]);
+    assert.equal(Object.prototype.hasOwnProperty.call(rawCreated.items[0], "notes"), false);
+    assert.doesNotMatch(JSON.stringify(rawCreated), /nested group attacker|nested note attacker|NESTED-PV/);
 
     const changed = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
     changed.exchangeRates.push({ id: "ER-V2-2", baseCurrency: "EUR", quoteCurrency: "RSD", rate: 118.8, rateDate: "2026-08-11", source: "second", createdAt: "2026-08-12T00:00:00Z" });
@@ -4831,6 +4843,56 @@ test("advertising V2 API owns FX and price evidence, freezes updates, and refres
     assert.notEqual(duplicate.id, created.id);
     assert.equal(duplicate.fxSnapshot.rate, 118.8);
     assert.equal(duplicate.fxSnapshot.source, "second");
+  });
+});
+
+test("advertising V2 rejects non-array item and group containers at the API boundary", async () => {
+  await withServer(async (port) => {
+    for (const invalid of [
+      { items: { 0: { bomTemplateCode: "pvc_uv_board_v1" } }, groups: [] },
+      { items: [], groups: { 0: { id: "G1" } } },
+    ]) {
+      const response = await apiFetch(port, "/api/advertising/quotes/calculate", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency: "EUR", ...invalid }),
+      });
+      assert.equal(response.status, 400);
+      assert.equal((await response.json()).code, "ADVERTISING_V2_INPUT_INVALID");
+    }
+  });
+});
+
+test("stored advertising pricing engine is immutable for update and per-quote calculate routes", async () => {
+  await withServer(async (port) => {
+    const v1Payload = {
+      entityId: "lds", clientName: "V1 Client", projectName: "V1 Project", quoteDate: "2026-08-11", currency: "EUR", vatMode: "not_applicable",
+      items: [{ id: "V1-I1", name: "Legacy PVC", materialId: "pvc-3", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1, processes: [{ processId: "uv" }] }],
+    };
+    const v1Create = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v1Payload) });
+    assert.equal(v1Create.status, 201);
+    const v1 = await v1Create.json();
+    for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
+      const response = await apiFetch(port, `/api/advertising/quotes/${v1.id}${suffix}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...v1Payload, pricingEngine: "bom_v2", items: [{ ...v1Payload.items[0], bomTemplateCode: "pvc_uv_board_v1" }] }) });
+      assert.equal(response.status, 200, `V1 ${suffix || "update"}`);
+      const result = await response.json();
+      assert.equal(result.pricingEngine, undefined);
+      assert.equal(result.bomLines, undefined);
+    }
+
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.exchangeRates = [{ id: "ER-IMMUTABLE", baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.3, rateDate: "2026-08-11", source: "test", createdAt: "2026-08-11T00:00:00Z" }];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+    const v2Payload = { pricingEngine: "bom_v2", entityId: "lds", clientName: "V2 Client", projectName: "V2 Project", quoteDate: "2026-08-11", currency: "EUR", vatMode: "not_applicable", items: [{ name: "PVC UV", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }] };
+    const v2Create = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(v2Payload) });
+    assert.equal(v2Create.status, 201);
+    const v2 = await v2Create.json();
+    for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
+      const response = await apiFetch(port, `/api/advertising/quotes/${v2.id}${suffix}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...v2Payload, pricingEngine: "legacy_v1" }) });
+      assert.equal(response.status, 200, `V2 ${suffix || "update"}`);
+      const result = await response.json();
+      assert.equal(result.pricingEngine, "bom_v2");
+      assert.ok(Array.isArray(result.bomLines));
+    }
   });
 });
 

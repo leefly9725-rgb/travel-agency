@@ -60,6 +60,21 @@ function buildDetails(vm) {
   return out.join("");
 }
 
+function buildInternalBom(vm) {
+  if (!vm.internal || !vm.internalBomLines.length) return "";
+  const widths = [900,2200,650,850,900,900,1000,1000,1200,1172];
+  const rows = [X.row([
+    "Type", "BOM detail", "Qty", "Currency", "Source cost", "Source sale",
+    "Cost amount", "Sale amount", "Supplier / version", "Internal notes",
+  ], widths, { header:true, fill:T.colors.header, bold:true, color:T.colors.soft, align:"center", size:T.sizes.tableHeader })];
+  vm.internalBomLines.forEach((line) => rows.push(X.row([
+    line.lineType, line.description, line.quantity, line.sourceCurrency,
+    line.costUnitPriceSource, line.saleUnitPriceSource, line.costAmount, line.saleAmount,
+    [line.supplier, line.priceVersionId].filter(Boolean).join(" / "), line.internalNotes,
+  ], widths, { cells:[{}, {}, {align:"center"}, {align:"center"}, {align:"right"}, {align:"right"}, {align:"right"}, {align:"right"}, {}, {}] })));
+  return `${heading("Internal BOM Detail / 内部 BOM 明细")}${X.table(rows,widths)}`;
+}
+
 function bullets(vm, title, items) {
   if (!items.length) return "";
   return `${heading(title,2)}${items.map(item => X.p(`• ${vm.text(item)}`, { keepLines:true, after:70, left:240 })).join("")}`;
@@ -86,6 +101,6 @@ function stylesXml() {
 }
 function headerXml(vm){return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${X.p(`${vm.company.en}  |  ${vm.quoteNumber}`,{size:T.sizes.footer,color:T.colors.soft,bottomBorder:{color:T.colors.line,size:4}})}</w:hdr>`;}
 function footerXml(vm){return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:ftr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:p><w:pPr><w:jc w:val="center"/></w:pPr>${X.run(`${vm.company.legal}  ·  `,{size:T.sizes.footer,color:T.colors.soft})}<w:fldSimple w:instr=" PAGE ">${X.run("1",{size:T.sizes.footer,color:T.colors.soft})}</w:fldSimple></w:p></w:ftr>`;}
-function documentXml(vm) { return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${buildCover(vm)}${buildOverview(vm)}${buildDetails(vm)}${buildTerms(vm)}${X.pageSection()}</w:body></w:document>`; }
+function documentXml(vm) { return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing" xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" xmlns:pic="http://schemas.openxmlformats.org/drawingml/2006/picture"><w:body>${buildCover(vm)}${buildOverview(vm)}${buildDetails(vm)}${buildInternalBom(vm)}${buildTerms(vm)}${X.pageSection()}</w:body></w:document>`; }
 
 module.exports={documentXml,stylesXml,headerXml,footerXml};

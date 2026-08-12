@@ -62,8 +62,18 @@ function buildViewModel(quote, options = {}) {
     return { title: localized({ zh: group.projectTitle || group.title || label.zh, en: label.en, sr: label.sr }, lang), type: group.projectType || "mixed", items, amount, amountText: money(amount, currency) };
   }).filter((group) => group.items.length > 0);
   const total = num(quote.totalSales ?? quote.totalPrice ?? quote.grandTotal) || groups.reduce((sum, group) => sum + group.amount, 0);
+  const internalBomLines = quote.internal && Array.isArray(quote.internalBomLines)
+    ? quote.internalBomLines.map((line) => ({
+      lineType: String(line.lineType || ""), description: String(line.descriptionSnapshot || line.nameSnapshot || ""),
+      quantity: String(line.quantity ?? ""), sourceCurrency: String(line.sourceCurrency || ""),
+      costUnitPriceSource: String(line.costUnitPriceSource ?? ""), saleUnitPriceSource: String(line.saleUnitPriceSource ?? ""),
+      costAmount: String(line.costAmount ?? ""), saleAmount: String(line.saleAmount ?? ""),
+      supplier: String(line.supplierSnapshot?.name || line.supplierSnapshot?.nameZh || line.supplierSnapshot?.id || ""),
+      priceVersionId: String(line.priceVersionId || ""), internalNotes: String(line.internalNotes || ""),
+    }))
+    : [];
   return {
-    lang, company: quote.company || COMPANY, currency, groups, total, totalText: money(total, currency), internal: Boolean(quote.internal),
+    lang, company: quote.company || COMPANY, currency, groups, total, totalText: money(total, currency), internal: Boolean(quote.internal), internalBomLines,
     quoteNumber: String(quote.quoteNumber || quote.id || ""), projectName: String(quote.projectName || quote.title || quote.quoteNumber || ""),
     location: String(quote.projectLocation || quote.location || ""), clientName: String(quote.clientName || ""), clientContact: String(quote.clientContact || quote.contactName || ""),
     quoteDate: String(quote.quoteDate || quote.createdAt || "").slice(0, 10), validUntil: String(quote.validUntil || "").slice(0, 10),

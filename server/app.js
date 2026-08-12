@@ -40,7 +40,7 @@ const { calculateAdvertisingQuotation } = require("./services/advertisingQuotati
 const { calculateAdvertisingBomQuotation } = require("./services/advertisingBomCalculator");
 const { resolveAdvertisingFxSnapshot } = require("./services/advertisingFxSnapshot");
 const { buildAdjustmentLogs } = require("./services/advertisingAdjustmentService");
-const { isSensitiveAdvertisingKey, sanitizeAdvertisingPayload } = require("./services/advertisingSecurity");
+const { isSensitiveAdvertisingKey, sanitizeAdvertisingPayload, sanitizeAdvertisingCatalogPayload } = require("./services/advertisingSecurity");
 const {
   DOCX_CONTENT_TYPE: ADVERTISING_DOCX_CONTENT_TYPE,
   buildAdvertisingQuotationDocx,
@@ -1506,6 +1506,9 @@ async function handleApi(request, response, url) {
   const advertisingCanManageAll =
     authCtx.permissions.has("*") ||
     authCtx.permissions.has("advertising_quote.audit_view");
+  const advertisingCanManageCatalog =
+    authCtx.permissions.has("*") ||
+    authCtx.permissions.has("advertising_catalog.manage");
   const assertAdvertisingOwnership = (quote) => {
     if (
       !advertisingCanManageAll &&
@@ -1519,6 +1522,11 @@ async function handleApi(request, response, url) {
   };
   const sanitizeAdvertising = (value) =>
     sanitizeAdvertisingPayload(value, advertisingCanViewCosts);
+  const sanitizeAdvertisingCatalog = (value) =>
+    sanitizeAdvertisingCatalogPayload(value, {
+      canViewCosts: advertisingCanViewCosts,
+      canManageCatalog: advertisingCanManageCatalog,
+    });
   const sanitizeAdvertisingLogs = (value) => {
     const rows = Array.isArray(value) ? value : [];
     if (advertisingCanViewCosts) return rows;
@@ -1572,14 +1580,30 @@ async function handleApi(request, response, url) {
       "transportTrips", "designHours", "customerVisible", "unit", "notes",
       "groupId",
     ]);
-    const allowedBody = Object.fromEntries(
-      Object.entries(payload).filter(([key]) => allowedTopLevelKeys.has(key))
+    const allowedGroupKeys = new Set([
+      "id", "nameZh", "nameEn", "title", "position", "sortOrder",
+      "customerVisible",
+    ]);
+    const invalidContainer = (key) => {
+      const error = new Error(`${key} 必须为数组。`);
+      error.statusCode = 400;
+      error.code = "ADVERTISING_V2_INPUT_INVALID";
+      throw error;
+    };
+    if (payload.items !== undefined && !Array.isArray(payload.items)) invalidContainer("items");
+    if (payload.groups !== undefined && !Array.isArray(payload.groups)) invalidContainer("groups");
+    const isScalar = (value) => value === null || ["string", "number", "boolean"].includes(typeof value);
+    const rebuild = (source, allowedKeys) => Object.fromEntries(
+      Object.entries(source && typeof source === "object" && !Array.isArray(source) ? source : {})
+        .filter(([key, value]) => allowedKeys.has(key) && isScalar(value))
     );
+    const allowedBody = Object.fromEntries(Object.entries(payload).filter(
+      ([key, value]) => allowedTopLevelKeys.has(key) && key !== "items" && key !== "groups" && isScalar(value)
+    ));
     return {
       ...allowedBody,
-      items: (payload.items || []).map((item) => Object.fromEntries(
-        Object.entries(item || {}).filter(([key]) => allowedItemKeys.has(key))
-      )),
+      items: (payload.items || []).map((item) => rebuild(item, allowedItemKeys)),
+      groups: (payload.groups || []).map((group) => rebuild(group, allowedGroupKeys)),
     };
   };
   const calculateAdvertisingByEngine = async (body, catalog, existingQuote = null) => {
@@ -1661,14 +1685,14 @@ async function handleApi(request, response, url) {
       sendJson(
         response,
         200,
-        sanitizeAdvertising(catalog[catalogMatch[1]] || [])
+        sanitizeAdvertisingCatalog(catalog[catalogMatch[1]] || [])
       );
       return true;
     }
   }
 
   if (request.method === "GET" && url.pathname === "/api/advertising/catalog") {
-    sendJson(response, 200, sanitizeAdvertising(await advertisingStore.catalog())); return true;
+    sendJson(response, 200, sanitizeAdvertisingCatalog(await advertisingStore.catalog())); return true;
   }
   if (request.method === "GET" && url.pathname === "/api/advertising/price-versions") {
     try {
@@ -1715,7 +1739,7 @@ async function handleApi(request, response, url) {
         if (request.method === "POST" && action === "duplicate") { const source = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const duplicateInput = { ...source, id: undefined, quoteNumber: undefined, fxSnapshot: undefined, bomLines: undefined, calculationSnapshot: undefined, status: "draft", projectName: `${source.projectName || "广告报价"} - 副本` }; const catalog = await loadAdvertisingCalculationCatalog(duplicateInput); const duplicateBody = buildAdvertisingServerSnapshot(duplicateInput, catalog, source); const calculated = await calculateAdvertisingByEngine(duplicateBody, catalog); const duplicate = await advertisingStore.saveQuote({ ...calculated.safeBody, ...(duplicateBody.pricingEngine === "bom_v2" ? { entitySnapshot: duplicateBody.entitySnapshot, termsSnapshot: duplicateBody.termsSnapshot } : {}), id: undefined, quoteNumber: undefined, ownerId: authCtx.userId, calculationSnapshot: calculated.calculationSnapshot, ...(duplicateBody.pricingEngine === "bom_v2" ? { pricingEngine: "bom_v2", fxSnapshot: calculated.fxSnapshot, bomLines: calculated.bomLines } : {}), createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(duplicate)); return true; }
         if (request.method === "DELETE" && !action) { assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const deleted = await advertisingStore.deleteQuote(id); sendJson(response, deleted ? 200 : 404, deleted ? { deleted: true } : { error: "广告报价不存在。" }); return true; }
         if ((request.method === "PUT" && !action) || (request.method === "POST" && action === "calculate")) {
-          const body = parseJsonBody(await readRequestBody(request)); if (!action) assertAdvertisingRequiredFields(body); const existing = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const calculationBody = { ...body, pricingEngine: existing.pricingEngine || body.pricingEngine }; const catalog = await loadAdvertisingCalculationCatalog({ ...calculationBody, quoteDate: calculationBody.quoteDate || existing.quoteDate }); const serverBody = action ? calculationBody : buildAdvertisingServerSnapshot(calculationBody, catalog, existing); const calculated = await calculateAdvertisingByEngine(serverBody, catalog, existing);
+          const body = parseJsonBody(await readRequestBody(request)); if (!action) assertAdvertisingRequiredFields(body); const existing = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const calculationBody = { ...body }; if (existing.pricingEngine === "bom_v2") calculationBody.pricingEngine = "bom_v2"; else delete calculationBody.pricingEngine; const catalog = await loadAdvertisingCalculationCatalog({ ...calculationBody, quoteDate: calculationBody.quoteDate || existing.quoteDate }); const serverBody = action ? calculationBody : buildAdvertisingServerSnapshot(calculationBody, catalog, existing); const calculated = await calculateAdvertisingByEngine(serverBody, catalog, existing);
           if (action === "calculate") { sendJson(response, 200, sanitizeAdvertising(calculated.calculationSnapshot)); return true; }
           const adjustmentLogs = buildAdjustmentLogs(existing, calculated.safeBody, authCtx.userId, calculated.safeBody.adjustmentReason);
           sendJson(response, 200, sanitizeAdvertising(await advertisingStore.saveQuote({ ...calculated.safeBody, ...(serverBody.pricingEngine === "bom_v2" ? { entitySnapshot: serverBody.entitySnapshot, termsSnapshot: serverBody.termsSnapshot } : {}), id, ownerId: existing.ownerId || authCtx.userId, adjustmentLogs, calculationSnapshot: calculated.calculationSnapshot, ...(serverBody.pricingEngine === "bom_v2" ? { pricingEngine: "bom_v2", fxSnapshot: calculated.fxSnapshot, bomLines: calculated.bomLines } : {}), updatedBy: authCtx.userId }))); return true;

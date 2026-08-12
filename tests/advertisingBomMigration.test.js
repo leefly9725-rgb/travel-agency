@@ -174,11 +174,22 @@ test("table trigger allows only the first valid FX snapshot and rejects later ch
   assert.match(body, /ADVERTISING_FX_SNAPSHOT_IMMUTABLE/i);
   assert.match(body, /\(select count\(\*\) from jsonb_object_keys\(new\.fx_snapshot\)\) <> 5/i);
   assert.match(body, /new\.fx_snapshot->>'baseCurrency'[^;]+EUR/i);
-  assert.match(body, /new\.fx_snapshot->>'quoteCurrency'[^;]+new\.currency/i);
+  assert.match(body, /new\.fx_snapshot->>'quoteCurrency'[^;]+RSD/i);
+  assert.doesNotMatch(body, /new\.fx_snapshot->>'quoteCurrency'\s*,?\s*''\)\s*<>\s*new\.currency/i);
   assert.match(body, /new\.fx_snapshot->>'rate'[^;]+numeric <= 0/i);
   assert.match(body, /new\.fx_snapshot->>'rateDate'[^;]+date/i);
   assert.match(body, /trim\(new\.fx_snapshot->>'source'\)/i);
   assert.doesNotMatch(sql, /disable trigger/i);
+});
+
+test("V2 RPC accepts EUR or RSD quote totals while requiring one EUR/RSD FX pair", () => {
+  const body = functionBody(normalizedSql(), "save_advertising_quote_v2");
+
+  assert.match(body, /v_currency not in \('EUR','RSD'\)/i);
+  assert.match(body, /p_fx_snapshot->>'baseCurrency'[^;]+EUR/i);
+  assert.match(body, /p_fx_snapshot->>'quoteCurrency'[^;]+RSD/i);
+  assert.doesNotMatch(body, /p_fx_snapshot->>'quoteCurrency'\s*,?\s*''\)\s*<>\s*v_currency/i);
+  assert.match(body, /v_line->>'quoteCurrency'\s*,?\s*''\)\s*<>\s*v_currency/i);
 });
 
 test("PostgreSQL 17 exact-five-key checks use jsonb_object_keys after type validation", () => {
