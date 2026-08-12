@@ -1,7 +1,7 @@
 "use strict";
 const { buildProjectQuotationDocx, DOCX_CONTENT_TYPE }=require('./projectQuotationDocxService');
 function safeName(value){return String(value||'').replace(/[\\/:*?"<>|\u0000-\u001f]+/g,'-').replace(/\s+/g,'_').slice(0,60)}
-function buildAdvertisingCustomerView(quote,{internal=false}={}){
+function buildLegacyAdvertisingCustomerView(quote,{internal=false}={}){
   const calc=quote.calculationSnapshot||{};
   const visible=(quote.items||[]).filter(item=>item.customerVisible!==false);
   const declaredGroups=Array.isArray(quote.groups)?quote.groups:[];
@@ -39,6 +39,32 @@ function buildAdvertisingCustomerView(quote,{internal=false}={}){
   const companyEnglish=String(entity.nameEn||entity.nameZh||entityCode).toUpperCase();
   const displayEnglish=(logoConfigured?companyEnglish:companyEnglish+' · LOGO NOT CONFIGURED')+(internal?' · INTERNAL USE ONLY':'');
   return{id:quote.id,quoteNumber:quote.quoteNumber,clientName:quote.clientName,clientContact:quote.contactName||'',projectName:quote.projectName,projectLocation:quote.serviceLocation||'',quoteDate:quote.quoteDate,validUntil:quote.validUntil,currency:quote.currency||'EUR',language:quote.language||'zh-en',company:{cn:entity.nameZh||entity.nameEn||entityCode,en:displayEnglish,legal:entity.legalName||entity.nameEn||'',address:entity.address||'',contact:[entity.phone,entity.email,entity.website].filter(Boolean).join(' | '),logoConfigured},projectGroups:groups,totalSales,notes:quote.customerNotes||'',internal};
+}
+function buildAdvertisingCustomerView(quote,options={}){
+  if(quote.pricingEngine!=='bom_v2')return buildLegacyAdvertisingCustomerView(quote,options);
+  const internal=options.internal===true;
+  const visible=(quote.items||[]).filter(item=>item.customerVisible!==false);
+  const lines=Array.isArray(quote.bomLines)?quote.bomLines:[];
+  const itemRows=visible.map(item=>{
+    const saleAmount=lines.filter(line=>line.customerVisible!==false&&String(line.quoteItemId||'')===String(item.id)).reduce((sum,line)=>sum+Number(line.saleAmount||0),0);
+    const quantity=Number(item.quantity||1)||1;
+    return{itemName:{zh:item.name||'广告产品',en:item.nameEn||''},specification:String(item.width||'')+'×'+String(item.height||'')+' '+String(item.sizeUnit||'mm'),quantity,unit:item.unit||'件',salesUnitPrice:saleAmount/quantity,salesSubtotal:saleAmount,notes:item.notes||''};
+  });
+  const groups=itemRows.length?[{projectTitle:'广告制作',projectType:'mixed',items:itemRows}]:[];
+  const adjustments=lines.filter(line=>line.customerVisible!==false&&!line.quoteItemId&&Math.abs(Number(line.saleAmount||0))>0.0001).map(line=>({itemName:{zh:line.descriptionSnapshot||line.nameSnapshot||'金额调整',en:''},quantity:1,unit:'项',salesUnitPrice:Number(line.saleAmount||0),salesSubtotal:Number(line.saleAmount||0),notes:''}));
+  if(adjustments.length)groups.push({projectTitle:'金额调整与税费',projectType:'mixed',items:adjustments});
+  const calc=quote.calculationSnapshot||{};
+  const totalSales=Number(calc.totalIncludingVat??calc.subtotalExcludingVat??lines.reduce((sum,line)=>sum+Number(line.saleAmount||0),0));
+  const detailTotal=groups.flatMap(group=>group.items).reduce((sum,item)=>sum+Number(item.salesSubtotal||0),0);
+  const reconciliation=Number((totalSales-detailTotal).toFixed(2));
+  if(Math.abs(reconciliation)>0.0001)groups.push({projectTitle:'金额汇总',projectType:'mixed',items:[{itemName:{zh:'其他已计入金额',en:'Other included amount'},quantity:1,unit:'项',salesUnitPrice:reconciliation,salesSubtotal:reconciliation,notes:''}]});
+  const entity=quote.entitySnapshot||{};
+  const entityCode=String(entity.code||quote.entityId||'LDS').toUpperCase();
+  const logoConfigured=entityCode==='LDS'&&entity.logoConfigured!==false;
+  const companyEnglish=String(entity.nameEn||entity.nameZh||entityCode).toUpperCase();
+  const view={id:quote.id,quoteNumber:quote.quoteNumber,clientName:quote.clientName,clientContact:quote.contactName||'',projectName:quote.projectName,projectLocation:quote.serviceLocation||'',quoteDate:quote.quoteDate,validUntil:quote.validUntil,currency:quote.currency||'EUR',language:quote.language||'zh-en',company:{cn:entity.nameZh||entity.nameEn||entityCode,en:(logoConfigured?companyEnglish:companyEnglish+' · LOGO NOT CONFIGURED')+(internal?' · INTERNAL USE ONLY':''),legal:entity.legalName||entity.nameEn||'',address:entity.address||'',contact:[entity.phone,entity.email,entity.website].filter(Boolean).join(' | '),logoConfigured},projectGroups:groups,totalSales,notes:quote.customerNotes||'',internal};
+  if(internal)view.internalBomLines=lines.map(line=>({lineType:line.lineType,descriptionSnapshot:line.descriptionSnapshot,quantity:line.quantity,sourceCurrency:line.sourceCurrency,costUnitPriceSource:line.costUnitPriceSource,saleUnitPriceSource:line.saleUnitPriceSource,costAmount:line.costAmount,saleAmount:line.saleAmount,supplierSnapshot:line.supplierSnapshot,priceVersionId:line.priceVersionId,internalNotes:line.internalNotes}));
+  return view;
 }
 function buildAdvertisingQuotationDocx(quote,options={}){return buildProjectQuotationDocx(buildAdvertisingCustomerView(quote,options),options)}
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));

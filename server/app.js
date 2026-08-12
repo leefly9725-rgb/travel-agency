@@ -37,6 +37,8 @@ const { createSupplierStore } = require("./services/supplierStore");
 const { createProjectQuoteStore } = require("./services/projectQuoteStore");
 const { createAdvertisingQuoteStore } = require("./services/advertisingQuoteStore");
 const { calculateAdvertisingQuotation } = require("./services/advertisingQuotationCalculator");
+const { calculateAdvertisingBomQuotation } = require("./services/advertisingBomCalculator");
+const { resolveAdvertisingFxSnapshot } = require("./services/advertisingFxSnapshot");
 const { buildAdjustmentLogs } = require("./services/advertisingAdjustmentService");
 const { isSensitiveAdvertisingKey, sanitizeAdvertisingPayload } = require("./services/advertisingSecurity");
 const {
@@ -1557,6 +1559,61 @@ async function handleApi(request, response, url) {
       termsSnapshot: structuredClone(existing?.termsSnapshot || {}),
     };
   };
+  const buildAdvertisingV2Input = (payload = {}) => {
+    const allowedTopLevelKeys = new Set([
+      "pricingEngine", "entityId", "clientName", "contactName", "projectName",
+      "serviceLocation", "mode", "currency", "language", "quoteDate",
+      "validUntil", "vatMode", "vatRate", "discountPercent", "fixedDiscount",
+      "customerNotes", "status", "items", "groups", "adjustmentReason",
+    ]);
+    const allowedItemKeys = new Set([
+      "id", "name", "nameEn", "bomTemplateCode", "width", "height",
+      "sizeUnit", "quantity", "sides", "laborHours", "installationQuantity",
+      "transportTrips", "designHours", "customerVisible", "unit", "notes",
+      "groupId",
+    ]);
+    const allowedBody = Object.fromEntries(
+      Object.entries(payload).filter(([key]) => allowedTopLevelKeys.has(key))
+    );
+    return {
+      ...allowedBody,
+      items: (payload.items || []).map((item) => Object.fromEntries(
+        Object.entries(item || {}).filter(([key]) => allowedItemKeys.has(key))
+      )),
+    };
+  };
+  const calculateAdvertisingByEngine = async (body, catalog, existingQuote = null) => {
+    if (body?.pricingEngine !== "bom_v2") {
+      return {
+        safeBody: body,
+        calculationSnapshot: calculateAdvertisingQuotation(body, catalog, { userId: authCtx.userId }),
+        fxSnapshot: null,
+        bomLines: null,
+      };
+    }
+    const safeBody = buildAdvertisingV2Input(body);
+    const resolvedFx = await resolveAdvertisingFxSnapshot({
+      pricingEngine: "bom_v2",
+      existingQuote,
+      supabaseConfig: getSupabaseConfig(),
+      effectiveOn: safeBody.quoteDate || new Date().toISOString().slice(0, 10),
+    });
+    const calculated = calculateAdvertisingBomQuotation(safeBody, catalog, {
+      userId: authCtx.userId,
+      fxSnapshot: resolvedFx,
+    });
+    return {
+      safeBody: { ...safeBody, items: calculated.items },
+      calculationSnapshot: calculated,
+      fxSnapshot: resolvedFx,
+      bomLines: calculated.bomLines,
+    };
+  };
+  const loadAdvertisingCalculationCatalog = (payload = {}) => (
+    payload.pricingEngine === "bom_v2"
+      ? advertisingStore.catalog({ asOf: payload.quoteDate || new Date().toISOString().slice(0, 10) })
+      : advertisingStore.catalog()
+  );
   const sendAdvertisingError = (
     error,
     fallbackCode = "ADVERTISING_API_ERROR",
@@ -1613,6 +1670,23 @@ async function handleApi(request, response, url) {
   if (request.method === "GET" && url.pathname === "/api/advertising/catalog") {
     sendJson(response, 200, sanitizeAdvertising(await advertisingStore.catalog())); return true;
   }
+  if (request.method === "GET" && url.pathname === "/api/advertising/price-versions") {
+    try {
+      requirePermission(authCtx, "advertising_catalog.manage");
+      const catalogType = url.searchParams.get("catalogType");
+      const catalogId = url.searchParams.get("catalogId");
+      if (!new Set(["materials", "processes", "services"]).has(catalogType) || !catalogId) {
+        throw Object.assign(new Error("catalogType 和 catalogId 无效。"), {
+          statusCode: 400,
+          code: "ADVERTISING_PRICE_VERSION_QUERY_INVALID",
+        });
+      }
+      sendJson(response, 200, sanitizeAdvertising(await advertisingStore.listPriceVersions({ catalogType, catalogId })));
+    } catch (error) {
+      sendAdvertisingError(error);
+    }
+    return true;
+  }
   if (request.method === "GET" && url.pathname === "/api/advertising/quotes") {
     const filters = Object.fromEntries(url.searchParams); if (!advertisingCanManageAll) filters.ownerId = authCtx.userId;
     sendJson(response, 200, sanitizeAdvertising(await advertisingStore.listQuotes(filters))); return true;
@@ -1621,11 +1695,11 @@ async function handleApi(request, response, url) {
     requirePermission(authCtx, "advertising_quote.audit_view"); sendJson(response, 200, sanitizeAdvertisingLogs(await advertisingStore.listAdjustmentLogs())); return true;
   }
   if (request.method === "POST" && url.pathname === "/api/advertising/quotes/calculate") {
-    try { const body = parseJsonBody(await readRequestBody(request)); sendJson(response, 200, sanitizeAdvertising(calculateAdvertisingQuotation(body, await advertisingStore.catalog(), { userId: authCtx.userId }))); }
+    try { const body = parseJsonBody(await readRequestBody(request)); const catalog = await loadAdvertisingCalculationCatalog(body); const calculated = await calculateAdvertisingByEngine(body, catalog); sendJson(response, 200, sanitizeAdvertising(calculated.calculationSnapshot)); }
     catch (error) { sendAdvertisingError(error, "ADVERTISING_CALCULATION_ERROR"); } return true;
   }
   if (request.method === "POST" && url.pathname === "/api/advertising/quotes") {
-    try { const body = parseJsonBody(await readRequestBody(request)); assertAdvertisingRequiredFields(body); const catalog = await advertisingStore.catalog(); const safeBody = buildAdvertisingServerSnapshot(body, catalog); const calculationSnapshot = calculateAdvertisingQuotation(safeBody, catalog, { userId: authCtx.userId }); const saved = await advertisingStore.saveQuote({ ...safeBody, id: undefined, quoteNumber: undefined, ownerId: authCtx.userId, calculationSnapshot, createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(saved)); }
+    try { const body = parseJsonBody(await readRequestBody(request)); assertAdvertisingRequiredFields(body); const catalog = await loadAdvertisingCalculationCatalog(body); const serverBody = buildAdvertisingServerSnapshot(body, catalog); const calculated = await calculateAdvertisingByEngine(serverBody, catalog); const saved = await advertisingStore.saveQuote({ ...calculated.safeBody, ...(body.pricingEngine === "bom_v2" ? { entitySnapshot: serverBody.entitySnapshot, termsSnapshot: serverBody.termsSnapshot } : {}), id: undefined, quoteNumber: undefined, ownerId: authCtx.userId, calculationSnapshot: calculated.calculationSnapshot, ...(body.pricingEngine === "bom_v2" ? { pricingEngine: "bom_v2", fxSnapshot: calculated.fxSnapshot, bomLines: calculated.bomLines } : {}), createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(saved)); }
     catch (error) { sendAdvertisingError(error, "ADVERTISING_SAVE_ERROR"); } return true;
   }
   {
@@ -1638,13 +1712,13 @@ async function handleApi(request, response, url) {
       const id = decodeURIComponent(match[1]); const action = match[2];
       try {
         if (request.method === "GET" && !action) { sendJson(response, 200, sanitizeAdvertising(assertAdvertisingOwnership(await advertisingStore.getQuote(id)))); return true; }
-        if (request.method === "POST" && action === "duplicate") { const source = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const catalog = await advertisingStore.catalog(); const duplicateBody = buildAdvertisingServerSnapshot({ ...source, id: undefined, quoteNumber: undefined, status: "draft", projectName: `${source.projectName || "广告报价"} - 副本` }, catalog, source); const calculationSnapshot = calculateAdvertisingQuotation(duplicateBody, catalog, { userId: authCtx.userId }); const duplicate = await advertisingStore.saveQuote({ ...duplicateBody, ownerId: authCtx.userId, calculationSnapshot, createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(duplicate)); return true; }
+        if (request.method === "POST" && action === "duplicate") { const source = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const duplicateInput = { ...source, id: undefined, quoteNumber: undefined, fxSnapshot: undefined, bomLines: undefined, calculationSnapshot: undefined, status: "draft", projectName: `${source.projectName || "广告报价"} - 副本` }; const catalog = await loadAdvertisingCalculationCatalog(duplicateInput); const duplicateBody = buildAdvertisingServerSnapshot(duplicateInput, catalog, source); const calculated = await calculateAdvertisingByEngine(duplicateBody, catalog); const duplicate = await advertisingStore.saveQuote({ ...calculated.safeBody, ...(duplicateBody.pricingEngine === "bom_v2" ? { entitySnapshot: duplicateBody.entitySnapshot, termsSnapshot: duplicateBody.termsSnapshot } : {}), id: undefined, quoteNumber: undefined, ownerId: authCtx.userId, calculationSnapshot: calculated.calculationSnapshot, ...(duplicateBody.pricingEngine === "bom_v2" ? { pricingEngine: "bom_v2", fxSnapshot: calculated.fxSnapshot, bomLines: calculated.bomLines } : {}), createdBy: authCtx.userId, updatedBy: authCtx.userId }); sendJson(response, 201, sanitizeAdvertising(duplicate)); return true; }
         if (request.method === "DELETE" && !action) { assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const deleted = await advertisingStore.deleteQuote(id); sendJson(response, deleted ? 200 : 404, deleted ? { deleted: true } : { error: "广告报价不存在。" }); return true; }
         if ((request.method === "PUT" && !action) || (request.method === "POST" && action === "calculate")) {
-          const body = parseJsonBody(await readRequestBody(request)); if (!action) assertAdvertisingRequiredFields(body); const catalog = await advertisingStore.catalog(); const existing = action ? null : assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const safeBody = action ? body : buildAdvertisingServerSnapshot(body, catalog, existing); const calculationSnapshot = calculateAdvertisingQuotation(safeBody, catalog, { userId: authCtx.userId });
-          if (action === "calculate") { sendJson(response, 200, sanitizeAdvertising(calculationSnapshot)); return true; }
-          const adjustmentLogs = buildAdjustmentLogs(existing, safeBody, authCtx.userId, safeBody.adjustmentReason);
-          sendJson(response, 200, sanitizeAdvertising(await advertisingStore.saveQuote({ ...safeBody, id, ownerId: existing.ownerId || authCtx.userId, adjustmentLogs, calculationSnapshot, updatedBy: authCtx.userId }))); return true;
+          const body = parseJsonBody(await readRequestBody(request)); if (!action) assertAdvertisingRequiredFields(body); const existing = assertAdvertisingOwnership(await advertisingStore.getQuote(id)); const calculationBody = { ...body, pricingEngine: existing.pricingEngine || body.pricingEngine }; const catalog = await loadAdvertisingCalculationCatalog({ ...calculationBody, quoteDate: calculationBody.quoteDate || existing.quoteDate }); const serverBody = action ? calculationBody : buildAdvertisingServerSnapshot(calculationBody, catalog, existing); const calculated = await calculateAdvertisingByEngine(serverBody, catalog, existing);
+          if (action === "calculate") { sendJson(response, 200, sanitizeAdvertising(calculated.calculationSnapshot)); return true; }
+          const adjustmentLogs = buildAdjustmentLogs(existing, calculated.safeBody, authCtx.userId, calculated.safeBody.adjustmentReason);
+          sendJson(response, 200, sanitizeAdvertising(await advertisingStore.saveQuote({ ...calculated.safeBody, ...(serverBody.pricingEngine === "bom_v2" ? { entitySnapshot: serverBody.entitySnapshot, termsSnapshot: serverBody.termsSnapshot } : {}), id, ownerId: existing.ownerId || authCtx.userId, adjustmentLogs, calculationSnapshot: calculated.calculationSnapshot, ...(serverBody.pricingEngine === "bom_v2" ? { pricingEngine: "bom_v2", fxSnapshot: calculated.fxSnapshot, bomLines: calculated.bomLines } : {}), updatedBy: authCtx.userId }))); return true;
         }
       } catch (error) { sendAdvertisingError(error); return true; }
     }

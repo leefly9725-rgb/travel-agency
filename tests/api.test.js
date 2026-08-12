@@ -4750,6 +4750,108 @@ test("advertising quotation API calculates, saves, reopens and lists quotes", as
   });
 });
 
+test("advertising V1 calculation keeps the current catalog behavior regardless of quote date", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.advertisingPriceVersions = [{
+      id: "PV-V1-CURRENT", catalogType: "materials", catalogId: "pvc-3", versionNumber: 2,
+      currency: "EUR", costUnitPrice: 20, saleUnitPrice: 99, minimumSaleUnitPrice: 0,
+      minimumCharge: 0, effectiveFrom: "2026-08-01", changeReason: "current",
+    }];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+    const response = await apiFetch(port, "/api/advertising/quotes/calculate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        quoteDate: "2025-01-01", currency: "EUR", vatMode: "not_applicable",
+        minimumOrderAmount: 0, minimumProcessingFee: 0,
+        items: [{ materialId: "pvc-3", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, processes: [] }],
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).items[0].materialSaleUnitPriceSnapshot, 99);
+  });
+});
+
+test("advertising V2 API owns FX and price evidence, freezes updates, and refreshes duplicates", async () => {
+  await withServer(async (port) => {
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.exchangeRates = [{ id: "ER-V2-1", baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.3, rateDate: "2026-08-11", source: "first", createdAt: "2026-08-11T00:00:00Z" }];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+    const payload = {
+      pricingEngine: "bom_v2", entityId: "lds", clientName: "V2 Client", projectName: "V2 Board", quoteDate: "2026-08-11", currency: "RSD", vatMode: "exclusive", vatRate: 20,
+      fxSnapshot: { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 999, rateDate: "2026-08-11", source: "client" },
+      bomLines: [{ id: "CLIENT-BOM", costAmount: 1, priceVersionId: "CLIENT-PV" }],
+      calculationSnapshot: { totalIncludingVat: 1 },
+      costAmount: 777,
+      costUnitPriceSource: 888,
+      sourceSaleUnitPrice: 999,
+      saleUnitPrice: 1000,
+      minimumCharge: 1001,
+      priceVersionId: "CLIENT-TOP-PV",
+      supplierSnapshot: { name: "client-top" },
+      internalNotes: "client secret",
+      items: [{ id: "CLIENT-ITEM", name: "PVC UV Board", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1, costAmount: 1, priceVersionId: "CLIENT-PV", supplierSnapshot: { name: "client" } }],
+    };
+
+    const calculatedResponse = await apiFetch(port, "/api/advertising/quotes/calculate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    assert.equal(calculatedResponse.status, 200);
+    const calculated = await calculatedResponse.json();
+    assert.equal(calculated.pricingEngine, "bom_v2");
+    assert.equal(calculated.fxSnapshot.rate, 117.3);
+    assert.ok(calculated.bomLines.every(line => line.id !== "CLIENT-BOM" && line.priceVersionId !== "CLIENT-PV"));
+
+    const createResponse = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    assert.equal(createResponse.status, 201);
+    const created = await createResponse.json();
+    assert.equal(created.pricingEngine, "bom_v2");
+    assert.deepEqual(created.fxSnapshot, { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.3, rateDate: "2026-08-11", source: "first" });
+    assert.equal(created.entitySnapshot.code, "LDS");
+    assert.deepEqual(created.termsSnapshot, {});
+    assert.ok(created.bomLines.length >= 2);
+    assert.ok(created.bomLines.every(line => line.id !== "CLIENT-BOM" && line.priceVersionId !== "CLIENT-PV"));
+    const rawCreated = JSON.parse(fs.readFileSync(tempDataFile, "utf8")).advertisingQuotes.find(quote => quote.id === created.id);
+    for (const key of ["costAmount", "costUnitPriceSource", "sourceSaleUnitPrice", "saleUnitPrice", "minimumCharge", "priceVersionId", "supplierSnapshot", "internalNotes"]) {
+      assert.equal(Object.prototype.hasOwnProperty.call(rawCreated, key), false, `client-owned ${key} must not persist`);
+    }
+
+    const changed = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    changed.exchangeRates.push({ id: "ER-V2-2", baseCurrency: "EUR", quoteCurrency: "RSD", rate: 118.8, rateDate: "2026-08-11", source: "second", createdAt: "2026-08-12T00:00:00Z" });
+    fs.writeFileSync(tempDataFile, JSON.stringify(changed, null, 2));
+
+    const updateResponse = await apiFetch(port, `/api/advertising/quotes/${encodeURIComponent(created.id)}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, projectName: "V2 Board Updated" }) });
+    assert.equal(updateResponse.status, 200);
+    const updated = await updateResponse.json();
+    assert.equal(updated.fxSnapshot.rate, 117.3);
+    assert.equal(updated.fxSnapshot.source, "first");
+
+    const duplicateResponse = await apiFetch(port, `/api/advertising/quotes/${encodeURIComponent(created.id)}/duplicate`, { method: "POST" });
+    assert.equal(duplicateResponse.status, 201);
+    const duplicate = await duplicateResponse.json();
+    assert.notEqual(duplicate.id, created.id);
+    assert.equal(duplicate.fxSnapshot.rate, 118.8);
+    assert.equal(duplicate.fxSnapshot.source, "second");
+  });
+});
+
+test("advertising price history route requires authentication and management permission", async () => {
+  const { requireRoutePermission } = require("../server/services/authMiddleware");
+  assert.throws(
+    () => requireRoutePermission({ userId: "staff", permissions: new Set(["advertising_quote.view"]), isPublicPath: false }, "GET", "/api/advertising/price-versions"),
+    error => error.statusCode === 403 && /advertising_catalog\.manage/.test(error.message)
+  );
+  await withServer(async (port) => {
+    const anonymous = await publicFetch(port, "/api/advertising/price-versions?catalogType=materials&catalogId=pvc-3");
+    assert.equal(anonymous.status, 401);
+    const invalid = await apiFetch(port, "/api/advertising/price-versions?catalogType=rules&catalogId=pvc-3");
+    assert.equal(invalid.status, 400);
+    const response = await apiFetch(port, "/api/advertising/price-versions?catalogType=materials&catalogId=pvc-3");
+    assert.equal(response.status, 200);
+    const versions = await response.json();
+    assert.ok(Array.isArray(versions) && versions.length >= 1);
+  });
+});
+
 test("advertising API denies anonymous access", async () => {
   await withServer(async (port) => {
     const response = await publicFetch(port, "/api/advertising/catalog");

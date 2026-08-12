@@ -52,6 +52,7 @@ function isPublicPath(pathname) {
 // 格式：[method, pathname_pattern, permission_code]
 // pathname_pattern 支持字符串精确匹配或正则
 const ROUTE_PERMISSION_MAP = [
+  ['GET',    /^\/api\/advertising\/price-versions$/, 'advertising_catalog.manage'],
   ['GET',    /^\/api\/advertising\/(catalog|materials|processes|rules|services|entities)$/, 'advertising_quote.view'],
   ['GET',    /^\/api\/advertising\/quotes(\/.*)?$/, 'advertising_quote.view'],
   ['GET',    /^\/api\/advertising\/(adjustment-logs|quotes\/[^/]+\/adjustment-logs)$/, 'advertising_quote.audit_view'],
