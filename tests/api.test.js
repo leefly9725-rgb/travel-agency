@@ -4657,6 +4657,9 @@ test("advertising quotation API calculates, saves, reopens and lists quotes", as
     const catalog = await catalogResponse.json();
     assert.equal(Object.prototype.hasOwnProperty.call(catalog, "priceVersions"), false);
     assert.ok(catalog.materials.some((item) => item.activePriceVersion));
+    const floorFixture = catalog.materials.find((item) => item.id === "pvc-3");
+    assert.equal(Object.prototype.hasOwnProperty.call(floorFixture, "defaultMinimumFee"), true);
+    assert.equal(Object.prototype.hasOwnProperty.call(floorFixture, "minimumSalePrice"), true);
     assert.ok(catalog.materials.some((item) => item.id === "pvc-3"));
     assert.ok(catalog.processes.some((item) => item.id === "uv"));
     for (const resource of ["materials", "processes", "rules", "services", "entities"]) {
@@ -4749,6 +4752,56 @@ test("advertising quotation API calculates, saves, reopens and lists quotes", as
       exportResponse.headers.get("content-type"),
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     );
+  });
+});
+
+test("advertising catalog API exposes price floors only to catalog managers", async (t) => {
+  const originalFetch = global.fetch;
+  const originalUrl = process.env.SUPABASE_URL;
+  const originalServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  process.env.SUPABASE_URL = "https://auth-fixture.supabase.co";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "server-only-test-key";
+  const identities = {
+    "ordinary-token": { id: "catalog-ordinary", permissions: ["advertising_quote.view"] },
+    "cost-token": { id: "catalog-cost", permissions: ["advertising_quote.view", "advertising_quote.cost_view"] },
+    "manager-token": { id: "catalog-manager", permissions: ["advertising_quote.view", "advertising_catalog.manage"] },
+  };
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (!target.startsWith("https://auth-fixture.supabase.co/")) return originalFetch(url, options);
+    if (target.endsWith("/auth/v1/user")) {
+      const token = String(options.headers?.Authorization || "").replace(/^Bearer\s+/, "");
+      return new Response(JSON.stringify({ id: identities[token]?.id }), { status: identities[token] ? 200 : 401 });
+    }
+    const userId = new URL(target).searchParams.get("user_id")?.replace(/^eq\./, "");
+    const identity = Object.values(identities).find((entry) => entry.id === userId);
+    return new Response(JSON.stringify([{ roles: { role_permissions: (identity?.permissions || []).map((code) => ({ permissions: { code } })) } }]), { status: 200 });
+  };
+  t.after(() => {
+    global.fetch = originalFetch;
+    if (originalUrl === undefined) delete process.env.SUPABASE_URL; else process.env.SUPABASE_URL = originalUrl;
+    if (originalServiceKey === undefined) delete process.env.SUPABASE_SERVICE_ROLE_KEY; else process.env.SUPABASE_SERVICE_ROLE_KEY = originalServiceKey;
+  });
+
+  await withServer(async (port) => {
+    const readCatalog = async (token) => {
+      const response = await originalFetch(`http://127.0.0.1:${port}/api/advertising/catalog`, { headers: { Authorization: `Bearer ${token}` } });
+      assert.equal(response.status, 200);
+      return response.json();
+    };
+    for (const token of ["ordinary-token", "cost-token"]) {
+      const catalog = await readCatalog(token);
+      const material = catalog.materials.find((item) => item.id === "pvc-3");
+      const process = catalog.processes.find((item) => item.id === "uv");
+      assert.equal(material.minimumSalePrice, undefined, token);
+      assert.equal(process.defaultMinimumFee, undefined, token);
+      assert.equal(material.activePriceVersion, undefined, token);
+    }
+    const manager = await readCatalog("manager-token");
+    assert.equal(manager.materials.find((item) => item.id === "pvc-3").minimumSalePrice, 9.5);
+    assert.equal(manager.processes.find((item) => item.id === "uv").defaultMinimumFee, 35);
+    assert.ok(manager.materials.find((item) => item.id === "pvc-3").activePriceVersion);
+    assert.equal(manager.priceVersions, undefined);
   });
 });
 
