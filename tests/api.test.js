@@ -4996,6 +4996,139 @@ test("advertising V2 API owns FX and price evidence, freezes updates, and refres
   });
 });
 
+test("advertising V2 uses one server-owned quote date for date-less create, update, and calculate", async () => {
+  await withServer(async (port) => {
+    const today = new Date().toISOString().slice(0, 10);
+    const future = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    const baseline = { id: "PV-MATERIAL-CURRENT-DATE", catalogType: "materials", catalogId: "pvc-3", versionNumber: 1, currency: "EUR", costUnitPrice: 9.5, saleUnitPrice: 14.25, minimumSaleUnitPrice: 9.5, minimumCharge: 0, effectiveFrom: "2026-01-01", changeReason: "baseline" };
+    data.advertisingPriceVersions = [
+      baseline,
+      { id: "PV-PROCESS-CURRENT-DATE", catalogType: "processes", catalogId: "uv", versionNumber: 1, currency: "EUR", costUnitPrice: 15.5, saleUnitPrice: 23.25, minimumSaleUnitPrice: 0, minimumCharge: 35, effectiveFrom: "2026-01-01", changeReason: "baseline" },
+      {
+      ...baseline,
+      id: "PV-MATERIAL-FUTURE-DATE",
+      versionNumber: baseline.versionNumber + 100,
+      saleUnitPrice: 999,
+      effectiveFrom: future,
+      changeReason: "future must stay inactive",
+      },
+    ];
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+    const dateLess = {
+      pricingEngine: "bom_v2", entityId: "lds", clientName: "Date-less", projectName: "Canonical date", currency: "EUR", vatMode: "not_applicable",
+      items: [{ name: "PVC", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }],
+    };
+
+    const createResponse = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(dateLess) });
+    assert.equal(createResponse.status, 201);
+    const created = await createResponse.json();
+    assert.equal(created.quoteDate, today);
+    assert.equal(created.bomLines.find((line) => line.catalogType === "materials").saleUnitPriceSource, baseline.saleUnitPrice);
+
+    const forgedFuture = { ...dateLess, projectName: "Canonical update", quoteDate: future };
+    const updateResponse = await apiFetch(port, `/api/advertising/quotes/${created.id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(forgedFuture) });
+    assert.equal(updateResponse.status, 200);
+    const updated = await updateResponse.json();
+    assert.equal(updated.quoteDate, today);
+    assert.equal(updated.bomLines.find((line) => line.catalogType === "materials").saleUnitPriceSource, baseline.saleUnitPrice);
+
+    const calculateResponse = await apiFetch(port, `/api/advertising/quotes/${created.id}/calculate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(forgedFuture) });
+    assert.equal(calculateResponse.status, 200);
+    const calculated = await calculateResponse.json();
+    assert.equal(calculated.bomLines.find((line) => line.catalogType === "materials").sourceSaleUnitPrice, baseline.saleUnitPrice);
+
+    const raw = JSON.parse(fs.readFileSync(tempDataFile, "utf8")).advertisingQuotes.find((quote) => quote.id === created.id);
+    assert.equal(raw.quoteDate, today);
+  });
+});
+
+test("date-less V2 create sends the canonical date and date-effective evidence to the strict remote RPC", async (t) => {
+  const originalFetch = global.fetch;
+  const originalEnvironment = Object.fromEntries(
+    ["SUPABASE_URL", "SUPABASE_ANON_KEY", "SUPABASE_SERVICE_ROLE_KEY"].map((key) => [key, process.env[key]])
+  );
+  process.env.SUPABASE_URL = "https://strict-date-contract.supabase.co";
+  process.env.SUPABASE_ANON_KEY = "strict-date-anon-dummy";
+  process.env.SUPABASE_SERVICE_ROLE_KEY = "strict-date-service-role-dummy";
+  t.after(() => {
+    global.fetch = originalFetch;
+    for (const [key, value] of Object.entries(originalEnvironment)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+  });
+
+  const today = new Date().toISOString().slice(0, 10);
+  const future = `${Number(today.slice(0, 4)) + 1}${today.slice(4)}`;
+  const currentMaterialVersion = {
+    id: "PV-REMOTE-MATERIAL-CURRENT", catalog_type: "materials", catalog_id: "pvc-3", version_number: 1,
+    currency: "EUR", cost_unit_price: 9.5, sale_unit_price: 14.25, minimum_sale_unit_price: 9.5,
+    minimum_charge: 0, effective_from: "2026-01-01", change_reason: "baseline",
+  };
+  const currentProcessVersion = {
+    id: "PV-REMOTE-PROCESS-CURRENT", catalog_type: "processes", catalog_id: "uv", version_number: 1,
+    currency: "EUR", cost_unit_price: 15.5, sale_unit_price: 23.25, minimum_sale_unit_price: 0,
+    minimum_charge: 35, effective_from: "2026-01-01", change_reason: "baseline",
+  };
+  const futureMaterialVersion = {
+    ...currentMaterialVersion, id: "PV-REMOTE-MATERIAL-FUTURE", version_number: 2,
+    sale_unit_price: 999, effective_from: future, change_reason: "future",
+  };
+  let rpcBody;
+  global.fetch = async (input, options = {}) => {
+    const requestUrl = String(input?.url || input);
+    if (requestUrl.startsWith("http://127.0.0.1:")) return originalFetch(input, options);
+    assert.ok(requestUrl.startsWith(`${process.env.SUPABASE_URL}/rest/v1/`), requestUrl);
+    const pathname = requestUrl.slice(`${process.env.SUPABASE_URL}/rest/v1/`.length);
+    const response = (payload) => new Response(JSON.stringify(payload), { status: 200, headers: { "Content-Type": "application/json" } });
+    if (pathname === "templates" || pathname.startsWith("templates?") || pathname === "template_items" || pathname.startsWith("template_items?")) return response([]);
+    if (pathname.startsWith("advertising_materials?")) return response([{ id: "pvc-3", is_active: true, data: { nameZh: "PVC", nameEn: "PVC", specification: "1000", unit: "sqm", sheetWidthMm: 1220, sheetHeightMm: 2440 } }]);
+    if (pathname.startsWith("advertising_processes?")) return response([{ id: "uv", is_active: true, data: { nameZh: "UV", nameEn: "UV", unit: "sqm", supportsDoubleSide: true } }]);
+    if (pathname.startsWith("advertising_material_process_rules?")) return response([{ id: "pvc-uv", material_id: "pvc-3", process_id: "uv", is_active: true, data: {} }]);
+    if (pathname.startsWith("advertising_service_catalog?")) return response([]);
+    if (pathname.startsWith("quotation_entities_or_letterheads?")) return response([{ id: "lds", code: "LDS", is_active: true, data: { code: "LDS", nameZh: "LDS", nameEn: "LDS", quotePrefix: "LDS-ADV" } }]);
+    if (pathname.startsWith("advertising_price_versions?")) return response([futureMaterialVersion, currentMaterialVersion, currentProcessVersion]);
+    if (pathname.startsWith("exchange_rates?")) {
+      assert.match(pathname, new RegExp(`rate_date=lte\\.${today}`));
+      return response([{ id: "ER-REMOTE-DATE", base_currency: "EUR", quote_currency: "RSD", rate: 117.3, rate_date: today, source: "strict-test" }]);
+    }
+    if (pathname === "rpc/save_advertising_quote_v2") {
+      rpcBody = JSON.parse(options.body);
+      assert.equal(rpcBody.p_quote.quoteDate, today);
+      assert.equal(rpcBody.p_fx_snapshot.rateDate, today);
+      const materialLine = rpcBody.p_bom_lines.find((line) => line.catalogType === "materials");
+      assert.equal(materialLine.priceVersionId, currentMaterialVersion.id);
+      assert.equal(materialLine.saleUnitPriceSource, currentMaterialVersion.sale_unit_price);
+      assert.notEqual(materialLine.priceVersionId, futureMaterialVersion.id);
+      return response({
+        id: rpcBody.p_quote.id, quote_number: "LDS-ADV-REMOTE-0001", entity_id: rpcBody.p_quote.entityId,
+        status: rpcBody.p_quote.status || "draft", mode: rpcBody.p_quote.mode, client_name: rpcBody.p_quote.clientName,
+        project_name: rpcBody.p_quote.projectName, currency: rpcBody.p_quote.currency, owner_id: rpcBody.p_quote.ownerId,
+        pricing_engine: "bom_v2", fx_snapshot: rpcBody.p_fx_snapshot, calculation_snapshot: rpcBody.p_quote.calculationSnapshot,
+        entity_snapshot: rpcBody.p_quote.entitySnapshot, terms_snapshot: rpcBody.p_quote.termsSnapshot,
+        data: rpcBody.p_quote, created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      });
+    }
+    throw new Error(`Unexpected remote request: ${requestUrl}`);
+  };
+
+  await withServer(async (port) => {
+    const response = await apiFetch(port, "/api/advertising/quotes", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        pricingEngine: "bom_v2", entityId: "lds", clientName: "Remote date-less", projectName: "Strict RPC",
+        currency: "EUR", vatMode: "not_applicable",
+        items: [{ name: "PVC", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }],
+      }),
+    });
+    const responsePayload = await response.json();
+    assert.equal(response.status, 201, JSON.stringify(responsePayload));
+    assert.equal(responsePayload.quoteDate, today);
+    assert.ok(rpcBody, "strict V2 RPC must be called");
+  });
+});
+
 test("advertising V2 rejects non-array item and group containers at the API boundary", async () => {
   await withServer(async (port) => {
     for (const invalid of [

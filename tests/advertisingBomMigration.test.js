@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
+const vm = require("node:vm");
 const { spawnSync } = require("node:child_process");
 const {
   TEST_REF,
@@ -13,6 +14,7 @@ const root = path.join(__dirname, "..");
 const sqlPath = path.join(root, "scripts", "supabase-migrate-v14-advertising-intelligent-bom-v2.sql");
 const v13SqlPath = path.join(root, "scripts", "supabase-migrate-v13-advertising-quotations.sql");
 const guardPath = path.join(root, "scripts", "verify-advertising-bom-v2-target.js");
+const verifierPath = path.join(root, "scripts", "verify-advertising-bom-v2.js");
 
 function normalizedSql() {
   return fs.readFileSync(sqlPath, "utf8").replace(/\s+/g, " ").trim();
@@ -26,6 +28,87 @@ function functionBody(sql, functionName, schema = "public") {
   assert.notEqual(end, -1, `unterminated ${functionName}`);
   return sql.slice(start, end + 3).replace(/\s+/g, " ");
 }
+
+test("focused verifier scrubs hostile database ambient values before spawning its local test command", () => {
+  const hostileEnvironment = {
+    PATH: process.env.PATH,
+    SUPABASE_URL: "https://production.example",
+    SUPABASE_ANON_KEY: "anon",
+    SUPABASE_SERVICE_ROLE_KEY: "service",
+    SUPABASE_TEST_URL: "https://test.example",
+    NEXT_PUBLIC_SUPABASE_URL: "https://browser.example",
+    VITE_SUPABASE_KEY: "browser-key",
+    DATABASE_URL: "postgres://database",
+    DATABASE_CONNECTION_STRING: "postgres://database-connection",
+    DB_URL: "postgres://db-url",
+    POSTGRES_URL: "postgres://postgres",
+    PGURI: "postgres://pguri",
+    PGHOST: "db.example",
+    PGPORT: "5432",
+    PGPASSWORD: "password",
+    SAFE_TEST_MARKER: "retained",
+  };
+  let invocation;
+  let exitStatus;
+  const source = fs.readFileSync(verifierPath, "utf8");
+
+  vm.runInNewContext(source, {
+    require(specifier) {
+      assert.equal(specifier, "node:child_process");
+      return { spawnSync(command, args, options) { invocation = { command, args: Array.from(args), options }; return { status: 0 }; } };
+    },
+    process: {
+      execPath: process.execPath,
+      env: hostileEnvironment,
+      exit(status) { exitStatus = status; },
+    },
+  }, { filename: verifierPath });
+
+  assert.equal(exitStatus, 0);
+  assert.equal(invocation.command, process.execPath);
+  assert.deepEqual(invocation.args.slice(0, 2), ["--test", "--test-isolation=none"]);
+  assert.deepEqual(invocation.args.slice(2), [
+    "tests/advertisingBomCalculator.test.js",
+    "tests/advertisingBomMigration.test.js",
+    "tests/advertisingFxSnapshot.test.js",
+    "tests/advertisingQuotationCalculator.test.js",
+    "tests/advertisingQuoteStore.test.js",
+    "tests/advertisingSecurity.test.js",
+    "tests/advertisingQuotationExport.test.js",
+    "tests/api.test.js",
+  ]);
+  assert.equal(invocation.options.stdio, "inherit");
+  assert.equal(invocation.options.env.SAFE_TEST_MARKER, "retained");
+  assert.equal(invocation.options.env.PATH, process.env.PATH);
+  for (const key of Object.keys(invocation.options.env)) {
+    assert.doesNotMatch(key, /SUPABASE|DATABASE|POSTGRES|POSTGREST|PGRST|^PG|^DB(?:_|$)/i);
+  }
+});
+
+test("focused verifier remains local when launched with hostile ambient Supabase credentials", () => {
+  if (process.env.TASK6_HOSTILE_VERIFIER_PROBE === "1") return;
+  const result = spawnSync(process.execPath, [verifierPath], {
+    cwd: root,
+    env: {
+      ...process.env,
+      TASK6_HOSTILE_VERIFIER_PROBE: "1",
+      SUPABASE_URL: "http://127.0.0.1:1",
+      SUPABASE_ANON_KEY: "hostile-anon-dummy",
+      SUPABASE_SERVICE_ROLE_KEY: "hostile-service-role-dummy",
+      SUPABASE_TEST_URL: "http://127.0.0.1:1",
+      SUPABASE_TEST_SERVICE_ROLE_KEY: "hostile-test-service-role-dummy",
+      DATABASE_URL: "postgres://127.0.0.1:1/hostile",
+      PGHOST: "127.0.0.1",
+      PGPORT: "1",
+    },
+    encoding: "utf8",
+    timeout: 30000,
+  });
+
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  assert.match(result.stdout, /fail 0/);
+  assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Supabase 请求失败|ECONNREFUSED|hostile-service-role-dummy/);
+});
 
 test("offline target guard accepts only the exact LDS-OPS-TEST host", () => {
   assert.equal(TEST_REF, "uidfqpksuvebsrbnlyzl");

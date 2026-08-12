@@ -24,10 +24,13 @@ Run all checks locally from the candidate tree:
 npm run test:advertising-bom-v2
 npm test
 git diff --check
-rg -n "SUPABASE_SERVICE_ROLE_KEY|serviceRoleKey|ymbwmoxydgcmawkttbgi" web api
+rg -n "SUPABASE_SERVICE_ROLE_KEY|serviceRoleKey|ymbwmoxydgcmawkttbgi" web api server scripts
+rg -n "hostile-(anon|service-role)-dummy|strict-date-(anon|service-role)-dummy" tests
 ```
 
-The focused and full suites must have zero failures, skips, cancellations, and unfinished tests. `git diff --check` must produce no output. No service-role secret name or literal value may appear in `web/`. Any existing server-side `serviceRoleKey` reference in `api/` must remain proxy/config behavior and must not contain a literal key. Production ref `ymbwmoxydgcmawkttbgi` must not appear in executable browser or API code.
+The focused and full suites must have zero failures, skips, cancellations, and unfinished tests. `git diff --check` must produce no output. Inspect every match in `web/`, `api/`, `server/`, and `scripts/`: no service-role literal may exist, server/script matches must be config lookup, environment scrubbing, or offline target-guard behavior, and production ref `ymbwmoxydgcmawkttbgi` must not appear in executable browser or API code. The second scan deliberately finds hostile dummy values used by local-only tests; confirm every match remains under `tests/`, is non-secret test data, and is never copied into application code.
+
+The focused verifier must also be proven fail-closed under hostile ambient database configuration. It removes every Supabase, database, Postgres/PostgREST, `PG*`, and `DB_*` variable from the environment passed to child tests. A verifier run that attempts any remote database request blocks release preparation.
 
 ## 3. Browser and export matrix
 

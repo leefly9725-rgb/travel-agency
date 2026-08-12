@@ -13,10 +13,19 @@ const files = [
   "tests/api.test.js",
 ];
 
+const databaseEnvironmentKey = (key) => (
+  /SUPABASE|DATABASE|POSTGRES|POSTGREST|PGRST/i.test(key) ||
+  /^PG[A-Z0-9_]*$/i.test(key) ||
+  /^DB(?:_|$)/i.test(key)
+);
+const localEnvironment = Object.fromEntries(
+  Object.entries(process.env).filter(([key]) => !databaseEnvironmentKey(key)),
+);
+
 const result = spawnSync(
   process.execPath,
   ["--test", "--test-isolation=none", ...files],
-  { stdio: "inherit" },
+  { stdio: "inherit", env: localEnvironment },
 );
 
 process.exit(result.status == null ? 1 : result.status);
