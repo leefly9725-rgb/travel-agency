@@ -80,6 +80,23 @@ test("builds material, process, labor, installation, transport, design, and disc
   assert.equal(result.bomLines[1].quantity, 4);
   assert.equal(result.bomLines[1].priceVersionId, "PV-P-1");
   assert.equal(result.fxSnapshot.rate, 117.2);
+  const discount = result.bomLines.find(line => line.lineType === "discount");
+  assert.equal(discount.sourceSaleUnitPrice, 0);
+  assert.ok(discount.saleAmount < 0);
+});
+
+test("preserves referenced source sale price when a higher minimum price is applied", () => {
+  const priceVersions = catalog.priceVersions.map((version) => (
+    version.id === "PV-M-2" ? { ...version, minimumSaleUnitPrice: 20 } : version
+  ));
+
+  const result = calculateAdvertisingBomQuotation(input({ discountPercent: 0, fixedDiscount: 0 }), { ...catalog, priceVersions }, { fxSnapshot });
+  const material = result.bomLines.find((line) => line.lineType === "material");
+
+  assert.equal(material.sourceCostUnitPrice, 10);
+  assert.equal(material.sourceSaleUnitPrice, 16);
+  assert.equal(material.saleUnitPrice, 20);
+  assert.equal(material.saleAmount, 40);
 });
 
 test("uses the UV minimum charge and never doubles material area for two sides", () => {

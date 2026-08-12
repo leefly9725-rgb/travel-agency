@@ -178,6 +178,7 @@ test("remote V2 save uses the V2 RPC and remote read fetches BOM rows", async (t
 test("calculator output is normalized into the strict V2 RPC ownership contract", async (t) => {
   const originalFetch = global.fetch;
   let rpcBody;
+  let catalog;
   global.fetch = async (url, options = {}) => {
     if (!String(url).includes("/rpc/save_advertising_quote_v2")) return new Response("[]", { status: 200 });
     rpcBody = JSON.parse(options.body);
@@ -197,28 +198,44 @@ test("calculator output is normalized into the strict V2 RPC ownership contract"
     assert.ok(rpcBody.p_quote.items.every((item) => item.quoteId === quoteId));
     assert.ok(rpcBody.p_bom_lines.every((line) => /^ABL-/.test(line.id) && line.quoteId === quoteId));
     assert.ok(rpcBody.p_bom_lines.every((line) => line.quoteItemId === null || itemIds.has(line.quoteItemId)));
-    assert.ok(rpcBody.p_bom_lines.every((line) => line.costUnitPriceSource !== undefined && line.saleUnitPriceSource !== undefined));
+    assert.ok(rpcBody.p_bom_lines.every((line) => line.costUnitPriceSource >= 0 && line.saleUnitPriceSource >= 0));
     assert.ok(rpcBody.p_bom_lines.every((line) => Number.isFinite(line.quantity) && Number.isFinite(line.costAmount) && Number.isFinite(line.saleAmount)));
     assert.ok(rpcBody.p_bom_lines.every((line) => line.sourceCurrency && line.quoteCurrency === rpcBody.p_quote.currency));
-    assert.ok(rpcBody.p_bom_lines.every((line) => line.catalogType && line.catalogId && line.priceVersionId));
+    const versions = new Map(catalog.priceVersions.map((version) => [version.id, version]));
+    for (const line of rpcBody.p_bom_lines) {
+      if (line.lineType === "discount") {
+        assert.equal(line.quoteItemId, null);
+        assert.equal(line.catalogType, null);
+        assert.equal(line.catalogId, null);
+        assert.equal(line.priceVersionId, null);
+        assert.equal(line.costUnitPriceSource, 0);
+        assert.equal(line.saleUnitPriceSource, 0);
+        assert.ok(line.saleAmount <= 0);
+      } else {
+        const version = versions.get(line.priceVersionId);
+        assert.ok(version && line.catalogType && line.catalogId);
+        assert.equal(line.costUnitPriceSource, version.costUnitPrice);
+        assert.equal(line.saleUnitPriceSource, version.saleUnitPrice);
+      }
+    }
     assert.ok(rpcBody.p_bom_lines.every((line) => line.itemId === undefined && line.sourceCostUnitPrice === undefined && line.sourceSaleUnitPrice === undefined));
     return new Response(JSON.stringify({ id: quoteId, quote_number: "LDS-ADV-2026-0002", pricing_engine: "bom_v2", fx_snapshot: rpcBody.p_fx_snapshot, data: rpcBody.p_quote }), { status: 200 });
   };
   t.after(() => { global.fetch = originalFetch; });
   const store = createAdvertisingQuoteStore({ data: {}, saveData: () => assert.fail("must not write local"), supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
-  const catalog = {
+  catalog = {
     materials: [{ id: "pvc-3", nameZh: "PVC", unit: "sqm", isActive: true }],
     processes: [{ id: "uv", nameZh: "UV", unit: "sqm", supportsDoubleSide: true, isActive: true }],
     services: [],
     rules: [{ materialId: "pvc-3", processId: "uv", isActive: true }],
     priceVersions: [
-      { id: "PV-M", catalogType: "materials", catalogId: "pvc-3", versionNumber: 1, currency: "EUR", costUnitPrice: 9, saleUnitPrice: 14, minimumSaleUnitPrice: 9, minimumCharge: 0, effectiveFrom: "2026-01-01", changeReason: "initial" },
+      { id: "PV-M", catalogType: "materials", catalogId: "pvc-3", versionNumber: 1, currency: "EUR", costUnitPrice: 9, saleUnitPrice: 14, minimumSaleUnitPrice: 18, minimumCharge: 0, effectiveFrom: "2026-01-01", changeReason: "initial" },
       { id: "PV-P", catalogType: "processes", catalogId: "uv", versionNumber: 1, currency: "EUR", costUnitPrice: 10, saleUnitPrice: 20, minimumSaleUnitPrice: 0, minimumCharge: 35, effectiveFrom: "2026-01-01", changeReason: "initial" },
     ],
   };
   const fxSnapshot = { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.2, rateDate: "2026-08-01", source: "test" };
   const calculated = calculateAdvertisingBomQuotation({
-    pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency: "RSD", vatMode: "exclusive", vatRate: 20,
+    pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency: "RSD", vatMode: "exclusive", vatRate: 20, discountPercent: 10,
     clientName: "Client", projectName: "Project", entityId: "lds",
     items: [{ bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }],
   }, catalog, { userId: "11111111-1111-1111-1111-111111111111", fxSnapshot });

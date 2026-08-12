@@ -121,13 +121,14 @@ function supplierSnapshot(catalogItem, priceVersion) {
 
 function buildCatalogLine({ lineType, item, catalogType, catalogItem, priceVersion, quantity, quoteCurrency, fxSnapshot, lineNumber }) {
   const sourceCostUnitPrice = positive(priceVersion.costUnitPrice);
-  const sourceSaleUnitPrice = Math.max(
+  const sourceSaleUnitPrice = positive(priceVersion.saleUnitPrice);
+  const appliedSourceSaleUnitPrice = Math.max(
     positive(priceVersion.saleUnitPrice),
     positive(priceVersion.minimumSaleUnitPrice)
   );
   const sourceMinimumCharge = positive(priceVersion.minimumCharge);
   const costUnitPrice = convertBomMoney(sourceCostUnitPrice, priceVersion.currency, quoteCurrency, fxSnapshot);
-  const saleUnitPrice = convertBomMoney(sourceSaleUnitPrice, priceVersion.currency, quoteCurrency, fxSnapshot);
+  const saleUnitPrice = convertBomMoney(appliedSourceSaleUnitPrice, priceVersion.currency, quoteCurrency, fxSnapshot);
   const minimumCharge = convertBomMoney(sourceMinimumCharge, priceVersion.currency, quoteCurrency, fxSnapshot);
   const costAmount = round(quantity * costUnitPrice);
   const saleAmount = round(Math.max(quantity * saleUnitPrice, minimumCharge));
@@ -218,7 +219,7 @@ function buildDiscountLine(discountAmount, quoteCurrency, lineNumber) {
     supplierSnapshot: null,
     sourceCurrency: quoteCurrency,
     sourceCostUnitPrice: 0,
-    sourceSaleUnitPrice: -discountAmount,
+    sourceSaleUnitPrice: 0,
     sourceMinimumSaleUnitPrice: 0,
     sourceMinimumCharge: 0,
     costUnitPrice: 0,
