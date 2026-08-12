@@ -93,10 +93,10 @@ function priceVersionRow(row) {
 }
 
 function bomLineRow(row) {
-  return {
+  const line = {
     id: row.id,
     quoteId: row.quoteId || row.quote_id,
-    quoteItemId: row.quoteItemId ?? row.quote_item_id ?? null,
+    quoteItemId: row.quoteItemId ?? row.quote_item_id ?? row.itemId ?? null,
     position: Number(row.position || 0),
     lineType: row.lineType || row.line_type,
     catalogType: row.catalogType ?? row.catalog_type ?? null,
@@ -107,18 +107,58 @@ function bomLineRow(row) {
     quantity: row.quantity == null ? undefined : Number(row.quantity),
     sourceCurrency: row.sourceCurrency || row.source_currency,
     quoteCurrency: row.quoteCurrency || row.quote_currency,
-    costUnitPriceSource: row.costUnitPriceSource == null && row.cost_unit_price_source == null ? undefined : Number(row.costUnitPriceSource ?? row.cost_unit_price_source),
-    saleUnitPriceSource: row.saleUnitPriceSource == null && row.sale_unit_price_source == null ? undefined : Number(row.saleUnitPriceSource ?? row.sale_unit_price_source),
+    costUnitPriceSource: row.costUnitPriceSource == null && row.cost_unit_price_source == null && row.sourceCostUnitPrice == null ? undefined : Number(row.costUnitPriceSource ?? row.cost_unit_price_source ?? row.sourceCostUnitPrice),
+    saleUnitPriceSource: row.saleUnitPriceSource == null && row.sale_unit_price_source == null && row.sourceSaleUnitPrice == null ? undefined : Number(row.saleUnitPriceSource ?? row.sale_unit_price_source ?? row.sourceSaleUnitPrice),
     costAmount: row.costAmount == null && row.cost_amount == null ? undefined : Number(row.costAmount ?? row.cost_amount),
     saleAmount: row.saleAmount == null && row.sale_amount == null ? undefined : Number(row.saleAmount ?? row.sale_amount),
     customerVisible: row.customerVisible ?? row.customer_visible ?? true,
     supplierSnapshot: row.supplierSnapshot || row.supplier_snapshot || {},
     internalNotes: row.internalNotes ?? row.internal_notes ?? "",
   };
+  return Object.fromEntries(Object.entries(line).filter(([, value]) => value !== undefined));
+}
+
+function normalizeV2QuotePayload(payload, { regenerateIds = false } = {}) {
+  const quoteId = regenerateIds || !String(payload.id || "").trim() ? `ADV-${crypto.randomUUID()}` : payload.id;
+  const itemIdMap = new Map();
+  const items = (payload.items || []).map((item, index) => {
+    const sourceId = item.id || `advertising-item-${index + 1}`;
+    const id = regenerateIds || !item.id || /^advertising-item-\d+$/.test(String(item.id)) ? `ADI-${crypto.randomUUID()}` : item.id;
+    itemIdMap.set(String(sourceId), id);
+    return { ...item, id, quoteId };
+  });
+  const bomLines = (payload.bomLines || []).map((line, index) => {
+    const sourceItemId = line.quoteItemId ?? line.itemId ?? null;
+    const quoteItemId = sourceItemId == null ? null : (itemIdMap.get(String(sourceItemId)) || sourceItemId);
+    const id = regenerateIds || !line.id || /^bom-line-\d+$/.test(String(line.id)) ? `ABL-${crypto.randomUUID()}` : line.id;
+    return bomLineRow({
+      id,
+      quoteId,
+      quoteItemId,
+      position: line.position ?? Math.max(0, Number(line.lineNumber || index + 1) - 1),
+      lineType: line.lineType,
+      catalogType: line.catalogType ?? null,
+      catalogId: line.catalogId ?? null,
+      priceVersionId: line.priceVersionId ?? null,
+      descriptionSnapshot: line.descriptionSnapshot,
+      unitSnapshot: line.unitSnapshot,
+      quantity: line.quantity,
+      sourceCurrency: line.sourceCurrency,
+      quoteCurrency: line.quoteCurrency,
+      costUnitPriceSource: line.costUnitPriceSource ?? line.sourceCostUnitPrice,
+      saleUnitPriceSource: line.saleUnitPriceSource ?? line.sourceSaleUnitPrice,
+      costAmount: line.costAmount,
+      saleAmount: line.saleAmount,
+      customerVisible: line.customerVisible ?? true,
+      supplierSnapshot: line.supplierSnapshot || {},
+      internalNotes: line.internalNotes || "",
+    });
+  });
+  return { ...payload, id: quoteId, items, bomLines };
 }
 
 function remoteQuoteRow(row, bomLines = undefined) {
-  return {
+  const quote = {
     ...(row.data || {}),
     id: row.id,
     quoteNumber: row.quote_number,
@@ -132,16 +172,35 @@ function remoteQuoteRow(row, bomLines = undefined) {
     calculationSnapshot: row.calculation_snapshot || {},
     entitySnapshot: row.entity_snapshot || {},
     termsSnapshot: row.terms_snapshot || {},
-    pricingEngine: row.pricing_engine || row.data?.pricingEngine,
-    fxSnapshot: row.fx_snapshot || row.data?.fxSnapshot,
     ...(bomLines === undefined ? {} : { bomLines }),
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
+  if ((row.pricing_engine || row.data?.pricingEngine) === "bom_v2") {
+    quote.pricingEngine = "bom_v2";
+    quote.fxSnapshot = row.fx_snapshot || row.data?.fxSnapshot || {};
+  } else {
+    delete quote.pricingEngine;
+    delete quote.fxSnapshot;
+    delete quote.bomLines;
+  }
+  return quote;
 }
 
 function sortPriceVersions(rows) {
-  return rows.sort((a, b) => String(b.effectiveFrom).localeCompare(String(a.effectiveFrom)) || b.versionNumber - a.versionNumber);
+  return rows.sort((a, b) => (
+    String(b.effectiveFrom).localeCompare(String(a.effectiveFrom)) ||
+    b.versionNumber - a.versionNumber ||
+    String(b.id).localeCompare(String(a.id))
+  ));
+}
+
+function effectivePriceVersion(versions, kind, catalogId, asOf) {
+  return sortPriceVersions(versions.filter((version) => (
+    version.catalogType === kind &&
+    version.catalogId === catalogId &&
+    version.effectiveFrom <= asOf
+  )))[0];
 }
 
 function overlayPriceVersion(item, version) {
@@ -184,7 +243,7 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
   const persist = () => saveData(data);
   const remote = Boolean(supabaseConfig.enabled);
 
-  async function getRemoteCatalog() {
+  async function getRemoteCatalog(asOf) {
     const [materials, processes, rules, services, entities, priceVersions] = await Promise.all([
       supabaseRequest(supabaseConfig, "advertising_materials?select=*&order=updated_at.desc"),
       supabaseRequest(supabaseConfig, "advertising_processes?select=*&order=updated_at.desc"),
@@ -193,27 +252,31 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
       supabaseRequest(supabaseConfig, "quotation_entities_or_letterheads?select=*&order=code"),
       supabaseRequest(supabaseConfig, "advertising_price_versions?select=*&order=effective_from.desc,version_number.desc"),
     ]);
-    const versions = (priceVersions || []).map(priceVersionRow);
-    const overlay = (kind, rows) => (rows || []).map(remoteCatalogRow).map((item) => overlayPriceVersion(item, sortPriceVersions(versions.filter((version) => version.catalogType === kind && version.catalogId === item.id))[0]));
+    const versions = sortPriceVersions((priceVersions || []).map(priceVersionRow));
+    const overlay = (kind, rows) => (rows || []).map(remoteCatalogRow).map((item) => overlayPriceVersion(item, effectivePriceVersion(versions, kind, item.id, asOf)));
     return {
       materials: overlay("materials", materials),
       processes: overlay("processes", processes),
       rules: (rules || []).map((row) => ({ ...remoteCatalogRow(row), materialId: row.material_id, processId: row.process_id })),
       services: overlay("services", services),
       entities: (entities || []).map((row) => ({ ...remoteCatalogRow(row), code: row.code })),
+      priceVersions: versions,
     };
   }
 
   const store = {
-    async catalog() {
-      if (remote) return getRemoteCatalog();
-      const overlay = (kind, rows) => rows.map((item) => overlayPriceVersion(item, sortPriceVersions(data.advertisingPriceVersions.filter((version) => version.catalogType === kind && version.catalogId === item.id).map(priceVersionRow))[0]));
+    async catalog({ asOf = new Date().toISOString().slice(0, 10) } = {}) {
+      if (!isValidDate(asOf)) throw priceVersionError("价格生效日期无效。", "ADVERTISING_PRICE_VERSION_INVALID");
+      if (remote) return getRemoteCatalog(asOf);
+      const versions = sortPriceVersions(data.advertisingPriceVersions.map(priceVersionRow));
+      const overlay = (kind, rows) => rows.map((item) => overlayPriceVersion(item, effectivePriceVersion(versions, kind, item.id, asOf)));
       return {
         materials: overlay("materials", data.advertisingMaterials),
         processes: overlay("processes", data.advertisingProcesses),
         rules: data.advertisingMaterialProcessRules,
         services: overlay("services", data.advertisingServiceCatalog),
         entities: data.advertisingEntities,
+        priceVersions: versions,
       };
     },
 
@@ -254,22 +317,23 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
     },
 
     async saveQuote(payload) {
-      if (remote && payload.pricingEngine === "bom_v2") {
-        const { bomLines = [], fxSnapshot = {}, ...quotePayload } = payload;
+      const normalizedPayload = payload.pricingEngine === "bom_v2" ? normalizeV2QuotePayload(payload) : payload;
+      if (remote && normalizedPayload.pricingEngine === "bom_v2") {
+        const { bomLines = [], fxSnapshot = {}, ...quotePayload } = normalizedPayload;
         const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_quote_v2", {
           method: "POST",
           body: JSON.stringify({ p_quote: quotePayload, p_bom_lines: bomLines, p_fx_snapshot: fxSnapshot }),
         });
-        return remoteQuoteRow(Array.isArray(result) ? result[0] : result, bomLines.map(bomLineRow));
+        return remoteQuoteRow(Array.isArray(result) ? result[0] : result, bomLines);
       }
       if (remote) {
-        const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_quote", { method: "POST", body: JSON.stringify({ p_quote: payload }) });
+        const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_quote", { method: "POST", body: JSON.stringify({ p_quote: normalizedPayload }) });
         return remoteQuoteRow(Array.isArray(result) ? result[0] : result);
       }
 
       const now = new Date().toISOString();
-      const existing = payload.id ? data.advertisingQuotes.find((quote) => quote.id === payload.id) : null;
-      const entity = data.advertisingEntities.find((entry) => entry.id === (payload.entityId || existing?.entityId || "lds"));
+      const existing = normalizedPayload.id ? data.advertisingQuotes.find((quote) => quote.id === normalizedPayload.id) : null;
+      const entity = data.advertisingEntities.find((entry) => entry.id === (normalizedPayload.entityId || existing?.entityId || "lds"));
       if (!entity) throw Object.assign(new Error("报价主体不存在。"), { statusCode: 400 });
       const year = new Date().getFullYear();
       const prefix = `${entity.quotePrefix}-${year}-`;
@@ -280,29 +344,29 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
         return Number.isInteger(suffix) ? Math.max(max, suffix) : max;
       }, 0);
       const next = String(highest + 1).padStart(4, "0");
-      const { bomLines, ...quotePayload } = payload;
+      const { bomLines, ...quotePayload } = normalizedPayload;
       const quote = {
         ...existing,
         ...quotePayload,
-        ...(payload.pricingEngine === "bom_v2" && existing?.fxSnapshot && Object.keys(existing.fxSnapshot).length ? { fxSnapshot: existing.fxSnapshot } : {}),
-        id: existing?.id || `ADV-${crypto.randomUUID()}`,
+        ...(normalizedPayload.pricingEngine === "bom_v2" && existing?.fxSnapshot && Object.keys(existing.fxSnapshot).length ? { fxSnapshot: existing.fxSnapshot } : {}),
+        id: existing?.id || normalizedPayload.id || `ADV-${crypto.randomUUID()}`,
         quoteNumber: existing?.quoteNumber || `${prefix}${next}`,
         entityId: entity.id,
         entitySnapshot: existing?.entitySnapshot || structuredClone(entity),
-        status: payload.status || existing?.status || "draft",
-        quoteDate: payload.quoteDate || existing?.quoteDate || now.slice(0, 10),
-        validUntil: payload.validUntil || existing?.validUntil || new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
+        status: normalizedPayload.status || existing?.status || "draft",
+        quoteDate: normalizedPayload.quoteDate || existing?.quoteDate || now.slice(0, 10),
+        validUntil: normalizedPayload.validUntil || existing?.validUntil || new Date(Date.now() + 15 * 86400000).toISOString().slice(0, 10),
         createdAt: existing?.createdAt || now,
         updatedAt: now,
       };
       const index = data.advertisingQuotes.findIndex((entry) => entry.id === quote.id);
       if (index >= 0) data.advertisingQuotes[index] = quote;
       else data.advertisingQuotes.push(quote);
-      if (payload.pricingEngine === "bom_v2") {
+      if (normalizedPayload.pricingEngine === "bom_v2") {
         data.advertisingQuoteBomLines = data.advertisingQuoteBomLines.filter((line) => line.quoteId !== quote.id);
         data.advertisingQuoteBomLines.push(...(bomLines || []).map((line) => ({ ...line, quoteId: quote.id })));
       }
-      for (const log of payload.adjustmentLogs || []) data.advertisingQuoteAdjustmentLogs.push({ ...log, id: crypto.randomUUID(), quoteId: quote.id, createdAt: now });
+      for (const log of normalizedPayload.adjustmentLogs || []) data.advertisingQuoteAdjustmentLogs.push({ ...log, id: crypto.randomUUID(), quoteId: quote.id, createdAt: now });
       persist();
       return this.getQuote(quote.id);
     },
@@ -313,6 +377,7 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
       delete source.quoteNumber;
       source.status = "draft";
       source.projectName = `${source.projectName || "广告报价"} - 副本`;
+      if (source.pricingEngine === "bom_v2") return this.saveQuote(normalizeV2QuotePayload(source, { regenerateIds: true }));
       return this.saveQuote(source);
     },
 

@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createAdvertisingQuoteStore } = require("../server/services/advertisingQuoteStore");
+const { calculateAdvertisingBomQuotation } = require("../server/services/advertisingBomCalculator");
 
 test("Supabase mode loads catalogs remotely and never writes local JSON", async (t) => {
   const originalFetch = global.fetch; let savedLocally = false; const requests = [];
@@ -166,12 +167,172 @@ test("remote V2 save uses the V2 RPC and remote read fetches BOM rows", async (t
   assert.equal(quote.bomLines[0].lineType, "material");
   assert.deepEqual(quote.fxSnapshot, { rate: 117.2 });
   const rpcRequest = requests.find(([url]) => url.includes("/rpc/save_advertising_quote_v2"));
-  assert.deepEqual(JSON.parse(rpcRequest[1].body), {
-    p_quote: { pricingEngine: "bom_v2" },
-    p_bom_lines: bomLines,
-    p_fx_snapshot: fxSnapshot,
-  });
+  const rpcBody = JSON.parse(rpcRequest[1].body);
+  assert.match(rpcBody.p_quote.id, /^ADV-/);
+  assert.deepEqual(rpcBody.p_quote.items, []);
+  assert.deepEqual(rpcBody.p_bom_lines, [{ id: "B1", quoteId: rpcBody.p_quote.id, quoteItemId: null, position: 0, catalogType: null, catalogId: null, priceVersionId: null, customerVisible: true, supplierSnapshot: {}, internalNotes: "" }]);
+  assert.deepEqual(rpcBody.p_fx_snapshot, fxSnapshot);
   assert.ok(requests.some(([url]) => url.includes("advertising_quote_bom_lines?") && url.includes("quote_id=eq.A2") && url.includes("order=position")));
+});
+
+test("calculator output is normalized into the strict V2 RPC ownership contract", async (t) => {
+  const originalFetch = global.fetch;
+  let rpcBody;
+  global.fetch = async (url, options = {}) => {
+    if (!String(url).includes("/rpc/save_advertising_quote_v2")) return new Response("[]", { status: 200 });
+    rpcBody = JSON.parse(options.body);
+    const quoteId = rpcBody.p_quote.id;
+    const itemIds = new Set(rpcBody.p_quote.items.map((item) => item.id));
+    assert.match(quoteId, /^ADV-/);
+    assert.equal(rpcBody.p_quote.pricingEngine, "bom_v2");
+    assert.equal(rpcBody.p_quote.ownerId, "11111111-1111-1111-1111-111111111111");
+    assert.equal(rpcBody.p_quote.clientName, "Client");
+    assert.equal(rpcBody.p_quote.projectName, "Project");
+    assert.match(rpcBody.p_quote.quoteDate, /^\d{4}-\d{2}-\d{2}$/);
+    assert.ok(["EUR", "RSD"].includes(rpcBody.p_quote.currency));
+    assert.equal(rpcBody.p_fx_snapshot.baseCurrency, "EUR");
+    assert.equal(rpcBody.p_fx_snapshot.quoteCurrency, rpcBody.p_quote.currency);
+    assert.equal(Object.keys(rpcBody.p_fx_snapshot).length, 5);
+    assert.ok([...itemIds].every((id) => /^ADI-/.test(id)));
+    assert.ok(rpcBody.p_quote.items.every((item) => item.quoteId === quoteId));
+    assert.ok(rpcBody.p_bom_lines.every((line) => /^ABL-/.test(line.id) && line.quoteId === quoteId));
+    assert.ok(rpcBody.p_bom_lines.every((line) => line.quoteItemId === null || itemIds.has(line.quoteItemId)));
+    assert.ok(rpcBody.p_bom_lines.every((line) => line.costUnitPriceSource !== undefined && line.saleUnitPriceSource !== undefined));
+    assert.ok(rpcBody.p_bom_lines.every((line) => Number.isFinite(line.quantity) && Number.isFinite(line.costAmount) && Number.isFinite(line.saleAmount)));
+    assert.ok(rpcBody.p_bom_lines.every((line) => line.sourceCurrency && line.quoteCurrency === rpcBody.p_quote.currency));
+    assert.ok(rpcBody.p_bom_lines.every((line) => line.catalogType && line.catalogId && line.priceVersionId));
+    assert.ok(rpcBody.p_bom_lines.every((line) => line.itemId === undefined && line.sourceCostUnitPrice === undefined && line.sourceSaleUnitPrice === undefined));
+    return new Response(JSON.stringify({ id: quoteId, quote_number: "LDS-ADV-2026-0002", pricing_engine: "bom_v2", fx_snapshot: rpcBody.p_fx_snapshot, data: rpcBody.p_quote }), { status: 200 });
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => assert.fail("must not write local"), supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
+  const catalog = {
+    materials: [{ id: "pvc-3", nameZh: "PVC", unit: "sqm", isActive: true }],
+    processes: [{ id: "uv", nameZh: "UV", unit: "sqm", supportsDoubleSide: true, isActive: true }],
+    services: [],
+    rules: [{ materialId: "pvc-3", processId: "uv", isActive: true }],
+    priceVersions: [
+      { id: "PV-M", catalogType: "materials", catalogId: "pvc-3", versionNumber: 1, currency: "EUR", costUnitPrice: 9, saleUnitPrice: 14, minimumSaleUnitPrice: 9, minimumCharge: 0, effectiveFrom: "2026-01-01", changeReason: "initial" },
+      { id: "PV-P", catalogType: "processes", catalogId: "uv", versionNumber: 1, currency: "EUR", costUnitPrice: 10, saleUnitPrice: 20, minimumSaleUnitPrice: 0, minimumCharge: 35, effectiveFrom: "2026-01-01", changeReason: "initial" },
+    ],
+  };
+  const fxSnapshot = { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.2, rateDate: "2026-08-01", source: "test" };
+  const calculated = calculateAdvertisingBomQuotation({
+    pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency: "RSD", vatMode: "exclusive", vatRate: 20,
+    clientName: "Client", projectName: "Project", entityId: "lds",
+    items: [{ bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }],
+  }, catalog, { userId: "11111111-1111-1111-1111-111111111111", fxSnapshot });
+
+  const saved = await store.saveQuote({
+    pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency: "RSD", clientName: "Client", projectName: "Project", entityId: "lds",
+    ownerId: "11111111-1111-1111-1111-111111111111", items: calculated.items, bomLines: calculated.bomLines, fxSnapshot,
+  });
+
+  assert.deepEqual(saved.items, rpcBody.p_quote.items);
+  assert.deepEqual(saved.bomLines, rpcBody.p_bom_lines);
+
+  const localStore = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: false } });
+  const local = await localStore.saveQuote({ ...rpcBody.p_quote, bomLines: rpcBody.p_bom_lines, fxSnapshot });
+  assert.deepEqual(local.items, saved.items);
+  assert.deepEqual(local.bomLines, saved.bomLines);
+});
+
+test("remote legacy V1 quotes omit V2 discriminator and snapshot fields", async (t) => {
+  const originalFetch = global.fetch;
+  global.fetch = async () => new Response(JSON.stringify([{ id: "A1", quote_number: "LDS-ADV-2026-0001", pricing_engine: "legacy_v1", fx_snapshot: {}, data: { items: [] } }]), { status: 200 });
+  t.after(() => { global.fetch = originalFetch; });
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
+
+  const quote = await store.getQuote("A1");
+
+  assert.equal(quote.pricingEngine, undefined);
+  assert.equal(quote.fxSnapshot, undefined);
+  assert.equal(quote.bomLines, undefined);
+});
+
+test("catalog exposes all versions but overlays only versions effective as of the requested date", async () => {
+  const data = {
+    advertisingMaterials: [{ id: "m1", nameZh: "Material", costPrice: 8, suggestedSalePrice: 12, currency: "EUR", effectiveFrom: "2025-01-01" }],
+    advertisingProcesses: [{ id: "p1", costPrice: 1, suggestedSalePrice: 2 }],
+    advertisingServiceCatalog: [{ id: "s1", costPrice: 1, suggestedSalePrice: 2 }],
+    advertisingPriceVersions: [
+      { id: "PV-FUTURE", catalogType: "materials", catalogId: "m1", versionNumber: 3, currency: "EUR", costUnitPrice: 11, saleUnitPrice: 18, effectiveFrom: "2026-09-01", changeReason: "future" },
+      { id: "PV-SAME-1", catalogType: "materials", catalogId: "m1", versionNumber: 1, currency: "EUR", costUnitPrice: 9, saleUnitPrice: 14, effectiveFrom: "2026-08-01", changeReason: "first" },
+      { id: "PV-SAME-2", catalogType: "materials", catalogId: "m1", versionNumber: 2, currency: "EUR", costUnitPrice: 10, saleUnitPrice: 16, effectiveFrom: "2026-08-01", changeReason: "corrected" },
+    ],
+  };
+  const store = createAdvertisingQuoteStore({ data, saveData: () => {}, supabaseConfig: { enabled: false } });
+
+  const before = await store.catalog({ asOf: "2026-07-31" });
+  const current = await store.catalog({ asOf: "2026-08-11" });
+
+  assert.equal(before.materials[0].suggestedSalePrice, 12);
+  assert.equal(before.materials[0].activePriceVersion, undefined);
+  assert.equal(current.materials[0].suggestedSalePrice, 16);
+  assert.equal(current.materials[0].activePriceVersion.id, "PV-SAME-2");
+  assert.deepEqual(current.priceVersions.map((version) => version.id), ["PV-FUTURE", "PV-SAME-2", "PV-SAME-1"]);
+});
+
+test("store catalog composes priceVersions required by the real BOM calculator", async () => {
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: false } });
+  const catalog = await store.catalog({ asOf: "2026-08-11" });
+  const fxSnapshot = { baseCurrency: "EUR", quoteCurrency: "RSD", rate: 117.2, rateDate: "2026-08-01", source: "test" };
+
+  const calculated = calculateAdvertisingBomQuotation({
+    pricingEngine: "bom_v2", quoteDate: "2026-08-11", currency: "EUR", vatMode: "exclusive", vatRate: 20,
+    items: [{ id: "I1", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }],
+  }, catalog, { fxSnapshot });
+
+  assert.equal(calculated.bomLines[0].priceVersionId, catalog.materials.find((item) => item.id === "pvc-3").activePriceVersion.id);
+  assert.equal(calculated.bomLines[1].priceVersionId, catalog.processes.find((item) => item.id === "uv").activePriceVersion.id);
+});
+
+test("local V2 duplicate regenerates quote, item, and BOM IDs with consistent references", async () => {
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: false } });
+  const source = await store.saveQuote({
+    pricingEngine: "bom_v2", entityId: "lds", clientName: "Client", projectName: "Project",
+    items: [{ id: "I1", quoteId: "SOURCE" }], bomLines: [{ id: "B1", quoteId: "SOURCE", itemId: "I1", lineType: "material", sourceCostUnitPrice: 1, sourceSaleUnitPrice: 2 }], fxSnapshot: { rate: 1 },
+  });
+
+  const duplicate = await store.duplicate(source.id);
+
+  assert.notEqual(duplicate.id, source.id);
+  assert.notEqual(duplicate.items[0].id, source.items[0].id);
+  assert.equal(duplicate.items[0].quoteId, duplicate.id);
+  assert.notEqual(duplicate.bomLines[0].id, source.bomLines[0].id);
+  assert.equal(duplicate.bomLines[0].quoteId, duplicate.id);
+  assert.equal(duplicate.bomLines[0].quoteItemId, duplicate.items[0].id);
+  assert.equal(duplicate.bomLines[0].costUnitPriceSource, 1);
+  assert.equal(duplicate.bomLines[0].saleUnitPriceSource, 2);
+  assert.equal(duplicate.bomLines[0].sourceCostUnitPrice, undefined);
+  assert.equal(duplicate.bomLines[0].sourceSaleUnitPrice, undefined);
+});
+
+test("remote V2 duplicate sends regenerated IDs and references to the V2 RPC", async (t) => {
+  const originalFetch = global.fetch;
+  let rpcBody;
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes("advertising_quotes?")) return new Response(JSON.stringify([{ id: "A1", quote_number: "LDS-ADV-2026-0001", pricing_engine: "bom_v2", fx_snapshot: { rate: 1 }, data: { pricingEngine: "bom_v2", entityId: "lds", projectName: "Project", items: [{ id: "I1", quoteId: "A1" }] } }]), { status: 200 });
+    if (target.includes("advertising_quote_bom_lines?")) return new Response(JSON.stringify([{ id: "B1", quote_id: "A1", quote_item_id: "I1", line_type: "material", cost_unit_price_source: 1, sale_unit_price_source: 2 }]), { status: 200 });
+    if (target.includes("/rpc/save_advertising_quote_v2")) {
+      rpcBody = JSON.parse(options.body);
+      return new Response(JSON.stringify({ id: rpcBody.p_quote.id, quote_number: "LDS-ADV-2026-0002", pricing_engine: "bom_v2", fx_snapshot: rpcBody.p_fx_snapshot, data: rpcBody.p_quote }), { status: 200 });
+    }
+    return new Response("[]", { status: 200 });
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
+
+  const duplicate = await store.duplicate("A1");
+
+  assert.notEqual(rpcBody.p_quote.id, "A1");
+  assert.notEqual(rpcBody.p_quote.items[0].id, "I1");
+  assert.equal(rpcBody.p_quote.items[0].quoteId, rpcBody.p_quote.id);
+  assert.notEqual(rpcBody.p_bom_lines[0].id, "B1");
+  assert.equal(rpcBody.p_bom_lines[0].quoteId, rpcBody.p_quote.id);
+  assert.equal(rpcBody.p_bom_lines[0].quoteItemId, rpcBody.p_quote.items[0].id);
+  assert.deepEqual(duplicate.bomLines, rpcBody.p_bom_lines);
 });
 
 test("catalog price change appends a version with reason instead of overwriting price JSON", async () => {
