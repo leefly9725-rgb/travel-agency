@@ -7,7 +7,8 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js",
-    "test": "node --test --test-isolation=none"
+    "test": "node --test --test-isolation=none",
+    "test:advertising-bom-v2": "node scripts/verify-advertising-bom-v2.js"
   },
   "engines": {
     "node": ">=20"
