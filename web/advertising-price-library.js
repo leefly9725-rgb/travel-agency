@@ -4,14 +4,15 @@
   const dialog = document.querySelector('#adv-library-dialog');
   const form = document.querySelector('#adv-library-form');
   const fields = document.querySelector('#adv-library-fields');
+  const labels = window.AppUi?.advertising || {};
   let catalog;
   let tab = 'materials';
 
   const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
   const definitions = {
-    materials: [['nameZh', '材料名称'], ['nameEn', '英文名称'], ['specification', '规格'], ['thicknessMm', '厚度 (mm)', 'number'], ['unit', '单位'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['defaultMarkupRate', '加价率 (%)', 'number'], ['minimumSalePrice', '最低售价', 'number'], ['supplierName', '供应商'], ['notes', '备注']],
-    processes: [['nameZh', '工艺名称'], ['nameEn', '英文名称'], ['unit', '计价单位'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['defaultMarkupRate', '加价率 (%)', 'number'], ['defaultMinimumFee', '最低加工费', 'number'], ['supportsDoubleSide', '支持双面', 'checkbox'], ['isActive', '启用', 'checkbox'], ['notes', '备注']],
-    services: [['nameZh', '服务名称'], ['nameEn', '英文名称'], ['category', '类别'], ['unit', '单位'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['isActive', '启用', 'checkbox']],
+    materials: [['nameZh', '材料名称'], ['nameEn', '英文名称'], ['specification', '规格'], ['thicknessMm', '厚度 (mm)', 'number'], ['unit', '单位'], ['currency', labels.currency, 'currency'], ['effectiveFrom', labels.effectiveFrom, 'date'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['defaultMarkupRate', '加价率 (%)', 'number'], ['minimumSalePrice', '最低售价', 'number'], ['supplierName', '供应商'], ['notes', '备注']],
+    processes: [['nameZh', '工艺名称'], ['nameEn', '英文名称'], ['unit', '计价单位'], ['currency', labels.currency, 'currency'], ['effectiveFrom', labels.effectiveFrom, 'date'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['defaultMarkupRate', '加价率 (%)', 'number'], ['defaultMinimumFee', '最低加工费', 'number'], ['supportsDoubleSide', '支持双面', 'checkbox'], ['isActive', '启用', 'checkbox'], ['notes', '备注']],
+    services: [['nameZh', '服务名称'], ['nameEn', '英文名称'], ['category', '类别'], ['unit', '单位'], ['currency', labels.currency, 'currency'], ['effectiveFrom', labels.effectiveFrom, 'date'], ['costPrice', '成本价', 'number'], ['suggestedSalePrice', '建议售价', 'number'], ['isActive', '启用', 'checkbox']],
     rules: [['materialId', '材料', 'material-select'], ['processId', '工艺', 'process-select'], ['costPriceOverride', '成本覆盖', 'number'], ['suggestedSalePriceOverride', '售价覆盖', 'number'], ['defaultMinimumFeeOverride', '最低费覆盖', 'number'], ['isActive', '允许', 'checkbox']]
   };
   const tabLabels = { materials: '材料', processes: '工艺', rules: '关联规则', services: '服务费用' };
@@ -58,13 +59,36 @@
     if (type === 'material-select') return `<label>${esc(label)}<select name="${esc(key)}" required>${selectOptions('materials', row[key])}</select></label>`;
     if (type === 'process-select') return `<label>${esc(label)}<select name="${esc(key)}" required>${selectOptions('processes', row[key])}</select></label>`;
     if (type === 'checkbox') return `<label class="adv-toggle-field"><input name="${esc(key)}" type="checkbox" ${row[key] !== false ? 'checked' : ''}><span><strong>${esc(label)}</strong><small>点击切换当前状态</small></span></label>`;
-    return `<label>${esc(label)}<input name="${esc(key)}" type="${esc(type)}" value="${esc(row[key])}" ${key === 'nameZh' ? 'required' : ''}></label>`;
+    if (type === 'currency') return `<label>${esc(label)}<select name="${esc(key)}"><option value="EUR" ${row[key] === 'EUR' ? 'selected' : ''}>EUR</option><option value="RSD" ${row[key] === 'RSD' ? 'selected' : ''}>RSD</option></select></label>`;
+    const precision = type === 'number' ? 'step="0.01"' : '';
+    return `<label>${esc(label)}<input name="${esc(key)}" type="${esc(type)}" ${precision} value="${esc(row[key])}" ${key === 'nameZh' ? 'required' : ''}></label>`;
   }
 
-  function open(row) {
+  function renderVersionHistory(versions = []) {
+    const today = new Date().toISOString().slice(0, 10);
+    const list = document.querySelector('#adv-version-history-list');
+    list.innerHTML = versions.length ? versions.map(version => {
+      const future = String(version.effectiveFrom || '') > today;
+      const prices = [['costUnitPrice', '成本'], ['saleUnitPrice', '售价'], ['minimumSaleUnitPrice', '最低单价'], ['minimumCharge', '最低费用']]
+        .filter(([key]) => Object.prototype.hasOwnProperty.call(version, key))
+        .map(([key, label]) => `<span>${label} ${esc(version[key])}</span>`).join('');
+      return `<article class="adv-version-row ${future ? 'is-future' : ''}"><header><strong>${esc(labels.priceVersion)} ${esc(version.versionNumber)}</strong><span class="adv-version-status">${esc(future ? labels.versionFuture : labels.versionActive)}</span></header><p>${esc(version.currency)} · ${esc(labels.effectiveFrom)} ${esc(version.effectiveFrom)}</p><p>${prices}</p><small>${esc(version.changeReason)}</small></article>`;
+    }).join('') : `<p class="adv-library-loading">${esc(labels.noVersionHistory)}</p>`;
+  }
+
+  async function open(row) {
+    row = { currency: 'EUR', effectiveFrom: new Date().toISOString().slice(0, 10), ...row };
     form.elements.id.value = row.id || '';
     fields.innerHTML = definitions[tab].map(definition => fieldMarkup(row, definition)).join('');
     form.elements.adjustmentReason.value = '';
+    renderVersionHistory([]);
+    if (row.id && tab !== 'rules') {
+      const query = new URLSearchParams({ catalogType: tab, catalogId: row.id });
+      const response = await fetch(`/api/advertising/price-versions?${query}`, { headers: headers() });
+      const versions = await response.json();
+      if (!response.ok) { alert(versions.error || 'ADVERTISING_PRICE_VERSION_UNAVAILABLE'); return; }
+      renderVersionHistory(versions);
+    }
     dialog.showModal();
   }
 
@@ -83,6 +107,7 @@
   }
 
   if (window.__AUTH_READY__) load(); else document.addEventListener('authReady', load, { once: true });
+  document.querySelectorAll('[data-adv-label]').forEach(node => { node.textContent = labels[node.dataset.advLabel] || node.dataset.advLabel; });
 
   const tabs = [...document.querySelectorAll('[data-tab]')];
   tabs.forEach((button, index) => {

@@ -4647,6 +4647,50 @@ test("advertising quotation pages and navigation entry are served", async () => 
     const editor = await (await publicFetch(port, "/advertising-quote.js")).text();
     assert.match(editor, /window\.print/);
     assert.match(editor, /reportValidity/);
+    const editorHtml = await (await publicFetch(port, "/advertising-quote.html")).text();
+    assert.match(editorHtml, /adv-pricing-engine/);
+    assert.match(editorHtml, /adv-fx-snapshot/);
+    assert.match(editorHtml, /adv-v1-editor/);
+    assert.match(editorHtml, /adv-v2-editor/);
+    assert.match(editorHtml, /name="laborHours"/);
+    assert.match(editorHtml, /name="installationQuantity"/);
+    assert.match(editorHtml, /name="transportTrips"/);
+    assert.match(editorHtml, /name="designHours"/);
+    assert.match(editorHtml, /name="currency"/);
+    assert.match(editor, /bomTemplateCode:\s*['"]pvc_uv_board_v1['"]/);
+    assert.match(editor, /result\.quoteCurrency\s*\|\|\s*form\.elements\.currency\.value/);
+    assert.match(editor, /quote\.id\s*\?\s*`\/api\/advertising\/quotes\/\$\{encodeURIComponent\(quote\.id\)\}\/calculate`/);
+    assert.match(editor, /price\s*&&\s*price\.value\s*!==\s*["']{2}/);
+
+    const libraryHtml = await (await publicFetch(port, "/advertising-price-library.html")).text();
+    assert.match(libraryHtml, /adv-version-history/);
+    const libraryJs = await (await publicFetch(port, "/advertising-price-library.js")).text();
+    assert.match(libraryJs, /\/api\/advertising\/price-versions/);
+    assert.match(libraryJs, /effectiveFrom/);
+    assert.match(libraryJs, /adjustmentReason/);
+    assert.match(libraryJs, /type === ['"]number['"]\s*\?\s*['"]step="0\.01"['"]/);
+    assert.match(libraryJs, /ADVERTISING_PRICE_VERSION_UNAVAILABLE|\u5f85\u751f\u6548|待生效/);
+
+    const labels = await (await publicFetch(port, "/ui-labels.js")).text();
+    for (const key of ["bomV2", "pvcUvBoard", "laborHours", "installationQuantity", "transportTrips", "designHours", "fxSnapshot", "priceVersion", "effectiveFrom", "versionHistory"]) {
+      assert.match(labels, new RegExp(`${key}:`), key);
+    }
+    const styles = await (await publicFetch(port, "/advertising-ui.css")).text();
+    assert.match(styles, /@media\s*\(max-width:\s*768px\)[\s\S]*?\.adv-v2-grid\s*\{\s*grid-template-columns:\s*1fr/);
+  });
+});
+
+test("advertising V2 browser payload source has no server-owned pricing evidence", async () => {
+  await withServer(async (port) => {
+    const editor = await (await publicFetch(port, "/advertising-quote.js")).text();
+    const start = editor.indexOf("function v2Payload");
+    const end = editor.indexOf("function payload", start);
+    assert.ok(start >= 0 && end > start);
+    const source = editor.slice(start, end);
+    assert.doesNotMatch(source, /\.\.\.quote|bomLines|fxSnapshot|cost|supplier|priceVersion|UnitPrice|saleAmount/);
+    for (const allowed of ["pricingEngine", "bomTemplateCode", "width", "height", "quantity", "laborHours", "installationQuantity", "transportTrips", "designHours"]) {
+      assert.match(source, new RegExp(allowed), allowed);
+    }
   });
 });
 
