@@ -5043,6 +5043,42 @@ test("advertising V2 uses one server-owned quote date for date-less create, upda
   });
 });
 
+test("advertising V2 rejects explicit malformed dates and fails closed on an invalid stored date", async () => {
+  await withServer(async (port) => {
+    const payload = {
+      pricingEngine: "bom_v2", entityId: "lds", clientName: "Date validation", projectName: "Invalid dates", currency: "EUR", vatMode: "not_applicable",
+      items: [{ name: "PVC", bomTemplateCode: "pvc_uv_board_v1", width: 1000, height: 1000, sizeUnit: "mm", quantity: 1, sides: 1 }],
+    };
+    for (const pathname of ["/api/advertising/quotes", "/api/advertising/quotes/calculate"]) {
+      for (const quoteDate of ["2026-02-30", "13/08/2026", "2026-13-01"]) {
+        const response = await apiFetch(port, pathname, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, quoteDate }) });
+        assert.equal(response.status, 400, `${pathname} ${quoteDate}`);
+        assert.equal((await response.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
+      }
+    }
+
+    const blankCreate = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, quoteDate: "   " }) });
+    assert.equal(blankCreate.status, 201);
+    const created = await blankCreate.json();
+    assert.equal(created.quoteDate, new Date().toISOString().slice(0, 10));
+
+    for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
+      const response = await apiFetch(port, `/api/advertising/quotes/${created.id}${suffix}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, quoteDate: "not-a-date" }) });
+      assert.equal(response.status, 400, suffix || "update");
+      assert.equal((await response.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
+    }
+
+    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    data.advertisingQuotes.find((quote) => quote.id === created.id).quoteDate = "2026-02-30";
+    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+    for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
+      const response = await apiFetch(port, `/api/advertising/quotes/${created.id}${suffix}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+      assert.equal(response.status, 400, `stored invalid ${suffix || "update"}`);
+      assert.equal((await response.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
+    }
+  });
+});
+
 test("date-less V2 create sends the canonical date and date-effective evidence to the strict remote RPC", async (t) => {
   const originalFetch = global.fetch;
   const originalEnvironment = Object.fromEntries(

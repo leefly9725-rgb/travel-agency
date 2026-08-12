@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "node server/index.js",
     "start": "node server/index.js",
-    "test": "node --test --test-isolation=none",
+    "test": "node scripts/run-local-tests.js",
     "test:advertising-bom-v2": "node scripts/verify-advertising-bom-v2.js"
   },
   "engines": {

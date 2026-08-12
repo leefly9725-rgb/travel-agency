@@ -15,6 +15,8 @@ const sqlPath = path.join(root, "scripts", "supabase-migrate-v14-advertising-int
 const v13SqlPath = path.join(root, "scripts", "supabase-migrate-v13-advertising-quotations.sql");
 const guardPath = path.join(root, "scripts", "verify-advertising-bom-v2-target.js");
 const verifierPath = path.join(root, "scripts", "verify-advertising-bom-v2.js");
+const fullRunnerPath = path.join(root, "scripts", "run-local-tests.js");
+const packagePath = path.join(root, "package.json");
 
 function normalizedSql() {
   return fs.readFileSync(sqlPath, "utf8").replace(/\s+/g, " ").trim();
@@ -54,8 +56,9 @@ test("focused verifier scrubs hostile database ambient values before spawning it
 
   vm.runInNewContext(source, {
     require(specifier) {
-      assert.equal(specifier, "node:child_process");
-      return { spawnSync(command, args, options) { invocation = { command, args: Array.from(args), options }; return { status: 0 }; } };
+      if (specifier === "node:child_process") return { spawnSync(command, args, options) { invocation = { command, args: Array.from(args), options }; return { status: 0 }; } };
+      if (specifier === "./scrub-database-env") return require("../scripts/scrub-database-env");
+      throw new Error(`Unexpected require: ${specifier}`);
     },
     process: {
       execPath: process.execPath,
@@ -108,6 +111,60 @@ test("focused verifier remains local when launched with hostile ambient Supabase
   assert.equal(result.status, 0, result.stderr || result.error?.message);
   assert.match(result.stdout, /fail 0/);
   assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Supabase 请求失败|ECONNREFUSED|hostile-service-role-dummy/);
+});
+
+test("raw npm test uses the safe local runner and scrubs hostile database ambient values", () => {
+  const forbidden = /SUPABASE|DATABASE|POSTGRES|POSTGREST|PGRST|^PG|^DB(?:_|$)/i;
+  if (process.env.TASK6_HOSTILE_FULL_TEST_PROBE === "1") {
+    for (const key of Object.keys(process.env)) assert.doesNotMatch(key, forbidden);
+    return;
+  }
+  const packageJson = JSON.parse(fs.readFileSync(packagePath, "utf8"));
+  assert.equal(packageJson.scripts.test, "node scripts/run-local-tests.js");
+  const result = spawnSync("npm", ["test", "--", "--test-name-pattern=raw npm test uses", "tests/advertisingBomMigration.test.js"], {
+    cwd: root,
+    env: {
+      ...process.env,
+      TASK6_HOSTILE_FULL_TEST_PROBE: "1",
+      SUPABASE_URL: "http://127.0.0.1:1",
+      SUPABASE_ANON_KEY: "hostile-full-anon-dummy",
+      SUPABASE_SERVICE_ROLE_KEY: "hostile-full-service-role-dummy",
+      NEXT_PUBLIC_SUPABASE_URL: "http://127.0.0.1:1",
+      DATABASE_CONNECTION_STRING: "postgres://127.0.0.1:1/hostile",
+      DB_URL: "postgres://127.0.0.1:1/hostile",
+      PGURI: "postgres://127.0.0.1:1/hostile",
+    },
+    encoding: "utf8",
+    timeout: 30000,
+  });
+  assert.equal(result.status, 0, result.stderr || result.error?.message);
+  assert.match(result.stdout, /fail 0/);
+  assert.doesNotMatch(`${result.stdout}\n${result.stderr}`, /Supabase 请求失败|ECONNREFUSED|hostile-full-service-role-dummy/);
+});
+
+test("safe full test runner preserves CLI arguments, inherited output, and child status", () => {
+  const source = fs.readFileSync(fullRunnerPath, "utf8");
+  let invocation;
+  let exitStatus;
+  vm.runInNewContext(source, {
+    require(specifier) {
+      if (specifier === "node:child_process") return { spawnSync(command, args, options) { invocation = { command, args: Array.from(args), options }; return { status: 7 }; } };
+      if (specifier === "./scrub-database-env") return require("../scripts/scrub-database-env");
+      throw new Error(`Unexpected require: ${specifier}`);
+    },
+    process: {
+      execPath: process.execPath,
+      argv: [process.execPath, fullRunnerPath, "--test-name-pattern=contract", "tests/api.test.js"],
+      env: { PATH: process.env.PATH, SUPABASE_URL: "http://127.0.0.1:1", SAFE_TEST_MARKER: "retained" },
+      exit(status) { exitStatus = status; },
+    },
+  }, { filename: fullRunnerPath });
+  assert.equal(exitStatus, 7);
+  assert.equal(invocation.command, process.execPath);
+  assert.deepEqual(invocation.args, ["--test", "--test-isolation=none", "--test-name-pattern=contract", "tests/api.test.js"]);
+  assert.equal(invocation.options.stdio, "inherit");
+  assert.equal(invocation.options.env.SAFE_TEST_MARKER, "retained");
+  assert.equal(invocation.options.env.SUPABASE_URL, undefined);
 });
 
 test("offline target guard accepts only the exact LDS-OPS-TEST host", () => {

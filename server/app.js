@@ -1553,10 +1553,20 @@ async function handleApi(request, response, url) {
     const date = new Date(`${value}T00:00:00.000Z`);
     return !Number.isNaN(date.valueOf()) && date.toISOString().slice(0, 10) === value;
   };
+  const advertisingQuoteDateError = () => Object.assign(
+    new Error("报价日期必须是有效的 YYYY-MM-DD 日期。"),
+    { statusCode: 400, code: "ADVERTISING_QUOTE_DATE_INVALID" },
+  );
   const canonicalAdvertisingV2Date = (payload, existing = null) => {
-    if (existing?.pricingEngine === "bom_v2" && validAdvertisingDate(existing.quoteDate)) return existing.quoteDate;
-    if (!existing && validAdvertisingDate(payload?.quoteDate)) return payload.quoteDate;
-    return new Date().toISOString().slice(0, 10);
+    const supplied = Object.prototype.hasOwnProperty.call(payload || {}, "quoteDate");
+    const blank = supplied && typeof payload.quoteDate === "string" && payload.quoteDate.trim() === "";
+    if (supplied && !blank && !validAdvertisingDate(payload.quoteDate)) throw advertisingQuoteDateError();
+    if (existing?.pricingEngine === "bom_v2") {
+      if (blank || !validAdvertisingDate(existing.quoteDate)) throw advertisingQuoteDateError();
+      return existing.quoteDate;
+    }
+    if (!supplied || blank) return new Date().toISOString().slice(0, 10);
+    return payload.quoteDate;
   };
   const buildAdvertisingServerSnapshot = (payload, catalog, existing = null) => {
     const entityId = String(payload?.entityId || existing?.entityId || "lds");
