@@ -4669,9 +4669,13 @@ test("advertising quotation pages and navigation entry are served", async () => 
     assert.match(editor, /#adv-v2-editor["']\)\.querySelectorAll\(["']input, select, textarea["']\)[\s\S]*?\.disabled\s*=\s*!isV2/);
     assert.match(editor, /v1Payload[\s\S]*?currency:\s*quote\.currency\s*\|\|\s*["']EUR["']/);
     assert.match(editor, /const savedItem\s*=\s*\(quote\.items\s*\|\|\s*\[\]\)\.find/);
-    assert.match(editor, /return\s*\{\s*\.\.\.savedItem/);
-    assert.match(editor, /materialSaleUnitPrice:\s*get\(["']materialSaleUnitPrice["']\)\s*===\s*["']{2}\s*\?\s*savedItem\.materialSaleUnitPrice/);
+    assert.match(editor, /const result\s*=\s*\{\s*\.\.\.savedItem/);
+    assert.match(editor, /const materialSaleControl\s*=\s*row\.querySelector/);
+    assert.match(editor, /if \(materialSaleControl\)[\s\S]*?delete result\.materialSaleUnitPrice/);
+    assert.doesNotMatch(editor, /materialSaleUnitPrice:[^,]+\?\s*savedItem\.materialSaleUnitPrice/);
     assert.match(editor, /manualAdjustment:[^,]+\?\s*savedItem\.manualAdjustment\s*:/);
+    assert.match(editor, /const savedInstallationFee\s*=\s*\(quote\.additionalFees\s*\|\|\s*\[\]\)\.find/);
+    assert.match(editor, /form\.elements\.installationPrice\.value\s*=\s*installationFee\?\.saleUnitPrice\s*\?\?/);
 
     const libraryHtml = await (await publicFetch(port, "/advertising-price-library.html")).text();
     assert.match(libraryHtml, /adv-version-history/);
@@ -4721,7 +4725,9 @@ test("advertising V1 browser payload preserves loaded legacy fields without V2 e
     assert.match(source, /currency:\s*quote\.currency\s*\|\|\s*["']EUR["']/);
     assert.match(source, /delivery:\s*\{\s*\.\.\.\(quote\.delivery\s*\|\|\s*\{\}\)/);
     assert.match(source, /quote\.additionalFees\s*\|\|\s*\[\]/);
-    assert.match(source, /fee\.category\s*!==\s*["']installation["']/);
+    assert.match(source, /fee\s*===\s*savedInstallationFee/);
+    assert.match(source, /\.\.\.fee,\s*saleUnitPrice/);
+    assert.match(source, /id:\s*uid\(["']ADF["']\)/);
     for (const forbidden of ["pricingEngine", "fxSnapshot", "bomLines"]) assert.match(source, new RegExp(`delete legacyQuote\\.${forbidden}`));
   });
 });

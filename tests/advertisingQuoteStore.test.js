@@ -27,9 +27,11 @@ test("Supabase save uses transactional RPC", async (t) => {
   };
   t.after(() => { global.fetch = originalFetch; });
   const store = createAdvertisingQuoteStore({ data: {}, saveData: () => assert.fail("must not fallback"), supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
-  const saved = await store.saveQuote({ entityId: "lds", clientName: "Client", items: [], calculationSnapshot: { totalIncludingVat: 100 }, ownerId: "11111111-1111-1111-1111-111111111111" });
+  const installationFee = { id: "ADF-legacy", category: "installation", name: "Legacy install", quantity: 1, saleUnitPrice: 42, customerVisible: false, position: 7, legacyExtension: { keep: true } };
+  const saved = await store.saveQuote({ entityId: "lds", clientName: "Client", items: [], additionalFees: [installationFee], calculationSnapshot: { totalIncludingVat: 100 }, ownerId: "11111111-1111-1111-1111-111111111111" });
   assert.equal(saved.quoteNumber, "LDS-ADV-2026-0001");
   assert.equal(rpcBody.p_quote.clientName, "Client");
+  assert.deepEqual(rpcBody.p_quote.additionalFees, [installationFee]);
 });
 
 test("Supabase catalog price update and audit use one transactional RPC", async (t) => {

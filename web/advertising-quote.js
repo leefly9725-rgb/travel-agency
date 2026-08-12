@@ -59,7 +59,17 @@
     refreshItemOrder();
   }
   function moveItem(row, delta) { const sibling = delta < 0 ? row.previousElementSibling : row.nextElementSibling; if (sibling) itemsEl.insertBefore(delta < 0 ? row : sibling, delta < 0 ? sibling : row); refreshItemOrder(); preview(); }
-  function itemPayload(row, index) { const get = (key) => row.querySelector(`[data-key=${key}]`).value; const savedItem = (quote.items || []).find((item) => item.id === row.dataset.itemId) || {}; return { ...savedItem, id: row.dataset.itemId, groupId: get("groupId") || null, name: get("name"), nameEn: get("nameEn"), materialId: get("materialId"), width: Number(get("width")), height: Number(get("height")), sizeUnit: get("sizeUnit"), quantity: Number(get("quantity")), sides: Number(get("sides")), materialSaleUnitPrice: get("materialSaleUnitPrice") === "" ? savedItem.materialSaleUnitPrice : Number(get("materialSaleUnitPrice")), manualAdjustment: get("manualAdjustment") === "" || Number(get("manualAdjustment")) === Number(savedItem.manualAdjustment || 0) ? savedItem.manualAdjustment : Number(get("manualAdjustment")), notes: get("notes"), position: index, processes: [...row.querySelectorAll("[data-process-id]:checked")].map((control, position) => { const savedProcess = (savedItem.processes || []).find((process) => process.processId === control.dataset.processId) || {}; const price = control.closest("label").querySelector("[data-process-price]"); return { ...savedProcess, id: savedProcess.id || uid("ADP"), processId: control.dataset.processId, position, ...(price && price.value !== "" ? { actualSalePrice: Number(price.value) } : {}) }; }) }; }
+  function itemPayload(row, index) {
+    const get = (key) => row.querySelector(`[data-key=${key}]`).value;
+    const savedItem = (quote.items || []).find((item) => item.id === row.dataset.itemId) || {};
+    const materialSaleControl = row.querySelector("[data-key=materialSaleUnitPrice]");
+    const result = { ...savedItem, id: row.dataset.itemId, groupId: get("groupId") || null, name: get("name"), nameEn: get("nameEn"), materialId: get("materialId"), width: Number(get("width")), height: Number(get("height")), sizeUnit: get("sizeUnit"), quantity: Number(get("quantity")), sides: Number(get("sides")), manualAdjustment: get("manualAdjustment") === "" || Number(get("manualAdjustment")) === Number(savedItem.manualAdjustment || 0) ? savedItem.manualAdjustment : Number(get("manualAdjustment")), notes: get("notes"), position: index, processes: [...row.querySelectorAll("[data-process-id]:checked")].map((control, position) => { const savedProcess = (savedItem.processes || []).find((process) => process.processId === control.dataset.processId) || {}; const price = control.closest("label").querySelector("[data-process-price]"); return { ...savedProcess, id: savedProcess.id || uid("ADP"), processId: control.dataset.processId, position, ...(price && price.value !== "" ? { actualSalePrice: Number(price.value) } : {}) }; }) };
+    if (materialSaleControl) {
+      if (materialSaleControl.value === "") delete result.materialSaleUnitPrice;
+      else result.materialSaleUnitPrice = Number(materialSaleControl.value);
+    }
+    return result;
+  }
 
   function basePayload() {
     return { entityId: form.elements.entityId.value, clientName: form.elements.clientName.value, projectName: form.elements.projectName.value, mode: form.elements.mode.value, language: form.elements.language.value, currency: form.elements.currency.value, vatMode: form.elements.vatMode.value, vatRate: 20, discountPercent: number(form.elements.discountPercent), fixedDiscount: number(form.elements.fixedDiscount), adjustmentReason: form.elements.adjustmentReason.value };
@@ -69,8 +79,11 @@
     delete legacyQuote.pricingEngine;
     delete legacyQuote.fxSnapshot;
     delete legacyQuote.bomLines;
-    const installationFees = number(form.elements.installationPrice) > 0 ? [{ category: "installation", name: "安装", quantity: 1, saleUnitPrice: number(form.elements.installationPrice) }] : [];
-    return { ...legacyQuote, ...basePayload(), currency: quote.currency || "EUR", groups: groups.map((group, position) => ({ ...group, position })), minimumProcessingFee: number(form.elements.minimumProcessingFee), minimumOrderAmount: number(form.elements.minimumOrderAmount), adjustment: number(form.elements.adjustment), items: [...document.querySelectorAll(".advertising-item")].map(itemPayload), delivery: { ...(quote.delivery || {}), enabled: form.elements.deliveryEnabled.checked, quantity: number(form.elements.deliveryQuantity), saleUnitPrice: number(form.elements.deliveryPrice) }, additionalFees: [...(quote.additionalFees || []).filter((fee) => fee.category !== "installation"), ...installationFees] };
+    const savedInstallationFee = (quote.additionalFees || []).find((fee) => fee.category === "installation");
+    const installationPrice = number(form.elements.installationPrice);
+    const additionalFees = (quote.additionalFees || []).flatMap((fee) => fee === savedInstallationFee ? (installationPrice > 0 ? [{ ...fee, saleUnitPrice: installationPrice }] : []) : [fee]);
+    if (!savedInstallationFee && installationPrice > 0) additionalFees.push({ id: uid("ADF"), category: "installation", name: "安装", quantity: 1, saleUnitPrice: installationPrice, position: additionalFees.length });
+    return { ...legacyQuote, ...basePayload(), currency: quote.currency || "EUR", groups: groups.map((group, position) => ({ ...group, position })), minimumProcessingFee: number(form.elements.minimumProcessingFee), minimumOrderAmount: number(form.elements.minimumOrderAmount), adjustment: number(form.elements.adjustment), items: [...document.querySelectorAll(".advertising-item")].map(itemPayload), delivery: { ...(quote.delivery || {}), enabled: form.elements.deliveryEnabled.checked, quantity: number(form.elements.deliveryQuantity), saleUnitPrice: number(form.elements.deliveryPrice) }, additionalFees };
   }
   function v2Payload() {
     const savedItem = quote.items?.[0] || {};
@@ -145,6 +158,8 @@
     if (isV2) populateV2(quote.items?.[0]);
     else {
       if (quote.delivery) { form.elements.deliveryEnabled.checked = quote.delivery.enabled; form.elements.deliveryQuantity.value = quote.delivery.quantity || 1; form.elements.deliveryPrice.value = quote.delivery.saleUnitPrice || 150; }
+      const installationFee = (quote.additionalFees || []).find((fee) => fee.category === "installation");
+      form.elements.installationPrice.value = installationFee?.saleUnitPrice ?? 0;
       (quote.items?.length ? quote.items : [{}]).forEach(itemTemplate);
     }
     renderFxSnapshot(quote.id && isV2 ? quote.fxSnapshot : null);
