@@ -1755,7 +1755,11 @@ async function handleApi(request, response, url) {
     const match = url.pathname.match(/^\/api\/advertising\/(materials|processes|rules|services|entities)(?:\/([^/]+))?$/);
     if (match && request.method !== "GET") {
       requirePermission(authCtx, "advertising_catalog.manage");
-      const body = parseJsonBody(await readRequestBody(request)); const saved = await advertisingStore.updateCatalog(match[1], body, match[2] && decodeURIComponent(match[2]), authCtx.userId); sendJson(response, match[2] ? 200 : 201, sanitizeAdvertising(saved)); return true;
+      const body = parseJsonBody(await readRequestBody(request));
+      if (!advertisingCanViewCosts) {
+        for (const key of ["costPrice", "defaultMarkupRate", "supplierName", "supplierSnapshot"]) delete body[key];
+      }
+      const saved = await advertisingStore.updateCatalog(match[1], body, match[2] && decodeURIComponent(match[2]), authCtx.userId); sendJson(response, match[2] ? 200 : 201, sanitizeAdvertising(saved)); return true;
     }
   }
 

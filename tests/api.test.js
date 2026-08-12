@@ -4657,10 +4657,21 @@ test("advertising quotation pages and navigation entry are served", async () => 
     assert.match(editorHtml, /name="transportTrips"/);
     assert.match(editorHtml, /name="designHours"/);
     assert.match(editorHtml, /name="currency"/);
+    assert.match(editorHtml, /id="adv-currency-field"/);
     assert.match(editor, /bomTemplateCode:\s*['"]pvc_uv_board_v1['"]/);
     assert.match(editor, /result\.quoteCurrency\s*\|\|\s*form\.elements\.currency\.value/);
     assert.match(editor, /quote\.id\s*\?\s*`\/api\/advertising\/quotes\/\$\{encodeURIComponent\(quote\.id\)\}\/calculate`/);
     assert.match(editor, /price\s*&&\s*price\.value\s*!==\s*["']{2}/);
+    assert.match(editor, /function v1Payload[\s\S]*?\.\.\.legacyQuote/);
+    assert.match(editor, /delete legacyQuote\.(?:pricingEngine|fxSnapshot|bomLines)/);
+    assert.match(editor, /form\.elements\.currency\.disabled\s*=\s*!isV2/);
+    assert.match(editor, /#adv-currency-field["']\)\.classList\.toggle\(["']hidden["'],\s*!isV2\)/);
+    assert.match(editor, /#adv-v2-editor["']\)\.querySelectorAll\(["']input, select, textarea["']\)[\s\S]*?\.disabled\s*=\s*!isV2/);
+    assert.match(editor, /v1Payload[\s\S]*?currency:\s*quote\.currency\s*\|\|\s*["']EUR["']/);
+    assert.match(editor, /const savedItem\s*=\s*\(quote\.items\s*\|\|\s*\[\]\)\.find/);
+    assert.match(editor, /return\s*\{\s*\.\.\.savedItem/);
+    assert.match(editor, /materialSaleUnitPrice:\s*get\(["']materialSaleUnitPrice["']\)\s*===\s*["']{2}\s*\?\s*savedItem\.materialSaleUnitPrice/);
+    assert.match(editor, /manualAdjustment:[^,]+\?\s*savedItem\.manualAdjustment\s*:/);
 
     const libraryHtml = await (await publicFetch(port, "/advertising-price-library.html")).text();
     assert.match(libraryHtml, /adv-version-history/);
@@ -4670,9 +4681,13 @@ test("advertising quotation pages and navigation entry are served", async () => 
     assert.match(libraryJs, /adjustmentReason/);
     assert.match(libraryJs, /type === ['"]number['"]\s*\?\s*['"]step="0\.01"['"]/);
     assert.match(libraryJs, /ADVERTISING_PRICE_VERSION_UNAVAILABLE|\u5f85\u751f\u6548|待生效/);
+    assert.match(libraryJs, /activePriceVersion\?\.versionNumber/);
+    assert.match(libraryJs, /\['currency',\s*labels\.currency\]/);
+    assert.match(libraryJs, /\['effectiveFrom',\s*labels\.effectiveFrom\]/);
+    assert.doesNotMatch(libraryJs, /PVC UV Board|\['costUnitPrice',\s*'成本'\]|\['saleUnitPrice',\s*'售价'\]/);
 
     const labels = await (await publicFetch(port, "/ui-labels.js")).text();
-    for (const key of ["bomV2", "pvcUvBoard", "laborHours", "installationQuantity", "transportTrips", "designHours", "fxSnapshot", "priceVersion", "effectiveFrom", "versionHistory"]) {
+    for (const key of ["bomV2", "pvcUvBoard", "pvcUvBoardEn", "laborHours", "installationQuantity", "transportTrips", "designHours", "fxSnapshot", "priceVersion", "effectiveFrom", "versionHistory", "cost", "salePrice", "minimumSaleUnitPrice", "minimumCharge"]) {
       assert.match(labels, new RegExp(`${key}:`), key);
     }
     const styles = await (await publicFetch(port, "/advertising-ui.css")).text();
@@ -4691,6 +4706,23 @@ test("advertising V2 browser payload source has no server-owned pricing evidence
     for (const allowed of ["pricingEngine", "bomTemplateCode", "width", "height", "quantity", "laborHours", "installationQuantity", "transportTrips", "designHours"]) {
       assert.match(source, new RegExp(allowed), allowed);
     }
+  });
+});
+
+test("advertising V1 browser payload preserves loaded legacy fields without V2 evidence", async () => {
+  await withServer(async (port) => {
+    const editor = await (await publicFetch(port, "/advertising-quote.js")).text();
+    const start = editor.indexOf("function v1Payload");
+    const end = editor.indexOf("function v2Payload", start);
+    assert.ok(start >= 0 && end > start);
+    const source = editor.slice(start, end);
+    assert.match(source, /structuredClone\(quote\)/);
+    assert.match(source, /\.\.\.legacyQuote/);
+    assert.match(source, /currency:\s*quote\.currency\s*\|\|\s*["']EUR["']/);
+    assert.match(source, /delivery:\s*\{\s*\.\.\.\(quote\.delivery\s*\|\|\s*\{\}\)/);
+    assert.match(source, /quote\.additionalFees\s*\|\|\s*\[\]/);
+    assert.match(source, /fee\.category\s*!==\s*["']installation["']/);
+    for (const forbidden of ["pricingEngine", "fxSnapshot", "bomLines"]) assert.match(source, new RegExp(`delete legacyQuote\\.${forbidden}`));
   });
 });
 
@@ -4846,6 +4878,21 @@ test("advertising catalog API exposes price floors only to catalog managers", as
     assert.equal(manager.processes.find((item) => item.id === "uv").defaultMinimumFee, 35);
     assert.ok(manager.materials.find((item) => item.id === "pvc-3").activePriceVersion);
     assert.equal(manager.priceVersions, undefined);
+
+    const updateResponse = await originalFetch(`http://127.0.0.1:${port}/api/advertising/materials/pvc-3`, {
+      method: "PUT",
+      headers: { Authorization: "Bearer manager-token", "Content-Type": "application/json" },
+      body: JSON.stringify({ suggestedSalePrice: 18, costPrice: 0, supplierName: "injected", currency: "EUR", effectiveFrom: "2026-08-12", adjustmentReason: "manager sale update" }),
+    });
+    assert.equal(updateResponse.status, 200);
+    const update = await updateResponse.json();
+    assert.equal(update.costPrice, undefined);
+    assert.equal(update.supplierName, undefined);
+    const persisted = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+    const versions = persisted.advertisingPriceVersions.filter((entry) => entry.catalogType === "materials" && entry.catalogId === "pvc-3");
+    const newest = versions.sort((a, b) => b.versionNumber - a.versionNumber)[0];
+    assert.equal(newest.costUnitPrice, 9.5);
+    assert.deepEqual(newest.supplierSnapshot, { supplierName: "EMA" });
   });
 });
 

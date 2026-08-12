@@ -17,16 +17,17 @@
   };
   const tabLabels = { materials: '材料', processes: '工艺', rules: '关联规则', services: '服务费用' };
   const columns = {
-    materials: [['nameZh', '材料'], ['specification', '规格'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['minimumSalePrice', '最低售价']],
-    processes: [['nameZh', '工艺'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['defaultMinimumFee', '最低费'], ['isActive', '状态']],
+    materials: [['nameZh', '材料'], ['specification', '规格'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['minimumSalePrice', '最低售价'], ['activePriceVersion', labels.activeVersion], ['currency', labels.currency], ['effectiveFrom', labels.effectiveFrom]],
+    processes: [['nameZh', '工艺'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['defaultMinimumFee', '最低费'], ['activePriceVersion', labels.activeVersion], ['currency', labels.currency], ['effectiveFrom', labels.effectiveFrom], ['isActive', '状态']],
     rules: [['materialId', '材料'], ['processId', '工艺'], ['suggestedSalePriceOverride', '售价覆盖'], ['defaultMinimumFeeOverride', '最低费覆盖'], ['isActive', '状态']],
-    services: [['nameZh', '服务'], ['category', '类别'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['isActive', '状态']]
+    services: [['nameZh', '服务'], ['category', '类别'], ['unit', '单位'], ['costPrice', '成本价'], ['suggestedSalePrice', '建议售价'], ['activePriceVersion', labels.activeVersion], ['currency', labels.currency], ['effectiveFrom', labels.effectiveFrom], ['isActive', '状态']]
   };
 
   const recordName = (type, id) => catalog[type]?.find(item => item.id === id)?.nameZh || '未找到对应项';
   const cellValue = (row, key) => {
     if (key === 'materialId') return recordName('materials', row[key]);
     if (key === 'processId') return recordName('processes', row[key]);
+    if (key === 'activePriceVersion') return row.activePriceVersion?.versionNumber ?? '—';
     if (typeof row[key] === 'boolean') return row[key] ? '启用' : '停用';
     return row[key] ?? '—';
   };
@@ -43,8 +44,8 @@
 
   function render() {
     updateTabs();
-    const displayColumns = columns[tab];
     const rows = catalog[tab] || [];
+    const displayColumns = columns[tab].filter(([key]) => key === 'nameZh' || rows.some(row => Object.prototype.hasOwnProperty.call(row, key)));
     const body = rows.length
       ? `<div class="adv-table-scroll"><table class="adv-library-table"><thead><tr>${displayColumns.map(([, label]) => `<th>${esc(label)}</th>`).join('')}<th><span class="sr-only">操作</span></th></tr></thead><tbody>${rows.map(row => `<tr>${displayColumns.map(([key]) => `<td>${esc(cellValue(row, key))}</td>`).join('')}<td><button class="adv-table-action" type="button" data-id="${esc(row.id)}">编辑</button></td></tr>`).join('')}</tbody></table></div>`
       : `<div class="adv-library-empty"><strong>暂无${esc(tabLabels[tab])}记录</strong><p>点击右上角按钮创建第一条记录。</p></div>`;
@@ -64,12 +65,17 @@
     return `<label>${esc(label)}<input name="${esc(key)}" type="${esc(type)}" ${precision} value="${esc(row[key])}" ${key === 'nameZh' ? 'required' : ''}></label>`;
   }
 
+  function visibleDefinitions(row) {
+    const protectedKeys = new Set(['costPrice', 'defaultMarkupRate', 'supplierName']);
+    return definitions[tab].filter(([key]) => !protectedKeys.has(key) || (!row.id ? window.can('advertising_quote.cost_view') : Object.prototype.hasOwnProperty.call(row, key)));
+  }
+
   function renderVersionHistory(versions = []) {
     const today = new Date().toISOString().slice(0, 10);
     const list = document.querySelector('#adv-version-history-list');
     list.innerHTML = versions.length ? versions.map(version => {
       const future = String(version.effectiveFrom || '') > today;
-      const prices = [['costUnitPrice', '成本'], ['saleUnitPrice', '售价'], ['minimumSaleUnitPrice', '最低单价'], ['minimumCharge', '最低费用']]
+      const prices = [['costUnitPrice', labels.cost], ['saleUnitPrice', labels.salePrice], ['minimumSaleUnitPrice', labels.minimumSaleUnitPrice], ['minimumCharge', labels.minimumCharge]]
         .filter(([key]) => Object.prototype.hasOwnProperty.call(version, key))
         .map(([key, label]) => `<span>${label} ${esc(version[key])}</span>`).join('');
       return `<article class="adv-version-row ${future ? 'is-future' : ''}"><header><strong>${esc(labels.priceVersion)} ${esc(version.versionNumber)}</strong><span class="adv-version-status">${esc(future ? labels.versionFuture : labels.versionActive)}</span></header><p>${esc(version.currency)} · ${esc(labels.effectiveFrom)} ${esc(version.effectiveFrom)}</p><p>${prices}</p><small>${esc(version.changeReason)}</small></article>`;
@@ -79,7 +85,7 @@
   async function open(row) {
     row = { currency: 'EUR', effectiveFrom: new Date().toISOString().slice(0, 10), ...row };
     form.elements.id.value = row.id || '';
-    fields.innerHTML = definitions[tab].map(definition => fieldMarkup(row, definition)).join('');
+    fields.innerHTML = visibleDefinitions(row).map(definition => fieldMarkup(row, definition)).join('');
     form.elements.adjustmentReason.value = '';
     renderVersionHistory([]);
     if (row.id && tab !== 'rules') {
@@ -128,6 +134,7 @@
     const payload = { adjustmentReason: form.elements.adjustmentReason.value };
     for (const [key, , type] of definitions[tab]) {
       const input = form.elements[key];
+      if (!input) continue;
       payload[key] = type === 'checkbox' ? input.checked : type === 'number' ? (input.value === '' ? null : Number(input.value)) : input.value;
     }
     const response = await fetch(`/api/advertising/${tab}${id ? `/${encodeURIComponent(id)}` : ''}`, { method: id ? 'PUT' : 'POST', headers: headers(), body: JSON.stringify(payload) });

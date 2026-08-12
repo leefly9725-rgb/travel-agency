@@ -402,6 +402,72 @@ test("catalog price change appends a version with reason instead of overwriting 
   assert.deepEqual(after.at(-1), before.at(-1));
 });
 
+test("legacy flattened price edits still require an adjustment reason", async () => {
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: false } });
+
+  await assert.rejects(
+    () => store.updateCatalog("materials", { suggestedSalePrice: 17 }, "pvc-3", "manager"),
+    (error) => error.code === "ADJUSTMENT_REASON_REQUIRED",
+  );
+});
+
+test("price version append preserves hidden cost and supplier evidence", async () => {
+  const data = {};
+  const store = createAdvertisingQuoteStore({ data, saveData: () => {}, supabaseConfig: { enabled: false } });
+  const before = await store.catalog({ asOf: "2026-08-11" });
+  const active = before.materials.find((item) => item.id === "pvc-3").activePriceVersion;
+
+  await store.updateCatalog("materials", {
+    suggestedSalePrice: 18,
+    costPrice: null,
+    supplierName: null,
+    currency: "EUR",
+    effectiveFrom: "2026-08-12",
+    adjustmentReason: "manager sale update",
+  }, "pvc-3", "manager-without-cost-view");
+
+  const versions = await store.listPriceVersions({ catalogType: "materials", catalogId: "pvc-3" });
+  assert.equal(versions[0].costUnitPrice, active.costUnitPrice);
+  assert.deepEqual(versions[0].supplierSnapshot, active.supplierSnapshot);
+  assert.notEqual(versions[0].costUnitPrice, 0);
+});
+
+test("currency-only and effective-date-only edits append immutable versions", async () => {
+  const data = {};
+  const store = createAdvertisingQuoteStore({ data, saveData: () => {}, supabaseConfig: { enabled: false } });
+  const initial = await store.listPriceVersions({ catalogType: "materials", catalogId: "pvc-3" });
+
+  await store.updateCatalog("materials", { currency: "RSD", adjustmentReason: "currency correction" }, "pvc-3", "manager");
+  await store.updateCatalog("materials", { effectiveFrom: "2026-08-12", adjustmentReason: "date correction" }, "pvc-3", "manager");
+
+  const after = await store.listPriceVersions({ catalogType: "materials", catalogId: "pvc-3" });
+  assert.equal(after.length, initial.length + 2);
+  assert.equal(after[1].currency, "RSD");
+  assert.equal(after[0].effectiveFrom, "2026-08-12");
+  assert.equal(after[0].costUnitPrice, initial[0].costUnitPrice);
+});
+
+test("initial priced catalog creation produces immutable version one", async () => {
+  const data = {};
+  const store = createAdvertisingQuoteStore({ data, saveData: () => {}, supabaseConfig: { enabled: false } });
+
+  const created = await store.updateCatalog("services", {
+    id: "proofreading",
+    nameZh: "Proofreading",
+    currency: "EUR",
+    effectiveFrom: "2026-08-12",
+    costPrice: 3,
+    suggestedSalePrice: 8,
+    adjustmentReason: "initial price",
+  }, undefined, "manager");
+
+  const versions = await store.listPriceVersions({ catalogType: "services", catalogId: created.id });
+  assert.equal(versions.length, 1);
+  assert.equal(versions[0].versionNumber, 1);
+  assert.equal(versions[0].costUnitPrice, 3);
+  assert.equal(versions[0].saleUnitPrice, 8);
+});
+
 test("V2 price versions require reason, effective date, and supported currency", async () => {
   const store = createAdvertisingQuoteStore({ data: {}, saveData: () => {}, supabaseConfig: { enabled: false } });
   const base = { costPrice: 9.5, suggestedSalePrice: 17, currency: "EUR", effectiveFrom: "2026-09-01", adjustmentReason: "supplier increase" };
@@ -437,4 +503,27 @@ test("remote price version creation uses the V2 RPC contract", async (t) => {
     p_price_version: { currency: "EUR", costUnitPrice: 9.5, saleUnitPrice: 17, minimumSaleUnitPrice: 9.5, minimumCharge: 0, effectiveFrom: "2026-09-01", changeReason: "supplier increase", supplierSnapshot: {} },
     p_user_id: "11111111-1111-1111-1111-111111111111",
   });
+});
+
+test("remote hidden evidence fallback is preserved in the V2 RPC", async (t) => {
+  const originalFetch = global.fetch;
+  let rpcBody;
+  global.fetch = async (url, options = {}) => {
+    const target = String(url);
+    if (target.includes("advertising_materials?")) return new Response(JSON.stringify([{ id: "m1", data: { nameZh: "Remote", supplierName: "Secret Supplier" }, is_active: true }]), { status: 200 });
+    if (target.includes("advertising_price_versions?")) return new Response(JSON.stringify([{ id: "PV-1", catalog_type: "materials", catalog_id: "m1", version_number: 1, currency: "EUR", cost_unit_price: 12, sale_unit_price: 18, minimum_sale_unit_price: 10, minimum_charge: 2, effective_from: "2026-01-01", supplier_snapshot: { supplierName: "Secret Supplier" } }]), { status: 200 });
+    if (target.includes("/rpc/save_advertising_catalog_entry_v2")) {
+      rpcBody = JSON.parse(options.body);
+      return new Response(JSON.stringify({ item: { id: "m1", data: { nameZh: "Remote" }, is_active: true }, priceVersion: { id: "PV-2", catalogType: "materials", catalogId: "m1", versionNumber: 2, ...rpcBody.p_price_version } }), { status: 200 });
+    }
+    return new Response("[]", { status: 200 });
+  };
+  t.after(() => { global.fetch = originalFetch; });
+  const store = createAdvertisingQuoteStore({ data: {}, saveData: () => assert.fail("must not write local"), supabaseConfig: { enabled: true, url: "https://example.supabase.co", serviceRoleKey: "server-secret" } });
+
+  await store.updateCatalog("materials", { suggestedSalePrice: 20, currency: "EUR", effectiveFrom: "2026-08-12", adjustmentReason: "manager update" }, "m1", "manager");
+
+  assert.equal(rpcBody.p_price_version.costUnitPrice, 12);
+  assert.equal(rpcBody.p_price_version.saleUnitPrice, 20);
+  assert.deepEqual(rpcBody.p_price_version.supplierSnapshot, { supplierName: "Secret Supplier" });
 });

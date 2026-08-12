@@ -238,6 +238,10 @@ function validatePriceVersion(payload) {
   }
 }
 
+function hasValue(value) {
+  return value !== undefined && value !== null;
+}
+
 function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
   ensureAdvertisingData(data);
   const persist = () => saveData(data);
@@ -407,19 +411,35 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
 
     async saveCatalogPriceVersion(kind, payload, id, userId) {
       if (!["materials", "processes", "services"].includes(kind)) throw priceVersionError("价格库类型无效。", "ADVERTISING_CATALOG_KIND_INVALID");
-      validatePriceVersion(payload);
       const catalogId = id || payload.id || crypto.randomUUID();
-      const { activePriceVersion: _activePriceVersion, ...catalogPayload } = payload;
+      const current = id ? (await this.catalog())[kind]?.find((entry) => entry.id === catalogId) : null;
+      const active = current?.activePriceVersion || {};
+      const resolved = {
+        ...current,
+        ...payload,
+        costPrice: hasValue(payload.costPrice) ? payload.costPrice : (active.costUnitPrice ?? current?.costPrice),
+        suggestedSalePrice: hasValue(payload.suggestedSalePrice) ? payload.suggestedSalePrice : (active.saleUnitPrice ?? current?.suggestedSalePrice),
+        minimumSalePrice: payload.minimumSalePrice !== undefined ? payload.minimumSalePrice : (active.minimumSaleUnitPrice ?? current?.minimumSalePrice),
+        defaultMinimumFee: payload.defaultMinimumFee !== undefined ? payload.defaultMinimumFee : (active.minimumCharge ?? current?.defaultMinimumFee),
+        currency: payload.currency || active.currency || current?.currency,
+        effectiveFrom: payload.effectiveFrom || active.effectiveFrom || current?.effectiveFrom,
+      };
+      validatePriceVersion(resolved);
+      const { activePriceVersion: _activePriceVersion, ...catalogPayload } = resolved;
       const item = { ...catalogPayload, id: catalogId };
       const priceVersion = {
-        currency: payload.currency,
-        costUnitPrice: Number(payload.costPrice),
-        saleUnitPrice: Number(payload.suggestedSalePrice),
-        minimumSaleUnitPrice: payload.minimumSalePrice == null ? null : Number(payload.minimumSalePrice),
-        minimumCharge: Number(payload.defaultMinimumFee || 0),
-        effectiveFrom: payload.effectiveFrom,
-        changeReason: String(payload.adjustmentReason).trim(),
-        supplierSnapshot: payload.supplierSnapshot || (payload.supplierName ? { supplierName: payload.supplierName } : {}),
+        currency: resolved.currency,
+        costUnitPrice: Number(resolved.costPrice),
+        saleUnitPrice: Number(resolved.suggestedSalePrice),
+        minimumSaleUnitPrice: resolved.minimumSalePrice == null ? null : Number(resolved.minimumSalePrice),
+        minimumCharge: Number(resolved.defaultMinimumFee || 0),
+        effectiveFrom: resolved.effectiveFrom,
+        changeReason: String(resolved.adjustmentReason).trim(),
+        supplierSnapshot: hasValue(payload.supplierSnapshot)
+          ? payload.supplierSnapshot
+          : hasValue(payload.supplierName)
+            ? { supplierName: payload.supplierName }
+            : active.supplierSnapshot || (current?.supplierName ? { supplierName: current.supplierName } : {}),
       };
       if (remote) {
         const result = await supabaseRequest(supabaseConfig, "rpc/save_advertising_catalog_entry_v2", {
@@ -461,8 +481,15 @@ function createAdvertisingQuoteStore({ data, saveData, supabaseConfig = {} }) {
       const old = (await this.catalog())[kind]?.find((entry) => entry.id === item.id);
       const priceFields = ["costPrice", "suggestedSalePrice", "minimumSalePrice", "defaultMinimumFee"];
       const changedFields = old ? priceFields.filter((field) => payload[field] !== undefined && Number(payload[field]) !== Number(old[field])) : [];
-      if (changedFields.length && !String(payload.adjustmentReason || "").trim()) throw Object.assign(new Error("修改价格必须填写原因。"), { statusCode: 400, code: "ADJUSTMENT_REASON_REQUIRED" });
-      if (changedFields.length && ["materials", "processes", "services"].includes(kind) && (payload.effectiveFrom !== undefined || payload.currency !== undefined)) {
+      const pricedKind = ["materials", "processes", "services"].includes(kind);
+      const versionDiscriminatorChanged = old && (
+        (payload.currency !== undefined && payload.currency !== old.currency) ||
+        (payload.effectiveFrom !== undefined && payload.effectiveFrom !== old.effectiveFrom)
+      );
+      const initialPricedCreation = !old && pricedKind && ["costPrice", "suggestedSalePrice", "currency", "effectiveFrom"].some((field) => payload[field] !== undefined);
+      const shouldVersion = pricedKind && (initialPricedCreation || versionDiscriminatorChanged || payload.currency !== undefined || payload.effectiveFrom !== undefined);
+      if ((changedFields.length || shouldVersion) && !String(payload.adjustmentReason || "").trim()) throw Object.assign(new Error("修改价格必须填写原因。"), { statusCode: 400, code: "ADJUSTMENT_REASON_REQUIRED" });
+      if (shouldVersion) {
         return this.saveCatalogPriceVersion(kind, { ...old, ...payload }, item.id, userId);
       }
       if (remote) {

@@ -59,13 +59,18 @@
     refreshItemOrder();
   }
   function moveItem(row, delta) { const sibling = delta < 0 ? row.previousElementSibling : row.nextElementSibling; if (sibling) itemsEl.insertBefore(delta < 0 ? row : sibling, delta < 0 ? sibling : row); refreshItemOrder(); preview(); }
-  function itemPayload(row, index) { const get = (key) => row.querySelector(`[data-key=${key}]`).value; return { id: row.dataset.itemId, groupId: get("groupId") || null, name: get("name"), nameEn: get("nameEn"), materialId: get("materialId"), width: Number(get("width")), height: Number(get("height")), sizeUnit: get("sizeUnit"), quantity: Number(get("quantity")), sides: Number(get("sides")), materialSaleUnitPrice: get("materialSaleUnitPrice") === "" ? undefined : Number(get("materialSaleUnitPrice")), manualAdjustment: Number(get("manualAdjustment")), notes: get("notes"), position: index, processes: [...row.querySelectorAll("[data-process-id]:checked")].map((control, position) => { const price = control.closest("label").querySelector("[data-process-price]"); return { id: uid("ADP"), processId: control.dataset.processId, position, ...(price && price.value !== "" ? { actualSalePrice: Number(price.value) } : {}) }; }) }; }
+  function itemPayload(row, index) { const get = (key) => row.querySelector(`[data-key=${key}]`).value; const savedItem = (quote.items || []).find((item) => item.id === row.dataset.itemId) || {}; return { ...savedItem, id: row.dataset.itemId, groupId: get("groupId") || null, name: get("name"), nameEn: get("nameEn"), materialId: get("materialId"), width: Number(get("width")), height: Number(get("height")), sizeUnit: get("sizeUnit"), quantity: Number(get("quantity")), sides: Number(get("sides")), materialSaleUnitPrice: get("materialSaleUnitPrice") === "" ? savedItem.materialSaleUnitPrice : Number(get("materialSaleUnitPrice")), manualAdjustment: get("manualAdjustment") === "" || Number(get("manualAdjustment")) === Number(savedItem.manualAdjustment || 0) ? savedItem.manualAdjustment : Number(get("manualAdjustment")), notes: get("notes"), position: index, processes: [...row.querySelectorAll("[data-process-id]:checked")].map((control, position) => { const savedProcess = (savedItem.processes || []).find((process) => process.processId === control.dataset.processId) || {}; const price = control.closest("label").querySelector("[data-process-price]"); return { ...savedProcess, id: savedProcess.id || uid("ADP"), processId: control.dataset.processId, position, ...(price && price.value !== "" ? { actualSalePrice: Number(price.value) } : {}) }; }) }; }
 
   function basePayload() {
     return { entityId: form.elements.entityId.value, clientName: form.elements.clientName.value, projectName: form.elements.projectName.value, mode: form.elements.mode.value, language: form.elements.language.value, currency: form.elements.currency.value, vatMode: form.elements.vatMode.value, vatRate: 20, discountPercent: number(form.elements.discountPercent), fixedDiscount: number(form.elements.fixedDiscount), adjustmentReason: form.elements.adjustmentReason.value };
   }
   function v1Payload() {
-    return { ...basePayload(), groups: groups.map((group, position) => ({ ...group, position })), minimumProcessingFee: number(form.elements.minimumProcessingFee), minimumOrderAmount: number(form.elements.minimumOrderAmount), adjustment: number(form.elements.adjustment), items: [...document.querySelectorAll(".advertising-item")].map(itemPayload), delivery: { enabled: form.elements.deliveryEnabled.checked, quantity: number(form.elements.deliveryQuantity), saleUnitPrice: number(form.elements.deliveryPrice) }, additionalFees: number(form.elements.installationPrice) > 0 ? [{ category: "installation", name: "安装", quantity: 1, saleUnitPrice: number(form.elements.installationPrice) }] : [] };
+    const legacyQuote = structuredClone(quote);
+    delete legacyQuote.pricingEngine;
+    delete legacyQuote.fxSnapshot;
+    delete legacyQuote.bomLines;
+    const installationFees = number(form.elements.installationPrice) > 0 ? [{ category: "installation", name: "安装", quantity: 1, saleUnitPrice: number(form.elements.installationPrice) }] : [];
+    return { ...legacyQuote, ...basePayload(), currency: quote.currency || "EUR", groups: groups.map((group, position) => ({ ...group, position })), minimumProcessingFee: number(form.elements.minimumProcessingFee), minimumOrderAmount: number(form.elements.minimumOrderAmount), adjustment: number(form.elements.adjustment), items: [...document.querySelectorAll(".advertising-item")].map(itemPayload), delivery: { ...(quote.delivery || {}), enabled: form.elements.deliveryEnabled.checked, quantity: number(form.elements.deliveryQuantity), saleUnitPrice: number(form.elements.deliveryPrice) }, additionalFees: [...(quote.additionalFees || []).filter((fee) => fee.category !== "installation"), ...installationFees] };
   }
   function v2Payload() {
     const savedItem = quote.items?.[0] || {};
@@ -114,11 +119,15 @@
     document.querySelector("#adv-pricing-engine").value = isV2 ? "bom_v2" : "legacy_v1";
     document.querySelector("#adv-v1-editor").hidden = isV2;
     document.querySelector("#adv-v2-editor").hidden = !isV2;
+    document.querySelector("#adv-v1-editor").querySelectorAll("input, select, textarea").forEach((control) => { control.disabled = isV2; });
+    document.querySelector("#adv-v2-editor").querySelectorAll("input, select, textarea").forEach((control) => { control.disabled = !isV2; });
     document.querySelectorAll(".adv-v1-only").forEach((node) => { node.hidden = isV2; });
+    document.querySelector("#adv-currency-field").classList.toggle("hidden", !isV2);
+    form.elements.currency.disabled = !isV2;
     renderGroups();
   }
   function populateV2(item = {}) {
-    const values = { productName: item.name || labels.pvcUvBoard, productNameEn: item.nameEn || "PVC UV Board", width: item.width ?? 1, height: item.height ?? 1, sizeUnit: item.sizeUnit || "m", quantity: item.quantity ?? 1, sides: item.sides ?? 1, laborHours: item.laborHours ?? 0, installationQuantity: item.installationQuantity ?? 0, transportTrips: item.transportTrips ?? 0, designHours: item.designHours ?? 0, notes: item.notes || "" };
+    const values = { productName: item.name || labels.pvcUvBoard, productNameEn: item.nameEn || labels.pvcUvBoardEn, width: item.width ?? 1, height: item.height ?? 1, sizeUnit: item.sizeUnit || "m", quantity: item.quantity ?? 1, sides: item.sides ?? 1, laborHours: item.laborHours ?? 0, installationQuantity: item.installationQuantity ?? 0, transportTrips: item.transportTrips ?? 0, designHours: item.designHours ?? 0, notes: item.notes || "" };
     Object.entries(values).forEach(([key, value]) => { form.elements[key].value = value; });
   }
   const load = () => Promise.all([
