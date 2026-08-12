@@ -1558,14 +1558,13 @@ async function handleApi(request, response, url) {
     { statusCode: 400, code: "ADVERTISING_QUOTE_DATE_INVALID" },
   );
   const canonicalAdvertisingV2Date = (payload, existing = null) => {
-    const supplied = Object.prototype.hasOwnProperty.call(payload || {}, "quoteDate");
-    const blank = supplied && typeof payload.quoteDate === "string" && payload.quoteDate.trim() === "";
-    if (supplied && !blank && !validAdvertisingDate(payload.quoteDate)) throw advertisingQuoteDateError();
+    const supplied = Object.prototype.hasOwnProperty.call(payload || {}, "quoteDate") && payload.quoteDate !== undefined;
+    if (supplied && !validAdvertisingDate(payload.quoteDate)) throw advertisingQuoteDateError();
     if (existing?.pricingEngine === "bom_v2") {
-      if (blank || !validAdvertisingDate(existing.quoteDate)) throw advertisingQuoteDateError();
+      if (!validAdvertisingDate(existing.quoteDate)) throw advertisingQuoteDateError();
       return existing.quoteDate;
     }
-    if (!supplied || blank) return new Date().toISOString().slice(0, 10);
+    if (!supplied) return new Date().toISOString().slice(0, 10);
     return payload.quoteDate;
   };
   const buildAdvertisingServerSnapshot = (payload, catalog, existing = null) => {

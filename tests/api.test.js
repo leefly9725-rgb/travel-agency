@@ -5057,9 +5057,14 @@ test("advertising V2 rejects explicit malformed dates and fails closed on an inv
       }
     }
 
-    const blankCreate = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, quoteDate: "   " }) });
-    assert.equal(blankCreate.status, 201);
-    const created = await blankCreate.json();
+    for (const quoteDate of ["", "   ", null]) {
+      const blankCreate = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, quoteDate }) });
+      assert.equal(blankCreate.status, 400, JSON.stringify(quoteDate));
+      assert.equal((await blankCreate.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
+    }
+    const missingCreate = await apiFetch(port, "/api/advertising/quotes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+    assert.equal(missingCreate.status, 201);
+    const created = await missingCreate.json();
     assert.equal(created.quoteDate, new Date().toISOString().slice(0, 10));
 
     for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
@@ -5068,13 +5073,15 @@ test("advertising V2 rejects explicit malformed dates and fails closed on an inv
       assert.equal((await response.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
     }
 
-    const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
-    data.advertisingQuotes.find((quote) => quote.id === created.id).quoteDate = "2026-02-30";
-    fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
-    for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
-      const response = await apiFetch(port, `/api/advertising/quotes/${created.id}${suffix}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
-      assert.equal(response.status, 400, `stored invalid ${suffix || "update"}`);
-      assert.equal((await response.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
+    for (const storedQuoteDate of ["", "   ", "2026-02-30"]) {
+      const data = JSON.parse(fs.readFileSync(tempDataFile, "utf8"));
+      data.advertisingQuotes.find((quote) => quote.id === created.id).quoteDate = storedQuoteDate;
+      fs.writeFileSync(tempDataFile, JSON.stringify(data, null, 2));
+      for (const [method, suffix] of [["PUT", ""], ["POST", "/calculate"]]) {
+        const response = await apiFetch(port, `/api/advertising/quotes/${created.id}${suffix}`, { method, headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        assert.equal(response.status, 400, `stored ${JSON.stringify(storedQuoteDate)} ${suffix || "update"}`);
+        assert.equal((await response.json()).code, "ADVERTISING_QUOTE_DATE_INVALID");
+      }
     }
   });
 });
